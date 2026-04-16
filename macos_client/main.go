@@ -14,7 +14,6 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
-	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/joho/godotenv"
@@ -36,7 +35,7 @@ func parseHexColor(s string) color.Color {
 // saveUsernameToEnv сохраняет или обновляет имя пользователя в .env
 func saveUsernameToEnv(username string) {
 	envFile := "macos_client/.env" // Указываем путь относительно корня проекта
-	
+
 	// Читаем текущее содержимое
 	content, err := os.ReadFile(envFile)
 	if err != nil {
@@ -64,12 +63,73 @@ func saveUsernameToEnv(username string) {
 	os.WriteFile(envFile, []byte(strings.Join(lines, "\n")), 0644)
 }
 
+// saveThemeToEnv сохраняет или обновляет тему в .env
+func saveThemeToEnv(isDark bool) {
+	envFile := "macos_client/.env" // Указываем путь относительно корня проекта
+
+	// Читаем текущее содержимое
+	content, err := os.ReadFile(envFile)
+	if err != nil {
+		// Если файла нет, просто создадим его с темой
+		if os.IsNotExist(err) {
+			themeValue := "dark"
+			if !isDark {
+				themeValue = "light"
+			}
+			os.WriteFile(envFile, []byte(fmt.Sprintf("THEME=%s\n", themeValue)), 0644)
+		}
+		return
+	}
+
+	lines := strings.Split(string(content), "\n")
+	found := false
+	for i, line := range lines {
+		if strings.HasPrefix(strings.TrimSpace(line), "THEME=") {
+			themeValue := "dark"
+			if !isDark {
+				themeValue = "light"
+			}
+			lines[i] = "THEME=" + themeValue
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		themeValue := "dark"
+		if !isDark {
+			themeValue = "light"
+		}
+		lines = append(lines, "THEME="+themeValue)
+	}
+
+	os.WriteFile(envFile, []byte(strings.Join(lines, "\n")), 0644)
+}
+
+// Кастомные имена цветов для пользователей
+type userColorName string
+
+const (
+	UserColor1 userColorName = "UserColor1"
+	UserColor2 userColorName = "UserColor2"
+	UserColor3 userColorName = "UserColor3"
+	UserColor4 userColorName = "UserColor4"
+	UserColor5 userColorName = "UserColor5"
+	UserColor6 userColorName = "UserColor6"
+	UserColor7 userColorName = "UserColor7"
+	UserColor8 userColorName = "UserColor8"
+	UserColor9 userColorName = "UserColor9"
+	UserColor10 userColorName = "UserColor10"
+)
+
 // customTheme для поддержки своих цветов
 type customTheme struct {
-	isDark          bool
-	lightBg, darkBg color.Color
-	lightFg, darkFg color.Color
+	isDark                    bool
+	lightBg, darkBg           color.Color
+	lightFg, darkFg           color.Color
 	lightPrimary, darkPrimary color.Color
+	lightTime, darkTime       color.Color
+	userColors               map[userColorName]color.Color
 }
 
 func (c *customTheme) Color(name fyne.ThemeColorName, variant fyne.ThemeVariant) color.Color {
@@ -92,6 +152,18 @@ func (c *customTheme) Color(name fyne.ThemeColorName, variant fyne.ThemeVariant)
 			return c.darkPrimary
 		}
 		return c.lightPrimary
+	}
+	// Добавляем новый цвет для времени
+	if name == theme.ColorNameDisabled {
+		if c.isDark {
+			return c.darkTime
+		}
+		return c.lightTime
+	}
+	
+	// Проверяем кастомные цвета пользователей
+	if userColor, exists := c.userColors[userColorName(name)]; exists {
+		return userColor
 	}
 
 	// Для остальных используем дефолтную тему
@@ -127,14 +199,23 @@ func main() {
 	}
 
 	// Читаем настройки темы
+	themeValue := os.Getenv("THEME")
+	isDarkTheme := (themeValue == "dark")
+	
+	// Инициализируем пользовательские цвета
+	themeUserColors := make(map[userColorName]color.Color)
+	
 	myTheme := &customTheme{
-		isDark:       false, // По умолчанию светлая тема
+		isDark:       isDarkTheme,
 		lightBg:      parseHexColor(os.Getenv("LIGHT_BG_COLOR")),
 		darkBg:       parseHexColor(os.Getenv("DARK_BG_COLOR")),
 		lightFg:      parseHexColor(os.Getenv("LIGHT_TEXT_COLOR")),
 		darkFg:       parseHexColor(os.Getenv("DARK_TEXT_COLOR")),
 		lightPrimary: parseHexColor(os.Getenv("LIGHT_NAME_COLOR")),
 		darkPrimary:  parseHexColor(os.Getenv("DARK_NAME_COLOR")),
+		lightTime:    parseHexColor(os.Getenv("LIGHT_TIME_COLOR")),
+		darkTime:     parseHexColor(os.Getenv("DARK_TIME_COLOR")),
+		userColors:    themeUserColors,
 	}
 
 	myApp := app.New()
@@ -147,11 +228,90 @@ func main() {
 	var stream gen.ChatService_ChatClient
 	var conn *grpc.ClientConn
 
+	// Статус и приветствие в одной строке
+	statusLabel := widget.NewLabel("Отключено")
+	statusLabel.Alignment = fyne.TextAlignLeading
+	
+	// Переменные для отслеживания сообщений
+	var lastUser string
+	var userColors = make(map[string]fyne.ThemeColorName)
+	var userColorIndex int
+	
+	// Загружаем цвета для пользователей
+	lightUserColorsStr := os.Getenv("LIGHT_USER_COLORS")
+	darkUserColorsStr := os.Getenv("DARK_USER_COLORS")
+	
+	// Функция для получения цвета пользователя
+	getUserColor := func(user string) fyne.ThemeColorName {
+		// Сначала проверяем локальный кэш
+		if colorName, exists := userColors[user]; exists {
+			return colorName
+		}
+		
+		// Генерируем новый цвет для пользователя
+		var colorsStr string
+		if myTheme.isDark {
+			colorsStr = darkUserColorsStr
+		} else {
+			colorsStr = lightUserColorsStr
+		}
+		
+		var colorName fyne.ThemeColorName
+		
+		if colorsStr == "" {
+			// Если цвета не заданы, используем стандартный
+			colorName = theme.ColorNamePrimary
+		} else {
+			// Разбираем строку с цветами
+			colors := strings.Split(colorsStr, ",")
+			if len(colors) == 0 {
+				colorName = theme.ColorNamePrimary
+			} else {
+				// Выбираем цвет по индексу
+				colorHex := strings.TrimSpace(colors[userColorIndex%len(colors)])
+				currentIndex := userColorIndex
+				userColorIndex++
+				
+				// Добавляем цвет в тему
+				var userColor userColorName
+				switch currentIndex % 10 {
+				case 0:
+					userColor = UserColor1
+				case 1:
+					userColor = UserColor2
+				case 2:
+					userColor = UserColor3
+				case 3:
+					userColor = UserColor4
+				case 4:
+					userColor = UserColor5
+				case 5:
+					userColor = UserColor6
+				case 6:
+					userColor = UserColor7
+				case 7:
+					userColor = UserColor8
+				case 8:
+					userColor = UserColor9
+				case 9:
+					userColor = UserColor10
+				}
+				
+				myTheme.userColors[userColor] = parseHexColor(colorHex)
+				colorName = fyne.ThemeColorName(userColor)
+			}
+		}
+		
+		// Сохраняем в локальный кэш
+		userColors[user] = colorName
+		return colorName
+	}
+
 	// Чат (используем RichText для раскраски)
 	chatBox := widget.NewRichText()
 	chatBox.Scroll = container.ScrollBoth
 	scrollContainer := container.NewVScroll(chatBox)
-	
+
 	// Ввод
 	inputBox := widget.NewEntry()
 	inputBox.SetPlaceHolder("Введите сообщение...")
@@ -167,6 +327,7 @@ func main() {
 		}
 		myApp.Settings().SetTheme(myTheme)
 		chatBox.Refresh()
+		saveThemeToEnv(myTheme.isDark) // Сохраняем тему в .env
 	})
 	// Устанавливаем начальную иконку в зависимости от isDark
 	if myTheme.isDark {
@@ -175,32 +336,48 @@ func main() {
 		themeBtn.SetIcon(theme.ColorPaletteIcon())
 	}
 
-	// Панель сверху для иконки
-	topBar := container.NewHBox(layout.NewSpacer(), themeBtn)
+	// Панель сверху для статуса и иконки темы
+	topBar := container.NewBorder(nil, nil, statusLabel, themeBtn)
 
 	// Добавление сообщения
 	appendMessage := func(timeStr, user, text string) {
-		// Используем TextSegment для всех частей сообщения
-		timeSeg := &widget.TextSegment{
-			Text:  fmt.Sprintf("[%s] ", timeStr),
-			Style: widget.RichTextStyle{ColorName: theme.ColorNameDisabled},
+		// Проверяем, тот ли это же пользователь, что и в прошлый раз
+		isSameUser := (lastUser == user)
+		lastUser = user
+		
+		if !isSameUser {
+			// Добавляем отступ перед новым пользователем
+			spacingSeg := &widget.TextSegment{
+				Text:  "\n",
+				Style: widget.RichTextStyleInline,
+			}
+			
+			// Время и имя в одной строке (цвет пользователя)
+			headerSeg := &widget.TextSegment{
+				Text: fmt.Sprintf("%s %s: ", timeStr, user),
+				Style: widget.RichTextStyle{
+					ColorName: getUserColor(user),
+					TextStyle: fyne.TextStyle{Bold: true},
+				},
+			}
+			
+			// Текст сообщения
+			textSeg := &widget.TextSegment{
+				Text:  text + "\n",
+				Style: widget.RichTextStyleInline,
+			}
+			
+			chatBox.Segments = append(chatBox.Segments, spacingSeg, headerSeg, textSeg)
+		} else {
+			// Тот же пользователь - только текст
+			textSeg := &widget.TextSegment{
+				Text:  text + "\n",
+				Style: widget.RichTextStyleInline,
+			}
+			
+			chatBox.Segments = append(chatBox.Segments, textSeg)
 		}
 		
-		// Стиль для имени пользователя, используем Primary цвет из темы
-		userSeg := &widget.TextSegment{
-			Text: user + ": ",
-			Style: widget.RichTextStyle{
-				ColorName: theme.ColorNamePrimary, // Будет использовать lightPrimary или darkPrimary
-				TextStyle: fyne.TextStyle{Bold: true},
-			},
-		}
-
-		textSeg := &widget.TextSegment{
-			Text:  text + "\n",
-			Style: widget.RichTextStyleInline,
-		}
-
-		chatBox.Segments = append(chatBox.Segments, timeSeg, userSeg, textSeg)
 		chatBox.Refresh()
 		scrollContainer.ScrollToBottom()
 	}
@@ -241,6 +418,7 @@ func main() {
 		var err error
 		conn, err = grpc.Dial(serverAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
+			statusLabel.SetText("Ошибка подключения")
 			dialog.ShowError(err, myWindow)
 			return
 		}
@@ -248,20 +426,23 @@ func main() {
 		client := gen.NewChatServiceClient(conn)
 		stream, err = client.Chat(context.Background())
 		if err != nil {
+			statusLabel.SetText("Ошибка подключения")
 			dialog.ShowError(err, myWindow)
 			return
 		}
 
-		safeAppendSystemMessage(fmt.Sprintf("Подключено к %s! Добро пожаловать, %s", serverAddress, username))
+		statusLabel.SetText(fmt.Sprintf("Подключено к %s | Добро пожаловать, %s!", serverAddress, username))
 
 		// Чтение сообщений из потока
 		go func() {
 			for {
 				in, err := stream.Recv()
 				if err == io.EOF {
+					statusLabel.SetText("Отключено от сервера")
 					break
 				}
 				if err != nil {
+					statusLabel.SetText("Ошибка подключения")
 					myApp.SendNotification(&fyne.Notification{Title: "Chat Error", Content: err.Error()})
 					break
 				}
@@ -279,11 +460,11 @@ func main() {
 	// Форма входа
 	usernameEntry := widget.NewEntry()
 	usernameEntry.SetPlaceHolder("Ваше имя")
-	
+
 	// Предзаполнение из .env
-	lastUser := os.Getenv("LAST_USERNAME")
-	if lastUser != "" {
-		usernameEntry.SetText(lastUser)
+	lastUsername := os.Getenv("LAST_USERNAME")
+	if lastUsername != "" {
+		usernameEntry.SetText(lastUsername)
 	}
 
 	loginForm := dialog.NewCustomConfirm("Вход в чат", "Войти", "Отмена", usernameEntry, func(b bool) {
@@ -298,7 +479,7 @@ func main() {
 
 	// Сборка UI чата
 	inputContainer := container.NewBorder(nil, nil, nil, sendBtn, inputBox)
-	
+
 	// Оборачиваем чат, чтобы иконка была сверху
 	centerContent := container.NewBorder(topBar, nil, nil, nil, scrollContainer)
 	mainLayout := container.NewBorder(nil, inputContainer, nil, nil, centerContent)
