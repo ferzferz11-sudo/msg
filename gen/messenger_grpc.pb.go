@@ -19,7 +19,9 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	ChatService_Chat_FullMethodName = "/messenger.ChatService/Chat"
+	ChatService_Chat_FullMethodName       = "/messenger.ChatService/Chat"
+	ChatService_GetClients_FullMethodName = "/messenger.ChatService/GetClients"
+	ChatService_GetHistory_FullMethodName = "/messenger.ChatService/GetHistory"
 )
 
 // ChatServiceClient is the client API for ChatService service.
@@ -27,6 +29,8 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ChatServiceClient interface {
 	Chat(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[Message, Message], error)
+	GetClients(ctx context.Context, in *ClientListRequest, opts ...grpc.CallOption) (*ClientListResponse, error)
+	GetHistory(ctx context.Context, in *GetHistoryRequest, opts ...grpc.CallOption) (*GetHistoryResponse, error)
 }
 
 type chatServiceClient struct {
@@ -50,11 +54,33 @@ func (c *chatServiceClient) Chat(ctx context.Context, opts ...grpc.CallOption) (
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type ChatService_ChatClient = grpc.BidiStreamingClient[Message, Message]
 
+func (c *chatServiceClient) GetClients(ctx context.Context, in *ClientListRequest, opts ...grpc.CallOption) (*ClientListResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ClientListResponse)
+	err := c.cc.Invoke(ctx, ChatService_GetClients_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) GetHistory(ctx context.Context, in *GetHistoryRequest, opts ...grpc.CallOption) (*GetHistoryResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetHistoryResponse)
+	err := c.cc.Invoke(ctx, ChatService_GetHistory_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ChatServiceServer is the server API for ChatService service.
 // All implementations must embed UnimplementedChatServiceServer
 // for forward compatibility.
 type ChatServiceServer interface {
 	Chat(grpc.BidiStreamingServer[Message, Message]) error
+	GetClients(context.Context, *ClientListRequest) (*ClientListResponse, error)
+	GetHistory(context.Context, *GetHistoryRequest) (*GetHistoryResponse, error)
 	mustEmbedUnimplementedChatServiceServer()
 }
 
@@ -67,6 +93,12 @@ type UnimplementedChatServiceServer struct{}
 
 func (UnimplementedChatServiceServer) Chat(grpc.BidiStreamingServer[Message, Message]) error {
 	return status.Error(codes.Unimplemented, "method Chat not implemented")
+}
+func (UnimplementedChatServiceServer) GetClients(context.Context, *ClientListRequest) (*ClientListResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetClients not implemented")
+}
+func (UnimplementedChatServiceServer) GetHistory(context.Context, *GetHistoryRequest) (*GetHistoryResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetHistory not implemented")
 }
 func (UnimplementedChatServiceServer) mustEmbedUnimplementedChatServiceServer() {}
 func (UnimplementedChatServiceServer) testEmbeddedByValue()                     {}
@@ -96,13 +128,58 @@ func _ChatService_Chat_Handler(srv interface{}, stream grpc.ServerStream) error 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type ChatService_ChatServer = grpc.BidiStreamingServer[Message, Message]
 
+func _ChatService_GetClients_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ClientListRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).GetClients(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_GetClients_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).GetClients(ctx, req.(*ClientListRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_GetHistory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetHistoryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).GetHistory(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_GetHistory_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).GetHistory(ctx, req.(*GetHistoryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ChatService_ServiceDesc is the grpc.ServiceDesc for ChatService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var ChatService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "messenger.ChatService",
 	HandlerType: (*ChatServiceServer)(nil),
-	Methods:     []grpc.MethodDesc{},
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "GetClients",
+			Handler:    _ChatService_GetClients_Handler,
+		},
+		{
+			MethodName: "GetHistory",
+			Handler:    _ChatService_GetHistory_Handler,
+		},
+	},
 	Streams: []grpc.StreamDesc{
 		{
 			StreamName:    "Chat",

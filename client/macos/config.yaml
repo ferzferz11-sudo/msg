@@ -1,0 +1,36 @@
+server_address: localhost:50051
+themes:
+    light:
+        bg_color: '#FFFFFF'
+        text_color: '#000000'
+        name_color: '#1A73E8'
+        time_color: '#666666'
+        user_colors:
+            - '#E91E63'
+            - '#9C27B0'
+            - '#673AB7'
+            - '#3F51B5'
+            - '#2196F3'
+            - '#00BCD4'
+            - '#009688'
+            - '#4CAF50'
+            - '#FF9800'
+            - '#FF5722'
+    dark:
+        bg_color: '#1E1E1E'
+        text_color: '#FFFFFF'
+        name_color: '#8AB4F8'
+        time_color: '#999999'
+        user_colors:
+            - '#F48FB1'
+            - '#CE93D8'
+            - '#B39DDB'
+            - '#90CAF9'
+            - '#81D4FA'
+            - '#80DEEA'
+            - '#80CBC4'
+            - '#A5D6A7'
+            - '#FFCC80'
+            - '#FFAB91'
+current_theme: dark
+last_username: ferz

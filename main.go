@@ -11,6 +11,10 @@ import (
 	"google.golang.org/grpc"
 )
 
+const (
+	serverVersion = "0.9.0"
+)
+
 func main() {
 	// Загружаем переменные окружения из файла .env
 	if err := godotenv.Load(); err != nil {
@@ -21,10 +25,6 @@ func main() {
 	serverAddress := os.Getenv("SERVER_ADDRESS")
 	if serverAddress == "" {
 		serverAddress = ":50051" // Значение по умолчанию
-	}
-	serverVersion := os.Getenv("SERVER_VERSION")
-	if serverVersion == "" {
-		serverVersion = "unknown"
 	}
 
 	// Подключаемся к базе данных

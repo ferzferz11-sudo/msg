@@ -10,6 +10,27 @@ message Message {
   google.protobuf.Timestamp created_at = 3;
 }
 
+message ClientListRequest {}
+
+message ClientListResponse {
+  repeated string clients = 1;
+}
+
+message CreateChatRequest {
+  string target_client = 1;
+}
+
+message GetHistoryRequest {
+  int32 limit = 1;
+  string room = 2;
+}
+
+message GetHistoryResponse {
+  repeated Message messages = 1;
+}
+
 service ChatService {
   rpc Chat(stream Message) returns (stream Message);
+  rpc GetClients(ClientListRequest) returns (ClientListResponse);
+  rpc GetHistory(GetHistoryRequest) returns (GetHistoryResponse);
 }
