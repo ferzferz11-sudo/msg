@@ -82,6 +82,226 @@ func (x *Message) GetCreatedAt() *timestamppb.Timestamp {
 	return nil
 }
 
+type ClientListRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ClientListRequest) Reset() {
+	*x = ClientListRequest{}
+	mi := &file_messenger_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ClientListRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ClientListRequest) ProtoMessage() {}
+
+func (x *ClientListRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_messenger_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ClientListRequest.ProtoReflect.Descriptor instead.
+func (*ClientListRequest) Descriptor() ([]byte, []int) {
+	return file_messenger_proto_rawDescGZIP(), []int{1}
+}
+
+type ClientListResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Clients       []string               `protobuf:"bytes,1,rep,name=clients,proto3" json:"clients,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ClientListResponse) Reset() {
+	*x = ClientListResponse{}
+	mi := &file_messenger_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ClientListResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ClientListResponse) ProtoMessage() {}
+
+func (x *ClientListResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_messenger_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ClientListResponse.ProtoReflect.Descriptor instead.
+func (*ClientListResponse) Descriptor() ([]byte, []int) {
+	return file_messenger_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *ClientListResponse) GetClients() []string {
+	if x != nil {
+		return x.Clients
+	}
+	return nil
+}
+
+type CreateChatRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TargetClient  string                 `protobuf:"bytes,1,opt,name=target_client,json=targetClient,proto3" json:"target_client,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateChatRequest) Reset() {
+	*x = CreateChatRequest{}
+	mi := &file_messenger_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateChatRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateChatRequest) ProtoMessage() {}
+
+func (x *CreateChatRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_messenger_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateChatRequest.ProtoReflect.Descriptor instead.
+func (*CreateChatRequest) Descriptor() ([]byte, []int) {
+	return file_messenger_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *CreateChatRequest) GetTargetClient() string {
+	if x != nil {
+		return x.TargetClient
+	}
+	return ""
+}
+
+type GetHistoryRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Limit         int32                  `protobuf:"varint,1,opt,name=limit,proto3" json:"limit,omitempty"`
+	Room          string                 `protobuf:"bytes,2,opt,name=room,proto3" json:"room,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetHistoryRequest) Reset() {
+	*x = GetHistoryRequest{}
+	mi := &file_messenger_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetHistoryRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetHistoryRequest) ProtoMessage() {}
+
+func (x *GetHistoryRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_messenger_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetHistoryRequest.ProtoReflect.Descriptor instead.
+func (*GetHistoryRequest) Descriptor() ([]byte, []int) {
+	return file_messenger_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *GetHistoryRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+func (x *GetHistoryRequest) GetRoom() string {
+	if x != nil {
+		return x.Room
+	}
+	return ""
+}
+
+type GetHistoryResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Messages      []*Message             `protobuf:"bytes,1,rep,name=messages,proto3" json:"messages,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetHistoryResponse) Reset() {
+	*x = GetHistoryResponse{}
+	mi := &file_messenger_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetHistoryResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetHistoryResponse) ProtoMessage() {}
+
+func (x *GetHistoryResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_messenger_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetHistoryResponse.ProtoReflect.Descriptor instead.
+func (*GetHistoryResponse) Descriptor() ([]byte, []int) {
+	return file_messenger_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *GetHistoryResponse) GetMessages() []*Message {
+	if x != nil {
+		return x.Messages
+	}
+	return nil
+}
+
 var File_messenger_proto protoreflect.FileDescriptor
 
 const file_messenger_proto_rawDesc = "" +
@@ -91,9 +311,23 @@ const file_messenger_proto_rawDesc = "" +
 	"\x04user\x18\x01 \x01(\tR\x04user\x12\x12\n" +
 	"\x04text\x18\x02 \x01(\tR\x04text\x129\n" +
 	"\n" +
-	"created_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt2A\n" +
+	"created_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"\x13\n" +
+	"\x11ClientListRequest\".\n" +
+	"\x12ClientListResponse\x12\x18\n" +
+	"\aclients\x18\x01 \x03(\tR\aclients\"8\n" +
+	"\x11CreateChatRequest\x12#\n" +
+	"\rtarget_client\x18\x01 \x01(\tR\ftargetClient\"=\n" +
+	"\x11GetHistoryRequest\x12\x14\n" +
+	"\x05limit\x18\x01 \x01(\x05R\x05limit\x12\x12\n" +
+	"\x04room\x18\x02 \x01(\tR\x04room\"D\n" +
+	"\x12GetHistoryResponse\x12.\n" +
+	"\bmessages\x18\x01 \x03(\v2\x12.messenger.MessageR\bmessages2\xd7\x01\n" +
 	"\vChatService\x122\n" +
-	"\x04Chat\x12\x12.messenger.Message\x1a\x12.messenger.Message(\x010\x01B\aZ\x05./genb\x06proto3"
+	"\x04Chat\x12\x12.messenger.Message\x1a\x12.messenger.Message(\x010\x01\x12I\n" +
+	"\n" +
+	"GetClients\x12\x1c.messenger.ClientListRequest\x1a\x1d.messenger.ClientListResponse\x12I\n" +
+	"\n" +
+	"GetHistory\x12\x1c.messenger.GetHistoryRequest\x1a\x1d.messenger.GetHistoryResponseB\aZ\x05./genb\x06proto3"
 
 var (
 	file_messenger_proto_rawDescOnce sync.Once
@@ -107,20 +341,30 @@ func file_messenger_proto_rawDescGZIP() []byte {
 	return file_messenger_proto_rawDescData
 }
 
-var file_messenger_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_messenger_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_messenger_proto_goTypes = []any{
 	(*Message)(nil),               // 0: messenger.Message
-	(*timestamppb.Timestamp)(nil), // 1: google.protobuf.Timestamp
+	(*ClientListRequest)(nil),     // 1: messenger.ClientListRequest
+	(*ClientListResponse)(nil),    // 2: messenger.ClientListResponse
+	(*CreateChatRequest)(nil),     // 3: messenger.CreateChatRequest
+	(*GetHistoryRequest)(nil),     // 4: messenger.GetHistoryRequest
+	(*GetHistoryResponse)(nil),    // 5: messenger.GetHistoryResponse
+	(*timestamppb.Timestamp)(nil), // 6: google.protobuf.Timestamp
 }
 var file_messenger_proto_depIdxs = []int32{
-	1, // 0: messenger.Message.created_at:type_name -> google.protobuf.Timestamp
-	0, // 1: messenger.ChatService.Chat:input_type -> messenger.Message
-	0, // 2: messenger.ChatService.Chat:output_type -> messenger.Message
-	2, // [2:3] is the sub-list for method output_type
-	1, // [1:2] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	6, // 0: messenger.Message.created_at:type_name -> google.protobuf.Timestamp
+	0, // 1: messenger.GetHistoryResponse.messages:type_name -> messenger.Message
+	0, // 2: messenger.ChatService.Chat:input_type -> messenger.Message
+	1, // 3: messenger.ChatService.GetClients:input_type -> messenger.ClientListRequest
+	4, // 4: messenger.ChatService.GetHistory:input_type -> messenger.GetHistoryRequest
+	0, // 5: messenger.ChatService.Chat:output_type -> messenger.Message
+	2, // 6: messenger.ChatService.GetClients:output_type -> messenger.ClientListResponse
+	5, // 7: messenger.ChatService.GetHistory:output_type -> messenger.GetHistoryResponse
+	5, // [5:8] is the sub-list for method output_type
+	2, // [2:5] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_messenger_proto_init() }
@@ -134,7 +378,7 @@ func file_messenger_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_messenger_proto_rawDesc), len(file_messenger_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   1,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
