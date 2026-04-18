@@ -1,3 +1,9 @@
+// Lavender Messenger - A secure messaging application
+// Author: Pavel Davydov (ferz)
+//
+// This file implements a macOS GUI client for the Lavender Messenger.
+// It provides a graphical interface using Fyne framework with themes and emojis.
+
 package main
 
 import (
@@ -8,11 +14,8 @@ import (
 	"strings"
 	"time"
 
-	"gopkg.in/yaml.v3"
+	"LavenderMessenger/gen"
 
-	"msg/gen"
-
-	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"

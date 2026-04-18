@@ -1,33 +1,51 @@
-# MSG - Messaging Application
+# Lavender Messenger - A secure messaging application
 
-A real-time messaging application with gRPC server and macOS client.
+**Author:** Pavel Davydov (ferz)
+
+A real-time secure messaging application with gRPC server and multiple client implementations.
 
 ## Project Structure
 
 ```
-msg/
+LavenderMessenger/
 |
-|--- main.go                    # Server entry point
-|--- server.go                  # Core server implementation  
-|--- .env                       # Environment configuration
+|--- main.go                    # Server entry point with gRPC setup
+|--- server.go                  # Core server implementation
+|--- db.go                      # Database operations and PostgreSQL integration
+|--- hub.go                     # Client connection management hub
+|--- crypto.go                  # AES-256 encryption/decryption for messages
+|--- .env.example               # Environment configuration template
+|--- .env                       # Environment configuration (runtime)
 |--- go.mod                     # Go module definition
+|--- go.sum                     # Go module dependencies checksum
 |--- CHANGELOG.md               # Server changelog
 |--- README.md                  # This documentation
+|--- messenger.proto            # Protocol buffer definition for gRPC
 |
 |--- gen/                       # Generated gRPC files
 |    |
-|    |--- *.pb.go              # Protocol buffer Go code
-|    |--- *_grpc.pb.go         # gRPC service code
+|    |--- messenger.pb.go       # Protocol buffer Go code
+|    |--- messenger_grpc.pb.go  # gRPC service code
 |
 |--- client/                    # All client applications
 |    |
-|    |--- client.go            # CLI client implementation
+|    |--- client.go             # CLI client implementation
 |    |
-|    |--- macos/               # macOS client application
+|    |--- console/              # Console client application
 |    |    |
-|    |    |--- main.go         # macOS client entry point with UI
-|    |    |--- config.yaml     # macOS client configuration
-|    |    |--- CHANGELOG.md    # macOS client changelog
+|    |    |--- client.go        # Console client entry point
+|    |
+|    |--- macos/                # macOS client application
+|    |    |
+|    |    |--- main.go          # macOS client entry point with GUI
+|    |    |--- config.yaml      # macOS client configuration
+|    |    |--- CHANGELOG.md     # macOS client changelog
+|
+|--- .github/                   # GitHub workflows
+|    |
+|    |--- workflows/
+|    |    |
+|    |    |--- go.yml           # Go CI/CD workflow
 ```
 
 ## File Descriptions
@@ -36,40 +54,80 @@ msg/
 
 - **`main.go`** - Server entry point and initialization
   - Loads environment variables from `.env`
-  - Sets up gRPC server with version "1.0.0"
+  - Sets up gRPC server with version "0.9.1"
   - Initializes database connection
   - Starts TCP listener on configured address
   - Registers chat service
 
 - **`server.go`** - Core server implementation
-  - WebSocket hub for real-time messaging
-  - Database operations and message persistence
+  - gRPC service implementation for real-time messaging
   - Client connection management
-  - gRPC service implementation
+  - Message broadcasting and encryption
+  - Database integration for message persistence
 
-- **`.env`** - Environment configuration
+- **`db.go`** - Database operations and PostgreSQL integration
+  - PostgreSQL connection management
+  - Messages table creation and management
+  - Secure message storage with encrypted content
+  - Connection pooling and error handling
+
+- **`hub.go`** - Client connection management hub
+  - Real-time client connection tracking
+  - Message broadcasting to all connected clients
+  - Thread-safe client registration/unregistration
+  - Connection state management
+
+- **`crypto.go`** - AES-256 encryption/decryption for messages
+  - Secure message encryption using AES-256 GCM mode
+  - Key management from environment variables
+  - Message confidentiality and integrity
+
+- **`messenger.proto`** - Protocol buffer definition for gRPC
+  - Message structure definitions
+  - gRPC service interface
+  - Message serialization format
+
+- **`.env.example`** - Environment configuration template
   - Server address and port settings
   - Database connection string
   - Security keys for encryption
-  - Client connection settings
+  - Configuration examples and documentation
 
 - **`go.mod`** - Go module definition
-  - Project dependencies
+  - Project dependencies and versions
   - Go version requirements
   - Module path configuration
 
+- **`go.sum`** - Go module dependencies checksum
+  - Dependency integrity verification
+  - Version locking for reproducible builds
+
 ### Generated Files (`gen/`)
 
-- **`*.pb.go`** - Protocol buffer generated Go code
-- **`*_grpc.pb.go`** - gRPC service generated code
+- **`messenger.pb.go`** - Protocol buffer generated Go code
+  - Message struct definitions
+  - Serialization/deserialization methods
+  - Protocol buffer implementation
+
+- **`messenger_grpc.pb.go`** - gRPC service generated code
+  - gRPC client and server interfaces
+  - Service method implementations
+  - gRPC communication handlers
 
 ### Client Applications (`client/`)
 
 - **`client.go`** - CLI client implementation
   - Command-line interface for testing and debugging
-  - gRPC client with TLS/insecure connection support
+  - gRPC client with insecure connection support
   - Real-time messaging with interactive input
   - Environment configuration loading
+  - UTF-8 character handling
+
+- **`console/client.go`** - Console client application
+  - Simple console-based chat interface
+  - gRPC communication with server
+  - Interactive message input/output
+  - Connection status monitoring
 
 - **`macos/main.go`** - macOS client application
   - Fyne-based GUI application for macOS
@@ -79,15 +137,25 @@ msg/
   - Emoji support with popup selector
   - User color customization
   - Configuration persistence
+  - Server availability checking
+
+- **`macos/config.yaml`** - macOS client configuration
+  - Server connection settings
+  - Theme definitions (light/dark)
+  - User preferences and last username
+  - Custom color schemes
 
 - **`macos/CHANGELOG.md`** - macOS client version history
   - Client-specific updates and features
   - UI improvements and bug fixes
+  - Version tracking for macOS client
 
-- **`config.yaml`** - macOS client configuration
-  - Server connection settings
-  - Theme definitions (light/dark)
-  - User preferences and last username
+### GitHub Workflows (`.github/`)
+
+- **`.github/workflows/go.yml`** - Go CI/CD workflow
+  - Automated testing and building
+  - Go version matrix testing
+  - Continuous integration setup
 
 ## Getting Started
 

@@ -1,51 +1,57 @@
+// Lavender Messenger - A secure messaging application
+// Author: Pavel Davydov (ferz)
+//
+// This file implements the Hub for managing active client connections.
+// It handles client registration, unregistration, and message broadcasting.
+
 package main
 
 import (
 	"sync"
 
-	"msg/gen" // Используем ваш путь импорта
+	"LavenderMessenger/gen" // Generated gRPC code package
 )
 
-// Hub управляет активными gRPC стримами
+// Hub manages active gRPC streams for client connections
 type Hub struct {
-	// mu защищает карту clients от одновременной записи из разных горутин
+	// mu protects the clients map from concurrent access from different goroutines
 	mu      sync.RWMutex
 	clients map[gen.ChatService_ChatServer]struct{}
 }
 
-// NewHub создает новый экземпляр концентратора
+// NewHub creates a new Hub instance
 func NewHub() *Hub {
 	return &Hub{
 		clients: make(map[gen.ChatService_ChatServer]struct{}),
 	}
 }
 
-// Register добавляет новый поток (клиента) в список рассылки
+// Register adds a new stream (client) to the broadcast list
 func (h *Hub) Register(stream gen.ChatService_ChatServer) {
 	h.mu.Lock()
 	h.clients[stream] = struct{}{}
 	h.mu.Unlock()
 }
 
-// Unregister удаляет поток из списка рассылки
+// Unregister removes a stream from the broadcast list
 func (h *Hub) Unregister(stream gen.ChatService_ChatServer) {
 	h.mu.Lock()
 	delete(h.clients, stream)
 	h.mu.Unlock()
 }
 
-// Broadcast отправляет сообщение всем подключенным клиентам
+// Broadcast sends a message to all connected clients
 func (h *Hub) Broadcast(msg *gen.Message) {
 	h.mu.RLock()
-	// Освобождаем блокировку в конце функции
+	// Release the read lock at the end of the function
 	defer h.mu.RUnlock()
 
 	for stream := range h.clients {
-		// Отправляем сообщение в gRPC stream
+		// Send message to gRPC stream
 		err := stream.Send(msg)
 		if err != nil {
-			// Если отправить не удалось (клиент отключился),
-			// логику удаления лучше оставить на defer в методе Chat сервера
+			// If sending failed (client disconnected),
+			// the removal logic is better handled by defer in the server's Chat method
 			continue
 		}
 	}

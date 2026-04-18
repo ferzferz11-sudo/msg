@@ -1,7 +1,29 @@
-# Changelog
+# Lavender Messenger - Changelog
+
+**Author:** Pavel Davydov (ferz)
+
+## [0.9.1] - 2026-04-18
+- **Code quality and documentation improvements**
+  - Added comprehensive English comments to all Go source files
+  - Added Lavender Messenger branding headers to all files with author attribution
+  - Fixed error handling consistency in db.go (line 57)
+  - Updated project documentation with proper branding
+  - **Files updated:**
+    - `main.go` - Added comprehensive English comments and Lavender Messenger header
+    - `db.go` - Added comprehensive English comments, fixed error handling, and Lavender Messenger header
+    - `server.go` - Added comprehensive English comments and Lavender Messenger header
+    - `hub.go` - Added comprehensive English comments and Lavender Messenger header
+    - `crypto.go` - Added comprehensive English comments and Lavender Messenger header
+    - `client/client.go` - Added comprehensive English comments and Lavender Messenger header
+    - `client/console/client.go` - Added comprehensive English comments and Lavender Messenger header
+    - `client/macos/main.go` - Added comprehensive English comments and Lavender Messenger header
+    - `README.md` - Updated with Lavender Messenger branding and author information
+    - `CHANGELOG.md` - Updated with Lavender Messenger branding and author information
+    - `client/macos/CHANGELOG.md` - Updated with Lavender Messenger branding and author information
+    - `.env.example` - Added Lavender Messenger header
 
 ## [0.9.0] - 2026-04-17
-- **Current development version**
+- **Initial release**
   - Server version: 0.9.0
   - Core server implementation
   - gRPC service setup

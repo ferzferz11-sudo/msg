@@ -1,4 +1,6 @@
-# macOS Client Changelog
+# Lavender Messenger - macOS Client Changelog
+
+**Author:** Pavel Davydov (ferz)
 
 ## [0.9.1] - 2026-04-17
 - **Current development version**

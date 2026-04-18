@@ -1,3 +1,9 @@
+// Lavender Messenger - A secure messaging application
+// Author: Pavel Davydov (ferz)
+//
+// This file implements AES-256 encryption/decryption for secure message storage.
+// It provides functions to encrypt and decrypt messages using GCM mode.
+
 package main
 
 import (

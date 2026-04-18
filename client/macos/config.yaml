@@ -1,4 +1,7 @@
-server_address: localhost:50051
+server_address: 192.168.1.135:50051
+current_theme: dark
+last_username: ferz
+
 themes:
     light:
         bg_color: '#FFFFFF'
@@ -32,5 +35,3 @@ themes:
             - '#A5D6A7'
             - '#FFCC80'
             - '#FFAB91'
-current_theme: dark
-last_username: ferz

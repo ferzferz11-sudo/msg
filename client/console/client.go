@@ -1,3 +1,9 @@
+// Lavender Messenger - A secure messaging application
+// Author: Pavel Davydov (ferz)
+//
+// This file implements a console client for the Lavender Messenger.
+// It provides a simple command-line interface for chatting.
+
 package main
 
 import (
@@ -10,7 +16,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"msg/gen"
+	"LavenderMessenger/gen"
 
 	"github.com/joho/godotenv"
 	"google.golang.org/grpc"
@@ -33,10 +39,15 @@ func fixUtf8(s string) string {
 
 func main() {
 	// Загружаем .env
-	godotenv.Load("../.env")
+	if err := godotenv.Load("../../.env"); err != nil {
+		// Try loading from project root if relative path fails
+		if err := godotenv.Load(".env"); err != nil {
+			log.Printf("Warning: Could not load .env file: %v", err)
+		}
+	}
 
 	// Читаем настройки из .env
-	serverAddress := os.Getenv("CLIENT_SERVER_ADDRESS")
+	serverAddress := os.Getenv("SERVER_ADDRESS")
 	if serverAddress == "" {
 		serverAddress = "localhost:50051"
 	}
