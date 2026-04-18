@@ -11,11 +11,14 @@ import (
 	"fmt"
 	"image/color"
 	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
 	"LavenderMessenger/gen"
 
+	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
@@ -24,12 +27,23 @@ import (
 	"fyne.io/fyne/v2/widget"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"gopkg.in/yaml.v3"
 )
 
-const (
-	clientVersion = "0.9.1"
-	configFile    = "client/macos/config.yaml"
-)
+const clientVersion = "0.9.1"
+
+func getConfigPaths() []string {
+	var paths []string
+	paths = append(paths, "config.yaml")
+	_, filename, _, ok := runtime.Caller(0)
+	if ok {
+		dir := filepath.Dir(filename)
+		paths = append(paths, filepath.Join(dir, "config.yaml"))
+	}
+	paths = append(paths, "client/macos/config.yaml")
+	paths = append(paths, "../macos/config.yaml")
+	return paths
+}
 
 type Config struct {
 	ServerAddress string `yaml:"server_address"`
@@ -51,25 +65,34 @@ type ThemeConfig struct {
 
 // loadConfig загружает конфигурацию из YAML файла
 func loadConfig() (*Config, error) {
-	data, err := os.ReadFile(configFile)
-	if err != nil {
-		return nil, err
+	paths := getConfigPaths()
+	for _, path := range paths {
+		data, err := os.ReadFile(path)
+		if err == nil {
+			var cfg Config
+			if err := yaml.Unmarshal(data, &cfg); err != nil {
+				continue
+			}
+			return &cfg, nil
+		}
 	}
-	var cfg Config
-	err = yaml.Unmarshal(data, &cfg)
-	if err != nil {
-		return nil, err
-	}
-	return &cfg, nil
+	return nil, fmt.Errorf("config not found")
 }
 
 // saveConfig сохраняет конфигурацию в YAML файл
 func saveConfig(cfg *Config) error {
+	// Try to save to first writable path
+	paths := getConfigPaths()
 	data, err := yaml.Marshal(cfg)
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(configFile, data, 0644)
+	for _, path := range paths {
+		if err := os.WriteFile(path, data, 0644); err == nil {
+			return nil
+		}
+	}
+	return fmt.Errorf("could not write config to any path")
 }
 
 // Вспомогательная функция для парсинга HEX в color.RGBA

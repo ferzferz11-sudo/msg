@@ -4,6 +4,36 @@
 
 A real-time secure messaging application with gRPC server and multiple client implementations.
 
+## Running Commands
+
+### Server
+
+**Default (recommended):**
+```bash
+go run .
+```
+
+**If port 50051 is already in use:**
+```bash
+lsof -ti:50051 | xargs kill -9 2>/dev/null; go run .
+```
+
+### Console Client
+
+```bash
+go run ./client/console/main.go
+```
+
+**Hints:**
+- Press **Enter** to use the default username from config
+- Press **Enter** (without typing a message) to send an auto-generated test message
+
+### macOS Client
+
+```bash
+go run ./client/macos/main.go
+```
+
 ## Project Structure
 
 ```
@@ -14,8 +44,8 @@ LavenderMessenger/
 |--- db.go                      # Database operations and PostgreSQL integration
 |--- hub.go                     # Client connection management hub
 |--- crypto.go                  # AES-256 encryption/decryption for messages
-|--- .env.example               # Environment configuration template
-|--- .env                       # Environment configuration (runtime)
+|--- .env.example               # Environment configuration template (server only)
+|--- .env                       # Environment configuration (server runtime)
 |--- go.mod                     # Go module definition
 |--- go.sum                     # Go module dependencies checksum
 |--- CHANGELOG.md               # Server changelog
@@ -29,11 +59,10 @@ LavenderMessenger/
 |
 |--- client/                    # All client applications
 |    |
-|    |--- client.go             # CLI client implementation
-|    |
 |    |--- console/              # Console client application
 |    |    |
-|    |    |--- client.go        # Console client entry point
+|    |    |--- main.go          # Console client entry point
+|    |    |--- config.yaml      # Console client configuration
 |    |
 |    |--- macos/                # macOS client application
 |    |    |
@@ -116,18 +145,13 @@ LavenderMessenger/
 
 ### Client Applications (`client/`)
 
-- **`client.go`** - CLI client implementation
-  - Command-line interface for testing and debugging
-  - gRPC client with insecure connection support
-  - Real-time messaging with interactive input
-  - Environment configuration loading
-  - UTF-8 character handling
-
-- **`console/client.go`** - Console client application
-  - Simple console-based chat interface
-  - gRPC communication with server
+- **`console/main.go`** - Console client application (primary CLI client)
+  - YAML-based configuration (no .env required)
+  - gRPC communication with server using `grpc.NewClient`
   - Interactive message input/output
   - Connection status monitoring
+  - Auto-generated test messages on empty input (`test message NNNN`)
+  - Default username from config with override support
 
 - **`macos/main.go`** - macOS client application
   - Fyne-based GUI application for macOS
@@ -138,6 +162,10 @@ LavenderMessenger/
   - User color customization
   - Configuration persistence
   - Server availability checking
+
+- **`console/config.yaml`** - Console client configuration
+  - `server_address`: gRPC server connection endpoint
+  - `last_username`: Default username (user can override on start)
 
 - **`macos/config.yaml`** - macOS client configuration
   - Server connection settings
@@ -167,9 +195,15 @@ LavenderMessenger/
 
 ### Client Setup
 
-#### Command-line Client
-1. Configure environment variables in `.env`
-2. Run client from project root: `go run ./client/client.go`
+#### Console Client (Recommended for CLI)
+1. Configure `client/console/config.yaml`:
+   ```yaml
+   server_address: 192.168.1.135:50051
+   last_username: YourName
+   ```
+2. Run from project root: `go run ./client/console/main.go`
+3. Press Enter to accept default username, or type new one
+4. Press Enter without message to send auto-generated test message
 
 #### macOS Client
 1. Configure `client/macos/config.yaml` with server address
@@ -179,10 +213,21 @@ LavenderMessenger/
 
 - **Server**: gRPC-based with WebSocket hub for real-time communication
 - **Database**: PostgreSQL with connection pooling
-- **Clients**: 
-  - Command-line client for testing and debugging
+- **Clients**:
+  - Console client with YAML config (primary CLI client)
   - Native macOS application with real-time messaging
 - **Protocol**: Protocol Buffers for message serialization
+
+## Recent Changes
+
+### Security Fixes
+- **CVE-2026-33809**: Updated `golang.org/x/image` to v0.38.0+ (was v0.24.0)
+
+### Structural Changes
+- Module path renamed from `msg` to `LavenderMessenger`
+- Console client now uses YAML config instead of `.env` (moved from `client/client.go`)
+- Added auto-generated test messages feature for console client
+- Removed deprecated `client/client.go`
 
 ## Version History
 
