@@ -48,14 +48,7 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 
 		// Check authentication on first message (when password is provided)
 		if msg.Password != "" && !s.hub.IsAuthenticated(stream) {
-			// Hash the password and check/create user
-			passwordHash, err := HashPassword(msg.Password)
-			if err != nil {
-				log.Printf("Failed to hash password: %v", err)
-				return err
-			}
-
-			// Check if user exists
+			// Check if user exists first
 			userExists, err := s.db.UserExists(msg.User)
 			if err != nil {
 				log.Printf("Failed to check user existence: %v", err)
@@ -72,10 +65,28 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 
 				if !CheckPassword(msg.Password, storedHash) {
 					log.Printf("Authentication failed for user: %s", msg.User)
+
+					// Send authentication failure message to the client
+					authFailMsg := &gen.Message{
+						User:      "SYSTEM",
+						Text:      "AUTH_FAILED",
+						Id:        uuid.New().String(),
+						CreatedAt: timestamppb.Now(),
+					}
+					if err := stream.Send(authFailMsg); err != nil {
+						log.Printf("Failed to send auth failed message: %v", err)
+					}
+
 					return fmt.Errorf("authentication failed")
 				}
 			} else {
-				// New user, create with hashed password
+				// New user, hash password and create
+				passwordHash, err := HashPassword(msg.Password)
+				if err != nil {
+					log.Printf("Failed to hash password: %v", err)
+					return err
+				}
+
 				err = s.db.SaveUser(msg.User, passwordHash)
 				if err != nil {
 					log.Printf("Failed to save user: %v", err)
@@ -128,10 +139,17 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 		}
 
 		// Save encrypted message to database with UUID
-		err = s.db.SaveMessage(msg.Id, msg.User, encryptedText, msg.CreatedAt.AsTime(), msg.RepliedToMessageId, msg.RepliedToUser, msg.RepliedToText)
+		roomID := msg.RoomId
+		if roomID == "" {
+			roomID = "general"
+		}
+		err = s.db.SaveMessage(msg.Id, msg.User, encryptedText, msg.CreatedAt.AsTime(), msg.RepliedToMessageId, msg.RepliedToUser, msg.RepliedToText, roomID)
 		if err != nil {
 			log.Printf("Failed to save message to DB: %v", err)
 		}
+
+		// Update user's current room in hub
+		s.hub.SetRoom(stream, roomID)
 
 		// Clear password and reply fields from message before broadcasting
 		msg.Password = ""
@@ -153,14 +171,18 @@ func (s *server) GetClients(ctx context.Context, req *gen.ClientListRequest) (*g
 }
 
 // GetHistory возвращает историю сообщений
-func (s *server) GetHistory(ctx context.Context, req *gen.GetHistoryRequest) (*gen.GetHistoryResponse, error) {
-	_ = ctx // ctx is required by gRPC interface but not used here
+func (s *server) GetHistory(_ context.Context, req *gen.GetHistoryRequest) (*gen.GetHistoryResponse, error) {
 	limit := int(req.Limit)
 	if limit <= 0 {
 		limit = 50
 	}
 
-	rawMessages, err := s.db.GetMessages(limit)
+	roomID := req.Room
+	if roomID == "" {
+		roomID = "general"
+	}
+
+	rawMessages, err := s.db.GetMessages(limit, roomID)
 	if err != nil {
 		log.Printf("Error fetching history: %v", err)
 		return nil, err
@@ -197,6 +219,7 @@ func (s *server) GetHistory(ctx context.Context, req *gen.GetHistoryRequest) (*g
 			RepliedToMessageId: m.RepliedToMessageID,
 			RepliedToUser:      m.RepliedToUser,
 			RepliedToText:      m.RepliedToText,
+			RoomId:             m.RoomID,
 		})
 	}
 
@@ -230,6 +253,39 @@ func (s *server) RegisterToken(_ context.Context, req *gen.TokenRequest) (*gen.T
 	}
 	log.Printf("Registered FCM token for user: %s", req.User)
 	return &gen.TokenResponse{Success: true}, nil
+}
+
+// GetChats возвращает список чатов для пользователя
+func (s *server) GetChats(_ context.Context, req *gen.GetChatsRequest) (*gen.GetChatsResponse, error) {
+	chats, err := s.db.GetUserChats(req.Username)
+	if err != nil {
+		log.Printf("Error fetching chats: %v", err)
+		return nil, err
+	}
+
+	var chatInfos []*gen.ChatInfo
+	for _, c := range chats {
+		chatInfos = append(chatInfos, &gen.ChatInfo{
+			Id:           c.ID,
+			Name:         c.Name,
+			Type:         c.Type,
+			Participants: c.Participants,
+			CreatedAt:    timestamppb.New(c.CreatedAt),
+		})
+	}
+
+	return &gen.GetChatsResponse{Chats: chatInfos}, nil
+}
+
+// CreateDirectChat создает или находит личный чат между двумя пользователями
+func (s *server) CreateDirectChat(_ context.Context, req *gen.CreateDirectChatRequest) (*gen.CreateDirectChatResponse, error) {
+	chatID, err := s.db.GetDirectChatBetweenUsers(req.User1, req.User2)
+	if err != nil {
+		log.Printf("Error creating direct chat: %v", err)
+		return &gen.CreateDirectChatResponse{Success: false}, err
+	}
+
+	return &gen.CreateDirectChatResponse{ChatId: chatID, Success: true}, nil
 }
 
 // sendPushNotification отправляет уведомление через FCM

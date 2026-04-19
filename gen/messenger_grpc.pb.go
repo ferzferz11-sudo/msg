@@ -19,12 +19,14 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	ChatService_Chat_FullMethodName           = "/messenger.ChatService/Chat"
-	ChatService_GetClients_FullMethodName     = "/messenger.ChatService/GetClients"
-	ChatService_GetHistory_FullMethodName     = "/messenger.ChatService/GetHistory"
-	ChatService_SetReaction_FullMethodName    = "/messenger.ChatService/SetReaction"
-	ChatService_DeleteMessages_FullMethodName = "/messenger.ChatService/DeleteMessages"
-	ChatService_RegisterToken_FullMethodName  = "/messenger.ChatService/RegisterToken"
+	ChatService_Chat_FullMethodName             = "/messenger.ChatService/Chat"
+	ChatService_GetClients_FullMethodName       = "/messenger.ChatService/GetClients"
+	ChatService_GetHistory_FullMethodName       = "/messenger.ChatService/GetHistory"
+	ChatService_SetReaction_FullMethodName      = "/messenger.ChatService/SetReaction"
+	ChatService_DeleteMessages_FullMethodName   = "/messenger.ChatService/DeleteMessages"
+	ChatService_RegisterToken_FullMethodName    = "/messenger.ChatService/RegisterToken"
+	ChatService_GetChats_FullMethodName         = "/messenger.ChatService/GetChats"
+	ChatService_CreateDirectChat_FullMethodName = "/messenger.ChatService/CreateDirectChat"
 )
 
 // ChatServiceClient is the client API for ChatService service.
@@ -37,6 +39,8 @@ type ChatServiceClient interface {
 	SetReaction(ctx context.Context, in *ReactionRequest, opts ...grpc.CallOption) (*ReactionResponse, error)
 	DeleteMessages(ctx context.Context, in *DeleteMessagesRequest, opts ...grpc.CallOption) (*DeleteMessagesResponse, error)
 	RegisterToken(ctx context.Context, in *TokenRequest, opts ...grpc.CallOption) (*TokenResponse, error)
+	GetChats(ctx context.Context, in *GetChatsRequest, opts ...grpc.CallOption) (*GetChatsResponse, error)
+	CreateDirectChat(ctx context.Context, in *CreateDirectChatRequest, opts ...grpc.CallOption) (*CreateDirectChatResponse, error)
 }
 
 type chatServiceClient struct {
@@ -110,6 +114,26 @@ func (c *chatServiceClient) RegisterToken(ctx context.Context, in *TokenRequest,
 	return out, nil
 }
 
+func (c *chatServiceClient) GetChats(ctx context.Context, in *GetChatsRequest, opts ...grpc.CallOption) (*GetChatsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetChatsResponse)
+	err := c.cc.Invoke(ctx, ChatService_GetChats_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) CreateDirectChat(ctx context.Context, in *CreateDirectChatRequest, opts ...grpc.CallOption) (*CreateDirectChatResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateDirectChatResponse)
+	err := c.cc.Invoke(ctx, ChatService_CreateDirectChat_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ChatServiceServer is the server API for ChatService service.
 // All implementations must embed UnimplementedChatServiceServer
 // for forward compatibility.
@@ -120,6 +144,8 @@ type ChatServiceServer interface {
 	SetReaction(context.Context, *ReactionRequest) (*ReactionResponse, error)
 	DeleteMessages(context.Context, *DeleteMessagesRequest) (*DeleteMessagesResponse, error)
 	RegisterToken(context.Context, *TokenRequest) (*TokenResponse, error)
+	GetChats(context.Context, *GetChatsRequest) (*GetChatsResponse, error)
+	CreateDirectChat(context.Context, *CreateDirectChatRequest) (*CreateDirectChatResponse, error)
 	mustEmbedUnimplementedChatServiceServer()
 }
 
@@ -147,6 +173,12 @@ func (UnimplementedChatServiceServer) DeleteMessages(context.Context, *DeleteMes
 }
 func (UnimplementedChatServiceServer) RegisterToken(context.Context, *TokenRequest) (*TokenResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RegisterToken not implemented")
+}
+func (UnimplementedChatServiceServer) GetChats(context.Context, *GetChatsRequest) (*GetChatsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetChats not implemented")
+}
+func (UnimplementedChatServiceServer) CreateDirectChat(context.Context, *CreateDirectChatRequest) (*CreateDirectChatResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateDirectChat not implemented")
 }
 func (UnimplementedChatServiceServer) mustEmbedUnimplementedChatServiceServer() {}
 func (UnimplementedChatServiceServer) testEmbeddedByValue()                     {}
@@ -266,6 +298,42 @@ func _ChatService_RegisterToken_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ChatService_GetChats_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetChatsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).GetChats(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_GetChats_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).GetChats(ctx, req.(*GetChatsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_CreateDirectChat_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateDirectChatRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).CreateDirectChat(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_CreateDirectChat_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).CreateDirectChat(ctx, req.(*CreateDirectChatRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ChatService_ServiceDesc is the grpc.ServiceDesc for ChatService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -292,6 +360,14 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RegisterToken",
 			Handler:    _ChatService_RegisterToken_Handler,
+		},
+		{
+			MethodName: "GetChats",
+			Handler:    _ChatService_GetChats_Handler,
+		},
+		{
+			MethodName: "CreateDirectChat",
+			Handler:    _ChatService_CreateDirectChat_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

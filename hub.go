@@ -18,6 +18,7 @@ type Hub struct {
 	mu            sync.RWMutex
 	clients       map[gen.ChatService_ChatServer]string // maps stream to username
 	authenticated map[gen.ChatService_ChatServer]bool   // tracks if stream is authenticated
+	rooms         map[gen.ChatService_ChatServer]string // maps stream to current room ID
 }
 
 // NewHub creates a new Hub instance
@@ -25,6 +26,7 @@ func NewHub() *Hub {
 	return &Hub{
 		clients:       make(map[gen.ChatService_ChatServer]string),
 		authenticated: make(map[gen.ChatService_ChatServer]bool),
+		rooms:         make(map[gen.ChatService_ChatServer]string),
 	}
 }
 
@@ -33,6 +35,7 @@ func (h *Hub) Register(stream gen.ChatService_ChatServer) {
 	h.mu.Lock()
 	h.clients[stream] = "Anonymous"
 	h.authenticated[stream] = false
+	h.rooms[stream] = "general"
 	h.mu.Unlock()
 }
 
@@ -57,11 +60,26 @@ func (h *Hub) IsAuthenticated(stream gen.ChatService_ChatServer) bool {
 	return h.authenticated[stream]
 }
 
+// SetRoom updates the room ID for a stream
+func (h *Hub) SetRoom(stream gen.ChatService_ChatServer, roomID string) {
+	h.mu.Lock()
+	h.rooms[stream] = roomID
+	h.mu.Unlock()
+}
+
+// GetRoom returns the current room ID for a stream
+func (h *Hub) GetRoom(stream gen.ChatService_ChatServer) string {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	return h.rooms[stream]
+}
+
 // Unregister removes a stream from the broadcast list
 func (h *Hub) Unregister(stream gen.ChatService_ChatServer) {
 	h.mu.Lock()
 	delete(h.clients, stream)
 	delete(h.authenticated, stream)
+	delete(h.rooms, stream)
 	h.mu.Unlock()
 }
 
@@ -82,19 +100,26 @@ func (h *Hub) GetOnlineUsers() []string {
 	return users
 }
 
-// Broadcast sends a message to all connected clients
+// Broadcast sends a message to all connected clients in the same room
 func (h *Hub) Broadcast(msg *gen.Message) {
 	h.mu.RLock()
 	// Release the read lock at the end of the function
 	defer h.mu.RUnlock()
 
+	roomID := msg.RoomId
+	if roomID == "" {
+		roomID = "general"
+	}
+
 	for stream := range h.clients {
-		// Send message to gRPC stream
-		err := stream.Send(msg)
-		if err != nil {
-			// If sending failed (client disconnected),
-			// the removal logic is better handled by defer in the server's Chat method
-			continue
+		// Only send to clients in the same room
+		if h.rooms[stream] == roomID {
+			err := stream.Send(msg)
+			if err != nil {
+				// If sending failed (client disconnected),
+				// the removal logic is better handled by defer in the server's Chat method
+				continue
+			}
 		}
 	}
 }

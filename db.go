@@ -92,6 +92,13 @@ func ConnectDB() (*DB, error) {
 		    ALTER TABLE messages ADD COLUMN replied_to_text TEXT;
 		  END IF;
 		 END $$;`,
+		// Migration: Add room_id to messages
+		`DO $$
+		 BEGIN
+		  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='room_id') THEN
+		    ALTER TABLE messages ADD COLUMN room_id VARCHAR(255) DEFAULT 'general';
+		  END IF;
+		 END $$;`,
 		`CREATE TABLE IF NOT EXISTS reactions (
 			id SERIAL PRIMARY KEY,
 			message_id VARCHAR(255) NOT NULL REFERENCES messages(message_id) ON DELETE CASCADE,
@@ -109,6 +116,17 @@ func ConnectDB() (*DB, error) {
 			password_hash VARCHAR(255) NOT NULL,
 			created_at TIMESTAMP NOT NULL DEFAULT NOW()
 		);`,
+		`CREATE TABLE IF NOT EXISTS chats (
+			id VARCHAR(255) PRIMARY KEY,
+			name VARCHAR(255) NOT NULL,
+			type VARCHAR(50) NOT NULL, -- 'general' or 'direct'
+			participants TEXT NOT NULL, -- JSON array of usernames
+			created_at TIMESTAMP NOT NULL DEFAULT NOW()
+		);`,
+		// Create general chat if it doesn't exist
+		`INSERT INTO chats (id, name, type, participants, created_at)
+		 SELECT 'general', 'General Chat', 'general', '[]', NOW()
+		 WHERE NOT EXISTS (SELECT 1 FROM chats WHERE id = 'general');`,
 	}
 
 	for _, query := range queries {
@@ -145,14 +163,14 @@ func (db *DB) Close() error {
 }
 
 // SaveMessage stores an encrypted message in the database
-func (db *DB) SaveMessage(messageID string, username string, encryptedText []byte, createdAt time.Time, repliedToMessageID string, repliedToUser string, repliedToText string) error {
-	query := `INSERT INTO messages (message_id, username, encrypted_text, created_at, replied_to_message_id, replied_to_user, replied_to_text) VALUES ($1, $2, $3, $4, $5, $6, $7)`
-	_, err := db.Exec(query, messageID, username, encryptedText, createdAt, repliedToMessageID, repliedToUser, repliedToText)
+func (db *DB) SaveMessage(messageID string, username string, encryptedText []byte, createdAt time.Time, repliedToMessageID string, repliedToUser string, repliedToText string, roomID string) error {
+	query := `INSERT INTO messages (message_id, username, encrypted_text, created_at, replied_to_message_id, replied_to_user, replied_to_text, room_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`
+	_, err := db.Exec(query, messageID, username, encryptedText, createdAt, repliedToMessageID, repliedToUser, repliedToText, roomID)
 	return err
 }
 
-// GetMessages retrieves recent messages from the database
-func (db *DB) GetMessages(limit int) ([]struct {
+// GetMessages retrieves recent messages from the database for a specific room
+func (db *DB) GetMessages(limit int, roomID string) ([]struct {
 	MessageID          string
 	Username           string
 	Encrypted          []byte
@@ -160,9 +178,10 @@ func (db *DB) GetMessages(limit int) ([]struct {
 	RepliedToMessageID string
 	RepliedToUser      string
 	RepliedToText      string
+	RoomID             string
 }, error) {
-	query := `SELECT COALESCE(message_id, ''), username, encrypted_text, created_at, COALESCE(replied_to_message_id, ''), COALESCE(replied_to_user, ''), COALESCE(replied_to_text, '') FROM messages ORDER BY created_at DESC LIMIT $1`
-	rows, err := db.Query(query, limit)
+	query := `SELECT COALESCE(message_id, ''), username, encrypted_text, created_at, COALESCE(replied_to_message_id, ''), COALESCE(replied_to_user, ''), COALESCE(replied_to_text, ''), COALESCE(room_id, 'general') FROM messages WHERE room_id = $1 ORDER BY created_at DESC LIMIT $2`
+	rows, err := db.Query(query, roomID, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -180,6 +199,7 @@ func (db *DB) GetMessages(limit int) ([]struct {
 		RepliedToMessageID string
 		RepliedToUser      string
 		RepliedToText      string
+		RoomID             string
 	}
 
 	for rows.Next() {
@@ -191,8 +211,9 @@ func (db *DB) GetMessages(limit int) ([]struct {
 			RepliedToMessageID string
 			RepliedToUser      string
 			RepliedToText      string
+			RoomID             string
 		}
-		if err := rows.Scan(&r.MessageID, &r.Username, &r.Encrypted, &r.CreatedAt, &r.RepliedToMessageID, &r.RepliedToUser, &r.RepliedToText); err != nil {
+		if err := rows.Scan(&r.MessageID, &r.Username, &r.Encrypted, &r.CreatedAt, &r.RepliedToMessageID, &r.RepliedToUser, &r.RepliedToText, &r.RoomID); err != nil {
 			return nil, err
 		}
 		results = append(results, r)
@@ -326,7 +347,7 @@ func (db *DB) GetUserPasswordHash(username string) (string, error) {
 	query := `SELECT password_hash FROM users WHERE username = $1`
 	err := db.QueryRow(query, username).Scan(&passwordHash)
 	if err == sql.ErrNoRows {
-		return "", nil
+		return "", fmt.Errorf("user not found")
 	}
 	return passwordHash, err
 }
@@ -337,4 +358,97 @@ func (db *DB) UserExists(username string) (bool, error) {
 	query := `SELECT EXISTS(SELECT 1 FROM users WHERE username = $1)`
 	err := db.QueryRow(query, username).Scan(&exists)
 	return exists, err
+}
+
+// CreateChat creates a new chat room
+func (db *DB) CreateChat(id, name, chatType, participants string) error {
+	query := `INSERT INTO chats (id, name, type, participants, created_at) VALUES ($1, $2, $3, $4, NOW())`
+	_, err := db.Exec(query, id, name, chatType, participants)
+	return err
+}
+
+// GetChat retrieves a chat by ID
+func (db *DB) GetChat(id string) (struct {
+	ID           string
+	Name         string
+	Type         string
+	Participants string
+	CreatedAt    time.Time
+}, error) {
+	var chat struct {
+		ID           string
+		Name         string
+		Type         string
+		Participants string
+		CreatedAt    time.Time
+	}
+	query := `SELECT id, name, type, participants, created_at FROM chats WHERE id = $1`
+	err := db.QueryRow(query, id).Scan(&chat.ID, &chat.Name, &chat.Type, &chat.Participants, &chat.CreatedAt)
+	return chat, err
+}
+
+// GetUserChats retrieves all chats for a specific user
+func (db *DB) GetUserChats(username string) ([]struct {
+	ID           string
+	Name         string
+	Type         string
+	Participants string
+	CreatedAt    time.Time
+}, error) {
+	query := `SELECT id, name, type, participants, created_at FROM chats WHERE participants LIKE $1 OR type = 'general'`
+	rows, err := db.Query(query, "%"+username+"%")
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Printf("Warning: error closing rows: %v", err)
+		}
+	}()
+
+	var results []struct {
+		ID           string
+		Name         string
+		Type         string
+		Participants string
+		CreatedAt    time.Time
+	}
+
+	for rows.Next() {
+		var c struct {
+			ID           string
+			Name         string
+			Type         string
+			Participants string
+			CreatedAt    time.Time
+		}
+		if err := rows.Scan(&c.ID, &c.Name, &c.Type, &c.Participants, &c.CreatedAt); err != nil {
+			return nil, err
+		}
+		results = append(results, c)
+	}
+	return results, nil
+}
+
+// GetDirectChatBetweenUsers finds or creates a direct chat between two users
+func (db *DB) GetDirectChatBetweenUsers(user1, user2 string) (string, error) {
+	// Try to find existing direct chat
+	query := `SELECT id FROM chats WHERE type = 'direct' AND participants LIKE $1 AND participants LIKE $2`
+	var chatID string
+	err := db.QueryRow(query, "%"+user1+"%", "%"+user2+"%").Scan(&chatID)
+	if err == nil {
+		return chatID, nil
+	}
+	if err != sql.ErrNoRows {
+		return "", err
+	}
+
+	// Create new direct chat
+	newChatID := user1 + "_" + user2 + "_direct"
+	participants := `["` + user1 + `", "` + user2 + `"]`
+	err = db.CreateChat(newChatID, user1+" & "+user2, "direct", participants)
+	if err != nil {
+		return "", err
+	}
+	return newChatID, nil
 }

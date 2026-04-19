@@ -14,6 +14,7 @@ message Message {
   string replied_to_message_id = 7; // ID of the message being replied to
   string replied_to_user = 8; // Username of the message being replied to
   string replied_to_text = 9; // Text of the message being replied to
+  string room_id = 10; // Room/chat ID for the message
 }
 
 message Reaction {
@@ -66,6 +67,32 @@ message TokenResponse {
   bool success = 1;
 }
 
+message ChatInfo {
+  string id = 1;
+  string name = 2;
+  string type = 3;
+  string participants = 4;
+  google.protobuf.Timestamp created_at = 5;
+}
+
+message GetChatsRequest {
+  string username = 1;
+}
+
+message GetChatsResponse {
+  repeated ChatInfo chats = 1;
+}
+
+message CreateDirectChatRequest {
+  string user1 = 1;
+  string user2 = 2;
+}
+
+message CreateDirectChatResponse {
+  string chat_id = 1;
+  bool success = 2;
+}
+
 service ChatService {
   rpc Chat(stream Message) returns (stream Message);
   rpc GetClients(ClientListRequest) returns (ClientListResponse);
@@ -73,4 +100,6 @@ service ChatService {
   rpc SetReaction(ReactionRequest) returns (ReactionResponse);
   rpc DeleteMessages(DeleteMessagesRequest) returns (DeleteMessagesResponse);
   rpc RegisterToken(TokenRequest) returns (TokenResponse);
+  rpc GetChats(GetChatsRequest) returns (GetChatsResponse);
+  rpc CreateDirectChat(CreateDirectChatRequest) returns (CreateDirectChatResponse);
 }
