@@ -80,6 +80,11 @@ func ConnectDB() (*DB, error) {
 			emoji VARCHAR(50) NOT NULL,
 			UNIQUE(message_id, username)
 		);`,
+		`CREATE TABLE IF NOT EXISTS user_tokens (
+			username VARCHAR(255) PRIMARY KEY,
+			fcm_token TEXT NOT NULL,
+			updated_at TIMESTAMP NOT NULL
+		);`,
 	}
 
 	for _, query := range queries {
@@ -129,7 +134,7 @@ func (db *DB) GetMessages(limit int) ([]struct {
 	Encrypted []byte
 	CreatedAt time.Time
 }, error) {
-	query := `SELECT message_id, username, encrypted_text, created_at FROM messages ORDER BY created_at DESC LIMIT $1`
+	query := `SELECT COALESCE(message_id, ''), username, encrypted_text, created_at FROM messages ORDER BY created_at DESC LIMIT $1`
 	rows, err := db.Query(query, limit)
 	if err != nil {
 		return nil, err
@@ -234,9 +239,29 @@ func (db *DB) DeleteMessageByUUID(messageID string) error {
 	return err
 }
 
-// DeleteMessageByID deletes a message by its serial internal ID
+// DeleteMessageByID deletes a message by its serial database ID
 func (db *DB) DeleteMessageByID(id int) error {
 	query := `DELETE FROM messages WHERE id = $1`
 	_, err := db.Exec(query, id)
 	return err
+}
+
+// SaveUserToken сохраняет или обновляет FCM токен пользователя
+func (db *DB) SaveUserToken(username, token string) error {
+	query := `INSERT INTO user_tokens (username, fcm_token, updated_at)
+              VALUES ($1, $2, $3)
+              ON CONFLICT (username) DO UPDATE SET fcm_token = $2, updated_at = $3`
+	_, err := db.Exec(query, username, token, time.Now())
+	return err
+}
+
+// GetUserToken получает токен пользователя для отправки пуша
+func (db *DB) GetUserToken(username string) (string, error) {
+	var token string
+	query := `SELECT fcm_token FROM user_tokens WHERE username = $1`
+	err := db.QueryRow(query, username).Scan(&token)
+	if err == sql.ErrNoRows {
+		return "", nil
+	}
+	return token, err
 }

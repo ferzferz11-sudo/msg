@@ -554,6 +554,102 @@ func (x *DeleteMessagesResponse) GetSuccess() bool {
 	return false
 }
 
+type TokenRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	User          string                 `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
+	Token         string                 `protobuf:"bytes,2,opt,name=token,proto3" json:"token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TokenRequest) Reset() {
+	*x = TokenRequest{}
+	mi := &file_messenger_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TokenRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TokenRequest) ProtoMessage() {}
+
+func (x *TokenRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_messenger_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TokenRequest.ProtoReflect.Descriptor instead.
+func (*TokenRequest) Descriptor() ([]byte, []int) {
+	return file_messenger_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *TokenRequest) GetUser() string {
+	if x != nil {
+		return x.User
+	}
+	return ""
+}
+
+func (x *TokenRequest) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
+type TokenResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TokenResponse) Reset() {
+	*x = TokenResponse{}
+	mi := &file_messenger_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TokenResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TokenResponse) ProtoMessage() {}
+
+func (x *TokenResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_messenger_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TokenResponse.ProtoReflect.Descriptor instead.
+func (*TokenResponse) Descriptor() ([]byte, []int) {
+	return file_messenger_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *TokenResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
 var File_messenger_proto protoreflect.FileDescriptor
 
 const file_messenger_proto_rawDesc = "" +
@@ -588,7 +684,12 @@ const file_messenger_proto_rawDesc = "" +
 	"\x15DeleteMessagesRequest\x12.\n" +
 	"\bmessages\x18\x01 \x03(\v2\x12.messenger.MessageR\bmessages\"2\n" +
 	"\x16DeleteMessagesResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess2\xf6\x02\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\"8\n" +
+	"\fTokenRequest\x12\x12\n" +
+	"\x04user\x18\x01 \x01(\tR\x04user\x12\x14\n" +
+	"\x05token\x18\x02 \x01(\tR\x05token\")\n" +
+	"\rTokenResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess2\xba\x03\n" +
 	"\vChatService\x122\n" +
 	"\x04Chat\x12\x12.messenger.Message\x1a\x12.messenger.Message(\x010\x01\x12I\n" +
 	"\n" +
@@ -596,7 +697,8 @@ const file_messenger_proto_rawDesc = "" +
 	"\n" +
 	"GetHistory\x12\x1c.messenger.GetHistoryRequest\x1a\x1d.messenger.GetHistoryResponse\x12F\n" +
 	"\vSetReaction\x12\x1a.messenger.ReactionRequest\x1a\x1b.messenger.ReactionResponse\x12U\n" +
-	"\x0eDeleteMessages\x12 .messenger.DeleteMessagesRequest\x1a!.messenger.DeleteMessagesResponseB\aZ\x05./genb\x06proto3"
+	"\x0eDeleteMessages\x12 .messenger.DeleteMessagesRequest\x1a!.messenger.DeleteMessagesResponse\x12B\n" +
+	"\rRegisterToken\x12\x17.messenger.TokenRequest\x1a\x18.messenger.TokenResponseB\aZ\x05./genb\x06proto3"
 
 var (
 	file_messenger_proto_rawDescOnce sync.Once
@@ -610,7 +712,7 @@ func file_messenger_proto_rawDescGZIP() []byte {
 	return file_messenger_proto_rawDescData
 }
 
-var file_messenger_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_messenger_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_messenger_proto_goTypes = []any{
 	(*Message)(nil),                // 0: messenger.Message
 	(*Reaction)(nil),               // 1: messenger.Reaction
@@ -623,10 +725,12 @@ var file_messenger_proto_goTypes = []any{
 	(*GetHistoryResponse)(nil),     // 8: messenger.GetHistoryResponse
 	(*DeleteMessagesRequest)(nil),  // 9: messenger.DeleteMessagesRequest
 	(*DeleteMessagesResponse)(nil), // 10: messenger.DeleteMessagesResponse
-	(*timestamppb.Timestamp)(nil),  // 11: google.protobuf.Timestamp
+	(*TokenRequest)(nil),           // 11: messenger.TokenRequest
+	(*TokenResponse)(nil),          // 12: messenger.TokenResponse
+	(*timestamppb.Timestamp)(nil),  // 13: google.protobuf.Timestamp
 }
 var file_messenger_proto_depIdxs = []int32{
-	11, // 0: messenger.Message.created_at:type_name -> google.protobuf.Timestamp
+	13, // 0: messenger.Message.created_at:type_name -> google.protobuf.Timestamp
 	1,  // 1: messenger.Message.reactions:type_name -> messenger.Reaction
 	1,  // 2: messenger.ReactionRequest.reaction:type_name -> messenger.Reaction
 	0,  // 3: messenger.GetHistoryResponse.messages:type_name -> messenger.Message
@@ -636,13 +740,15 @@ var file_messenger_proto_depIdxs = []int32{
 	7,  // 7: messenger.ChatService.GetHistory:input_type -> messenger.GetHistoryRequest
 	2,  // 8: messenger.ChatService.SetReaction:input_type -> messenger.ReactionRequest
 	9,  // 9: messenger.ChatService.DeleteMessages:input_type -> messenger.DeleteMessagesRequest
-	0,  // 10: messenger.ChatService.Chat:output_type -> messenger.Message
-	5,  // 11: messenger.ChatService.GetClients:output_type -> messenger.ClientListResponse
-	8,  // 12: messenger.ChatService.GetHistory:output_type -> messenger.GetHistoryResponse
-	3,  // 13: messenger.ChatService.SetReaction:output_type -> messenger.ReactionResponse
-	10, // 14: messenger.ChatService.DeleteMessages:output_type -> messenger.DeleteMessagesResponse
-	10, // [10:15] is the sub-list for method output_type
-	5,  // [5:10] is the sub-list for method input_type
+	11, // 10: messenger.ChatService.RegisterToken:input_type -> messenger.TokenRequest
+	0,  // 11: messenger.ChatService.Chat:output_type -> messenger.Message
+	5,  // 12: messenger.ChatService.GetClients:output_type -> messenger.ClientListResponse
+	8,  // 13: messenger.ChatService.GetHistory:output_type -> messenger.GetHistoryResponse
+	3,  // 14: messenger.ChatService.SetReaction:output_type -> messenger.ReactionResponse
+	10, // 15: messenger.ChatService.DeleteMessages:output_type -> messenger.DeleteMessagesResponse
+	12, // 16: messenger.ChatService.RegisterToken:output_type -> messenger.TokenResponse
+	11, // [11:17] is the sub-list for method output_type
+	5,  // [5:11] is the sub-list for method input_type
 	5,  // [5:5] is the sub-list for extension type_name
 	5,  // [5:5] is the sub-list for extension extendee
 	0,  // [0:5] is the sub-list for field type_name
@@ -659,7 +765,7 @@ func file_messenger_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_messenger_proto_rawDesc), len(file_messenger_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   11,
+			NumMessages:   13,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

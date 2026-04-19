@@ -53,10 +53,20 @@ message DeleteMessagesResponse {
   bool success = 1;
 }
 
+message TokenRequest {
+  string user = 1;
+  string token = 2;
+}
+
+message TokenResponse {
+  bool success = 1;
+}
+
 service ChatService {
   rpc Chat(stream Message) returns (stream Message);
   rpc GetClients(ClientListRequest) returns (ClientListResponse);
   rpc GetHistory(GetHistoryRequest) returns (GetHistoryResponse);
   rpc SetReaction(ReactionRequest) returns (ReactionResponse);
   rpc DeleteMessages(DeleteMessagesRequest) returns (DeleteMessagesResponse);
+  rpc RegisterToken(TokenRequest) returns (TokenResponse);
 }

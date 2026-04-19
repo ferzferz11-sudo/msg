@@ -150,6 +150,29 @@ func (s *server) SetReaction(ctx context.Context, req *gen.ReactionRequest) (*ge
 	return &gen.ReactionResponse{Success: true}, nil
 }
 
+// RegisterToken сохраняет FCM токен для пользователя
+func (s *server) RegisterToken(ctx context.Context, req *gen.TokenRequest) (*gen.TokenResponse, error) {
+	err := s.db.SaveUserToken(req.User, req.Token)
+	if err != nil {
+		log.Printf("Failed to save token for %s: %v", req.User, err)
+		return &gen.TokenResponse{Success: false}, err
+	}
+	log.Printf("Registered FCM token for user: %s", req.User)
+	return &gen.TokenResponse{Success: true}, nil
+}
+
+// sendPushNotification отправляет уведомление через FCM
+func (s *server) sendPushNotification(user, title, body string) {
+	token, err := s.db.GetUserToken(user)
+	if err != nil || token == "" {
+		return
+	}
+
+	// Здесь будет логика отправки HTTP запроса к Firebase
+	// Для работы нужно будет добавить FIREBASE_SERVER_KEY в .env
+	log.Printf("Sending push to %s (token: %s...)", user, token[:10])
+}
+
 // DeleteMessages deletes a list of messages
 func (s *server) DeleteMessages(ctx context.Context, req *gen.DeleteMessagesRequest) (*gen.DeleteMessagesResponse, error) {
 	var anyDeleted bool
