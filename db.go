@@ -151,3 +151,46 @@ func (db *DB) GetMessages(limit int) ([]struct {
 	}
 	return results, nil
 }
+
+// GetMessagesByUserAndTime retrieves messages matching username and time window
+func (db *DB) GetMessagesByUserAndTime(username string, createdAt time.Time) ([]struct {
+	ID        int
+	Encrypted []byte
+}, error) {
+	// Используем небольшой интервал для времени (2 секунды), так как при сохранении/загрузке
+	// точность может незначительно отличаться.
+	query := `SELECT id, encrypted_text FROM messages WHERE username = $1 AND ABS(EXTRACT(EPOCH FROM (created_at - $2))) < 2`
+	rows, err := db.Query(query, username, createdAt)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Printf("Warning: failed to close rows: %v", err)
+		}
+	}()
+
+	var results []struct {
+		ID        int
+		Encrypted []byte
+	}
+
+	for rows.Next() {
+		var r struct {
+			ID        int
+			Encrypted []byte
+		}
+		if err := rows.Scan(&r.ID, &r.Encrypted); err != nil {
+			return nil, err
+		}
+		results = append(results, r)
+	}
+	return results, nil
+}
+
+// DeleteMessageByID удаляет сообщение по его уникальному идентификатору
+func (db *DB) DeleteMessageByID(id int) error {
+	query := `DELETE FROM messages WHERE id = $1`
+	_, err := db.Exec(query, id)
+	return err
+}

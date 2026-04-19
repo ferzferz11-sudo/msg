@@ -117,3 +117,47 @@ func (s *server) GetHistory(ctx context.Context, req *gen.GetHistoryRequest) (*g
 		Messages: messages,
 	}, nil
 }
+
+// DeleteMessages удаляет список сообщений
+func (s *server) DeleteMessages(ctx context.Context, req *gen.DeleteMessagesRequest) (*gen.DeleteMessagesResponse, error) {
+	var anyDeleted bool
+	for _, msg := range req.Messages {
+		if msg == nil {
+			continue
+		}
+
+		targetTime := msg.CreatedAt.AsTime()
+
+		// Поскольку у нас нет ID в запросе (судя по proto-файлу, Message содержит только user, text, created_at),
+		// нам нужно найти сообщение по времени и пользователю
+		candidates, err := s.db.GetMessagesByUserAndTime(msg.User, targetTime)
+		if err != nil {
+			log.Printf("Failed to find message for deletion: %v", err)
+			continue
+		}
+
+		// Если нашли кандидатов, нужно найти точное совпадение по тексту
+		for _, candidate := range candidates {
+			// Расшифровываем текст из базы, чтобы сравнить с запрошенным текстом
+			decryptedText, err := decrypt(candidate.Encrypted)
+			if err != nil {
+				log.Printf("Failed to decrypt message candidate during deletion: %v", err)
+				continue
+			}
+
+			if decryptedText == msg.Text {
+				// Текст совпадает, удаляем сообщение
+				err = s.db.DeleteMessageByID(candidate.ID)
+				if err != nil {
+					log.Printf("Failed to delete message from DB: %v", err)
+				} else {
+					anyDeleted = true
+					log.Printf("Deleted message from %s: %s", msg.User, msg.Text)
+				}
+				break // Достаточно удалить одно совпадение
+			}
+		}
+	}
+
+	return &gen.DeleteMessagesResponse{Success: anyDeleted}, nil
+}
