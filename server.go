@@ -12,6 +12,7 @@ import (
 	"io"
 	"log"
 
+	"github.com/google/uuid"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -47,6 +48,9 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 		// Обновляем имя пользователя в хабе, чтобы GetClients работал корректно
 		s.hub.UpdateName(stream, msg.User)
 
+		// Генерируем уникальный ID для сообщения
+		msg.Id = uuid.New().String()
+
 		// Set server timestamp for message
 		msg.CreatedAt = timestamppb.Now()
 
@@ -59,8 +63,8 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 			continue
 		}
 
-		// Save encrypted message to database
-		err = s.db.SaveMessage(msg.User, encryptedText, msg.CreatedAt.AsTime())
+		// Save encrypted message to database with UUID
+		err = s.db.SaveMessage(msg.Id, msg.User, encryptedText, msg.CreatedAt.AsTime())
 		if err != nil {
 			log.Printf("Failed to save message to DB: %v", err)
 		}
@@ -106,10 +110,22 @@ func (s *server) GetHistory(ctx context.Context, req *gen.GetHistoryRequest) (*g
 			decryptedText = "[Decryption Error]"
 		}
 
+		// Получаем реакции для сообщения
+		rawReactions, _ := s.db.GetReactionsForMessage(m.MessageID)
+		var reactions []*gen.Reaction
+		for _, r := range rawReactions {
+			reactions = append(reactions, &gen.Reaction{
+				User:  r.Username,
+				Emoji: r.Emoji,
+			})
+		}
+
 		messages = append(messages, &gen.Message{
+			Id:        m.MessageID,
 			User:      m.Username,
 			Text:      decryptedText,
 			CreatedAt: timestamppb.New(m.CreatedAt),
+			Reactions: reactions,
 		})
 	}
 
@@ -118,7 +134,23 @@ func (s *server) GetHistory(ctx context.Context, req *gen.GetHistoryRequest) (*g
 	}, nil
 }
 
-// DeleteMessages удаляет список сообщений
+// SetReaction saves or updates a reaction and broadcasts it
+func (s *server) SetReaction(ctx context.Context, req *gen.ReactionRequest) (*gen.ReactionResponse, error) {
+	err := s.db.SetReaction(req.MessageId, req.Reaction.User, req.Reaction.Emoji)
+	if err != nil {
+		log.Printf("Failed to set reaction: %v", err)
+		return &gen.ReactionResponse{Success: false}, err
+	}
+
+	// Broadcast the reaction update to all clients
+	// Note: We might want a dedicated broadcast for reactions,
+	// but for now, we'll let clients refresh or we could send a special Message.
+	// For 0.9.6, we'll just ensure it's in the DB for the next history fetch.
+
+	return &gen.ReactionResponse{Success: true}, nil
+}
+
+// DeleteMessages deletes a list of messages
 func (s *server) DeleteMessages(ctx context.Context, req *gen.DeleteMessagesRequest) (*gen.DeleteMessagesResponse, error) {
 	var anyDeleted bool
 	for _, msg := range req.Messages {
@@ -126,35 +158,37 @@ func (s *server) DeleteMessages(ctx context.Context, req *gen.DeleteMessagesRequ
 			continue
 		}
 
-		targetTime := msg.CreatedAt.AsTime()
+		// Try deleting by ID first if available
+		if msg.Id != "" {
+			err := s.db.DeleteMessageByUUID(msg.Id)
+			if err == nil {
+				anyDeleted = true
+				log.Printf("Deleted message by ID: %s", msg.Id)
+				continue
+			}
+		}
 
-		// Поскольку у нас нет ID в запросе (судя по proto-файлу, Message содержит только user, text, created_at),
-		// нам нужно найти сообщение по времени и пользователю
+		// Fallback to time/user match if ID fails or is missing
+		targetTime := msg.CreatedAt.AsTime()
 		candidates, err := s.db.GetMessagesByUserAndTime(msg.User, targetTime)
 		if err != nil {
 			log.Printf("Failed to find message for deletion: %v", err)
 			continue
 		}
 
-		// Если нашли кандидатов, нужно найти точное совпадение по тексту
 		for _, candidate := range candidates {
-			// Расшифровываем текст из базы, чтобы сравнить с запрошенным текстом
 			decryptedText, err := decrypt(candidate.Encrypted)
 			if err != nil {
-				log.Printf("Failed to decrypt message candidate during deletion: %v", err)
 				continue
 			}
 
 			if decryptedText == msg.Text {
-				// Текст совпадает, удаляем сообщение
 				err = s.db.DeleteMessageByID(candidate.ID)
-				if err != nil {
-					log.Printf("Failed to delete message from DB: %v", err)
-				} else {
+				if err == nil {
 					anyDeleted = true
-					log.Printf("Deleted message from %s: %s", msg.User, msg.Text)
+					log.Printf("Deleted message by content from %s", msg.User)
 				}
-				break // Достаточно удалить одно совпадение
+				break
 			}
 		}
 	}

@@ -21,7 +21,7 @@ import (
 
 const (
 	// serverVersion indicates the current version of the Lavender messaging server
-	serverVersion = "0.9.2"
+	serverVersion = "0.9.6"
 )
 
 // main is the entry point of the Lavender messaging server application

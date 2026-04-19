@@ -22,6 +22,7 @@ const (
 	ChatService_Chat_FullMethodName           = "/messenger.ChatService/Chat"
 	ChatService_GetClients_FullMethodName     = "/messenger.ChatService/GetClients"
 	ChatService_GetHistory_FullMethodName     = "/messenger.ChatService/GetHistory"
+	ChatService_SetReaction_FullMethodName    = "/messenger.ChatService/SetReaction"
 	ChatService_DeleteMessages_FullMethodName = "/messenger.ChatService/DeleteMessages"
 )
 
@@ -32,6 +33,7 @@ type ChatServiceClient interface {
 	Chat(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[Message, Message], error)
 	GetClients(ctx context.Context, in *ClientListRequest, opts ...grpc.CallOption) (*ClientListResponse, error)
 	GetHistory(ctx context.Context, in *GetHistoryRequest, opts ...grpc.CallOption) (*GetHistoryResponse, error)
+	SetReaction(ctx context.Context, in *ReactionRequest, opts ...grpc.CallOption) (*ReactionResponse, error)
 	DeleteMessages(ctx context.Context, in *DeleteMessagesRequest, opts ...grpc.CallOption) (*DeleteMessagesResponse, error)
 }
 
@@ -76,6 +78,16 @@ func (c *chatServiceClient) GetHistory(ctx context.Context, in *GetHistoryReques
 	return out, nil
 }
 
+func (c *chatServiceClient) SetReaction(ctx context.Context, in *ReactionRequest, opts ...grpc.CallOption) (*ReactionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ReactionResponse)
+	err := c.cc.Invoke(ctx, ChatService_SetReaction_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *chatServiceClient) DeleteMessages(ctx context.Context, in *DeleteMessagesRequest, opts ...grpc.CallOption) (*DeleteMessagesResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(DeleteMessagesResponse)
@@ -93,6 +105,7 @@ type ChatServiceServer interface {
 	Chat(grpc.BidiStreamingServer[Message, Message]) error
 	GetClients(context.Context, *ClientListRequest) (*ClientListResponse, error)
 	GetHistory(context.Context, *GetHistoryRequest) (*GetHistoryResponse, error)
+	SetReaction(context.Context, *ReactionRequest) (*ReactionResponse, error)
 	DeleteMessages(context.Context, *DeleteMessagesRequest) (*DeleteMessagesResponse, error)
 	mustEmbedUnimplementedChatServiceServer()
 }
@@ -112,6 +125,9 @@ func (UnimplementedChatServiceServer) GetClients(context.Context, *ClientListReq
 }
 func (UnimplementedChatServiceServer) GetHistory(context.Context, *GetHistoryRequest) (*GetHistoryResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetHistory not implemented")
+}
+func (UnimplementedChatServiceServer) SetReaction(context.Context, *ReactionRequest) (*ReactionResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetReaction not implemented")
 }
 func (UnimplementedChatServiceServer) DeleteMessages(context.Context, *DeleteMessagesRequest) (*DeleteMessagesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteMessages not implemented")
@@ -180,6 +196,24 @@ func _ChatService_GetHistory_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ChatService_SetReaction_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReactionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).SetReaction(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_SetReaction_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).SetReaction(ctx, req.(*ReactionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ChatService_DeleteMessages_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(DeleteMessagesRequest)
 	if err := dec(in); err != nil {
@@ -212,6 +246,10 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetHistory",
 			Handler:    _ChatService_GetHistory_Handler,
+		},
+		{
+			MethodName: "SetReaction",
+			Handler:    _ChatService_SetReaction_Handler,
 		},
 		{
 			MethodName: "DeleteMessages",

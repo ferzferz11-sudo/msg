@@ -2,6 +2,22 @@
 
 **Author:** Pavel Davydov (ferz)
 
+## [0.9.6] - 2026-04-20
+- **Full-stack Message Reactions and UUID Support**
+  - **Android Client:**
+    - Implemented UI for message reactions (long-press to select emoji).
+    - Added UUID generation for unique message tracking.
+    - Updated `Message` model to include `reactions` and `id`.
+    - Improved UI stability and message ordering.
+  - **Go Server:**
+    - Updated `messenger.proto` with `id`, `reactions`, and `SetReaction` RPC.
+    - Added `reactions` table and `message_id` column to PostgreSQL schema.
+    - Implemented `SetReaction` gRPC endpoint and database logic.
+    - Enhanced `GetHistory` to include message reactions.
+    - Added robust message deletion by both UUID and content fallback.
+  - **Database:**
+    - Automated schema migration for `messages` and `reactions` tables.
+
 ## [0.9.2] - 2026-04-19
 - **Server version update**
   - Updated server version to 0.9.2

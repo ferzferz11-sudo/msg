@@ -5,9 +5,25 @@ option go_package = "./gen";
 import "google/protobuf/timestamp.proto";
 
 message Message {
+  string id = 1;
+  string user = 2;
+  string text = 3;
+  google.protobuf.Timestamp created_at = 4;
+  repeated Reaction reactions = 5;
+}
+
+message Reaction {
   string user = 1;
-  string text = 2;
-  google.protobuf.Timestamp created_at = 3;
+  string emoji = 2;
+}
+
+message ReactionRequest {
+  string message_id = 1;
+  Reaction reaction = 2;
+}
+
+message ReactionResponse {
+  bool success = 1;
 }
 
 message ClientListRequest {}
@@ -41,5 +57,6 @@ service ChatService {
   rpc Chat(stream Message) returns (stream Message);
   rpc GetClients(ClientListRequest) returns (ClientListResponse);
   rpc GetHistory(GetHistoryRequest) returns (GetHistoryResponse);
+  rpc SetReaction(ReactionRequest) returns (ReactionResponse);
   rpc DeleteMessages(DeleteMessagesRequest) returns (DeleteMessagesResponse);
 }
