@@ -4,11 +4,16 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="ef919cf0-dee0-4e94-b631-d2fd26a26aae" name="Changes" comment="0.9.2 19 apr">
+    <list default="true" id="ef919cf0-dee0-4e94-b631-d2fd26a26aae" name="Changes" comment="0.9.6">
+      <change afterPath="$PROJECT_DIR$/client/android/app/src/main/java/msg/client/android/data/fcm/LavenderMessagingService.kt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/client/android/app/src/main/res/drawable-night/chat_bg_themed.xml" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/client/android/app/src/main/res/drawable/bg_input_field.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/CHANGELOG.md" beforeDir="false" afterPath="$PROJECT_DIR$/CHANGELOG.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/client/android/app/src/main/res/drawable/chat_bg_themed.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/client/android/CHANGELOG.md" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/CHANGELOG.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/android/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/android/README.ru.md" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/README.ru.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/client/android/app/build.gradle.kts" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/build.gradle.kts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/AndroidManifest.xml" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/AndroidManifest.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/client/android/app/src/main/java/msg/client/android/ChatActivity.kt" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/java/msg/client/android/ChatActivity.kt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/client/android/app/src/main/java/msg/client/android/MainActivity.kt" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/java/msg/client/android/MainActivity.kt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/client/android/app/src/main/java/msg/client/android/data/grpc/GrpcClient.kt" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/java/msg/client/android/data/grpc/GrpcClient.kt" afterDir="false" />
@@ -19,15 +24,26 @@
       <change beforePath="$PROJECT_DIR$/client/android/app/src/main/java/msg/client/android/ui/adapter/MessageAdapter.kt" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/java/msg/client/android/ui/adapter/MessageAdapter.kt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/client/android/app/src/main/java/msg/client/android/ui/chat/ChatViewModel.kt" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/java/msg/client/android/ui/chat/ChatViewModel.kt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/client/android/app/src/main/proto/messenger.proto" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/proto/messenger.proto" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/res/drawable/bg_message_incoming.xml" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/res/drawable/bg_message_incoming.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/client/android/app/src/main/res/layout/activity_chat.xml" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/res/layout/activity_chat.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/client/android/app/src/main/res/layout/item_message.xml" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/res/layout/item_message.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/client/android/app/src/main/res/menu/main_menu.xml" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/res/menu/main_menu.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/res/mipmap-hdpi/ic_launcher.webp" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/res/mipmap-hdpi/ic_launcher.webp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/res/mipmap-hdpi/ic_launcher_round.webp" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/res/mipmap-hdpi/ic_launcher_round.webp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/res/mipmap-mdpi/ic_launcher.webp" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/res/mipmap-mdpi/ic_launcher.webp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/res/mipmap-mdpi/ic_launcher_round.webp" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/res/mipmap-mdpi/ic_launcher_round.webp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/res/mipmap-xhdpi/ic_launcher.webp" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/res/mipmap-xhdpi/ic_launcher.webp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/res/mipmap-xhdpi/ic_launcher_round.webp" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/res/mipmap-xhdpi/ic_launcher_round.webp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/res/mipmap-xxhdpi/ic_launcher.webp" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/res/mipmap-xxhdpi/ic_launcher.webp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.webp" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.webp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.webp" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.webp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.webp" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.webp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/res/values-ru/strings.xml" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/res/values-ru/strings.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/client/android/app/src/main/res/values/strings.xml" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/res/values/strings.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/db.go" beforeDir="false" afterPath="$PROJECT_DIR$/db.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/gen/messenger.pb.go" beforeDir="false" afterPath="$PROJECT_DIR$/gen/messenger.pb.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/gen/messenger_grpc.pb.go" beforeDir="false" afterPath="$PROJECT_DIR$/gen/messenger_grpc.pb.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/go.mod" beforeDir="false" afterPath="$PROJECT_DIR$/go.mod" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/main.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/messenger.proto" beforeDir="false" afterPath="$PROJECT_DIR$/messenger.proto" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/server.go" beforeDir="false" afterPath="$PROJECT_DIR$/server.go" afterDir="false" />
     </list>
@@ -121,7 +137,8 @@
     <MESSAGE value="v0.9.1 18apr" />
     <MESSAGE value="v0.9.1 18 apr" />
     <MESSAGE value="0.9.2 19 apr" />
-    <option name="LAST_COMMIT_MESSAGE" value="0.9.2 19 apr" />
+    <MESSAGE value="0.9.6" />
+    <option name="LAST_COMMIT_MESSAGE" value="0.9.6" />
   </component>
   <component name="VgoModernizerVersionTracker">
     <upgrades>
@@ -129,8 +146,8 @@
         <entry key="$PROJECT_DIR$/go.mod">
           <value>
             <VersionUpgradeInfo>
-              <version>1.26.1</version>
-              <timestamp>1776506278065</timestamp>
+              <version>1.26</version>
+              <timestamp>1776613007770</timestamp>
             </VersionUpgradeInfo>
           </value>
         </entry>
