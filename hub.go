@@ -16,20 +16,27 @@ import (
 type Hub struct {
 	// mu protects the clients map from concurrent access from different goroutines
 	mu      sync.RWMutex
-	clients map[gen.ChatService_ChatServer]struct{}
+	clients map[gen.ChatService_ChatServer]string // maps stream to username
 }
 
 // NewHub creates a new Hub instance
 func NewHub() *Hub {
 	return &Hub{
-		clients: make(map[gen.ChatService_ChatServer]struct{}),
+		clients: make(map[gen.ChatService_ChatServer]string),
 	}
 }
 
 // Register adds a new stream (client) to the broadcast list
 func (h *Hub) Register(stream gen.ChatService_ChatServer) {
 	h.mu.Lock()
-	h.clients[stream] = struct{}{}
+	h.clients[stream] = "Anonymous"
+	h.mu.Unlock()
+}
+
+// UpdateName updates the username associated with a stream
+func (h *Hub) UpdateName(stream gen.ChatService_ChatServer, name string) {
+	h.mu.Lock()
+	h.clients[stream] = name
 	h.mu.Unlock()
 }
 
@@ -38,6 +45,23 @@ func (h *Hub) Unregister(stream gen.ChatService_ChatServer) {
 	h.mu.Lock()
 	delete(h.clients, stream)
 	h.mu.Unlock()
+}
+
+// GetOnlineUsers returns a list of unique usernames currently connected
+func (h *Hub) GetOnlineUsers() []string {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	userMap := make(map[string]struct{})
+	for _, name := range h.clients {
+		userMap[name] = struct{}{}
+	}
+
+	var users []string
+	for name := range userMap {
+		users = append(users, name)
+	}
+	return users
 }
 
 // Broadcast sends a message to all connected clients

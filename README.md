@@ -83,7 +83,7 @@ LavenderMessenger/
 
 - **`main.go`** - Server entry point and initialization
   - Loads environment variables from `.env`
-  - Sets up gRPC server with version "0.9.1"
+  - Sets up gRPC server with version "0.9.2"
   - Initializes database connection
   - Starts TCP listener on configured address
   - Registers chat service

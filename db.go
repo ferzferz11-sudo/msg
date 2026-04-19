@@ -32,8 +32,6 @@ func ConnectDB() (*DB, error) {
 		return nil, fmt.Errorf("DATABASE_URL is not set. Please check your .env file")
 	}
 
-	log.Printf("Attempting to connect to database...")
-
 	// Open a connection to the PostgreSQL database
 	// sql.Open doesn't actually establish a connection, just prepares it
 	db, err := sql.Open("postgres", dbUrl)
@@ -54,8 +52,6 @@ func ConnectDB() (*DB, error) {
 		return nil, fmt.Errorf("unable to ping database: %w\nDATABASE_URL: %s", err, maskPassword(dbUrl))
 	}
 
-	log.Println("Database connection successful")
-
 	// Create the messages table if it doesn't already exist
 	// This table stores encrypted messages with metadata
 	createTableQuery := `
@@ -66,7 +62,6 @@ func ConnectDB() (*DB, error) {
 		created_at TIMESTAMP NOT NULL             -- Message timestamp
 	);`
 
-	log.Printf("Creating messages table...")
 	// Execute the table creation query
 	_, err = db.Exec(createTableQuery)
 	if err != nil {
@@ -80,7 +75,7 @@ func ConnectDB() (*DB, error) {
 		return nil, fmt.Errorf("failed to create messages table: %w\nQuery: %s", err, createTableQuery)
 	}
 
-	log.Println("Messages table created/verified successfully")
+	log.Println("Database connected, messages table ready")
 
 	// Return wrapped database connection for use throughout the application
 	return &DB{db}, nil
@@ -118,4 +113,41 @@ func (db *DB) SaveMessage(username string, encryptedText []byte, createdAt time.
 	query := `INSERT INTO messages (username, encrypted_text, created_at) VALUES ($1, $2, $3)`
 	_, err := db.Exec(query, username, encryptedText, createdAt)
 	return err
+}
+
+// GetMessages retrieves recent messages from the database
+func (db *DB) GetMessages(limit int) ([]struct {
+	Username  string
+	Encrypted []byte
+	CreatedAt time.Time
+}, error) {
+	query := `SELECT username, encrypted_text, created_at FROM messages ORDER BY created_at DESC LIMIT $1`
+	rows, err := db.Query(query, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Printf("Warning: failed to close rows: %v", err)
+		}
+	}()
+
+	var results []struct {
+		Username  string
+		Encrypted []byte
+		CreatedAt time.Time
+	}
+
+	for rows.Next() {
+		var r struct {
+			Username  string
+			Encrypted []byte
+			CreatedAt time.Time
+		}
+		if err := rows.Scan(&r.Username, &r.Encrypted, &r.CreatedAt); err != nil {
+			return nil, err
+		}
+		results = append(results, r)
+	}
+	return results, nil
 }

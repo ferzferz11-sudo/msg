@@ -2,6 +2,17 @@
 
 **Author:** Pavel Davydov (ferz)
 
+## [0.9.2] - 2026-04-19
+- **Server version update**
+  - Updated server version to 0.9.2
+- **New features: Message history and online users**
+  - Added `GetMessages(limit int)` in `db.go` - retrieve recent messages from database
+  - Added `GetOnlineUsers()` in `hub.go` - get list of unique connected usernames
+  - Added `UpdateName(stream, name)` in `hub.go` - track usernames per connection
+  - Added `GetClients()` RPC in `server.go` - list active users endpoint
+  - Added `GetHistory()` RPC in `server.go` - message history endpoint with decryption
+  - Hub now tracks usernames per stream for accurate online user listing
+
 ## [0.9.1] - 2026-04-18
 - **Code quality and documentation improvements**
   - Added comprehensive English comments to all Go source files

@@ -7,9 +7,11 @@
 package main
 
 import (
-	"log" // Standard logging package
-	"net" // Network functionality for TCP listener
-	"os"  // Operating system interface for environment variables
+	"fmt"     // Standard formatting package for console output
+	"log"     // Standard logging package
+	"net"     // Network functionality for TCP listener
+	"os"      // Operating system interface for environment variables
+	"strings" // String manipulation functions
 
 	"LavenderMessenger/gen" // Generated gRPC code package
 
@@ -19,13 +21,16 @@ import (
 
 const (
 	// serverVersion indicates the current version of the Lavender messaging server
-	serverVersion = "0.9.1"
+	serverVersion = "0.9.2"
 )
 
 // main is the entry point of the Lavender messaging server application
 // It initializes all necessary components: environment variables, database connection,
 // gRPC server, and starts listening for client connections
 func main() {
+	// Print version at startup for visibility
+	fmt.Printf("Lavender server version: %s\n", serverVersion)
+
 	// Load environment variables from .env file for local development
 	// If .env file doesn't exist, fall back to system environment variables
 	if err := godotenv.Load(); err != nil {
@@ -47,13 +52,25 @@ func main() {
 	// Ensure database connection is closed when the application shuts down
 	defer func() {
 		if db != nil {
-			db.Close()
+			if err := db.Close(); err != nil {
+				log.Printf("Warning: failed to close database connection: %v", err)
+			}
 		}
 	}()
+
+	// Extract just the port number from serverAddress for lsof command
+	portParts := strings.Split(serverAddress, ":")
+	port := portParts[len(portParts)-1]
+	if port == "" {
+		port = "50051"
+	}
 
 	// Create TCP listener on the specified address for incoming connections
 	lis, err := net.Listen("tcp", serverAddress)
 	if err != nil {
+		if strings.Contains(err.Error(), "address already in use") {
+			log.Fatalf("failed to listen: %v\n\nHint: Port %s is already in use. To fix:\n  lsof -ti:%s | xargs kill -9 2>/dev/null; go run .", err, port, port)
+		}
 		log.Fatalf("failed to listen: %v", err)
 	}
 
@@ -72,7 +89,6 @@ func main() {
 	gen.RegisterChatServiceServer(s, srv)
 
 	// Log server startup information
-	log.Printf("Lavender server version: %s", serverVersion)
 	log.Printf("Listening clients at %v", lis.Addr())
 
 	// Start the gRPC server and begin serving client requests
