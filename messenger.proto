@@ -10,6 +10,10 @@ message Message {
   string text = 3;
   google.protobuf.Timestamp created_at = 4;
   repeated Reaction reactions = 5;
+  string password = 6; // Password for authentication (only in first/join message)
+  string replied_to_message_id = 7; // ID of the message being replied to
+  string replied_to_user = 8; // Username of the message being replied to
+  string replied_to_text = 9; // Text of the message being replied to
 }
 
 message Reaction {

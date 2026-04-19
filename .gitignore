@@ -33,4 +33,4 @@ go.work.sum
 # .vscode/
 
 # Android client - separate git repository
-client/android/
+# client/android/

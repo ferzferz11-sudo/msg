@@ -23,14 +23,18 @@ const (
 )
 
 type Message struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	User          string                 `protobuf:"bytes,2,opt,name=user,proto3" json:"user,omitempty"`
-	Text          string                 `protobuf:"bytes,3,opt,name=text,proto3" json:"text,omitempty"`
-	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	Reactions     []*Reaction            `protobuf:"bytes,5,rep,name=reactions,proto3" json:"reactions,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	Id                 string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	User               string                 `protobuf:"bytes,2,opt,name=user,proto3" json:"user,omitempty"`
+	Text               string                 `protobuf:"bytes,3,opt,name=text,proto3" json:"text,omitempty"`
+	CreatedAt          *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	Reactions          []*Reaction            `protobuf:"bytes,5,rep,name=reactions,proto3" json:"reactions,omitempty"`
+	Password           string                 `protobuf:"bytes,6,opt,name=password,proto3" json:"password,omitempty"`                                                   // Password for authentication (only in first/join message)
+	RepliedToMessageId string                 `protobuf:"bytes,7,opt,name=replied_to_message_id,json=repliedToMessageId,proto3" json:"replied_to_message_id,omitempty"` // ID of the message being replied to
+	RepliedToUser      string                 `protobuf:"bytes,8,opt,name=replied_to_user,json=repliedToUser,proto3" json:"replied_to_user,omitempty"`                  // Username of the message being replied to
+	RepliedToText      string                 `protobuf:"bytes,9,opt,name=replied_to_text,json=repliedToText,proto3" json:"replied_to_text,omitempty"`                  // Text of the message being replied to
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *Message) Reset() {
@@ -96,6 +100,34 @@ func (x *Message) GetReactions() []*Reaction {
 		return x.Reactions
 	}
 	return nil
+}
+
+func (x *Message) GetPassword() string {
+	if x != nil {
+		return x.Password
+	}
+	return ""
+}
+
+func (x *Message) GetRepliedToMessageId() string {
+	if x != nil {
+		return x.RepliedToMessageId
+	}
+	return ""
+}
+
+func (x *Message) GetRepliedToUser() string {
+	if x != nil {
+		return x.RepliedToUser
+	}
+	return ""
+}
+
+func (x *Message) GetRepliedToText() string {
+	if x != nil {
+		return x.RepliedToText
+	}
+	return ""
 }
 
 type Reaction struct {
@@ -654,14 +686,18 @@ var File_messenger_proto protoreflect.FileDescriptor
 
 const file_messenger_proto_rawDesc = "" +
 	"\n" +
-	"\x0fmessenger.proto\x12\tmessenger\x1a\x1fgoogle/protobuf/timestamp.proto\"\xaf\x01\n" +
+	"\x0fmessenger.proto\x12\tmessenger\x1a\x1fgoogle/protobuf/timestamp.proto\"\xce\x02\n" +
 	"\aMessage\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04user\x18\x02 \x01(\tR\x04user\x12\x12\n" +
 	"\x04text\x18\x03 \x01(\tR\x04text\x129\n" +
 	"\n" +
 	"created_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x121\n" +
-	"\treactions\x18\x05 \x03(\v2\x13.messenger.ReactionR\treactions\"4\n" +
+	"\treactions\x18\x05 \x03(\v2\x13.messenger.ReactionR\treactions\x12\x1a\n" +
+	"\bpassword\x18\x06 \x01(\tR\bpassword\x121\n" +
+	"\x15replied_to_message_id\x18\a \x01(\tR\x12repliedToMessageId\x12&\n" +
+	"\x0freplied_to_user\x18\b \x01(\tR\rrepliedToUser\x12&\n" +
+	"\x0freplied_to_text\x18\t \x01(\tR\rrepliedToText\"4\n" +
 	"\bReaction\x12\x12\n" +
 	"\x04user\x18\x01 \x01(\tR\x04user\x12\x14\n" +
 	"\x05emoji\x18\x02 \x01(\tR\x05emoji\"a\n" +

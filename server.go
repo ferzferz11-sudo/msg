@@ -9,6 +9,7 @@ package main
 import (
 	"LavenderMessenger/gen"
 	"context"
+	"fmt"
 	"io"
 	"log"
 
@@ -45,6 +46,69 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 			return err
 		}
 
+		// Check authentication on first message (when password is provided)
+		if msg.Password != "" && !s.hub.IsAuthenticated(stream) {
+			// Hash the password and check/create user
+			passwordHash, err := HashPassword(msg.Password)
+			if err != nil {
+				log.Printf("Failed to hash password: %v", err)
+				return err
+			}
+
+			// Check if user exists
+			userExists, err := s.db.UserExists(msg.User)
+			if err != nil {
+				log.Printf("Failed to check user existence: %v", err)
+				return err
+			}
+
+			if userExists {
+				// User exists, verify password
+				storedHash, err := s.db.GetUserPasswordHash(msg.User)
+				if err != nil {
+					log.Printf("Failed to get password hash: %v", err)
+					return err
+				}
+
+				if !CheckPassword(msg.Password, storedHash) {
+					log.Printf("Authentication failed for user: %s", msg.User)
+					return fmt.Errorf("authentication failed")
+				}
+			} else {
+				// New user, create with hashed password
+				err = s.db.SaveUser(msg.User, passwordHash)
+				if err != nil {
+					log.Printf("Failed to save user: %v", err)
+					return err
+				}
+				log.Printf("Created new user: %s", msg.User)
+
+				// Send registration success message to the client
+				regMsg := &gen.Message{
+					User:      "SYSTEM",
+					Text:      "REGISTRATION_SUCCESS",
+					Id:        uuid.New().String(),
+					CreatedAt: timestamppb.Now(),
+				}
+				if err := stream.Send(regMsg); err != nil {
+					log.Printf("Failed to send registration success message: %v", err)
+				}
+			}
+
+			// Mark stream as authenticated
+			s.hub.SetAuthenticated(stream, true)
+			log.Printf("User authenticated: %s", msg.User)
+
+			// Clear password from message before broadcasting
+			msg.Password = ""
+		}
+
+		// Reject messages from unauthenticated streams (except first auth message)
+		if !s.hub.IsAuthenticated(stream) && msg.Password == "" {
+			log.Printf("Rejected message from unauthenticated stream")
+			return fmt.Errorf("not authenticated")
+		}
+
 		// Обновляем имя пользователя в хабе, чтобы GetClients работал корректно
 		s.hub.UpdateName(stream, msg.User)
 
@@ -64,10 +128,14 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 		}
 
 		// Save encrypted message to database with UUID
-		err = s.db.SaveMessage(msg.Id, msg.User, encryptedText, msg.CreatedAt.AsTime())
+		err = s.db.SaveMessage(msg.Id, msg.User, encryptedText, msg.CreatedAt.AsTime(), msg.RepliedToMessageId, msg.RepliedToUser, msg.RepliedToText)
 		if err != nil {
 			log.Printf("Failed to save message to DB: %v", err)
 		}
+
+		// Clear password and reply fields from message before broadcasting
+		msg.Password = ""
+		// Keep replied_to fields for display to clients
 
 		// Broadcast message to all connected clients
 		s.hub.Broadcast(msg)
@@ -121,11 +189,14 @@ func (s *server) GetHistory(ctx context.Context, req *gen.GetHistoryRequest) (*g
 		}
 
 		messages = append(messages, &gen.Message{
-			Id:        m.MessageID,
-			User:      m.Username,
-			Text:      decryptedText,
-			CreatedAt: timestamppb.New(m.CreatedAt),
-			Reactions: reactions,
+			Id:                 m.MessageID,
+			User:               m.Username,
+			Text:               decryptedText,
+			CreatedAt:          timestamppb.New(m.CreatedAt),
+			Reactions:          reactions,
+			RepliedToMessageId: m.RepliedToMessageID,
+			RepliedToUser:      m.RepliedToUser,
+			RepliedToText:      m.RepliedToText,
 		})
 	}
 
@@ -135,7 +206,7 @@ func (s *server) GetHistory(ctx context.Context, req *gen.GetHistoryRequest) (*g
 }
 
 // SetReaction saves or updates a reaction and broadcasts it
-func (s *server) SetReaction(ctx context.Context, req *gen.ReactionRequest) (*gen.ReactionResponse, error) {
+func (s *server) SetReaction(_ context.Context, req *gen.ReactionRequest) (*gen.ReactionResponse, error) {
 	err := s.db.SetReaction(req.MessageId, req.Reaction.User, req.Reaction.Emoji)
 	if err != nil {
 		log.Printf("Failed to set reaction: %v", err)
@@ -151,7 +222,7 @@ func (s *server) SetReaction(ctx context.Context, req *gen.ReactionRequest) (*ge
 }
 
 // RegisterToken сохраняет FCM токен для пользователя
-func (s *server) RegisterToken(ctx context.Context, req *gen.TokenRequest) (*gen.TokenResponse, error) {
+func (s *server) RegisterToken(_ context.Context, req *gen.TokenRequest) (*gen.TokenResponse, error) {
 	err := s.db.SaveUserToken(req.User, req.Token)
 	if err != nil {
 		log.Printf("Failed to save token for %s: %v", req.User, err)
@@ -170,11 +241,11 @@ func (s *server) sendPushNotification(user, title, body string) {
 
 	// Здесь будет логика отправки HTTP запроса к Firebase
 	// Для работы нужно будет добавить FIREBASE_SERVER_KEY в .env
-	log.Printf("Sending push to %s (token: %s...)", user, token[:10])
+	log.Printf("Sending push to %s (token: %s...) - Title: %s, Body: %s", user, token[:10], title, body)
 }
 
 // DeleteMessages deletes a list of messages
-func (s *server) DeleteMessages(ctx context.Context, req *gen.DeleteMessagesRequest) (*gen.DeleteMessagesResponse, error) {
+func (s *server) DeleteMessages(_ context.Context, req *gen.DeleteMessagesRequest) (*gen.DeleteMessagesResponse, error) {
 	var anyDeleted bool
 	for _, msg := range req.Messages {
 		if msg == nil {

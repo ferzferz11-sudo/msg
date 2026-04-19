@@ -73,6 +73,25 @@ func ConnectDB() (*DB, error) {
 		    ALTER TABLE messages ADD CONSTRAINT messages_message_id_key UNIQUE (message_id);
 		  END IF;
 		 END $$;`,
+		// Migration: Add reply fields to messages
+		`DO $$
+		 BEGIN
+		  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='replied_to_message_id') THEN
+		    ALTER TABLE messages ADD COLUMN replied_to_message_id VARCHAR(255);
+		  END IF;
+		 END $$;`,
+		`DO $$
+		 BEGIN
+		  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='replied_to_user') THEN
+		    ALTER TABLE messages ADD COLUMN replied_to_user VARCHAR(255);
+		  END IF;
+		 END $$;`,
+		`DO $$
+		 BEGIN
+		  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='replied_to_text') THEN
+		    ALTER TABLE messages ADD COLUMN replied_to_text TEXT;
+		  END IF;
+		 END $$;`,
 		`CREATE TABLE IF NOT EXISTS reactions (
 			id SERIAL PRIMARY KEY,
 			message_id VARCHAR(255) NOT NULL REFERENCES messages(message_id) ON DELETE CASCADE,
@@ -84,6 +103,11 @@ func ConnectDB() (*DB, error) {
 			username VARCHAR(255) PRIMARY KEY,
 			fcm_token TEXT NOT NULL,
 			updated_at TIMESTAMP NOT NULL
+		);`,
+		`CREATE TABLE IF NOT EXISTS users (
+			username VARCHAR(255) PRIMARY KEY,
+			password_hash VARCHAR(255) NOT NULL,
+			created_at TIMESTAMP NOT NULL DEFAULT NOW()
 		);`,
 	}
 
@@ -121,41 +145,54 @@ func (db *DB) Close() error {
 }
 
 // SaveMessage stores an encrypted message in the database
-func (db *DB) SaveMessage(messageID string, username string, encryptedText []byte, createdAt time.Time) error {
-	query := `INSERT INTO messages (message_id, username, encrypted_text, created_at) VALUES ($1, $2, $3, $4)`
-	_, err := db.Exec(query, messageID, username, encryptedText, createdAt)
+func (db *DB) SaveMessage(messageID string, username string, encryptedText []byte, createdAt time.Time, repliedToMessageID string, repliedToUser string, repliedToText string) error {
+	query := `INSERT INTO messages (message_id, username, encrypted_text, created_at, replied_to_message_id, replied_to_user, replied_to_text) VALUES ($1, $2, $3, $4, $5, $6, $7)`
+	_, err := db.Exec(query, messageID, username, encryptedText, createdAt, repliedToMessageID, repliedToUser, repliedToText)
 	return err
 }
 
 // GetMessages retrieves recent messages from the database
 func (db *DB) GetMessages(limit int) ([]struct {
-	MessageID string
-	Username  string
-	Encrypted []byte
-	CreatedAt time.Time
+	MessageID          string
+	Username           string
+	Encrypted          []byte
+	CreatedAt          time.Time
+	RepliedToMessageID string
+	RepliedToUser      string
+	RepliedToText      string
 }, error) {
-	query := `SELECT COALESCE(message_id, ''), username, encrypted_text, created_at FROM messages ORDER BY created_at DESC LIMIT $1`
+	query := `SELECT COALESCE(message_id, ''), username, encrypted_text, created_at, COALESCE(replied_to_message_id, ''), COALESCE(replied_to_user, ''), COALESCE(replied_to_text, '') FROM messages ORDER BY created_at DESC LIMIT $1`
 	rows, err := db.Query(query, limit)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Printf("Warning: error closing rows: %v", err)
+		}
+	}()
 
 	var results []struct {
-		MessageID string
-		Username  string
-		Encrypted []byte
-		CreatedAt time.Time
+		MessageID          string
+		Username           string
+		Encrypted          []byte
+		CreatedAt          time.Time
+		RepliedToMessageID string
+		RepliedToUser      string
+		RepliedToText      string
 	}
 
 	for rows.Next() {
 		var r struct {
-			MessageID string
-			Username  string
-			Encrypted []byte
-			CreatedAt time.Time
+			MessageID          string
+			Username           string
+			Encrypted          []byte
+			CreatedAt          time.Time
+			RepliedToMessageID string
+			RepliedToUser      string
+			RepliedToText      string
 		}
-		if err := rows.Scan(&r.MessageID, &r.Username, &r.Encrypted, &r.CreatedAt); err != nil {
+		if err := rows.Scan(&r.MessageID, &r.Username, &r.Encrypted, &r.CreatedAt, &r.RepliedToMessageID, &r.RepliedToUser, &r.RepliedToText); err != nil {
 			return nil, err
 		}
 		results = append(results, r)
@@ -182,7 +219,11 @@ func (db *DB) GetReactionsForMessage(messageID string) ([]struct {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Printf("Warning: error closing rows: %v", err)
+		}
+	}()
 
 	var results []struct {
 		Username string
@@ -212,7 +253,11 @@ func (db *DB) GetMessagesByUserAndTime(username string, createdAt time.Time) ([]
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Printf("Warning: error closing rows: %v", err)
+		}
+	}()
 
 	var results []struct {
 		ID        int
@@ -264,4 +309,32 @@ func (db *DB) GetUserToken(username string) (string, error) {
 		return "", nil
 	}
 	return token, err
+}
+
+// SaveUser сохраняет или обновляет хеш пароля пользователя
+func (db *DB) SaveUser(username, passwordHash string) error {
+	query := `INSERT INTO users (username, password_hash, created_at)
+			  VALUES ($1, $2, NOW())
+			  ON CONFLICT (username) DO UPDATE SET password_hash = $2`
+	_, err := db.Exec(query, username, passwordHash)
+	return err
+}
+
+// GetUserPasswordHash получает хеш пароля пользователя
+func (db *DB) GetUserPasswordHash(username string) (string, error) {
+	var passwordHash string
+	query := `SELECT password_hash FROM users WHERE username = $1`
+	err := db.QueryRow(query, username).Scan(&passwordHash)
+	if err == sql.ErrNoRows {
+		return "", nil
+	}
+	return passwordHash, err
+}
+
+// UserExists проверяет, существует ли пользователь
+func (db *DB) UserExists(username string) (bool, error) {
+	var exists bool
+	query := `SELECT EXISTS(SELECT 1 FROM users WHERE username = $1)`
+	err := db.QueryRow(query, username).Scan(&exists)
+	return exists, err
 }

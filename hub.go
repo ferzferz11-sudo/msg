@@ -15,14 +15,16 @@ import (
 // Hub manages active gRPC streams for client connections
 type Hub struct {
 	// mu protects the clients map from concurrent access from different goroutines
-	mu      sync.RWMutex
-	clients map[gen.ChatService_ChatServer]string // maps stream to username
+	mu            sync.RWMutex
+	clients       map[gen.ChatService_ChatServer]string // maps stream to username
+	authenticated map[gen.ChatService_ChatServer]bool   // tracks if stream is authenticated
 }
 
 // NewHub creates a new Hub instance
 func NewHub() *Hub {
 	return &Hub{
-		clients: make(map[gen.ChatService_ChatServer]string),
+		clients:       make(map[gen.ChatService_ChatServer]string),
+		authenticated: make(map[gen.ChatService_ChatServer]bool),
 	}
 }
 
@@ -30,6 +32,7 @@ func NewHub() *Hub {
 func (h *Hub) Register(stream gen.ChatService_ChatServer) {
 	h.mu.Lock()
 	h.clients[stream] = "Anonymous"
+	h.authenticated[stream] = false
 	h.mu.Unlock()
 }
 
@@ -40,10 +43,25 @@ func (h *Hub) UpdateName(stream gen.ChatService_ChatServer, name string) {
 	h.mu.Unlock()
 }
 
+// SetAuthenticated marks a stream as authenticated
+func (h *Hub) SetAuthenticated(stream gen.ChatService_ChatServer, auth bool) {
+	h.mu.Lock()
+	h.authenticated[stream] = auth
+	h.mu.Unlock()
+}
+
+// IsAuthenticated checks if a stream is authenticated
+func (h *Hub) IsAuthenticated(stream gen.ChatService_ChatServer) bool {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	return h.authenticated[stream]
+}
+
 // Unregister removes a stream from the broadcast list
 func (h *Hub) Unregister(stream gen.ChatService_ChatServer) {
 	h.mu.Lock()
 	delete(h.clients, stream)
+	delete(h.authenticated, stream)
 	h.mu.Unlock()
 }
 
