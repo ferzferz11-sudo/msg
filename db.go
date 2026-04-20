@@ -99,6 +99,19 @@ func ConnectDB() (*DB, error) {
 		    ALTER TABLE messages ADD COLUMN room_id VARCHAR(255) DEFAULT 'general';
 		  END IF;
 		 END $$;`,
+		// Migration: Add is_read to messages
+		`DO $$
+		 BEGIN
+		  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='is_read') THEN
+		    ALTER TABLE messages ADD COLUMN is_read BOOLEAN DEFAULT FALSE;
+		  END IF;
+		 END $$;`,
+		`CREATE TABLE IF NOT EXISTS user_chat_metadata (
+			username VARCHAR(255) NOT NULL,
+			room_id VARCHAR(255) NOT NULL,
+			last_read_at TIMESTAMP NOT NULL DEFAULT NOW(),
+			PRIMARY KEY (username, room_id)
+		);`,
 		`CREATE TABLE IF NOT EXISTS reactions (
 			id SERIAL PRIMARY KEY,
 			message_id VARCHAR(255) NOT NULL REFERENCES messages(message_id) ON DELETE CASCADE,
@@ -164,7 +177,7 @@ func (db *DB) Close() error {
 
 // SaveMessage stores an encrypted message in the database
 func (db *DB) SaveMessage(messageID string, username string, encryptedText []byte, createdAt time.Time, repliedToMessageID string, repliedToUser string, repliedToText string, roomID string) error {
-	query := `INSERT INTO messages (message_id, username, encrypted_text, created_at, replied_to_message_id, replied_to_user, replied_to_text, room_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`
+	query := `INSERT INTO messages (message_id, username, encrypted_text, created_at, replied_to_message_id, replied_to_user, replied_to_text, room_id, is_read) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, FALSE)`
 	_, err := db.Exec(query, messageID, username, encryptedText, createdAt, repliedToMessageID, repliedToUser, repliedToText, roomID)
 	return err
 }
@@ -179,8 +192,9 @@ func (db *DB) GetMessages(limit int, roomID string) ([]struct {
 	RepliedToUser      string
 	RepliedToText      string
 	RoomID             string
+	IsRead             bool
 }, error) {
-	query := `SELECT COALESCE(message_id, ''), username, encrypted_text, created_at, COALESCE(replied_to_message_id, ''), COALESCE(replied_to_user, ''), COALESCE(replied_to_text, ''), COALESCE(room_id, 'general') FROM messages WHERE room_id = $1 ORDER BY created_at DESC LIMIT $2`
+	query := `SELECT COALESCE(message_id, ''), username, encrypted_text, created_at, COALESCE(replied_to_message_id, ''), COALESCE(replied_to_user, ''), COALESCE(replied_to_text, ''), COALESCE(room_id, 'general'), is_read FROM messages WHERE room_id = $1 ORDER BY created_at DESC LIMIT $2`
 	rows, err := db.Query(query, roomID, limit)
 	if err != nil {
 		return nil, err
@@ -200,6 +214,7 @@ func (db *DB) GetMessages(limit int, roomID string) ([]struct {
 		RepliedToUser      string
 		RepliedToText      string
 		RoomID             string
+		IsRead             bool
 	}
 
 	for rows.Next() {
@@ -212,8 +227,9 @@ func (db *DB) GetMessages(limit int, roomID string) ([]struct {
 			RepliedToUser      string
 			RepliedToText      string
 			RoomID             string
+			IsRead             bool
 		}
-		if err := rows.Scan(&r.MessageID, &r.Username, &r.Encrypted, &r.CreatedAt, &r.RepliedToMessageID, &r.RepliedToUser, &r.RepliedToText, &r.RoomID); err != nil {
+		if err := rows.Scan(&r.MessageID, &r.Username, &r.Encrypted, &r.CreatedAt, &r.RepliedToMessageID, &r.RepliedToUser, &r.RepliedToText, &r.RoomID, &r.IsRead); err != nil {
 			return nil, err
 		}
 		results = append(results, r)
@@ -467,17 +483,27 @@ func (db *DB) GetChat(id string) (struct {
 	return chat, err
 }
 
-// GetUserChats retrieves all chats for a specific user
+// GetUserChats retrieves all chats for a specific user with unread count
 func (db *DB) GetUserChats(username string) ([]struct {
 	ID           string
 	Name         string
 	Type         string
 	Participants string
 	CreatedAt    time.Time
+	UnreadCount  int
 }, error) {
-	query := `SELECT id, name, type, participants, created_at FROM chats WHERE participants LIKE $1 OR (type = 'general' AND id = 'general')`
-	rows, err := db.Query(query, "%"+username+"%")
+	query := `
+		SELECT c.id, c.name, c.type, c.participants, c.created_at,
+		(SELECT COUNT(*) FROM messages m
+		 WHERE m.room_id = c.id
+		 AND m.is_read = FALSE
+		 AND m.username != $1) as unread_count
+		FROM chats c
+		WHERE c.participants LIKE $2 OR (c.type = 'general' AND c.id = 'general')`
+
+	rows, err := db.Query(query, username, "%"+username+"%")
 	if err != nil {
+		log.Printf("Error in GetUserChats query: %v", err)
 		return nil, err
 	}
 	defer func() {
@@ -492,6 +518,7 @@ func (db *DB) GetUserChats(username string) ([]struct {
 		Type         string
 		Participants string
 		CreatedAt    time.Time
+		UnreadCount  int
 	}
 
 	for rows.Next() {
@@ -501,13 +528,32 @@ func (db *DB) GetUserChats(username string) ([]struct {
 			Type         string
 			Participants string
 			CreatedAt    time.Time
+			UnreadCount  int
 		}
-		if err := rows.Scan(&c.ID, &c.Name, &c.Type, &c.Participants, &c.CreatedAt); err != nil {
+		if err := rows.Scan(&c.ID, &c.Name, &c.Type, &c.Participants, &c.CreatedAt, &c.UnreadCount); err != nil {
+			log.Printf("Error scanning chat row: %v", err)
 			return nil, err
 		}
 		results = append(results, c)
 	}
 	return results, nil
+}
+
+// MarkRead updates the last read time for a user in a room and marks messages as read
+func (db *DB) MarkRead(roomID, username string) error {
+	// 1. Update user_chat_metadata
+	query1 := `INSERT INTO user_chat_metadata (username, room_id, last_read_at)
+              VALUES ($1, $2, NOW())
+              ON CONFLICT (username, room_id) DO UPDATE SET last_read_at = NOW()`
+	_, err := db.Exec(query1, username, roomID)
+	if err != nil {
+		return err
+	}
+
+	// 2. Update messages table for the "double check"
+	query2 := `UPDATE messages SET is_read = TRUE WHERE room_id = $1 AND username != $2 AND is_read = FALSE`
+	_, err = db.Exec(query2, roomID, username)
+	return err
 }
 
 // GetDirectChatBetweenUsers finds or creates a direct chat between two users

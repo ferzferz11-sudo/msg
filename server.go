@@ -272,6 +272,7 @@ func (s *server) GetHistory(_ context.Context, req *gen.GetHistoryRequest) (*gen
 			RepliedToUser:      m.RepliedToUser,
 			RepliedToText:      m.RepliedToText,
 			RoomId:             m.RoomID,
+			IsRead:             m.IsRead,
 		})
 	}
 
@@ -323,6 +324,7 @@ func (s *server) GetChats(_ context.Context, req *gen.GetChatsRequest) (*gen.Get
 			Type:         c.Type,
 			Participants: c.Participants,
 			CreatedAt:    timestamppb.New(c.CreatedAt),
+			UnreadCount:  int32(c.UnreadCount),
 		})
 	}
 
@@ -393,6 +395,18 @@ func (s *server) UpdatePassword(_ context.Context, req *gen.UpdatePasswordReques
 		Success: true,
 		Message: "Password updated successfully",
 	}, nil
+}
+
+// MarkRead marks messages in a room as read for a user
+func (s *server) MarkRead(_ context.Context, req *gen.MarkReadRequest) (*gen.MarkReadResponse, error) {
+	err := s.db.MarkRead(req.RoomId, req.Username)
+	if err != nil {
+		log.Printf("Failed to mark read for %s in room %s: %v", req.Username, req.RoomId, err)
+		return &gen.MarkReadResponse{Success: false}, err
+	}
+
+	log.Printf("Marked read for %s in room %s", req.Username, req.RoomId)
+	return &gen.MarkReadResponse{Success: true}, nil
 }
 
 // sendPushNotification отправляет уведомление через FCM
