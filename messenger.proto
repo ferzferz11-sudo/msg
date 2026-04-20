@@ -16,6 +16,8 @@ message Message {
   string replied_to_text = 9; // Text of the message being replied to
   string room_id = 10; // Room/chat ID for the message
   bool is_read = 11;
+  string avatar_url = 12; // URL of the user's avatar
+  string image_url = 13; // URL of the attached image
 }
 
 message Reaction {
@@ -131,6 +133,24 @@ message MarkReadResponse {
   bool success = 1;
 }
 
+message UpdateAvatarRequest {
+  string username = 1;
+  string avatar_url = 2;
+}
+
+message UpdateAvatarResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message GetUserAvatarRequest {
+  string username = 1;
+}
+
+message GetUserAvatarResponse {
+  string avatar_url = 1;
+}
+
 service ChatService {
   rpc Chat(stream Message) returns (stream Message);
   rpc GetClients(ClientListRequest) returns (ClientListResponse);
@@ -144,4 +164,6 @@ service ChatService {
   rpc UpdateUsername(UpdateUsernameRequest) returns (UpdateUsernameResponse);
   rpc UpdatePassword(UpdatePasswordRequest) returns (UpdatePasswordResponse);
   rpc MarkRead(MarkReadRequest) returns (MarkReadResponse);
+  rpc UpdateAvatar(UpdateAvatarRequest) returns (UpdateAvatarResponse);
+  rpc GetUserAvatar(GetUserAvatarRequest) returns (GetUserAvatarResponse);
 }

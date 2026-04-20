@@ -2,8 +2,24 @@
 
 **Author:** Pavel Davydov (ferz)
 
-## [1.0.1] - 2026-04-20
-### Build 0.1.7
+## [1.0.1.27] - 2026-04-20
+- **Chat Message Avatar Display**
+  - Added avatar emoji (👤) display in chat messages next to username
+  - Automatic avatar loading for users when messages are received
+  - Avatar cache integration for chat messages
+  - Avatar loading for all users in message history
+- **Chat List UI Enhancement**
+  - Added participant avatars display on the right side of chat items
+  - Added unread count badge on the left side of chat name with fixed indentation
+  - Increased avatar size for better visibility
+  - Added avatar cache for efficient loading
+  - Added automatic current user avatar loading on login
+  - Added default avatar (👤 emoji) for participants without custom avatars
+  - Show all participant avatars in direct chats (not just current user)
+  - Show remaining participant count when more than 3 avatars
+  - Added GetUserAvatar RPC integration for avatar loading
+
+## [1.0.1.26] - 2026-04-20
 - **UI Improvements and Bug Fixes**
   - Increased main window size from 600x400 to 1200x800 for better chat list display
   - Increased chat list dialog size to 800x600

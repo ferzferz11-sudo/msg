@@ -102,6 +102,13 @@ func main() {
 	// Log server startup information
 	log.Printf("Listening clients at %v", lis.Addr())
 
+	// Start HTTP server for avatar uploads in a goroutine
+	httpPort := os.Getenv("HTTP_PORT")
+	if httpPort == "" {
+		httpPort = "8082"
+	}
+	go StartHTTPServer(httpPort)
+
 	// Start the gRPC server and begin serving client requests
 	// This is a blocking call that runs until the application is terminated
 	if err := s.Serve(lis); err != nil {

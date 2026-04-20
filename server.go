@@ -139,10 +139,10 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 		trimmedUser := strings.TrimSpace(msg.User)
 		msg.User = trimmedUser
 
-		log.Printf("[%s]: %s", msg.User, msg.Text)
+		log.Printf("[%s]: %s (ImageURL: %s)", msg.User, msg.Text, msg.ImageUrl)
 
-		// Skip empty messages
-		if strings.TrimSpace(msg.Text) == "" {
+		// Skip empty messages (unless they have an image)
+		if strings.TrimSpace(msg.Text) == "" && msg.ImageUrl == "" {
 			log.Printf("Skipping empty message from %s", msg.User)
 			continue
 		}
@@ -166,7 +166,8 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 			}
 
 			// Save encrypted message to database with UUID
-			err = s.db.SaveMessage(msg.Id, msg.User, encryptedText, msg.CreatedAt.AsTime(), msg.RepliedToMessageId, msg.RepliedToUser, msg.RepliedToText, roomID)
+			imageURL := msg.ImageUrl
+			err = s.db.SaveMessage(msg.Id, msg.User, encryptedText, msg.CreatedAt.AsTime(), msg.RepliedToMessageId, msg.RepliedToUser, msg.RepliedToText, roomID, imageURL)
 			if err != nil {
 				log.Printf("Failed to save message to DB: %v", err)
 			} else {
@@ -176,6 +177,13 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 
 		// Update user's current room in hub
 		s.hub.SetRoom(stream, roomID)
+
+		// Get user's avatar URL
+		avatarURL, err := s.db.GetUserAvatar(msg.User)
+		if err != nil {
+			log.Printf("Failed to get avatar for %s: %v", msg.User, err)
+		}
+		msg.AvatarUrl = avatarURL
 
 		// Clear password and reply fields from message before broadcasting
 		msg.Password = ""
@@ -246,10 +254,10 @@ func (s *server) GetHistory(_ context.Context, req *gen.GetHistoryRequest) (*gen
 			decryptedText = "[Decryption Error]"
 		}
 
-		// Check if decrypted text is empty
-		if decryptedText == "" {
+		// Check if decrypted text is empty (skip only if no image)
+		if decryptedText == "" && m.ImageURL == "" {
 			log.Printf("Warning: message %s decrypted to empty string", m.MessageID)
-			continue // Skip empty messages
+			continue // Skip empty messages without images
 		}
 
 		// Получаем реакции для сообщения
@@ -273,6 +281,8 @@ func (s *server) GetHistory(_ context.Context, req *gen.GetHistoryRequest) (*gen
 			RepliedToText:      m.RepliedToText,
 			RoomId:             m.RoomID,
 			IsRead:             m.IsRead,
+			AvatarUrl:          m.AvatarURL,
+			ImageUrl:           m.ImageURL,
 		})
 	}
 
@@ -409,6 +419,29 @@ func (s *server) MarkRead(_ context.Context, req *gen.MarkReadRequest) (*gen.Mar
 	return &gen.MarkReadResponse{Success: true}, nil
 }
 
+// UpdateAvatar updates the avatar URL for a user
+func (s *server) UpdateAvatar(_ context.Context, req *gen.UpdateAvatarRequest) (*gen.UpdateAvatarResponse, error) {
+	err := s.db.UpdateAvatar(req.Username, req.AvatarUrl)
+	if err != nil {
+		log.Printf("Failed to update avatar for %s: %v", req.Username, err)
+		return &gen.UpdateAvatarResponse{Success: false, Message: err.Error()}, nil
+	}
+
+	log.Printf("Updated avatar for %s", req.Username)
+	return &gen.UpdateAvatarResponse{Success: true, Message: "Avatar updated successfully"}, nil
+}
+
+// GetUserAvatar retrieves the avatar URL for a user
+func (s *server) GetUserAvatar(_ context.Context, req *gen.GetUserAvatarRequest) (*gen.GetUserAvatarResponse, error) {
+	avatarURL, err := s.db.GetUserAvatar(req.Username)
+	if err != nil {
+		log.Printf("Failed to get avatar for %s: %v", req.Username, err)
+		return &gen.GetUserAvatarResponse{AvatarUrl: ""}, nil
+	}
+
+	return &gen.GetUserAvatarResponse{AvatarUrl: avatarURL}, nil
+}
+
 // sendPushNotification отправляет уведомление через FCM
 func (s *server) sendPushNotification(user, title, body string) {
 	token, err := s.db.GetUserToken(user)
@@ -431,7 +464,21 @@ func (s *server) DeleteMessages(_ context.Context, req *gen.DeleteMessagesReques
 
 		// Try deleting by ID first if available
 		if msg.Id != "" {
-			err := s.db.DeleteMessageByUUID(msg.Id)
+			// Get image URL before deletion
+			imageURL, err := s.db.GetMessageImageURL(msg.Id)
+			if err != nil {
+				log.Printf("Failed to get image URL for message %s: %v", msg.Id, err)
+			}
+
+			// Delete image file if exists
+			if imageURL != "" {
+				if err := DeleteImageFile(imageURL); err != nil {
+					log.Printf("Failed to delete image file for message %s: %v", msg.Id, err)
+					// Continue with message deletion even if image deletion fails
+				}
+			}
+
+			err = s.db.DeleteMessageByUUID(msg.Id)
 			if err == nil {
 				anyDeleted = true
 				log.Printf("Deleted message by ID: %s", msg.Id)
@@ -454,6 +501,14 @@ func (s *server) DeleteMessages(_ context.Context, req *gen.DeleteMessagesReques
 			}
 
 			if decryptedText == msg.Text {
+				// Delete image file if candidate has one
+				if candidate.ImageURL != "" {
+					if err := DeleteImageFile(candidate.ImageURL); err != nil {
+						log.Printf("Failed to delete image file for candidate message: %v", err)
+						// Continue with message deletion even if image deletion fails
+					}
+				}
+
 				err = s.db.DeleteMessageByID(candidate.ID)
 				if err == nil {
 					anyDeleted = true

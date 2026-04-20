@@ -106,6 +106,13 @@ func ConnectDB() (*DB, error) {
 		    ALTER TABLE messages ADD COLUMN is_read BOOLEAN DEFAULT FALSE;
 		  END IF;
 		 END $$;`,
+		// Migration: Add image_url to messages
+		`DO $$
+		 BEGIN
+		  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='image_url') THEN
+		    ALTER TABLE messages ADD COLUMN image_url VARCHAR(512) DEFAULT '';
+		  END IF;
+		 END $$;`,
 		`CREATE TABLE IF NOT EXISTS user_chat_metadata (
 			username VARCHAR(255) NOT NULL,
 			room_id VARCHAR(255) NOT NULL,
@@ -129,6 +136,13 @@ func ConnectDB() (*DB, error) {
 			password_hash VARCHAR(255) NOT NULL,
 			created_at TIMESTAMP NOT NULL DEFAULT NOW()
 		);`,
+		// Migration: Add avatar_url to users
+		`DO $$
+		 BEGIN
+		  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='avatar_url') THEN
+		    ALTER TABLE users ADD COLUMN avatar_url VARCHAR(512);
+		  END IF;
+		 END $$;`,
 		`CREATE TABLE IF NOT EXISTS chats (
 			id VARCHAR(255) PRIMARY KEY,
 			name VARCHAR(255) NOT NULL,
@@ -176,9 +190,9 @@ func (db *DB) Close() error {
 }
 
 // SaveMessage stores an encrypted message in the database
-func (db *DB) SaveMessage(messageID string, username string, encryptedText []byte, createdAt time.Time, repliedToMessageID string, repliedToUser string, repliedToText string, roomID string) error {
-	query := `INSERT INTO messages (message_id, username, encrypted_text, created_at, replied_to_message_id, replied_to_user, replied_to_text, room_id, is_read) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, FALSE)`
-	_, err := db.Exec(query, messageID, username, encryptedText, createdAt, repliedToMessageID, repliedToUser, repliedToText, roomID)
+func (db *DB) SaveMessage(messageID string, username string, encryptedText []byte, createdAt time.Time, repliedToMessageID string, repliedToUser string, repliedToText string, roomID string, imageURL string) error {
+	query := `INSERT INTO messages (message_id, username, encrypted_text, created_at, replied_to_message_id, replied_to_user, replied_to_text, room_id, is_read, image_url) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, FALSE, $9)`
+	_, err := db.Exec(query, messageID, username, encryptedText, createdAt, repliedToMessageID, repliedToUser, repliedToText, roomID, imageURL)
 	return err
 }
 
@@ -193,8 +207,13 @@ func (db *DB) GetMessages(limit int, roomID string) ([]struct {
 	RepliedToText      string
 	RoomID             string
 	IsRead             bool
+	AvatarURL          string
+	ImageURL           string
 }, error) {
-	query := `SELECT COALESCE(message_id, ''), username, encrypted_text, created_at, COALESCE(replied_to_message_id, ''), COALESCE(replied_to_user, ''), COALESCE(replied_to_text, ''), COALESCE(room_id, 'general'), is_read FROM messages WHERE room_id = $1 ORDER BY created_at DESC LIMIT $2`
+	query := `SELECT COALESCE(m.message_id, ''), m.username, m.encrypted_text, m.created_at, COALESCE(m.replied_to_message_id, ''), COALESCE(m.replied_to_user, ''), COALESCE(m.replied_to_text, ''), COALESCE(m.room_id, 'general'), m.is_read, u.avatar_url, COALESCE(m.image_url, '')
+	             FROM messages m
+	             LEFT JOIN users u ON m.username = u.username
+	             WHERE m.room_id = $1 ORDER BY m.created_at DESC LIMIT $2`
 	rows, err := db.Query(query, roomID, limit)
 	if err != nil {
 		return nil, err
@@ -215,6 +234,8 @@ func (db *DB) GetMessages(limit int, roomID string) ([]struct {
 		RepliedToText      string
 		RoomID             string
 		IsRead             bool
+		AvatarURL          string
+		ImageURL           string
 	}
 
 	for rows.Next() {
@@ -228,11 +249,41 @@ func (db *DB) GetMessages(limit int, roomID string) ([]struct {
 			RepliedToText      string
 			RoomID             string
 			IsRead             bool
+			AvatarURL          sql.NullString
+			ImageURL           string
 		}
-		if err := rows.Scan(&r.MessageID, &r.Username, &r.Encrypted, &r.CreatedAt, &r.RepliedToMessageID, &r.RepliedToUser, &r.RepliedToText, &r.RoomID, &r.IsRead); err != nil {
+		if err := rows.Scan(&r.MessageID, &r.Username, &r.Encrypted, &r.CreatedAt, &r.RepliedToMessageID, &r.RepliedToUser, &r.RepliedToText, &r.RoomID, &r.IsRead, &r.AvatarURL, &r.ImageURL); err != nil {
 			return nil, err
 		}
-		results = append(results, r)
+		avatarURL := ""
+		if r.AvatarURL.Valid {
+			avatarURL = r.AvatarURL.String
+		}
+		results = append(results, struct {
+			MessageID          string
+			Username           string
+			Encrypted          []byte
+			CreatedAt          time.Time
+			RepliedToMessageID string
+			RepliedToUser      string
+			RepliedToText      string
+			RoomID             string
+			IsRead             bool
+			AvatarURL          string
+			ImageURL           string
+		}{
+			MessageID:          r.MessageID,
+			Username:           r.Username,
+			Encrypted:          r.Encrypted,
+			CreatedAt:          r.CreatedAt,
+			RepliedToMessageID: r.RepliedToMessageID,
+			RepliedToUser:      r.RepliedToUser,
+			RepliedToText:      r.RepliedToText,
+			RoomID:             r.RoomID,
+			IsRead:             r.IsRead,
+			AvatarURL:          avatarURL,
+			ImageURL:           r.ImageURL,
+		})
 	}
 	return results, nil
 }
@@ -284,8 +335,9 @@ func (db *DB) GetReactionsForMessage(messageID string) ([]struct {
 func (db *DB) GetMessagesByUserAndTime(username string, createdAt time.Time) ([]struct {
 	ID        int
 	Encrypted []byte
+	ImageURL  string
 }, error) {
-	query := `SELECT id, encrypted_text FROM messages WHERE username = $1 AND ABS(EXTRACT(EPOCH FROM (created_at - $2))) < 2`
+	query := `SELECT id, encrypted_text, image_url FROM messages WHERE username = $1 AND ABS(EXTRACT(EPOCH FROM (created_at - $2))) < 2`
 	rows, err := db.Query(query, username, createdAt)
 	if err != nil {
 		return nil, err
@@ -299,19 +351,32 @@ func (db *DB) GetMessagesByUserAndTime(username string, createdAt time.Time) ([]
 	var results []struct {
 		ID        int
 		Encrypted []byte
+		ImageURL  string
 	}
 
 	for rows.Next() {
 		var r struct {
 			ID        int
 			Encrypted []byte
+			ImageURL  string
 		}
-		if err := rows.Scan(&r.ID, &r.Encrypted); err != nil {
+		if err := rows.Scan(&r.ID, &r.Encrypted, &r.ImageURL); err != nil {
 			return nil, err
 		}
 		results = append(results, r)
 	}
 	return results, nil
+}
+
+// GetMessageImageURL retrieves the image URL for a message by its UUID
+func (db *DB) GetMessageImageURL(messageID string) (string, error) {
+	var imageURL string
+	query := `SELECT image_url FROM messages WHERE message_id = $1`
+	err := db.QueryRow(query, messageID).Scan(&imageURL)
+	if err == sql.ErrNoRows {
+		return "", nil
+	}
+	return imageURL, err
 }
 
 // DeleteMessageByUUID deletes a message by its unique message_id
@@ -454,6 +519,40 @@ func (db *DB) UpdatePassword(username, newPassword string) error {
 	}
 
 	return nil
+}
+
+// UpdateAvatar обновляет URL аватара пользователя
+func (db *DB) UpdateAvatar(username, avatarURL string) error {
+	query := `UPDATE users SET avatar_url = $1 WHERE username = $2`
+	result, err := db.Exec(query, avatarURL, username)
+	if err != nil {
+		return err
+	}
+
+	// Проверяем, что пользователь существовал
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		return fmt.Errorf("user not found")
+	}
+
+	return nil
+}
+
+// GetUserAvatar получает URL аватара пользователя
+func (db *DB) GetUserAvatar(username string) (string, error) {
+	var avatarURL sql.NullString
+	query := `SELECT avatar_url FROM users WHERE username = $1`
+	err := db.QueryRow(query, username).Scan(&avatarURL)
+	if err == sql.ErrNoRows {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	if avatarURL.Valid {
+		return avatarURL.String, nil
+	}
+	return "", nil
 }
 
 // CreateChat creates a new chat room

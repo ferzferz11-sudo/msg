@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 
 	"LavenderMessenger/gen"
@@ -31,12 +32,13 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const clientVersion = "1.0.1"
-const buildVersion = "0.1.7"
+const clientVersion = "1.0.1.27"
 
 var myWindow fyne.Window
 var chatBox *widget.RichText
 var connectToServer func(string)
+var avatarCache = make(map[string]string) // Cache for avatar URLs
+var avatarCacheMutex sync.Mutex           // Mutex for thread-safe avatarCache access
 
 func getConfigPaths() []string {
 	var paths []string
@@ -223,6 +225,18 @@ func getChats(client gen.ChatServiceClient, username string) ([]*gen.ChatInfo, e
 	return resp.Chats, nil
 }
 
+// getUserAvatar loads user avatar from server
+func getUserAvatar(client gen.ChatServiceClient, username string) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	resp, err := client.GetUserAvatar(ctx, &gen.GetUserAvatarRequest{Username: username})
+	if err != nil {
+		return "", err
+	}
+	return resp.AvatarUrl, nil
+}
+
 // loadHistory загружает историю сообщений для комнаты
 func loadHistory(client gen.ChatServiceClient, roomId string, appendMsg func(string, string, string, string, string, string, []*gen.Reaction), clearMsgIDs func()) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -234,6 +248,32 @@ func loadHistory(client gen.ChatServiceClient, roomId string, appendMsg func(str
 	resp, err := client.GetHistory(ctx, &gen.GetHistoryRequest{Room: roomId})
 	if err != nil {
 		return err
+	}
+
+	// Collect unique users from history
+	usersToLoad := make(map[string]bool)
+	for _, msg := range resp.Messages {
+		if msg.User != "" {
+			usersToLoad[msg.User] = true
+		}
+	}
+
+	// Load avatars for all users in history
+	for user := range usersToLoad {
+		avatarCacheMutex.Lock()
+		needsLoad := avatarCache[user] == ""
+		avatarCacheMutex.Unlock()
+
+		if needsLoad {
+			go func(username string) {
+				avatarURL, err := getUserAvatar(client, username)
+				if err == nil && avatarURL != "" {
+					avatarCacheMutex.Lock()
+					avatarCache[username] = avatarURL
+					avatarCacheMutex.Unlock()
+				}
+			}(user)
+		}
 	}
 
 	for _, msg := range resp.Messages {
@@ -271,9 +311,54 @@ func showChatList(chats []*gen.ChatInfo, switchToChat func(string)) {
 		if chatType == "" {
 			chatType = "general"
 		}
-		displayName := fmt.Sprintf("%s (%s)", chatName, chatType)
 
-		btn := widget.NewButton(displayName, func() {
+		// Create unread count badge
+		var unreadBadge fyne.CanvasObject
+		if chat.UnreadCount > 0 {
+			badgeLabel := widget.NewLabel(fmt.Sprintf("%d", chat.UnreadCount))
+			badgeLabel.TextStyle = fyne.TextStyle{Bold: true}
+			unreadBadge = badgeLabel
+		} else {
+			unreadBadge = widget.NewLabel("")
+		}
+
+		// Create participant avatars (simplified to avoid crashes)
+		var avatarsText string
+		if chat.Participants != "" {
+			// Try to parse as JSON array first
+			participants := []string{}
+			if strings.HasPrefix(chat.Participants, "[") {
+				// JSON format
+				cleanJSON := strings.ReplaceAll(chat.Participants, "[", "")
+				cleanJSON = strings.ReplaceAll(cleanJSON, "]", "")
+				cleanJSON = strings.ReplaceAll(cleanJSON, "\"", "")
+				if cleanJSON != "" {
+					participants = strings.Split(cleanJSON, ",")
+				}
+			} else {
+				// Comma-separated format
+				participants = strings.Split(chat.Participants, ",")
+			}
+
+			maxAvatars := 3
+			for i, participant := range participants {
+				if i >= maxAvatars {
+					break
+				}
+				participant = strings.TrimSpace(participant)
+				if participant != "" {
+					avatarsText += "👤"
+				}
+			}
+			if len(participants) > maxAvatars {
+				avatarsText += fmt.Sprintf("+%d", len(participants)-maxAvatars)
+			}
+		}
+
+		// Create display text with unread count and avatars
+		displayText := fmt.Sprintf("%s %s %s", unreadBadge.(*widget.Label).Text, chatName, avatarsText)
+
+		btn := widget.NewButton(displayText, func() {
 			// Switch to selected chat
 			switchToChat(chat.Id)
 			// Close dialog
@@ -281,18 +366,20 @@ func showChatList(chats []*gen.ChatInfo, switchToChat func(string)) {
 				chatDialog.Hide()
 			}
 		})
+		btn.Importance = widget.LowImportance
 		chatList.Add(btn)
 	}
 
 	// Add button for general chat only if it's not already in the list
 	if !hasGeneral {
-		generalBtn := widget.NewButton("Общий чат (general)", func() {
+		generalBtn := widget.NewButton("Общий чат", func() {
 			switchToChat("general")
 			// Close dialog
 			if chatDialog != nil {
 				chatDialog.Hide()
 			}
 		})
+		generalBtn.Importance = widget.LowImportance
 		chatList.Add(generalBtn)
 	}
 
@@ -456,7 +543,7 @@ func main() {
 	myApp := app.New()
 	myApp.Settings().SetTheme(myTheme)
 
-	myWindow = myApp.NewWindow(fmt.Sprintf("Lavender Messenger v%s (build %s)", clientVersion, buildVersion))
+	myWindow = myApp.NewWindow(fmt.Sprintf("Lavender Messenger v%s", clientVersion))
 	myWindow.Resize(fyne.NewSize(1200, 800))
 
 	var username string
@@ -597,8 +684,36 @@ func main() {
 			chatBox.Segments = append(chatBox.Segments, replySeg)
 		}
 
+		// Load user avatar if not in cache
+		avatarCacheMutex.Lock()
+		needsLoad := avatarCache[user] == ""
+		avatarCacheMutex.Unlock()
+
+		if needsLoad && conn != nil {
+			go func(username string) {
+				client := gen.NewChatServiceClient(conn)
+				avatarURL, err := getUserAvatar(client, username)
+				if err == nil && avatarURL != "" {
+					avatarCacheMutex.Lock()
+					avatarCache[username] = avatarURL
+					avatarCacheMutex.Unlock()
+				}
+			}(user)
+		}
+
+		// Always show avatar emoji
+		avatarEmoji := "👤"
+
+		avatarCacheMutex.Lock()
+		hasAvatar := avatarCache[user] != ""
+		avatarCacheMutex.Unlock()
+
+		if hasAvatar {
+			avatarEmoji = "👤"
+		}
+
 		headerStyle := widget.RichTextStyle{ColorName: getUserColorName(user), TextStyle: fyne.TextStyle{Bold: true}}
-		headerSeg := &widget.TextSegment{Text: fmt.Sprintf("%s %s: ", timeStr, user), Style: headerStyle}
+		headerSeg := &widget.TextSegment{Text: fmt.Sprintf("%s %s%s: ", timeStr, avatarEmoji, user), Style: headerStyle}
 		textSeg := &widget.TextSegment{Text: text + "\n", Style: widget.RichTextStyleInline}
 		if isSameUser {
 			chatBox.Segments = append(chatBox.Segments, textSeg)
@@ -771,6 +886,16 @@ func main() {
 					return
 				}
 				client := gen.NewChatServiceClient(conn)
+
+				// Load current user avatar
+				go func() {
+					avatarURL, err := getUserAvatar(client, username)
+					if err == nil && avatarURL != "" {
+						avatarCacheMutex.Lock()
+						avatarCache[username] = avatarURL
+						avatarCacheMutex.Unlock()
+					}
+				}()
 
 				// Get chats
 				chats, err := getChats(client, username)
