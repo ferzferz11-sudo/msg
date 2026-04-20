@@ -475,7 +475,7 @@ func (db *DB) GetUserChats(username string) ([]struct {
 	Participants string
 	CreatedAt    time.Time
 }, error) {
-	query := `SELECT id, name, type, participants, created_at FROM chats WHERE participants LIKE $1 OR type = 'general'`
+	query := `SELECT id, name, type, participants, created_at FROM chats WHERE participants LIKE $1 OR (type = 'general' AND id = 'general')`
 	rows, err := db.Query(query, "%"+username+"%")
 	if err != nil {
 		return nil, err

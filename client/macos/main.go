@@ -224,9 +224,12 @@ func getChats(client gen.ChatServiceClient, username string) ([]*gen.ChatInfo, e
 }
 
 // loadHistory загружает историю сообщений для комнаты
-func loadHistory(client gen.ChatServiceClient, roomId string, appendMsg func(string, string, string)) error {
+func loadHistory(client gen.ChatServiceClient, roomId string, appendMsg func(string, string, string, string), clearMsgIDs func()) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
+
+	// Clear message IDs before loading new history
+	clearMsgIDs()
 
 	resp, err := client.GetHistory(ctx, &gen.GetHistoryRequest{Room: roomId})
 	if err != nil {
@@ -240,7 +243,7 @@ func loadHistory(client gen.ChatServiceClient, roomId string, appendMsg func(str
 		}
 		t := msg.CreatedAt.AsTime().Local()
 		timeStr := t.Format("15:04:05")
-		appendMsg(timeStr, msg.User, msg.Text)
+		appendMsg(timeStr, msg.User, msg.Text, msg.Id)
 	}
 	return nil
 }
@@ -248,6 +251,17 @@ func loadHistory(client gen.ChatServiceClient, roomId string, appendMsg func(str
 // showChatList показывает диалог со списком чатов
 func showChatList(chats []*gen.ChatInfo, switchToChat func(string)) {
 	chatList := container.NewVBox()
+	var chatDialog *dialog.CustomDialog
+
+	// Check if general chat is already in the list
+	hasGeneral := false
+	for _, chat := range chats {
+		if chat.Id == "general" {
+			hasGeneral = true
+			break
+		}
+	}
+
 	for _, chat := range chats {
 		chatName := chat.Name
 		if chatName == "" {
@@ -262,34 +276,62 @@ func showChatList(chats []*gen.ChatInfo, switchToChat func(string)) {
 		btn := widget.NewButton(displayName, func() {
 			// Switch to selected chat
 			switchToChat(chat.Id)
+			// Close dialog
+			if chatDialog != nil {
+				chatDialog.Hide()
+			}
 		})
 		chatList.Add(btn)
 	}
 
-	// Add button for general chat
-	generalBtn := widget.NewButton("Общий чат (general)", func() {
-		switchToChat("general")
-	})
-	chatList.Add(generalBtn)
+	// Add button for general chat only if it's not already in the list
+	if !hasGeneral {
+		generalBtn := widget.NewButton("Общий чат (general)", func() {
+			switchToChat("general")
+			// Close dialog
+			if chatDialog != nil {
+				chatDialog.Hide()
+			}
+		})
+		chatList.Add(generalBtn)
+	}
 
 	scroll := container.NewVScroll(chatList)
-	dialog.ShowCustom("Выберите чат", "Закрыть", scroll, myWindow)
+	scroll.SetMinSize(fyne.NewSize(600, 500))
+	chatDialog = dialog.NewCustom("Выберите чат", "Закрыть", scroll, myWindow)
+	chatDialog.Resize(fyne.NewSize(800, 600))
+	chatDialog.Show()
 }
 
-// showUsersList показывает диалог со списком пользователей
+// showUsersList показывает диалог со списком всех пользователей с индикаторами онлайн статуса
 func showUsersList(client gen.ChatServiceClient, currentUsername string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	resp, err := client.GetClients(ctx, &gen.ClientListRequest{})
+	// Get all users
+	allUsersResp, err := client.GetAllUsers(ctx, &gen.GetAllUsersRequest{})
 	if err != nil {
 		dialog.ShowError(err, myWindow)
 		return
 	}
 
+	// Get online users
+	onlineUsersResp, err := client.GetClients(ctx, &gen.ClientListRequest{})
+	if err != nil {
+		dialog.ShowError(err, myWindow)
+		return
+	}
+
+	// Create a set of online users for quick lookup
+	onlineUsersSet := make(map[string]bool)
+	for _, user := range onlineUsersResp.Clients {
+		onlineUsersSet[user] = true
+	}
+
 	usersList := container.NewVBox()
 	userCount := 0
-	for _, user := range resp.Clients {
+
+	for _, user := range allUsersResp.Users {
 		if user == currentUsername {
 			continue // Skip current user
 		}
@@ -297,53 +339,23 @@ func showUsersList(client gen.ChatServiceClient, currentUsername string) {
 		userLabel := widget.NewLabel(user)
 		userLabel.TextStyle = fyne.TextStyle{Bold: true}
 
-		btn := widget.NewButton("", func() {
-			// Create direct chat with selected user
-			createDirectChat(client, currentUsername, user)
-		})
-		btn.Importance = widget.LowImportance
-
-		userRow := container.NewHBox(userLabel, btn)
-		usersList.Add(userRow)
-		userCount++
-	}
-
-	if userCount == 0 {
-		usersList.Add(widget.NewLabel("Нет других пользователей онлайн"))
-	}
-
-	scroll := container.NewVScroll(usersList)
-	dialog.ShowCustom("Пользователи онлайн (кликните для создания чата)", "Закрыть", scroll, myWindow)
-}
-
-// showAllUsersList показывает диалог со списком всех зарегистрированных пользователей
-func showAllUsersList(client gen.ChatServiceClient, currentUsername string) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	resp, err := client.GetAllUsers(ctx, &gen.GetAllUsersRequest{})
-	if err != nil {
-		dialog.ShowError(err, myWindow)
-		return
-	}
-
-	usersList := container.NewVBox()
-	userCount := 0
-	for _, user := range resp.Users {
-		if user == currentUsername {
-			continue // Skip current user
+		// Create green circle indicator for online users
+		var statusIndicator fyne.CanvasObject
+		if onlineUsersSet[user] {
+			statusIndicator = canvas.NewCircle(color.RGBA{R: 0, G: 255, B: 0, A: 255}) // Green
+			statusIndicator.Resize(fyne.NewSize(12, 12))
+		} else {
+			statusIndicator = canvas.NewCircle(color.RGBA{R: 128, G: 128, B: 128, A: 255}) // Gray
+			statusIndicator.Resize(fyne.NewSize(12, 12))
 		}
 
-		userLabel := widget.NewLabel(user)
-		userLabel.TextStyle = fyne.TextStyle{Bold: true}
-
 		btn := widget.NewButton("", func() {
 			// Create direct chat with selected user
 			createDirectChat(client, currentUsername, user)
 		})
 		btn.Importance = widget.LowImportance
 
-		userRow := container.NewHBox(userLabel, btn)
+		userRow := container.NewHBox(statusIndicator, userLabel, btn)
 		usersList.Add(userRow)
 		userCount++
 	}
@@ -353,7 +365,10 @@ func showAllUsersList(client gen.ChatServiceClient, currentUsername string) {
 	}
 
 	scroll := container.NewVScroll(usersList)
-	dialog.ShowCustom("Все зарегистрированные пользователи (кликните для создания чата)", "Закрыть", scroll, myWindow)
+	scroll.SetMinSize(fyne.NewSize(600, 500))
+	d := dialog.NewCustom("Все пользователи (кликните для создания чата)", "Закрыть", scroll, myWindow)
+	d.Resize(fyne.NewSize(800, 600))
+	d.Show()
 }
 
 // createDirectChat создает прямую комнату с выбранным пользователем
@@ -369,6 +384,8 @@ func createDirectChat(client gen.ChatServiceClient, user1, user2 string) {
 
 	if resp.Success {
 		dialog.ShowInformation("Успех", fmt.Sprintf("Чат с %s создан! ID: %s", user2, resp.ChatId), myWindow)
+		// Switch to the newly created chat
+		switchToChat(resp.ChatId)
 	} else {
 		dialog.ShowError(errors.New("Не удалось создать чат"), myWindow)
 	}
@@ -440,7 +457,7 @@ func main() {
 	myApp.Settings().SetTheme(myTheme)
 
 	myWindow = myApp.NewWindow(fmt.Sprintf("Lavender Messenger v%s (build %s)", clientVersion, buildVersion))
-	myWindow.Resize(fyne.NewSize(600, 400))
+	myWindow.Resize(fyne.NewSize(1200, 800))
 
 	var username string
 	var password string
@@ -460,6 +477,7 @@ func main() {
 	var lastUser string
 	var userColorMap = make(map[string]fyne.ThemeColorName)
 	var userColorIndex int
+	var messageIDs = make(map[string]bool) // Track message IDs to avoid duplicates
 
 	getUserColorName := func(user string) fyne.ThemeColorName {
 		if colorName, exists := userColorMap[user]; exists {
@@ -538,9 +556,9 @@ func main() {
 		}
 	})
 
-	// Users list button (online)
-	usersBtn := widget.NewButtonWithIcon("Онлайн", theme.AccountIcon(), func() {
-		// Show online users list
+	// Users list button (all users with online status)
+	usersBtn := widget.NewButtonWithIcon("Пользователи", theme.AccountIcon(), func() {
+		// Show all users list with online status
 		if conn != nil {
 			client := gen.NewChatServiceClient(conn)
 			showUsersList(client, username)
@@ -549,21 +567,23 @@ func main() {
 		}
 	})
 
-	// All users list button
-	allUsersBtn := widget.NewButtonWithIcon("Все", theme.SearchIcon(), func() {
-		// Show all registered users list
-		if conn != nil {
-			client := gen.NewChatServiceClient(conn)
-			showAllUsersList(client, username)
-		} else {
-			dialog.ShowError(errors.New("Сначала подключитесь к серверу"), myWindow)
-		}
-	})
-
-	rightButtons := container.NewHBox(chatListBtn, usersBtn, allUsersBtn, themeBtn)
+	rightButtons := container.NewHBox(chatListBtn, usersBtn, themeBtn)
 	topBar := container.NewBorder(nil, nil, statusBox, rightButtons)
 
-	appendMessage := func(timeStr, user, text string) {
+	appendMessage := func(timeStr, user, text string, msgID string) {
+		// Skip all join messages (not just for current user)
+		if strings.HasSuffix(text, " joined") || strings.HasSuffix(text, " присоединился") {
+			return
+		}
+
+		// Skip duplicate messages by ID
+		if msgID != "" {
+			if messageIDs[msgID] {
+				return
+			}
+			messageIDs[msgID] = true
+		}
+
 		isSameUser := lastUser == user
 		lastUser = user
 		if !isSameUser {
@@ -658,8 +678,11 @@ func main() {
 		}
 		currentRoomId = roomId
 
+		// Clear message IDs before loading new room
+		messageIDs = make(map[string]bool)
+
 		// Load message history
-		err = loadHistory(client, roomId, appendMessage)
+		err = loadHistory(client, roomId, appendMessage, func() {})
 		if err != nil {
 			safeAppendSystemMessage(fmt.Sprintf("[Ошибка загрузки истории]: %v", err))
 		}
@@ -694,7 +717,7 @@ func main() {
 				t := in.CreatedAt.AsTime().Local()
 				timeStr := t.Format("15:04:05")
 				fyne.Do(func() {
-					appendMessage(timeStr, in.User, in.Text)
+					appendMessage(timeStr, in.User, in.Text, in.Id)
 				})
 			}
 		}()

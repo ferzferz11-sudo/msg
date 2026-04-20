@@ -147,23 +147,31 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 			continue
 		}
 
-		// Encrypt message text before saving to database
-		encryptedText, err := encrypt(msg.Text)
-		if err != nil {
-			log.Printf("Failed to encrypt message: %v", err)
-			continue
-		}
-
-		// Save encrypted message to database with UUID
+		// Determine room ID
 		roomID := msg.RoomId
 		if roomID == "" {
 			roomID = "general"
 		}
-		err = s.db.SaveMessage(msg.Id, msg.User, encryptedText, msg.CreatedAt.AsTime(), msg.RepliedToMessageId, msg.RepliedToUser, msg.RepliedToText, roomID)
-		if err != nil {
-			log.Printf("Failed to save message to DB: %v", err)
+
+		// Skip join messages (don't save to database)
+		if strings.HasSuffix(msg.Text, " joined") || strings.HasSuffix(msg.Text, " присоединился") {
+			// Still broadcast but don't save to DB
+			log.Printf("Skipping join message from DB save: %s", msg.Text)
 		} else {
-			log.Printf("Message saved to DB successfully: %s in room %s", msg.Id, roomID)
+			// Encrypt message text before saving to database
+			encryptedText, err := encrypt(msg.Text)
+			if err != nil {
+				log.Printf("Failed to encrypt message: %v", err)
+				continue
+			}
+
+			// Save encrypted message to database with UUID
+			err = s.db.SaveMessage(msg.Id, msg.User, encryptedText, msg.CreatedAt.AsTime(), msg.RepliedToMessageId, msg.RepliedToUser, msg.RepliedToText, roomID)
+			if err != nil {
+				log.Printf("Failed to save message to DB: %v", err)
+			} else {
+				log.Printf("Message saved to DB successfully: %s in room %s", msg.Id, roomID)
+			}
 		}
 
 		// Update user's current room in hub

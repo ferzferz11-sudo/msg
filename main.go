@@ -23,7 +23,7 @@ const (
 	// serverVersion indicates the current version of the Lavender messaging server
 	serverVersion = "1.0.0"
 	// buildVersion indicates the current build version (synced with Android app)
-	buildVersion = "0.1.5"
+	buildVersion = "0.1.7"
 )
 
 // main is the entry point of the Lavender messaging server application
@@ -61,12 +61,13 @@ func main() {
 	}()
 
 	// Cleanup empty/corrupted messages from database
-	deleted, err := db.CleanupEmptyMessages()
-	if err != nil {
-		log.Printf("Warning: failed to cleanup empty messages: %v", err)
-	} else if deleted > 0 {
-		log.Printf("Cleaned up %d empty/corrupted messages", deleted)
-	}
+	// DISABLED: This function was deleting ALL messages instead of just empty ones
+	// deleted, err := db.CleanupEmptyMessages()
+	// if err != nil {
+	// 	log.Printf("Warning: failed to cleanup empty messages: %v", err)
+	// } else if deleted > 0 {
+	// 	log.Printf("Cleaned up %d empty/corrupted messages", deleted)
+	// }
 
 	// Extract just the port number from serverAddress for lsof command
 	portParts := strings.Split(serverAddress, ":")
