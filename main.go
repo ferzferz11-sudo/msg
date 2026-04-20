@@ -22,6 +22,8 @@ import (
 const (
 	// serverVersion indicates the current version of the Lavender messaging server
 	serverVersion = "1.0.0"
+	// buildVersion indicates the current build version (synced with Android app)
+	buildVersion = "0.1.5"
 )
 
 // main is the entry point of the Lavender messaging server application
@@ -29,7 +31,7 @@ const (
 // gRPC server, and starts listening for client connections
 func main() {
 	// Print version at startup for visibility
-	fmt.Printf("Lavender server version: %s\n", serverVersion)
+	fmt.Printf("Lavender server version: %s (build %s)\n", serverVersion, buildVersion)
 
 	// Load environment variables from .env file for local development
 	// If .env file doesn't exist, fall back to system environment variables
@@ -57,6 +59,14 @@ func main() {
 			}
 		}
 	}()
+
+	// Cleanup empty/corrupted messages from database
+	deleted, err := db.CleanupEmptyMessages()
+	if err != nil {
+		log.Printf("Warning: failed to cleanup empty messages: %v", err)
+	} else if deleted > 0 {
+		log.Printf("Cleaned up %d empty/corrupted messages", deleted)
+	}
 
 	// Extract just the port number from serverAddress for lsof command
 	portParts := strings.Split(serverAddress, ":")

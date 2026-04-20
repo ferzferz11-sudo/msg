@@ -360,6 +360,86 @@ func (db *DB) UserExists(username string) (bool, error) {
 	return exists, err
 }
 
+// GetAllUsers возвращает список всех зарегистрированных пользователей
+func (db *DB) GetAllUsers() ([]string, error) {
+	query := `SELECT username FROM users ORDER BY username`
+	rows, err := db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Printf("Warning: error closing rows: %v", err)
+		}
+	}()
+
+	var users []string
+	for rows.Next() {
+		var username string
+		if err := rows.Scan(&username); err != nil {
+			return nil, err
+		}
+		users = append(users, username)
+	}
+	return users, nil
+}
+
+// UpdateUsername обновляет имя пользователя
+func (db *DB) UpdateUsername(oldUsername, newUsername string) error {
+	// Проверяем, что новое имя не занято
+	exists, err := db.UserExists(newUsername)
+	if err != nil {
+		return err
+	}
+	if exists {
+		return fmt.Errorf("username already taken")
+	}
+
+	// Обновляем имя пользователя
+	query := `UPDATE users SET username = $1 WHERE username = $2`
+	result, err := db.Exec(query, newUsername, oldUsername)
+	if err != nil {
+		return err
+	}
+
+	// Проверяем, что пользователь существовал
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		return fmt.Errorf("user not found")
+	}
+
+	// Обновляем имя пользователя в таблице чатов
+	query = `UPDATE chats SET participants = REPLACE(participants, $1, $2) WHERE participants LIKE $1`
+	_, err = db.Exec(query, oldUsername, newUsername)
+	if err != nil {
+		log.Printf("Warning: failed to update username in chats: %v", err)
+	}
+
+	return nil
+}
+
+// UpdatePassword обновляет пароль пользователя
+func (db *DB) UpdatePassword(username, newPassword string) error {
+	passwordHash, err := HashPassword(newPassword)
+	if err != nil {
+		return err
+	}
+
+	query := `UPDATE users SET password_hash = $1 WHERE username = $2`
+	result, err := db.Exec(query, passwordHash, username)
+	if err != nil {
+		return err
+	}
+
+	// Проверяем, что пользователь существовал
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		return fmt.Errorf("user not found")
+	}
+
+	return nil
+}
+
 // CreateChat creates a new chat room
 func (db *DB) CreateChat(id, name, chatType, participants string) error {
 	query := `INSERT INTO chats (id, name, type, participants, created_at) VALUES ($1, $2, $3, $4, NOW())`
@@ -451,4 +531,15 @@ func (db *DB) GetDirectChatBetweenUsers(user1, user2 string) (string, error) {
 		return "", err
 	}
 	return newChatID, nil
+}
+
+// CleanupEmptyMessages removes all old messages (encrypted with old key)
+func (db *DB) CleanupEmptyMessages() (int64, error) {
+	query := `DELETE FROM messages`
+	result, err := db.Exec(query)
+	if err != nil {
+		return 0, err
+	}
+	rowsAffected, _ := result.RowsAffected()
+	return rowsAffected, nil
 }

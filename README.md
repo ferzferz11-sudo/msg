@@ -2,6 +2,8 @@
 
 **Author:** Pavel Davydov (ferz)
 
+**Version:** 1.0.0 (build 0.1.0)
+
 A real-time secure messaging application with gRPC server and multiple client implementations.
 
 ## Running Commands
@@ -58,6 +60,19 @@ LavenderMessenger/
 |    |--- messenger_grpc.pb.go  # gRPC service code
 |
 |--- client/                    # All client applications
+|    |
+|    |--- android/              # Android client application
+|    |    |
+|    |    |--- app/             # Android app source
+|    |    |    |--- src/        # Source code
+|    |    |    |    |--- main/  # Main source set
+|    |    |    |    |--- java/  # Kotlin code
+|    |    |    |    |--- res/   # Resources
+|    |    |    |--- build.gradle
+|    |    |    |--- CHANGELOG.md
+|    |    |--- build.gradle
+|    |    |--- README.md
+|    |    |--- README.ru.md
 |    |
 |    |--- console/              # Console client application
 |    |    |
@@ -145,6 +160,17 @@ LavenderMessenger/
 
 ### Client Applications (`client/`)
 
+- **`android/`** - Android client application
+  - Native Android application with modern UI
+  - Real-time messaging with gRPC
+  - Private messaging system (direct chats)
+  - Chat list UI with room management
+  - Theme support (light/dark)
+  - Russian localization
+  - Message reactions support
+  - Custom lavender logo and branding
+  - Version: 1.0.0 (build 0.1.0)
+
 - **`console/main.go`** - Console client application (primary CLI client)
   - YAML-based configuration (no .env required)
   - gRPC communication with server using `grpc.NewClient`
@@ -209,11 +235,18 @@ LavenderMessenger/
 1. Configure `client/macos/config.yaml` with server address
 2. Run client from project root: `go run ./client/macos/main.go`
 
+#### Android Client
+1. Open project in Android Studio: `client/android/`
+2. Build APK: `./gradlew assembleDebug`
+3. Install on device or emulator
+4. Configure server address in app settings
+
 ## Architecture
 
 - **Server**: gRPC-based with WebSocket hub for real-time communication
 - **Database**: PostgreSQL with connection pooling
 - **Clients**:
+  - Android native application with modern UI (Kotlin)
   - Console client with YAML config (primary CLI client)
   - Native macOS application with real-time messaging
 - **Protocol**: Protocol Buffers for message serialization
@@ -231,4 +264,4 @@ LavenderMessenger/
 
 ## Version History
 
-See `CHANGELOG.md` for server changes and `client/macos/CHANGELOG.md` for macOS client changes.
+See `CHANGELOG.md` for server changes, `client/android/CHANGELOG.md` for Android client changes, and `client/macos/CHANGELOG.md` for macOS client changes.

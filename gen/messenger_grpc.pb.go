@@ -21,12 +21,15 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	ChatService_Chat_FullMethodName             = "/messenger.ChatService/Chat"
 	ChatService_GetClients_FullMethodName       = "/messenger.ChatService/GetClients"
+	ChatService_GetAllUsers_FullMethodName      = "/messenger.ChatService/GetAllUsers"
 	ChatService_GetHistory_FullMethodName       = "/messenger.ChatService/GetHistory"
 	ChatService_SetReaction_FullMethodName      = "/messenger.ChatService/SetReaction"
 	ChatService_DeleteMessages_FullMethodName   = "/messenger.ChatService/DeleteMessages"
 	ChatService_RegisterToken_FullMethodName    = "/messenger.ChatService/RegisterToken"
 	ChatService_GetChats_FullMethodName         = "/messenger.ChatService/GetChats"
 	ChatService_CreateDirectChat_FullMethodName = "/messenger.ChatService/CreateDirectChat"
+	ChatService_UpdateUsername_FullMethodName   = "/messenger.ChatService/UpdateUsername"
+	ChatService_UpdatePassword_FullMethodName   = "/messenger.ChatService/UpdatePassword"
 )
 
 // ChatServiceClient is the client API for ChatService service.
@@ -35,12 +38,15 @@ const (
 type ChatServiceClient interface {
 	Chat(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[Message, Message], error)
 	GetClients(ctx context.Context, in *ClientListRequest, opts ...grpc.CallOption) (*ClientListResponse, error)
+	GetAllUsers(ctx context.Context, in *GetAllUsersRequest, opts ...grpc.CallOption) (*GetAllUsersResponse, error)
 	GetHistory(ctx context.Context, in *GetHistoryRequest, opts ...grpc.CallOption) (*GetHistoryResponse, error)
 	SetReaction(ctx context.Context, in *ReactionRequest, opts ...grpc.CallOption) (*ReactionResponse, error)
 	DeleteMessages(ctx context.Context, in *DeleteMessagesRequest, opts ...grpc.CallOption) (*DeleteMessagesResponse, error)
 	RegisterToken(ctx context.Context, in *TokenRequest, opts ...grpc.CallOption) (*TokenResponse, error)
 	GetChats(ctx context.Context, in *GetChatsRequest, opts ...grpc.CallOption) (*GetChatsResponse, error)
 	CreateDirectChat(ctx context.Context, in *CreateDirectChatRequest, opts ...grpc.CallOption) (*CreateDirectChatResponse, error)
+	UpdateUsername(ctx context.Context, in *UpdateUsernameRequest, opts ...grpc.CallOption) (*UpdateUsernameResponse, error)
+	UpdatePassword(ctx context.Context, in *UpdatePasswordRequest, opts ...grpc.CallOption) (*UpdatePasswordResponse, error)
 }
 
 type chatServiceClient struct {
@@ -68,6 +74,16 @@ func (c *chatServiceClient) GetClients(ctx context.Context, in *ClientListReques
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ClientListResponse)
 	err := c.cc.Invoke(ctx, ChatService_GetClients_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) GetAllUsers(ctx context.Context, in *GetAllUsersRequest, opts ...grpc.CallOption) (*GetAllUsersResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetAllUsersResponse)
+	err := c.cc.Invoke(ctx, ChatService_GetAllUsers_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -134,18 +150,41 @@ func (c *chatServiceClient) CreateDirectChat(ctx context.Context, in *CreateDire
 	return out, nil
 }
 
+func (c *chatServiceClient) UpdateUsername(ctx context.Context, in *UpdateUsernameRequest, opts ...grpc.CallOption) (*UpdateUsernameResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateUsernameResponse)
+	err := c.cc.Invoke(ctx, ChatService_UpdateUsername_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) UpdatePassword(ctx context.Context, in *UpdatePasswordRequest, opts ...grpc.CallOption) (*UpdatePasswordResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdatePasswordResponse)
+	err := c.cc.Invoke(ctx, ChatService_UpdatePassword_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ChatServiceServer is the server API for ChatService service.
 // All implementations must embed UnimplementedChatServiceServer
 // for forward compatibility.
 type ChatServiceServer interface {
 	Chat(grpc.BidiStreamingServer[Message, Message]) error
 	GetClients(context.Context, *ClientListRequest) (*ClientListResponse, error)
+	GetAllUsers(context.Context, *GetAllUsersRequest) (*GetAllUsersResponse, error)
 	GetHistory(context.Context, *GetHistoryRequest) (*GetHistoryResponse, error)
 	SetReaction(context.Context, *ReactionRequest) (*ReactionResponse, error)
 	DeleteMessages(context.Context, *DeleteMessagesRequest) (*DeleteMessagesResponse, error)
 	RegisterToken(context.Context, *TokenRequest) (*TokenResponse, error)
 	GetChats(context.Context, *GetChatsRequest) (*GetChatsResponse, error)
 	CreateDirectChat(context.Context, *CreateDirectChatRequest) (*CreateDirectChatResponse, error)
+	UpdateUsername(context.Context, *UpdateUsernameRequest) (*UpdateUsernameResponse, error)
+	UpdatePassword(context.Context, *UpdatePasswordRequest) (*UpdatePasswordResponse, error)
 	mustEmbedUnimplementedChatServiceServer()
 }
 
@@ -161,6 +200,9 @@ func (UnimplementedChatServiceServer) Chat(grpc.BidiStreamingServer[Message, Mes
 }
 func (UnimplementedChatServiceServer) GetClients(context.Context, *ClientListRequest) (*ClientListResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetClients not implemented")
+}
+func (UnimplementedChatServiceServer) GetAllUsers(context.Context, *GetAllUsersRequest) (*GetAllUsersResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetAllUsers not implemented")
 }
 func (UnimplementedChatServiceServer) GetHistory(context.Context, *GetHistoryRequest) (*GetHistoryResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetHistory not implemented")
@@ -179,6 +221,12 @@ func (UnimplementedChatServiceServer) GetChats(context.Context, *GetChatsRequest
 }
 func (UnimplementedChatServiceServer) CreateDirectChat(context.Context, *CreateDirectChatRequest) (*CreateDirectChatResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateDirectChat not implemented")
+}
+func (UnimplementedChatServiceServer) UpdateUsername(context.Context, *UpdateUsernameRequest) (*UpdateUsernameResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateUsername not implemented")
+}
+func (UnimplementedChatServiceServer) UpdatePassword(context.Context, *UpdatePasswordRequest) (*UpdatePasswordResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdatePassword not implemented")
 }
 func (UnimplementedChatServiceServer) mustEmbedUnimplementedChatServiceServer() {}
 func (UnimplementedChatServiceServer) testEmbeddedByValue()                     {}
@@ -222,6 +270,24 @@ func _ChatService_GetClients_Handler(srv interface{}, ctx context.Context, dec f
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ChatServiceServer).GetClients(ctx, req.(*ClientListRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_GetAllUsers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetAllUsersRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).GetAllUsers(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_GetAllUsers_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).GetAllUsers(ctx, req.(*GetAllUsersRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -334,6 +400,42 @@ func _ChatService_CreateDirectChat_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ChatService_UpdateUsername_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateUsernameRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).UpdateUsername(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_UpdateUsername_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).UpdateUsername(ctx, req.(*UpdateUsernameRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_UpdatePassword_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdatePasswordRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).UpdatePassword(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_UpdatePassword_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).UpdatePassword(ctx, req.(*UpdatePasswordRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ChatService_ServiceDesc is the grpc.ServiceDesc for ChatService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -344,6 +446,10 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetClients",
 			Handler:    _ChatService_GetClients_Handler,
+		},
+		{
+			MethodName: "GetAllUsers",
+			Handler:    _ChatService_GetAllUsers_Handler,
 		},
 		{
 			MethodName: "GetHistory",
@@ -368,6 +474,14 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CreateDirectChat",
 			Handler:    _ChatService_CreateDirectChat_Handler,
+		},
+		{
+			MethodName: "UpdateUsername",
+			Handler:    _ChatService_UpdateUsername_Handler,
+		},
+		{
+			MethodName: "UpdatePassword",
+			Handler:    _ChatService_UpdatePassword_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

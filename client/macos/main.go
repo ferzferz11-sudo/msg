@@ -8,6 +8,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"image/color"
 	"os"
@@ -30,16 +31,24 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const clientVersion = "0.9.1"
+const clientVersion = "1.0.0"
+const buildVersion = "0.1.5"
+
+var myWindow fyne.Window
+var chatBox *widget.RichText
+var connectToServer func(string)
 
 func getConfigPaths() []string {
 	var paths []string
-	paths = append(paths, "config.yaml")
+	// Сначала проверяем директорию, где находится main.go
 	_, filename, _, ok := runtime.Caller(0)
 	if ok {
 		dir := filepath.Dir(filename)
 		paths = append(paths, filepath.Join(dir, "config.yaml"))
 	}
+	// Затем проверяем текущую директорию
+	paths = append(paths, "config.yaml")
+	// И другие возможные пути
 	paths = append(paths, "client/macos/config.yaml")
 	paths = append(paths, "../macos/config.yaml")
 	return paths
@@ -53,6 +62,7 @@ type Config struct {
 	} `yaml:"themes"`
 	CurrentTheme string `yaml:"current_theme"`
 	LastUsername string `yaml:"last_username"`
+	LastPassword string `yaml:"last_password"`
 }
 
 type ThemeConfig struct {
@@ -201,6 +211,178 @@ func (c *customTheme) Size(name fyne.ThemeSizeName) float32 {
 	return theme.DefaultTheme().Size(name)
 }
 
+// getChats получает список чатов пользователя
+func getChats(client gen.ChatServiceClient, username string) ([]*gen.ChatInfo, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	resp, err := client.GetChats(ctx, &gen.GetChatsRequest{Username: username})
+	if err != nil {
+		return nil, err
+	}
+	return resp.Chats, nil
+}
+
+// loadHistory загружает историю сообщений для комнаты
+func loadHistory(client gen.ChatServiceClient, roomId string, appendMsg func(string, string, string)) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	resp, err := client.GetHistory(ctx, &gen.GetHistoryRequest{Room: roomId})
+	if err != nil {
+		return err
+	}
+
+	for _, msg := range resp.Messages {
+		// Skip join messages
+		if strings.HasSuffix(msg.Text, " joined") || strings.HasSuffix(msg.Text, " присоединился") {
+			continue
+		}
+		t := msg.CreatedAt.AsTime().Local()
+		timeStr := t.Format("15:04:05")
+		appendMsg(timeStr, msg.User, msg.Text)
+	}
+	return nil
+}
+
+// showChatList показывает диалог со списком чатов
+func showChatList(chats []*gen.ChatInfo, switchToChat func(string)) {
+	chatList := container.NewVBox()
+	for _, chat := range chats {
+		chatName := chat.Name
+		if chatName == "" {
+			chatName = chat.Id
+		}
+		chatType := chat.Type
+		if chatType == "" {
+			chatType = "general"
+		}
+		displayName := fmt.Sprintf("%s (%s)", chatName, chatType)
+
+		btn := widget.NewButton(displayName, func() {
+			// Switch to selected chat
+			switchToChat(chat.Id)
+		})
+		chatList.Add(btn)
+	}
+
+	// Add button for general chat
+	generalBtn := widget.NewButton("Общий чат (general)", func() {
+		switchToChat("general")
+	})
+	chatList.Add(generalBtn)
+
+	scroll := container.NewVScroll(chatList)
+	dialog.ShowCustom("Выберите чат", "Закрыть", scroll, myWindow)
+}
+
+// showUsersList показывает диалог со списком пользователей
+func showUsersList(client gen.ChatServiceClient, currentUsername string) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	resp, err := client.GetClients(ctx, &gen.ClientListRequest{})
+	if err != nil {
+		dialog.ShowError(err, myWindow)
+		return
+	}
+
+	usersList := container.NewVBox()
+	userCount := 0
+	for _, user := range resp.Clients {
+		if user == currentUsername {
+			continue // Skip current user
+		}
+
+		userLabel := widget.NewLabel(user)
+		userLabel.TextStyle = fyne.TextStyle{Bold: true}
+
+		btn := widget.NewButton("", func() {
+			// Create direct chat with selected user
+			createDirectChat(client, currentUsername, user)
+		})
+		btn.Importance = widget.LowImportance
+
+		userRow := container.NewHBox(userLabel, btn)
+		usersList.Add(userRow)
+		userCount++
+	}
+
+	if userCount == 0 {
+		usersList.Add(widget.NewLabel("Нет других пользователей онлайн"))
+	}
+
+	scroll := container.NewVScroll(usersList)
+	dialog.ShowCustom("Пользователи онлайн (кликните для создания чата)", "Закрыть", scroll, myWindow)
+}
+
+// showAllUsersList показывает диалог со списком всех зарегистрированных пользователей
+func showAllUsersList(client gen.ChatServiceClient, currentUsername string) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	resp, err := client.GetAllUsers(ctx, &gen.GetAllUsersRequest{})
+	if err != nil {
+		dialog.ShowError(err, myWindow)
+		return
+	}
+
+	usersList := container.NewVBox()
+	userCount := 0
+	for _, user := range resp.Users {
+		if user == currentUsername {
+			continue // Skip current user
+		}
+
+		userLabel := widget.NewLabel(user)
+		userLabel.TextStyle = fyne.TextStyle{Bold: true}
+
+		btn := widget.NewButton("", func() {
+			// Create direct chat with selected user
+			createDirectChat(client, currentUsername, user)
+		})
+		btn.Importance = widget.LowImportance
+
+		userRow := container.NewHBox(userLabel, btn)
+		usersList.Add(userRow)
+		userCount++
+	}
+
+	if userCount == 0 {
+		usersList.Add(widget.NewLabel("Нет зарегистрированных пользователей"))
+	}
+
+	scroll := container.NewVScroll(usersList)
+	dialog.ShowCustom("Все зарегистрированные пользователи (кликните для создания чата)", "Закрыть", scroll, myWindow)
+}
+
+// createDirectChat создает прямую комнату с выбранным пользователем
+func createDirectChat(client gen.ChatServiceClient, user1, user2 string) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	resp, err := client.CreateDirectChat(ctx, &gen.CreateDirectChatRequest{User1: user1, User2: user2})
+	if err != nil {
+		dialog.ShowError(err, myWindow)
+		return
+	}
+
+	if resp.Success {
+		dialog.ShowInformation("Успех", fmt.Sprintf("Чат с %s создан! ID: %s", user2, resp.ChatId), myWindow)
+	} else {
+		dialog.ShowError(errors.New("Не удалось создать чат"), myWindow)
+	}
+}
+
+// switchToChat переключается на другой чат
+func switchToChat(roomId string) {
+	// Clear chat
+	chatBox.Segments = []widget.RichTextSegment{}
+	chatBox.Refresh()
+	// Reconnect to new room
+	connectToServer(roomId)
+}
+
 // checkServerAvailability проверяет доступность gRPC сервера
 func checkServerAvailability(addr string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
@@ -257,24 +439,23 @@ func main() {
 	myApp := app.New()
 	myApp.Settings().SetTheme(myTheme)
 
-	myWindow := myApp.NewWindow(fmt.Sprintf("Go gRPC Chat v%s (%s)", clientVersion, serverAddress))
+	myWindow = myApp.NewWindow(fmt.Sprintf("Lavender Messenger v%s (build %s)", clientVersion, buildVersion))
 	myWindow.Resize(fyne.NewSize(600, 400))
 
 	var username string
+	var password string
+	var currentRoomId string
 	var stream gen.ChatService_ChatClient
 	var conn *grpc.ClientConn
 
 	// UI для статуса (индикатор и текст)
 	statusIndicator := canvas.NewCircle(color.RGBA{R: 255, G: 255, B: 0, A: 255}) // Желтый
 	statusIndicator.Resize(fyne.NewSize(12, 12))
-	statusIndicator.Move(fyne.NewPos(4, 4))
-	indicatorContainer := container.NewWithoutLayout(statusIndicator)
-	indicatorContainer.Resize(fyne.NewSize(20, 20))
 
 	statusLabel := widget.NewLabel("Подключение...")
 	statusLabel.Alignment = fyne.TextAlignLeading
 
-	statusBox := container.NewHBox(indicatorContainer, statusLabel)
+	statusBox := container.NewHBox(statusIndicator, statusLabel)
 
 	var lastUser string
 	var userColorMap = make(map[string]fyne.ThemeColorName)
@@ -315,7 +496,7 @@ func main() {
 		return colorName
 	}
 
-	chatBox := widget.NewRichText()
+	chatBox = widget.NewRichText()
 	scrollContainer := container.NewVScroll(chatBox)
 
 	inputBox := widget.NewEntry()
@@ -341,7 +522,46 @@ func main() {
 		themeBtn.SetIcon(theme.ColorPaletteIcon())
 	}
 
-	topBar := container.NewBorder(nil, nil, statusBox, themeBtn)
+	// Chat list button
+	chatListBtn := widget.NewButtonWithIcon("Чаты", theme.ListIcon(), func() {
+		// Show chat list
+		if conn != nil {
+			client := gen.NewChatServiceClient(conn)
+			chats, err := getChats(client, username)
+			if err != nil {
+				dialog.ShowError(err, myWindow)
+				return
+			}
+			showChatList(chats, switchToChat)
+		} else {
+			dialog.ShowError(errors.New("Сначала подключитесь к серверу"), myWindow)
+		}
+	})
+
+	// Users list button (online)
+	usersBtn := widget.NewButtonWithIcon("Онлайн", theme.AccountIcon(), func() {
+		// Show online users list
+		if conn != nil {
+			client := gen.NewChatServiceClient(conn)
+			showUsersList(client, username)
+		} else {
+			dialog.ShowError(errors.New("Сначала подключитесь к серверу"), myWindow)
+		}
+	})
+
+	// All users list button
+	allUsersBtn := widget.NewButtonWithIcon("Все", theme.SearchIcon(), func() {
+		// Show all registered users list
+		if conn != nil {
+			client := gen.NewChatServiceClient(conn)
+			showAllUsersList(client, username)
+		} else {
+			dialog.ShowError(errors.New("Сначала подключитесь к серверу"), myWindow)
+		}
+	})
+
+	rightButtons := container.NewHBox(chatListBtn, usersBtn, allUsersBtn, themeBtn)
+	topBar := container.NewBorder(nil, nil, statusBox, rightButtons)
 
 	appendMessage := func(timeStr, user, text string) {
 		isSameUser := lastUser == user
@@ -375,7 +595,7 @@ func main() {
 		if text == "" || stream == nil {
 			return
 		}
-		err := stream.Send(&gen.Message{User: username, Text: text})
+		err := stream.Send(&gen.Message{User: username, Text: text, RoomId: currentRoomId})
 		if err != nil {
 			safeAppendSystemMessage(fmt.Sprintf("[Ошибка отправки]: %v", err))
 		}
@@ -415,9 +635,15 @@ func main() {
 		usernameEntry.SetText(cfg.LastUsername)
 	}
 
+	passwordEntry := widget.NewPasswordEntry()
+	passwordEntry.SetPlaceHolder("Пароль")
+	if cfg.LastPassword != "" {
+		passwordEntry.SetText(cfg.LastPassword)
+	}
+
 	var loginForm *dialog.ConfirmDialog
 
-	connectToServer := func() {
+	connectToServer = func(roomId string) {
 		var err error
 		conn, err = grpc.NewClient(serverAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
@@ -430,6 +656,21 @@ func main() {
 			dialog.ShowError(err, myWindow)
 			return
 		}
+		currentRoomId = roomId
+
+		// Load message history
+		err = loadHistory(client, roomId, appendMessage)
+		if err != nil {
+			safeAppendSystemMessage(fmt.Sprintf("[Ошибка загрузки истории]: %v", err))
+		}
+
+		// Send auth/join message with password and roomId
+		joinMessage := fmt.Sprintf("%s присоединился", username)
+		err = stream.Send(&gen.Message{User: username, Text: joinMessage, Password: password, RoomId: roomId})
+		if err != nil {
+			safeAppendSystemMessage(fmt.Sprintf("[Ошибка отправки]: %v", err))
+		}
+
 		statusLabel.SetText(fmt.Sprintf("Подключено к %s | %s", serverAddress, username))
 		statusIndicator.FillColor = color.RGBA{R: 0, G: 255, B: 0, A: 255} // Зеленый
 		statusIndicator.Refresh()
@@ -459,16 +700,51 @@ func main() {
 		}()
 	}
 
-	loginForm = dialog.NewCustomConfirm("Вход в чат", "Войти", "Отмена", usernameEntry, func(b bool) {
-		if b && usernameEntry.Text != "" {
-			username = usernameEntry.Text
-			cfg.LastUsername = username
-			_ = saveConfig(cfg)
-			connectToServer()
-		} else {
-			myApp.Quit()
-		}
-	}, myWindow)
+	loginForm = dialog.NewCustomConfirm("Вход в чат", "Войти", "Отмена",
+		container.NewVBox(
+			widget.NewLabel("Имя пользователя:"),
+			usernameEntry,
+			widget.NewLabel("Пароль:"),
+			passwordEntry,
+		),
+		func(b bool) {
+			if b && usernameEntry.Text != "" {
+				username = usernameEntry.Text
+				password = passwordEntry.Text
+				cfg.LastUsername = username
+				cfg.LastPassword = password
+				_ = saveConfig(cfg)
+
+				// Connect to server first
+				var err error
+				conn, err = grpc.NewClient(serverAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
+				if err != nil {
+					dialog.ShowError(err, myWindow)
+					myApp.Quit()
+					return
+				}
+				client := gen.NewChatServiceClient(conn)
+
+				// Get chats
+				chats, err := getChats(client, username)
+				if err != nil {
+					dialog.ShowError(fmt.Errorf("Ошибка получения чатов: %v", err), myWindow)
+					// If error, just connect to general
+					connectToServer("general")
+					return
+				}
+
+				if len(chats) == 0 {
+					// No chats, connect to general
+					connectToServer("general")
+				} else {
+					// Show chat list
+					showChatList(chats, connectToServer)
+				}
+			} else {
+				myApp.Quit()
+			}
+		}, myWindow)
 
 	myWindow.Show()
 
