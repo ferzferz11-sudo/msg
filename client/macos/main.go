@@ -31,8 +31,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const clientVersion = "1.0.0"
-const buildVersion = "0.1.5"
+const clientVersion = "1.0.1"
+const buildVersion = "0.1.7"
 
 var myWindow fyne.Window
 var chatBox *widget.RichText
@@ -224,7 +224,7 @@ func getChats(client gen.ChatServiceClient, username string) ([]*gen.ChatInfo, e
 }
 
 // loadHistory загружает историю сообщений для комнаты
-func loadHistory(client gen.ChatServiceClient, roomId string, appendMsg func(string, string, string, string), clearMsgIDs func()) error {
+func loadHistory(client gen.ChatServiceClient, roomId string, appendMsg func(string, string, string, string, string, string, []*gen.Reaction), clearMsgIDs func()) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -243,7 +243,7 @@ func loadHistory(client gen.ChatServiceClient, roomId string, appendMsg func(str
 		}
 		t := msg.CreatedAt.AsTime().Local()
 		timeStr := t.Format("15:04:05")
-		appendMsg(timeStr, msg.User, msg.Text, msg.Id)
+		appendMsg(timeStr, msg.User, msg.Text, msg.Id, msg.RepliedToUser, msg.RepliedToText, msg.Reactions)
 	}
 	return nil
 }
@@ -570,7 +570,7 @@ func main() {
 	rightButtons := container.NewHBox(chatListBtn, usersBtn, themeBtn)
 	topBar := container.NewBorder(nil, nil, statusBox, rightButtons)
 
-	appendMessage := func(timeStr, user, text string, msgID string) {
+	appendMessage := func(timeStr, user, text string, msgID string, repliedToUser, repliedToText string, reactions []*gen.Reaction) {
 		// Skip all join messages (not just for current user)
 		if strings.HasSuffix(text, " joined") || strings.HasSuffix(text, " присоединился") {
 			return
@@ -589,6 +589,14 @@ func main() {
 		if !isSameUser {
 			chatBox.Segments = append(chatBox.Segments, &widget.TextSegment{Text: "\n", Style: widget.RichTextStyleInline})
 		}
+
+		// Show reply quote if present
+		if repliedToUser != "" && repliedToText != "" {
+			replyStyle := widget.RichTextStyle{ColorName: theme.ColorNameDisabled, TextStyle: fyne.TextStyle{Italic: true}}
+			replySeg := &widget.TextSegment{Text: fmt.Sprintf("↳ %s: %s\n", repliedToUser, repliedToText), Style: replyStyle}
+			chatBox.Segments = append(chatBox.Segments, replySeg)
+		}
+
 		headerStyle := widget.RichTextStyle{ColorName: getUserColorName(user), TextStyle: fyne.TextStyle{Bold: true}}
 		headerSeg := &widget.TextSegment{Text: fmt.Sprintf("%s %s: ", timeStr, user), Style: headerStyle}
 		textSeg := &widget.TextSegment{Text: text + "\n", Style: widget.RichTextStyleInline}
@@ -597,6 +605,22 @@ func main() {
 		} else {
 			chatBox.Segments = append(chatBox.Segments, headerSeg, textSeg)
 		}
+
+		// Show reactions if present
+		if len(reactions) > 0 {
+			reactionMap := make(map[string]int)
+			for _, r := range reactions {
+				reactionMap[r.Emoji]++
+			}
+			var reactionStrs []string
+			for emoji, count := range reactionMap {
+				reactionStrs = append(reactionStrs, fmt.Sprintf("%s %d", emoji, count))
+			}
+			reactionStyle := widget.RichTextStyle{ColorName: theme.ColorNamePrimary}
+			reactionSeg := &widget.TextSegment{Text: "  " + strings.Join(reactionStrs, " ") + "\n", Style: reactionStyle}
+			chatBox.Segments = append(chatBox.Segments, reactionSeg)
+		}
+
 		chatBox.Refresh()
 		scrollContainer.ScrollToBottom()
 	}
@@ -717,7 +741,7 @@ func main() {
 				t := in.CreatedAt.AsTime().Local()
 				timeStr := t.Format("15:04:05")
 				fyne.Do(func() {
-					appendMessage(timeStr, in.User, in.Text, in.Id)
+					appendMessage(timeStr, in.User, in.Text, in.Id, in.RepliedToUser, in.RepliedToText, in.Reactions)
 				})
 			}
 		}()
