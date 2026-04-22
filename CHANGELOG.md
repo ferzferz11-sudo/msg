@@ -2,6 +2,39 @@
 
 **Author:** Pavel Davydov (ferz)
 
+## [1.0.1.30] - 2026-04-22
+- **Server: Group Chats and Deletion Features**
+  - **New RPC Methods:**
+    - `CreateGroupChat` - Create group chats with multiple participants
+    - `DeleteChat` - Delete chats and all associated messages/images
+    - `DeleteProfile` - Delete user profile and all their data
+  - **gRPC Improvements:**
+    - Added keepalive enforcement policy (5 second min ping interval)
+    - Permit pings without active streams for better connection stability
+  - **Proto Updates:**
+    - Added `CreateGroupChatRequest/Response` messages
+    - Added `DeleteChatRequest/Response` messages
+    - Added `DeleteProfileRequest/Response` messages
+  - **Go Server:**
+    - Server version: 1.0.1.30
+
+## [1.0.1.28] - 2026-04-20
+- **Android Avatar Display Fix**
+  - **ChatAdapter:**
+    - Fixed avatar caching issue where avatar URLs were not being saved for users with avatars
+    - Now correctly saves all avatar URLs (including empty strings) to cache
+    - Removed fade-in animation for avatars in chat list for better performance
+  - **ChatListActivity:**
+    - Updated avatar loading logic to save all URLs to cache before displaying chats
+    - Chats now display only after all participant avatars are loaded
+    - Added 5-second fallback timeout for avatar loading
+    - Applied same fixes to startPollingChats and onResume for consistency
+  - **Result:**
+    - Avatars now correctly display in chat list (small icons next to chat names)
+    - Avatars correctly display in user list dialog
+    - No more flickering or missing avatars
+  - **Android Version:** 1.0.1.28
+
 ## [0.1.5] - 2026-04-20
 - **GetAllUsers RPC Implementation**
   - **Proto Files:**

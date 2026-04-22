@@ -4,9 +4,10 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="ef919cf0-dee0-4e94-b631-d2fd26a26aae" name="Changes" comment="1.0.1 build 0.1.7">
-      <change beforePath="$PROJECT_DIR$/client/macos/CHANGELOG.md" beforeDir="false" afterPath="$PROJECT_DIR$/client/macos/CHANGELOG.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/macos/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/client/macos/main.go" afterDir="false" />
+    <list default="true" id="ef919cf0-dee0-4e94-b631-d2fd26a26aae" name="Changes" comment="1.0.1.27">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CHANGELOG.md" beforeDir="false" afterPath="$PROJECT_DIR$/CHANGELOG.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/db.go" beforeDir="false" afterPath="$PROJECT_DIR$/db.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/gen/messenger.pb.go" beforeDir="false" afterPath="$PROJECT_DIR$/gen/messenger.pb.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/gen/messenger_grpc.pb.go" beforeDir="false" afterPath="$PROJECT_DIR$/gen/messenger_grpc.pb.go" afterDir="false" />
@@ -37,7 +38,7 @@
   }
 }</component>
   <component name="ProblemsViewState">
-    <option name="selectedTabId" value="CurrentFile" />
+    <option name="selectedTabId" value="ProjectErrors" />
   </component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 0,
@@ -64,7 +65,7 @@
     "RunOnceActivity.typescript.service.memoryLimit.init": "true",
     "SHARE_PROJECT_CONFIGURATION_FILES": "true",
     "codeWithMe.voiceChat.enabledByDefault": "false",
-    "com.google.cloudcode.ide_session_index": "20260418_0005",
+    "com.google.cloudcode.ide_session_index": "20260422_0001",
     "com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1": "true",
     "git-widget-placeholder": "main",
     "go.sdk.automatically.set": "true",
@@ -113,7 +114,8 @@
     <MESSAGE value="1.0.0" />
     <MESSAGE value="1.0.1" />
     <MESSAGE value="1.0.1 build 0.1.7" />
-    <option name="LAST_COMMIT_MESSAGE" value="1.0.1 build 0.1.7" />
+    <MESSAGE value="1.0.1.27" />
+    <option name="LAST_COMMIT_MESSAGE" value="1.0.1.27" />
   </component>
   <component name="VgoModernizerVersionTracker">
     <upgrades>

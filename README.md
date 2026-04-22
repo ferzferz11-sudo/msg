@@ -169,7 +169,8 @@ LavenderMessenger/
   - Russian localization
   - Message reactions support
   - Custom lavender logo and branding
-  - Version: 1.0.0 (build 0.1.0)
+  - Avatar display in chat list and user list
+  - Version: 1.0.1.28
 
 - **`console/main.go`** - Console client application (primary CLI client)
   - YAML-based configuration (no .env required)
