@@ -352,6 +352,27 @@ func (s *server) CreateDirectChat(_ context.Context, req *gen.CreateDirectChatRe
 	return &gen.CreateDirectChatResponse{ChatId: chatID, Success: true}, nil
 }
 
+func (s *server) CreateGroupChat(_ context.Context, req *gen.CreateGroupChatRequest) (*gen.CreateGroupChatResponse, error) {
+	chatID := uuid.New().String()
+
+	// Convert participants slice to JSON string
+	participants := "["
+	for i, p := range req.Participants {
+		participants += "\"" + p + "\""
+		if i < len(req.Participants)-1 {
+			participants += ", "
+		}
+	}
+	participants += "]"
+
+	err := s.db.CreateChat(chatID, req.Name, "group", participants)
+	if err != nil {
+		log.Printf("Failed to create group chat: %v", err)
+		return &gen.CreateGroupChatResponse{Success: false}, err
+	}
+	return &gen.CreateGroupChatResponse{ChatId: chatID, Success: true}, nil
+}
+
 // UpdateUsername обновляет имя пользователя
 func (s *server) UpdateUsername(_ context.Context, req *gen.UpdateUsernameRequest) (*gen.UpdateUsernameResponse, error) {
 	err := s.db.UpdateUsername(req.OldUsername, req.NewUsername)
@@ -440,6 +461,57 @@ func (s *server) GetUserAvatar(_ context.Context, req *gen.GetUserAvatarRequest)
 	}
 
 	return &gen.GetUserAvatarResponse{AvatarUrl: avatarURL}, nil
+}
+
+// DeleteChat deletes a chat and all its messages and images
+func (s *server) DeleteChat(_ context.Context, req *gen.DeleteChatRequest) (*gen.DeleteChatResponse, error) {
+	if req.ChatId == "" {
+		return &gen.DeleteChatResponse{Success: false, Message: "Chat ID is required"}, nil
+	}
+
+	if req.ChatId == "general" {
+		return &gen.DeleteChatResponse{Success: false, Message: "Cannot delete General Chat"}, nil
+	}
+
+	// 1. Get all image URLs for messages in this chat
+	imageURLs, err := s.db.GetChatMessagesImageURLs(req.ChatId)
+	if err != nil {
+		log.Printf("Failed to get image URLs for chat %s: %v", req.ChatId, err)
+		// Continue anyway to delete the chat record
+	}
+
+	// 2. Delete all image files from disk
+	for _, url := range imageURLs {
+		if err := DeleteImageFile(url); err != nil {
+			log.Printf("Failed to delete image file %s: %v", url, err)
+		}
+	}
+
+	// 3. Delete the chat and all messages from database
+	err = s.db.DeleteChat(req.ChatId)
+	if err != nil {
+		log.Printf("Failed to delete chat %s from DB: %v", req.ChatId, err)
+		return &gen.DeleteChatResponse{Success: false, Message: err.Error()}, err
+	}
+
+	log.Printf("Successfully deleted chat %s and all its content", req.ChatId)
+	return &gen.DeleteChatResponse{Success: true, Message: "Chat deleted successfully"}, nil
+}
+
+// DeleteProfile deletes a user's profile and all their data
+func (s *server) DeleteProfile(_ context.Context, req *gen.DeleteProfileRequest) (*gen.DeleteProfileResponse, error) {
+	if req.Username == "" {
+		return &gen.DeleteProfileResponse{Success: false, Message: "Username is required"}, nil
+	}
+
+	err := s.db.DeleteProfile(req.Username)
+	if err != nil {
+		log.Printf("Failed to delete profile for %s: %v", req.Username, err)
+		return &gen.DeleteProfileResponse{Success: false, Message: err.Error()}, nil
+	}
+
+	log.Printf("Successfully deleted profile for user: %s", req.Username)
+	return &gen.DeleteProfileResponse{Success: true, Message: "Profile deleted successfully"}, nil
 }
 
 // sendPushNotification отправляет уведомление через FCM

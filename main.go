@@ -17,13 +17,13 @@ import (
 
 	"github.com/joho/godotenv" // Environment variable loading from .env files
 	"google.golang.org/grpc"   // gRPC framework for RPC communication
+	"google.golang.org/grpc/keepalive"
+	"time"
 )
 
 const (
 	// serverVersion indicates the current version of the Lavender messaging server
-	serverVersion = "1.0.0"
-	// buildVersion indicates the current build version (synced with Android app)
-	buildVersion = "0.1.7"
+	serverVersion = "1.0.1.30"
 )
 
 // main is the entry point of the Lavender messaging server application
@@ -31,7 +31,7 @@ const (
 // gRPC server, and starts listening for client connections
 func main() {
 	// Print version at startup for visibility
-	fmt.Printf("Lavender server version: %s (build %s)\n", serverVersion, buildVersion)
+	fmt.Printf("Lavender server version: %s\n", serverVersion)
 
 	// Load environment variables from .env file for local development
 	// If .env file doesn't exist, fall back to system environment variables
@@ -86,7 +86,12 @@ func main() {
 	}
 
 	// Initialize a new gRPC server instance
-	s := grpc.NewServer()
+	s := grpc.NewServer(
+		grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
+			MinTime:             5 * time.Second, // Minimum time between client pings
+			PermitWithoutStream: true,            // Allow pings even without active streams
+		}),
+	)
 
 	// Create our chat service instance with Hub for connection management
 	// and database for message persistence

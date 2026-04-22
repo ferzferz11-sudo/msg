@@ -393,6 +393,49 @@ func (db *DB) DeleteMessageByID(id int) error {
 	return err
 }
 
+// GetChatMessagesImageURLs returns all image URLs for messages in a specific chat
+func (db *DB) GetChatMessagesImageURLs(roomID string) ([]string, error) {
+	query := `SELECT image_url FROM messages WHERE room_id = $1 AND image_url != ''`
+	rows, err := db.Query(query, roomID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var urls []string
+	for rows.Next() {
+		var url string
+		if err := rows.Scan(&url); err != nil {
+			return nil, err
+		}
+		urls = append(urls, url)
+	}
+	return urls, nil
+}
+
+// DeleteChat removes a chat and all its associated data
+func (db *DB) DeleteChat(chatID string) error {
+	// 1. Delete messages (reactions will be deleted via ON DELETE CASCADE)
+	_, err := db.Exec(`DELETE FROM messages WHERE room_id = $1`, chatID)
+	if err != nil {
+		return fmt.Errorf("failed to delete messages: %w", err)
+	}
+
+	// 2. Delete chat metadata
+	_, err = db.Exec(`DELETE FROM user_chat_metadata WHERE room_id = $1`, chatID)
+	if err != nil {
+		return fmt.Errorf("failed to delete chat metadata: %w", err)
+	}
+
+	// 3. Delete the chat itself
+	_, err = db.Exec(`DELETE FROM chats WHERE id = $1`, chatID)
+	if err != nil {
+		return fmt.Errorf("failed to delete chat: %w", err)
+	}
+
+	return nil
+}
+
 // SaveUserToken сохраняет или обновляет FCM токен пользователя
 func (db *DB) SaveUserToken(username, token string) error {
 	query := `INSERT INTO user_tokens (username, fcm_token, updated_at)
@@ -598,7 +641,7 @@ func (db *DB) GetUserChats(username string) ([]struct {
 		 AND m.is_read = FALSE
 		 AND m.username != $1) as unread_count
 		FROM chats c
-		WHERE c.participants LIKE $2 OR (c.type = 'general' AND c.id = 'general')`
+		WHERE c.participants LIKE $2 OR c.type = 'general' OR (c.type = 'group' AND c.participants LIKE $2)`
 
 	rows, err := db.Query(query, username, "%"+username+"%")
 	if err != nil {
@@ -676,6 +719,82 @@ func (db *DB) GetDirectChatBetweenUsers(user1, user2 string) (string, error) {
 		return "", err
 	}
 	return newChatID, nil
+}
+
+// DeleteProfile removes a user and all their data
+func (db *DB) DeleteProfile(username string) error {
+	// Start a transaction
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// 1. Get all message IDs for this user to delete reactions (optional if using cascade)
+	// 2. Get all image URLs for messages by this user
+	rows, err := tx.Query(`SELECT image_url FROM messages WHERE username = $1 AND image_url != ''`, username)
+	if err == nil {
+		var urls []string
+		for rows.Next() {
+			var url string
+			if err := rows.Scan(&url); err == nil {
+				urls = append(urls, url)
+			}
+		}
+		rows.Close()
+		// Delete image files (outside transaction is fine as files are not transactional)
+		for _, url := range urls {
+			_ = DeleteImageFile(url)
+		}
+	}
+
+	// 3. Get user's avatar URL and delete it
+	var avatarURL sql.NullString
+	err = tx.QueryRow(`SELECT avatar_url FROM users WHERE username = $1`, username).Scan(&avatarURL)
+	if err == nil && avatarURL.Valid && avatarURL.String != "" {
+		_ = DeleteImageFile(avatarURL.String)
+	}
+
+	// 4. Delete user's messages
+	_, err = tx.Exec(`DELETE FROM messages WHERE username = $1`, username)
+	if err != nil {
+		return fmt.Errorf("failed to delete user messages: %w", err)
+	}
+
+	// 5. Delete user's reactions
+	_, err = tx.Exec(`DELETE FROM reactions WHERE username = $1`, username)
+	if err != nil {
+		return fmt.Errorf("failed to delete user reactions: %w", err)
+	}
+
+	// 6. Delete user's tokens
+	_, err = tx.Exec(`DELETE FROM user_tokens WHERE username = $1`, username)
+	if err != nil {
+		return fmt.Errorf("failed to delete user tokens: %w", err)
+	}
+
+	// 7. Delete user's metadata
+	_, err = tx.Exec(`DELETE FROM user_chat_metadata WHERE username = $1`, username)
+	if err != nil {
+		return fmt.Errorf("failed to delete user metadata: %w", err)
+	}
+
+	// 8. Delete the user itself
+	_, err = tx.Exec(`DELETE FROM users WHERE username = $1`, username)
+	if err != nil {
+		return fmt.Errorf("failed to delete user: %w", err)
+	}
+
+	// 9. Update chats where user was a participant
+	// This is a bit complex since participants is a JSON string.
+	// For simplicity, we'll mark them as "deleted_user" or just leave as is
+	// but the app should handle missing users.
+	_, err = tx.Exec(`UPDATE chats SET participants = REPLACE(participants, $1, '"deleted_user"') WHERE participants LIKE $2`, "\""+username+"\"", "%\""+username+"\"%")
+	if err != nil {
+		log.Printf("Warning: failed to update participants in chats: %v", err)
+	}
+
+	return tx.Commit()
 }
 
 // CleanupEmptyMessages removes all old messages (encrypted with old key)

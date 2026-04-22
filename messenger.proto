@@ -103,6 +103,16 @@ message CreateDirectChatResponse {
   bool success = 2;
 }
 
+message CreateGroupChatRequest {
+  string name = 1;
+  repeated string participants = 2;
+}
+
+message CreateGroupChatResponse {
+  string chat_id = 1;
+  bool success = 2;
+}
+
 message UpdateUsernameRequest {
   string old_username = 1;
   string new_username = 2;
@@ -151,6 +161,24 @@ message GetUserAvatarResponse {
   string avatar_url = 1;
 }
 
+message DeleteChatRequest {
+  string chat_id = 1;
+}
+
+message DeleteChatResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message DeleteProfileRequest {
+  string username = 1;
+}
+
+message DeleteProfileResponse {
+  bool success = 1;
+  string message = 2;
+}
+
 service ChatService {
   rpc Chat(stream Message) returns (stream Message);
   rpc GetClients(ClientListRequest) returns (ClientListResponse);
@@ -161,9 +189,12 @@ service ChatService {
   rpc RegisterToken(TokenRequest) returns (TokenResponse);
   rpc GetChats(GetChatsRequest) returns (GetChatsResponse);
   rpc CreateDirectChat(CreateDirectChatRequest) returns (CreateDirectChatResponse);
+  rpc CreateGroupChat(CreateGroupChatRequest) returns (CreateGroupChatResponse);
   rpc UpdateUsername(UpdateUsernameRequest) returns (UpdateUsernameResponse);
   rpc UpdatePassword(UpdatePasswordRequest) returns (UpdatePasswordResponse);
   rpc MarkRead(MarkReadRequest) returns (MarkReadResponse);
   rpc UpdateAvatar(UpdateAvatarRequest) returns (UpdateAvatarResponse);
   rpc GetUserAvatar(GetUserAvatarRequest) returns (GetUserAvatarResponse);
+  rpc DeleteChat(DeleteChatRequest) returns (DeleteChatResponse);
+  rpc DeleteProfile(DeleteProfileRequest) returns (DeleteProfileResponse);
 }
