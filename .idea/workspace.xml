@@ -4,16 +4,34 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="ef919cf0-dee0-4e94-b631-d2fd26a26aae" name="Changes" comment="1.0.1.27">
+    <list default="true" id="ef919cf0-dee0-4e94-b631-d2fd26a26aae" name="Changes" comment="1.0.1.30">
+      <change afterPath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/NewChatActivity.kt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/client/android/app/src/main/res/drawable/ic_checked.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/client/android/app/src/main/res/drawable/ic_close.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/client/android/app/src/main/res/drawable/ic_reply.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/client/android/app/src/main/res/drawable/ic_unchecked.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/client/android/app/src/main/res/layout/activity_new_chat.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/client/android/app/src/main/res/layout/dialog_reactions.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/CHANGELOG.md" beforeDir="false" afterPath="$PROJECT_DIR$/CHANGELOG.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/android/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/.idea/misc.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/AndroidManifest.xml" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/AndroidManifest.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/ChatActivity.kt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/ChatListActivity.kt" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/ChatListActivity.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/data/grpc/GrpcClient.kt" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/data/grpc/GrpcClient.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/data/grpc/RealGrpcClient.kt" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/data/grpc/RealGrpcClient.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/data/proto/MessengerProto.kt" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/data/proto/MessengerProto.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/ui/adapter/ChatAdapter.kt" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/ui/adapter/ChatAdapter.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/ui/adapter/MessageAdapter.kt" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/ui/adapter/MessageAdapter.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/ui/chat/ChatViewModel.kt" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/ui/chat/ChatViewModel.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/proto/messenger.proto" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/proto/messenger.proto" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/res/drawable/bg_message_incoming.xml" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/res/drawable/bg_message_incoming.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/res/drawable/bg_message_outgoing.xml" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/res/drawable/bg_message_outgoing.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/res/layout/activity_chat.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/res/layout/item_message.xml" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/res/layout/item_message.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/res/values-ru/strings.xml" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/res/values-ru/strings.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/res/values/colors.xml" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/res/values/colors.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/res/values/strings.xml" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/res/values/strings.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/db.go" beforeDir="false" afterPath="$PROJECT_DIR$/db.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gen/messenger.pb.go" beforeDir="false" afterPath="$PROJECT_DIR$/gen/messenger.pb.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gen/messenger_grpc.pb.go" beforeDir="false" afterPath="$PROJECT_DIR$/gen/messenger_grpc.pb.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/main.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/messenger.proto" beforeDir="false" afterPath="$PROJECT_DIR$/messenger.proto" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server.go" beforeDir="false" afterPath="$PROJECT_DIR$/server.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -115,7 +133,8 @@
     <MESSAGE value="1.0.1" />
     <MESSAGE value="1.0.1 build 0.1.7" />
     <MESSAGE value="1.0.1.27" />
-    <option name="LAST_COMMIT_MESSAGE" value="1.0.1.27" />
+    <MESSAGE value="1.0.1.30" />
+    <option name="LAST_COMMIT_MESSAGE" value="1.0.1.30" />
   </component>
   <component name="VgoModernizerVersionTracker">
     <upgrades>
