@@ -2,6 +2,31 @@
 
 **Author:** Pavel Davydov (ferz)
 
+## [1.0.1.37] - 2026-04-23
+- **Android: Profile Editing Redesign**
+  - **New EditProfileActivity:**
+    - Replaced profile editing dialog with dedicated activity
+    - Added MaterialToolbar with "Редактировать профиль" title
+    - Russian localization for all labels
+    - Buttons without CAPS (textAllCaps="false")
+  - **Profile Features:**
+    - Edit bio (Кратко о себе) - multi-line text field with 4 line limit
+    - Change username via dialog
+    - Change password via dialog with old/new password fields
+    - Change avatar with automatic ChatListActivity refresh
+    - Delete profile with confirmation
+  - **Database Updates:**
+    - Added `bio` column to users table (TEXT)
+    - Added `status` column to users table (VARCHAR(255))
+    - Fixed `UpdateProfile` method to save bio and status
+    - Fixed `GetUserProfile` method to return bio and status
+  - **UI Improvements:**
+    - ProfileActivity now reloads data on resume to show updated profile
+    - ChatListActivity refreshes avatar when returning from EditProfileActivity
+    - Avatar cache updated after profile changes
+  - **Android Version:** 1.0.1.37
+  - **Server Version:** 1.0.1.37
+
 ## [1.0.1.30] - 2026-04-22
 - **Server: Group Chats and Deletion Features**
   - **New RPC Methods:**
