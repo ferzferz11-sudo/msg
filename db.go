@@ -150,10 +150,6 @@ func ConnectDB() (*DB, error) {
 			participants TEXT NOT NULL, -- JSON array of usernames
 			created_at TIMESTAMP NOT NULL DEFAULT NOW()
 		);`,
-		// Cleanup: Remove general chat and its messages
-		`DELETE FROM messages WHERE room_id = 'general';`,
-		`DELETE FROM user_chat_metadata WHERE room_id = 'general';`,
-		`DELETE FROM chats WHERE id = 'general';`,
 	}
 
 	for _, query := range queries {
