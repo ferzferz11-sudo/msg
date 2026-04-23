@@ -18,6 +18,7 @@ message Message {
   bool is_read = 11;
   string avatar_url = 12; // URL of the user's avatar
   string image_url = 13; // URL of the attached image
+  bool edited = 14; // Whether the message has been edited
 }
 
 message Reaction {
@@ -203,6 +204,16 @@ message RemoveParticipantResponse {
   string message = 2;
 }
 
+message EditMessageRequest {
+  string message_id = 1;
+  string text = 2;
+}
+
+message EditMessageResponse {
+  bool success = 1;
+  string message = 2;
+}
+
 message DeleteChatRequest {
   string chat_id = 1;
 }
@@ -241,6 +252,7 @@ service ChatService {
   rpc GetUserAvatar(GetUserAvatarRequest) returns (GetUserAvatarResponse);
   rpc AddParticipant(AddParticipantRequest) returns (AddParticipantResponse);
   rpc RemoveParticipant(RemoveParticipantRequest) returns (RemoveParticipantResponse);
+  rpc EditMessage(EditMessageRequest) returns (EditMessageResponse);
   rpc DeleteChat(DeleteChatRequest) returns (DeleteChatResponse);
   rpc DeleteProfile(DeleteProfileRequest) returns (DeleteProfileResponse);
 }

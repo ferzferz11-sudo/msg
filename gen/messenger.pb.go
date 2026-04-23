@@ -37,6 +37,7 @@ type Message struct {
 	IsRead             bool                   `protobuf:"varint,11,opt,name=is_read,json=isRead,proto3" json:"is_read,omitempty"`
 	AvatarUrl          string                 `protobuf:"bytes,12,opt,name=avatar_url,json=avatarUrl,proto3" json:"avatar_url,omitempty"` // URL of the user's avatar
 	ImageUrl           string                 `protobuf:"bytes,13,opt,name=image_url,json=imageUrl,proto3" json:"image_url,omitempty"`    // URL of the attached image
+	Edited             bool                   `protobuf:"varint,14,opt,name=edited,proto3" json:"edited,omitempty"`                       // Whether the message has been edited
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -160,6 +161,13 @@ func (x *Message) GetImageUrl() string {
 		return x.ImageUrl
 	}
 	return ""
+}
+
+func (x *Message) GetEdited() bool {
+	if x != nil {
+		return x.Edited
+	}
+	return false
 }
 
 type Reaction struct {
@@ -2110,6 +2118,110 @@ func (x *RemoveParticipantResponse) GetMessage() string {
 	return ""
 }
 
+type EditMessageRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	MessageId     string                 `protobuf:"bytes,1,opt,name=message_id,json=messageId,proto3" json:"message_id,omitempty"`
+	Text          string                 `protobuf:"bytes,2,opt,name=text,proto3" json:"text,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EditMessageRequest) Reset() {
+	*x = EditMessageRequest{}
+	mi := &file_messenger_proto_msgTypes[40]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EditMessageRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EditMessageRequest) ProtoMessage() {}
+
+func (x *EditMessageRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_messenger_proto_msgTypes[40]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EditMessageRequest.ProtoReflect.Descriptor instead.
+func (*EditMessageRequest) Descriptor() ([]byte, []int) {
+	return file_messenger_proto_rawDescGZIP(), []int{40}
+}
+
+func (x *EditMessageRequest) GetMessageId() string {
+	if x != nil {
+		return x.MessageId
+	}
+	return ""
+}
+
+func (x *EditMessageRequest) GetText() string {
+	if x != nil {
+		return x.Text
+	}
+	return ""
+}
+
+type EditMessageResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EditMessageResponse) Reset() {
+	*x = EditMessageResponse{}
+	mi := &file_messenger_proto_msgTypes[41]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EditMessageResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EditMessageResponse) ProtoMessage() {}
+
+func (x *EditMessageResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_messenger_proto_msgTypes[41]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EditMessageResponse.ProtoReflect.Descriptor instead.
+func (*EditMessageResponse) Descriptor() ([]byte, []int) {
+	return file_messenger_proto_rawDescGZIP(), []int{41}
+}
+
+func (x *EditMessageResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *EditMessageResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
 type DeleteChatRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ChatId        string                 `protobuf:"bytes,1,opt,name=chat_id,json=chatId,proto3" json:"chat_id,omitempty"`
@@ -2119,7 +2231,7 @@ type DeleteChatRequest struct {
 
 func (x *DeleteChatRequest) Reset() {
 	*x = DeleteChatRequest{}
-	mi := &file_messenger_proto_msgTypes[40]
+	mi := &file_messenger_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2131,7 +2243,7 @@ func (x *DeleteChatRequest) String() string {
 func (*DeleteChatRequest) ProtoMessage() {}
 
 func (x *DeleteChatRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_messenger_proto_msgTypes[40]
+	mi := &file_messenger_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2144,7 +2256,7 @@ func (x *DeleteChatRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteChatRequest.ProtoReflect.Descriptor instead.
 func (*DeleteChatRequest) Descriptor() ([]byte, []int) {
-	return file_messenger_proto_rawDescGZIP(), []int{40}
+	return file_messenger_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *DeleteChatRequest) GetChatId() string {
@@ -2164,7 +2276,7 @@ type DeleteChatResponse struct {
 
 func (x *DeleteChatResponse) Reset() {
 	*x = DeleteChatResponse{}
-	mi := &file_messenger_proto_msgTypes[41]
+	mi := &file_messenger_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2176,7 +2288,7 @@ func (x *DeleteChatResponse) String() string {
 func (*DeleteChatResponse) ProtoMessage() {}
 
 func (x *DeleteChatResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_messenger_proto_msgTypes[41]
+	mi := &file_messenger_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2189,7 +2301,7 @@ func (x *DeleteChatResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteChatResponse.ProtoReflect.Descriptor instead.
 func (*DeleteChatResponse) Descriptor() ([]byte, []int) {
-	return file_messenger_proto_rawDescGZIP(), []int{41}
+	return file_messenger_proto_rawDescGZIP(), []int{43}
 }
 
 func (x *DeleteChatResponse) GetSuccess() bool {
@@ -2215,7 +2327,7 @@ type DeleteProfileRequest struct {
 
 func (x *DeleteProfileRequest) Reset() {
 	*x = DeleteProfileRequest{}
-	mi := &file_messenger_proto_msgTypes[42]
+	mi := &file_messenger_proto_msgTypes[44]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2227,7 +2339,7 @@ func (x *DeleteProfileRequest) String() string {
 func (*DeleteProfileRequest) ProtoMessage() {}
 
 func (x *DeleteProfileRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_messenger_proto_msgTypes[42]
+	mi := &file_messenger_proto_msgTypes[44]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2240,7 +2352,7 @@ func (x *DeleteProfileRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteProfileRequest.ProtoReflect.Descriptor instead.
 func (*DeleteProfileRequest) Descriptor() ([]byte, []int) {
-	return file_messenger_proto_rawDescGZIP(), []int{42}
+	return file_messenger_proto_rawDescGZIP(), []int{44}
 }
 
 func (x *DeleteProfileRequest) GetUsername() string {
@@ -2260,7 +2372,7 @@ type DeleteProfileResponse struct {
 
 func (x *DeleteProfileResponse) Reset() {
 	*x = DeleteProfileResponse{}
-	mi := &file_messenger_proto_msgTypes[43]
+	mi := &file_messenger_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2272,7 +2384,7 @@ func (x *DeleteProfileResponse) String() string {
 func (*DeleteProfileResponse) ProtoMessage() {}
 
 func (x *DeleteProfileResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_messenger_proto_msgTypes[43]
+	mi := &file_messenger_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2285,7 +2397,7 @@ func (x *DeleteProfileResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteProfileResponse.ProtoReflect.Descriptor instead.
 func (*DeleteProfileResponse) Descriptor() ([]byte, []int) {
-	return file_messenger_proto_rawDescGZIP(), []int{43}
+	return file_messenger_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *DeleteProfileResponse) GetSuccess() bool {
@@ -2306,7 +2418,7 @@ var File_messenger_proto protoreflect.FileDescriptor
 
 const file_messenger_proto_rawDesc = "" +
 	"\n" +
-	"\x0fmessenger.proto\x12\tmessenger\x1a\x1fgoogle/protobuf/timestamp.proto\"\xbc\x03\n" +
+	"\x0fmessenger.proto\x12\tmessenger\x1a\x1fgoogle/protobuf/timestamp.proto\"\xd4\x03\n" +
 	"\aMessage\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04user\x18\x02 \x01(\tR\x04user\x12\x12\n" +
@@ -2323,7 +2435,8 @@ const file_messenger_proto_rawDesc = "" +
 	"\ais_read\x18\v \x01(\bR\x06isRead\x12\x1d\n" +
 	"\n" +
 	"avatar_url\x18\f \x01(\tR\tavatarUrl\x12\x1b\n" +
-	"\timage_url\x18\r \x01(\tR\bimageUrl\"4\n" +
+	"\timage_url\x18\r \x01(\tR\bimageUrl\x12\x16\n" +
+	"\x06edited\x18\x0e \x01(\bR\x06edited\"4\n" +
 	"\bReaction\x12\x12\n" +
 	"\x04user\x18\x01 \x01(\tR\x04user\x12\x14\n" +
 	"\x05emoji\x18\x02 \x01(\tR\x05emoji\"a\n" +
@@ -2435,6 +2548,13 @@ const file_messenger_proto_rawDesc = "" +
 	"\busername\x18\x02 \x01(\tR\busername\"O\n" +
 	"\x19RemoveParticipantResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"G\n" +
+	"\x12EditMessageRequest\x12\x1d\n" +
+	"\n" +
+	"message_id\x18\x01 \x01(\tR\tmessageId\x12\x12\n" +
+	"\x04text\x18\x02 \x01(\tR\x04text\"I\n" +
+	"\x13EditMessageResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
 	"\amessage\x18\x02 \x01(\tR\amessage\",\n" +
 	"\x11DeleteChatRequest\x12\x17\n" +
 	"\achat_id\x18\x01 \x01(\tR\x06chatId\"H\n" +
@@ -2445,7 +2565,7 @@ const file_messenger_proto_rawDesc = "" +
 	"\busername\x18\x01 \x01(\tR\busername\"K\n" +
 	"\x15DeleteProfileResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage2\x9d\r\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage2\xeb\r\n" +
 	"\vChatService\x122\n" +
 	"\x04Chat\x12\x12.messenger.Message\x1a\x12.messenger.Message(\x010\x01\x12I\n" +
 	"\n" +
@@ -2467,7 +2587,8 @@ const file_messenger_proto_rawDesc = "" +
 	"\x0eGetUserProfile\x12 .messenger.GetUserProfileRequest\x1a!.messenger.GetUserProfileResponse\x12R\n" +
 	"\rGetUserAvatar\x12\x1f.messenger.GetUserAvatarRequest\x1a .messenger.GetUserAvatarResponse\x12U\n" +
 	"\x0eAddParticipant\x12 .messenger.AddParticipantRequest\x1a!.messenger.AddParticipantResponse\x12^\n" +
-	"\x11RemoveParticipant\x12#.messenger.RemoveParticipantRequest\x1a$.messenger.RemoveParticipantResponse\x12I\n" +
+	"\x11RemoveParticipant\x12#.messenger.RemoveParticipantRequest\x1a$.messenger.RemoveParticipantResponse\x12L\n" +
+	"\vEditMessage\x12\x1d.messenger.EditMessageRequest\x1a\x1e.messenger.EditMessageResponse\x12I\n" +
 	"\n" +
 	"DeleteChat\x12\x1c.messenger.DeleteChatRequest\x1a\x1d.messenger.DeleteChatResponse\x12R\n" +
 	"\rDeleteProfile\x12\x1f.messenger.DeleteProfileRequest\x1a .messenger.DeleteProfileResponseB\aZ\x05./genb\x06proto3"
@@ -2484,7 +2605,7 @@ func file_messenger_proto_rawDescGZIP() []byte {
 	return file_messenger_proto_rawDescData
 }
 
-var file_messenger_proto_msgTypes = make([]protoimpl.MessageInfo, 44)
+var file_messenger_proto_msgTypes = make([]protoimpl.MessageInfo, 46)
 var file_messenger_proto_goTypes = []any{
 	(*Message)(nil),                   // 0: messenger.Message
 	(*Reaction)(nil),                  // 1: messenger.Reaction
@@ -2526,19 +2647,21 @@ var file_messenger_proto_goTypes = []any{
 	(*AddParticipantResponse)(nil),    // 37: messenger.AddParticipantResponse
 	(*RemoveParticipantRequest)(nil),  // 38: messenger.RemoveParticipantRequest
 	(*RemoveParticipantResponse)(nil), // 39: messenger.RemoveParticipantResponse
-	(*DeleteChatRequest)(nil),         // 40: messenger.DeleteChatRequest
-	(*DeleteChatResponse)(nil),        // 41: messenger.DeleteChatResponse
-	(*DeleteProfileRequest)(nil),      // 42: messenger.DeleteProfileRequest
-	(*DeleteProfileResponse)(nil),     // 43: messenger.DeleteProfileResponse
-	(*timestamppb.Timestamp)(nil),     // 44: google.protobuf.Timestamp
+	(*EditMessageRequest)(nil),        // 40: messenger.EditMessageRequest
+	(*EditMessageResponse)(nil),       // 41: messenger.EditMessageResponse
+	(*DeleteChatRequest)(nil),         // 42: messenger.DeleteChatRequest
+	(*DeleteChatResponse)(nil),        // 43: messenger.DeleteChatResponse
+	(*DeleteProfileRequest)(nil),      // 44: messenger.DeleteProfileRequest
+	(*DeleteProfileResponse)(nil),     // 45: messenger.DeleteProfileResponse
+	(*timestamppb.Timestamp)(nil),     // 46: google.protobuf.Timestamp
 }
 var file_messenger_proto_depIdxs = []int32{
-	44, // 0: messenger.Message.created_at:type_name -> google.protobuf.Timestamp
+	46, // 0: messenger.Message.created_at:type_name -> google.protobuf.Timestamp
 	1,  // 1: messenger.Message.reactions:type_name -> messenger.Reaction
 	1,  // 2: messenger.ReactionRequest.reaction:type_name -> messenger.Reaction
 	0,  // 3: messenger.GetHistoryResponse.messages:type_name -> messenger.Message
 	0,  // 4: messenger.DeleteMessagesRequest.messages:type_name -> messenger.Message
-	44, // 5: messenger.ChatInfo.created_at:type_name -> google.protobuf.Timestamp
+	46, // 5: messenger.ChatInfo.created_at:type_name -> google.protobuf.Timestamp
 	15, // 6: messenger.GetChatsResponse.chats:type_name -> messenger.ChatInfo
 	0,  // 7: messenger.ChatService.Chat:input_type -> messenger.Message
 	4,  // 8: messenger.ChatService.GetClients:input_type -> messenger.ClientListRequest
@@ -2559,31 +2682,33 @@ var file_messenger_proto_depIdxs = []int32{
 	34, // 23: messenger.ChatService.GetUserAvatar:input_type -> messenger.GetUserAvatarRequest
 	36, // 24: messenger.ChatService.AddParticipant:input_type -> messenger.AddParticipantRequest
 	38, // 25: messenger.ChatService.RemoveParticipant:input_type -> messenger.RemoveParticipantRequest
-	40, // 26: messenger.ChatService.DeleteChat:input_type -> messenger.DeleteChatRequest
-	42, // 27: messenger.ChatService.DeleteProfile:input_type -> messenger.DeleteProfileRequest
-	0,  // 28: messenger.ChatService.Chat:output_type -> messenger.Message
-	5,  // 29: messenger.ChatService.GetClients:output_type -> messenger.ClientListResponse
-	7,  // 30: messenger.ChatService.GetAllUsers:output_type -> messenger.GetAllUsersResponse
-	10, // 31: messenger.ChatService.GetHistory:output_type -> messenger.GetHistoryResponse
-	3,  // 32: messenger.ChatService.SetReaction:output_type -> messenger.ReactionResponse
-	12, // 33: messenger.ChatService.DeleteMessages:output_type -> messenger.DeleteMessagesResponse
-	14, // 34: messenger.ChatService.RegisterToken:output_type -> messenger.TokenResponse
-	17, // 35: messenger.ChatService.GetChats:output_type -> messenger.GetChatsResponse
-	19, // 36: messenger.ChatService.CreateDirectChat:output_type -> messenger.CreateDirectChatResponse
-	21, // 37: messenger.ChatService.CreateGroupChat:output_type -> messenger.CreateGroupChatResponse
-	23, // 38: messenger.ChatService.UpdateUsername:output_type -> messenger.UpdateUsernameResponse
-	25, // 39: messenger.ChatService.UpdatePassword:output_type -> messenger.UpdatePasswordResponse
-	27, // 40: messenger.ChatService.MarkRead:output_type -> messenger.MarkReadResponse
-	29, // 41: messenger.ChatService.UpdateAvatar:output_type -> messenger.UpdateAvatarResponse
-	31, // 42: messenger.ChatService.UpdateProfile:output_type -> messenger.UpdateProfileResponse
-	33, // 43: messenger.ChatService.GetUserProfile:output_type -> messenger.GetUserProfileResponse
-	35, // 44: messenger.ChatService.GetUserAvatar:output_type -> messenger.GetUserAvatarResponse
-	37, // 45: messenger.ChatService.AddParticipant:output_type -> messenger.AddParticipantResponse
-	39, // 46: messenger.ChatService.RemoveParticipant:output_type -> messenger.RemoveParticipantResponse
-	41, // 47: messenger.ChatService.DeleteChat:output_type -> messenger.DeleteChatResponse
-	43, // 48: messenger.ChatService.DeleteProfile:output_type -> messenger.DeleteProfileResponse
-	28, // [28:49] is the sub-list for method output_type
-	7,  // [7:28] is the sub-list for method input_type
+	40, // 26: messenger.ChatService.EditMessage:input_type -> messenger.EditMessageRequest
+	42, // 27: messenger.ChatService.DeleteChat:input_type -> messenger.DeleteChatRequest
+	44, // 28: messenger.ChatService.DeleteProfile:input_type -> messenger.DeleteProfileRequest
+	0,  // 29: messenger.ChatService.Chat:output_type -> messenger.Message
+	5,  // 30: messenger.ChatService.GetClients:output_type -> messenger.ClientListResponse
+	7,  // 31: messenger.ChatService.GetAllUsers:output_type -> messenger.GetAllUsersResponse
+	10, // 32: messenger.ChatService.GetHistory:output_type -> messenger.GetHistoryResponse
+	3,  // 33: messenger.ChatService.SetReaction:output_type -> messenger.ReactionResponse
+	12, // 34: messenger.ChatService.DeleteMessages:output_type -> messenger.DeleteMessagesResponse
+	14, // 35: messenger.ChatService.RegisterToken:output_type -> messenger.TokenResponse
+	17, // 36: messenger.ChatService.GetChats:output_type -> messenger.GetChatsResponse
+	19, // 37: messenger.ChatService.CreateDirectChat:output_type -> messenger.CreateDirectChatResponse
+	21, // 38: messenger.ChatService.CreateGroupChat:output_type -> messenger.CreateGroupChatResponse
+	23, // 39: messenger.ChatService.UpdateUsername:output_type -> messenger.UpdateUsernameResponse
+	25, // 40: messenger.ChatService.UpdatePassword:output_type -> messenger.UpdatePasswordResponse
+	27, // 41: messenger.ChatService.MarkRead:output_type -> messenger.MarkReadResponse
+	29, // 42: messenger.ChatService.UpdateAvatar:output_type -> messenger.UpdateAvatarResponse
+	31, // 43: messenger.ChatService.UpdateProfile:output_type -> messenger.UpdateProfileResponse
+	33, // 44: messenger.ChatService.GetUserProfile:output_type -> messenger.GetUserProfileResponse
+	35, // 45: messenger.ChatService.GetUserAvatar:output_type -> messenger.GetUserAvatarResponse
+	37, // 46: messenger.ChatService.AddParticipant:output_type -> messenger.AddParticipantResponse
+	39, // 47: messenger.ChatService.RemoveParticipant:output_type -> messenger.RemoveParticipantResponse
+	41, // 48: messenger.ChatService.EditMessage:output_type -> messenger.EditMessageResponse
+	43, // 49: messenger.ChatService.DeleteChat:output_type -> messenger.DeleteChatResponse
+	45, // 50: messenger.ChatService.DeleteProfile:output_type -> messenger.DeleteProfileResponse
+	29, // [29:51] is the sub-list for method output_type
+	7,  // [7:29] is the sub-list for method input_type
 	7,  // [7:7] is the sub-list for extension type_name
 	7,  // [7:7] is the sub-list for extension extendee
 	0,  // [0:7] is the sub-list for field type_name
@@ -2600,7 +2725,7 @@ func file_messenger_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_messenger_proto_rawDesc), len(file_messenger_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   44,
+			NumMessages:   46,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

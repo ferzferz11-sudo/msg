@@ -80,6 +80,13 @@ func ConnectDB() (*DB, error) {
 		    ALTER TABLE messages ADD COLUMN replied_to_message_id VARCHAR(255);
 		  END IF;
 		 END $$;`,
+		// Migration: Add edited column to messages
+		`DO $$
+		 BEGIN
+		  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='edited') THEN
+		    ALTER TABLE messages ADD COLUMN edited BOOLEAN DEFAULT false;
+		  END IF;
+		 END $$;`,
 		`DO $$
 		 BEGIN
 		  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='replied_to_user') THEN
@@ -205,8 +212,9 @@ func (db *DB) GetMessages(limit int, roomID string) ([]struct {
 	IsRead             bool
 	AvatarURL          string
 	ImageURL           string
+	Edited             bool
 }, error) {
-	query := `SELECT COALESCE(m.message_id, ''), m.username, m.encrypted_text, m.created_at, COALESCE(m.replied_to_message_id, ''), COALESCE(m.replied_to_user, ''), COALESCE(m.replied_to_text, ''), COALESCE(m.room_id, 'general'), m.is_read, u.avatar_url, COALESCE(m.image_url, '')
+	query := `SELECT COALESCE(m.message_id, ''), m.username, m.encrypted_text, m.created_at, COALESCE(m.replied_to_message_id, ''), COALESCE(m.replied_to_user, ''), COALESCE(m.replied_to_text, ''), COALESCE(m.room_id, 'general'), m.is_read, u.avatar_url, COALESCE(m.image_url, ''), COALESCE(m.edited, false)
 	             FROM messages m
 	             LEFT JOIN users u ON m.username = u.username
 	             WHERE m.room_id = $1 ORDER BY m.created_at DESC LIMIT $2`
@@ -232,6 +240,7 @@ func (db *DB) GetMessages(limit int, roomID string) ([]struct {
 		IsRead             bool
 		AvatarURL          string
 		ImageURL           string
+		Edited             bool
 	}
 
 	for rows.Next() {
@@ -247,8 +256,9 @@ func (db *DB) GetMessages(limit int, roomID string) ([]struct {
 			IsRead             bool
 			AvatarURL          sql.NullString
 			ImageURL           string
+			Edited             bool
 		}
-		if err := rows.Scan(&r.MessageID, &r.Username, &r.Encrypted, &r.CreatedAt, &r.RepliedToMessageID, &r.RepliedToUser, &r.RepliedToText, &r.RoomID, &r.IsRead, &r.AvatarURL, &r.ImageURL); err != nil {
+		if err := rows.Scan(&r.MessageID, &r.Username, &r.Encrypted, &r.CreatedAt, &r.RepliedToMessageID, &r.RepliedToUser, &r.RepliedToText, &r.RoomID, &r.IsRead, &r.AvatarURL, &r.ImageURL, &r.Edited); err != nil {
 			return nil, err
 		}
 		avatarURL := ""
@@ -267,10 +277,12 @@ func (db *DB) GetMessages(limit int, roomID string) ([]struct {
 			IsRead             bool
 			AvatarURL          string
 			ImageURL           string
+			Edited             bool
 		}{
 			MessageID:          r.MessageID,
 			Username:           r.Username,
 			Encrypted:          r.Encrypted,
+			Edited:             r.Edited,
 			CreatedAt:          r.CreatedAt,
 			RepliedToMessageID: r.RepliedToMessageID,
 			RepliedToUser:      r.RepliedToUser,
@@ -864,7 +876,19 @@ func (db *DB) UpdateProfile(username, bio, status string) error {
 
 // UpdateChatParticipants updates the participants of a chat
 func (db *DB) UpdateChatParticipants(chatID, participants string) error {
-	query := `UPDATE chats SET participants = $1 WHERE id = $2`
+	query := `UPDATE chats SET participants = $1 WHERE message_id = $2`
 	_, err := db.Exec(query, participants, chatID)
+	return err
+}
+
+// UpdateMessageText updates the text of a message by UUID and marks it as edited
+func (db *DB) UpdateMessageText(messageID, newText string) error {
+	encrypted, err := encrypt(newText)
+	if err != nil {
+		return err
+	}
+
+	query := `UPDATE messages SET encrypted_text = $1, edited = true WHERE message_id = $2`
+	_, err = db.Exec(query, encrypted, messageID)
 	return err
 }

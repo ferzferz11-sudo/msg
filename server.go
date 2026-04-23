@@ -284,6 +284,7 @@ func (s *server) GetHistory(_ context.Context, req *gen.GetHistoryRequest) (*gen
 			IsRead:             m.IsRead,
 			AvatarUrl:          m.AvatarURL,
 			ImageUrl:           m.ImageURL,
+			Edited:             m.Edited,
 		})
 	}
 
@@ -693,4 +694,20 @@ func (s *server) DeleteMessages(_ context.Context, req *gen.DeleteMessagesReques
 	}
 
 	return &gen.DeleteMessagesResponse{Success: anyDeleted}, nil
+}
+
+// EditMessage edits a message by ID
+func (s *server) EditMessage(_ context.Context, req *gen.EditMessageRequest) (*gen.EditMessageResponse, error) {
+	if req.MessageId == "" {
+		return &gen.EditMessageResponse{Success: false, Message: "Message ID is required"}, nil
+	}
+
+	err := s.db.UpdateMessageText(req.MessageId, req.Text)
+	if err != nil {
+		log.Printf("Failed to edit message %s: %v", req.MessageId, err)
+		return &gen.EditMessageResponse{Success: false, Message: err.Error()}, nil
+	}
+
+	log.Printf("Edited message %s", req.MessageId)
+	return &gen.EditMessageResponse{Success: true, Message: "Message edited successfully"}, nil
 }
