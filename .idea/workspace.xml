@@ -5,7 +5,14 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="ef919cf0-dee0-4e94-b631-d2fd26a26aae" name="Changes" comment="1.0.1.36">
-      <change beforePath="$PROJECT_DIR$/.github/workflows/go.yml" beforeDir="false" afterPath="$PROJECT_DIR$/.github/workflows/go.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/AndroidManifest.xml" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/AndroidManifest.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/ChatListActivity.kt" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/ChatListActivity.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/ProfileActivity.kt" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/ProfileActivity.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/data/grpc/GrpcClient.kt" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/data/grpc/GrpcClient.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/data/proto/ProtoUtils.kt" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/data/proto/ProtoUtils.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/android/app/src/test/java/msg/client/android/ExampleUnitTest.kt" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/test/java/msg/client/android/ExampleUnitTest.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/db.go" beforeDir="false" afterPath="$PROJECT_DIR$/db.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

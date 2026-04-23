@@ -120,6 +120,20 @@ func ConnectDB() (*DB, error) {
 		    ALTER TABLE messages ADD COLUMN image_url VARCHAR(512) DEFAULT '';
 		  END IF;
 		 END $$;`,
+		// Migration: Add bio to users
+		`DO $$
+          BEGIN
+           IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='bio') THEN
+             ALTER TABLE users ADD COLUMN bio TEXT;
+           END IF;
+          END $$;`,
+		// Migration: Add status to users
+		`DO $$
+          BEGIN
+           IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='status') THEN
+             ALTER TABLE users ADD COLUMN status VARCHAR(255);
+           END IF;
+          END $$;`,
 		`CREATE TABLE IF NOT EXISTS user_chat_metadata (
 			username VARCHAR(255) NOT NULL,
 			room_id VARCHAR(255) NOT NULL,
@@ -825,16 +839,13 @@ func (db *DB) GetUserProfile(username string) (struct {
 }, error) {
 	var profile struct {
 		Username  string
-		Bio       string
-		Status    string
+		Bio       sql.NullString
+		Status    sql.NullString
 		AvatarURL sql.NullString
 	}
-	// Note: You may need to add 'bio' and 'status' columns to your 'users' table if they don't exist
-	// For now we will try to select them, but fall back gracefully if the columns are missing.
 
-	// First check if columns exist by trying the query
-	query := `SELECT username, avatar_url FROM users WHERE username = $1`
-	err := db.QueryRow(query, username).Scan(&profile.Username, &profile.AvatarURL)
+	query := `SELECT username, bio, status, avatar_url FROM users WHERE username = $1`
+	err := db.QueryRow(query, username).Scan(&profile.Username, &profile.Bio, &profile.Status, &profile.AvatarURL)
 	if err != nil {
 		return struct {
 			Username  string
@@ -844,10 +855,15 @@ func (db *DB) GetUserProfile(username string) (struct {
 		}{}, err
 	}
 
-	// For bio and status, since they might not be in the table yet based on previous migrations,
-	// we will just set them to empty strings or handle them if they do exist in a separate migration.
-	profile.Bio = ""
-	profile.Status = ""
+	bio := ""
+	if profile.Bio.Valid {
+		bio = profile.Bio.String
+	}
+
+	status := ""
+	if profile.Status.Valid {
+		status = profile.Status.String
+	}
 
 	avatar := ""
 	if profile.AvatarURL.Valid {
@@ -861,16 +877,23 @@ func (db *DB) GetUserProfile(username string) (struct {
 		AvatarURL string
 	}{
 		Username:  profile.Username,
-		Bio:       profile.Bio,
-		Status:    profile.Status,
+		Bio:       bio,
+		Status:    status,
 		AvatarURL: avatar,
 	}, nil
 }
 
 // UpdateProfile updates user profile information
 func (db *DB) UpdateProfile(username, bio, status string) error {
-	// Note: You need to add 'bio' and 'status' columns to the users table
-	// Currently just returning nil to satisfy the interface until columns are added
+	query := `UPDATE users SET bio = $1, status = $2 WHERE username = $3`
+	result, err := db.Exec(query, bio, status, username)
+	if err != nil {
+		return err
+	}
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		return fmt.Errorf("user not found")
+	}
 	return nil
 }
 
