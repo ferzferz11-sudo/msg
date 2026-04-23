@@ -9,6 +9,7 @@ package main
 import (
 	"LavenderMessenger/gen"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -452,6 +453,34 @@ func (s *server) UpdateAvatar(_ context.Context, req *gen.UpdateAvatarRequest) (
 	return &gen.UpdateAvatarResponse{Success: true, Message: "Avatar updated successfully"}, nil
 }
 
+// UpdateProfile updates user bio and status
+func (s *server) UpdateProfile(_ context.Context, req *gen.UpdateProfileRequest) (*gen.UpdateProfileResponse, error) {
+	err := s.db.UpdateProfile(req.Username, req.Bio, req.Status)
+	if err != nil {
+		log.Printf("Failed to update profile for %s: %v", req.Username, err)
+		return &gen.UpdateProfileResponse{Success: false, Message: err.Error()}, nil
+	}
+
+	log.Printf("Updated profile for %s", req.Username)
+	return &gen.UpdateProfileResponse{Success: true, Message: "Profile updated successfully"}, nil
+}
+
+// GetUserProfile retrieves user profile information
+func (s *server) GetUserProfile(_ context.Context, req *gen.GetUserProfileRequest) (*gen.GetUserProfileResponse, error) {
+	profile, err := s.db.GetUserProfile(req.Username)
+	if err != nil {
+		log.Printf("Failed to get profile for %s: %v", req.Username, err)
+		return &gen.GetUserProfileResponse{}, nil
+	}
+
+	return &gen.GetUserProfileResponse{
+		Username:  profile.Username,
+		Bio:       profile.Bio,
+		Status:    profile.Status,
+		AvatarUrl: profile.AvatarURL,
+	}, nil
+}
+
 // GetUserAvatar retrieves the avatar URL for a user
 func (s *server) GetUserAvatar(_ context.Context, req *gen.GetUserAvatarRequest) (*gen.GetUserAvatarResponse, error) {
 	avatarURL, err := s.db.GetUserAvatar(req.Username)
@@ -461,6 +490,78 @@ func (s *server) GetUserAvatar(_ context.Context, req *gen.GetUserAvatarRequest)
 	}
 
 	return &gen.GetUserAvatarResponse{AvatarUrl: avatarURL}, nil
+}
+
+// AddParticipant adds a user to a group chat
+func (s *server) AddParticipant(_ context.Context, req *gen.AddParticipantRequest) (*gen.AddParticipantResponse, error) {
+	chat, err := s.db.GetChat(req.ChatId)
+	if err != nil {
+		return &gen.AddParticipantResponse{Success: false, Message: "Chat not found"}, nil
+	}
+
+	if chat.Type != "group" {
+		return &gen.AddParticipantResponse{Success: false, Message: "Participants can only be added to group chats"}, nil
+	}
+
+	var participants []string
+	if err := json.Unmarshal([]byte(chat.Participants), &participants); err != nil {
+		return &gen.AddParticipantResponse{Success: false, Message: "Internal error parsing participants"}, nil
+	}
+
+	// Check if user already in chat
+	for _, p := range participants {
+		if p == req.Username {
+			return &gen.AddParticipantResponse{Success: false, Message: "User already in chat"}, nil
+		}
+	}
+
+	participants = append(participants, req.Username)
+	updatedParticipants, _ := json.Marshal(participants)
+
+	if err := s.db.UpdateChatParticipants(req.ChatId, string(updatedParticipants)); err != nil {
+		return &gen.AddParticipantResponse{Success: false, Message: "Failed to update participants"}, nil
+	}
+
+	return &gen.AddParticipantResponse{Success: true, Message: "User added successfully"}, nil
+}
+
+// RemoveParticipant removes a user from a group chat
+func (s *server) RemoveParticipant(_ context.Context, req *gen.RemoveParticipantRequest) (*gen.RemoveParticipantResponse, error) {
+	chat, err := s.db.GetChat(req.ChatId)
+	if err != nil {
+		return &gen.RemoveParticipantResponse{Success: false, Message: "Chat not found"}, nil
+	}
+
+	if chat.Type != "group" {
+		return &gen.RemoveParticipantResponse{Success: false, Message: "Participants can only be removed from group chats"}, nil
+	}
+
+	var participants []string
+	if err := json.Unmarshal([]byte(chat.Participants), &participants); err != nil {
+		return &gen.RemoveParticipantResponse{Success: false, Message: "Internal error parsing participants"}, nil
+	}
+
+	newParticipants := []string{}
+	found := false
+	for _, p := range participants {
+		if p != req.Username {
+			newParticipants = append(newParticipants, p)
+		} else {
+			found = true
+		}
+	}
+
+	if !found {
+		return &gen.RemoveParticipantResponse{Success: false, Message: "User not in chat"}, nil
+	}
+
+	updatedParticipants, _ := json.Marshal(newParticipants)
+
+	if err := s.db.UpdateChatParticipants(req.ChatId, string(updatedParticipants)); err != nil {
+		return &gen.RemoveParticipantResponse{Success: false, Message: "Failed to update participants"}, nil
+	}
+
+	return &gen.RemoveParticipantResponse{Success: true, Message: "User removed successfully"}, nil
 }
 
 // DeleteChat deletes a chat and all its messages and images

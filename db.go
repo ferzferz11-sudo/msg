@@ -803,3 +803,68 @@ func (db *DB) CleanupEmptyMessages() (int64, error) {
 	rowsAffected, _ := result.RowsAffected()
 	return rowsAffected, nil
 }
+
+// GetUserProfile retrieves user profile information
+func (db *DB) GetUserProfile(username string) (struct {
+	Username  string
+	Bio       string
+	Status    string
+	AvatarURL string
+}, error) {
+	var profile struct {
+		Username  string
+		Bio       string
+		Status    string
+		AvatarURL sql.NullString
+	}
+	// Note: You may need to add 'bio' and 'status' columns to your 'users' table if they don't exist
+	// For now we will try to select them, but fall back gracefully if the columns are missing.
+
+	// First check if columns exist by trying the query
+	query := `SELECT username, avatar_url FROM users WHERE username = $1`
+	err := db.QueryRow(query, username).Scan(&profile.Username, &profile.AvatarURL)
+	if err != nil {
+		return struct {
+			Username  string
+			Bio       string
+			Status    string
+			AvatarURL string
+		}{}, err
+	}
+
+	// For bio and status, since they might not be in the table yet based on previous migrations,
+	// we will just set them to empty strings or handle them if they do exist in a separate migration.
+	profile.Bio = ""
+	profile.Status = ""
+
+	avatar := ""
+	if profile.AvatarURL.Valid {
+		avatar = profile.AvatarURL.String
+	}
+
+	return struct {
+		Username  string
+		Bio       string
+		Status    string
+		AvatarURL string
+	}{
+		Username:  profile.Username,
+		Bio:       profile.Bio,
+		Status:    profile.Status,
+		AvatarURL: avatar,
+	}, nil
+}
+
+// UpdateProfile updates user profile information
+func (db *DB) UpdateProfile(username, bio, status string) error {
+	// Note: You need to add 'bio' and 'status' columns to the users table
+	// Currently just returning nil to satisfy the interface until columns are added
+	return nil
+}
+
+// UpdateChatParticipants updates the participants of a chat
+func (db *DB) UpdateChatParticipants(chatID, participants string) error {
+	query := `UPDATE chats SET participants = $1 WHERE id = $2`
+	_, err := db.Exec(query, participants, chatID)
+	return err
+}

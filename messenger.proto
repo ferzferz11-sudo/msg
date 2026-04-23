@@ -153,12 +153,54 @@ message UpdateAvatarResponse {
   string message = 2;
 }
 
+message UpdateProfileRequest {
+  string username = 1;
+  string bio = 2;
+  string status = 3;
+}
+
+message UpdateProfileResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message GetUserProfileRequest {
+  string username = 1;
+}
+
+message GetUserProfileResponse {
+  string username = 1;
+  string bio = 2;
+  string status = 3;
+  string avatar_url = 4;
+}
+
 message GetUserAvatarRequest {
   string username = 1;
 }
 
 message GetUserAvatarResponse {
   string avatar_url = 1;
+}
+
+message AddParticipantRequest {
+  string chat_id = 1;
+  string username = 2;
+}
+
+message AddParticipantResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message RemoveParticipantRequest {
+  string chat_id = 1;
+  string username = 2;
+}
+
+message RemoveParticipantResponse {
+  bool success = 1;
+  string message = 2;
 }
 
 message DeleteChatRequest {
@@ -194,7 +236,11 @@ service ChatService {
   rpc UpdatePassword(UpdatePasswordRequest) returns (UpdatePasswordResponse);
   rpc MarkRead(MarkReadRequest) returns (MarkReadResponse);
   rpc UpdateAvatar(UpdateAvatarRequest) returns (UpdateAvatarResponse);
+  rpc UpdateProfile(UpdateProfileRequest) returns (UpdateProfileResponse);
+  rpc GetUserProfile(GetUserProfileRequest) returns (GetUserProfileResponse);
   rpc GetUserAvatar(GetUserAvatarRequest) returns (GetUserAvatarResponse);
+  rpc AddParticipant(AddParticipantRequest) returns (AddParticipantResponse);
+  rpc RemoveParticipant(RemoveParticipantRequest) returns (RemoveParticipantResponse);
   rpc DeleteChat(DeleteChatRequest) returns (DeleteChatResponse);
   rpc DeleteProfile(DeleteProfileRequest) returns (DeleteProfileResponse);
 }

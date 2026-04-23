@@ -19,23 +19,27 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	ChatService_Chat_FullMethodName             = "/messenger.ChatService/Chat"
-	ChatService_GetClients_FullMethodName       = "/messenger.ChatService/GetClients"
-	ChatService_GetAllUsers_FullMethodName      = "/messenger.ChatService/GetAllUsers"
-	ChatService_GetHistory_FullMethodName       = "/messenger.ChatService/GetHistory"
-	ChatService_SetReaction_FullMethodName      = "/messenger.ChatService/SetReaction"
-	ChatService_DeleteMessages_FullMethodName   = "/messenger.ChatService/DeleteMessages"
-	ChatService_RegisterToken_FullMethodName    = "/messenger.ChatService/RegisterToken"
-	ChatService_GetChats_FullMethodName         = "/messenger.ChatService/GetChats"
-	ChatService_CreateDirectChat_FullMethodName = "/messenger.ChatService/CreateDirectChat"
-	ChatService_CreateGroupChat_FullMethodName  = "/messenger.ChatService/CreateGroupChat"
-	ChatService_UpdateUsername_FullMethodName   = "/messenger.ChatService/UpdateUsername"
-	ChatService_UpdatePassword_FullMethodName   = "/messenger.ChatService/UpdatePassword"
-	ChatService_MarkRead_FullMethodName         = "/messenger.ChatService/MarkRead"
-	ChatService_UpdateAvatar_FullMethodName     = "/messenger.ChatService/UpdateAvatar"
-	ChatService_GetUserAvatar_FullMethodName    = "/messenger.ChatService/GetUserAvatar"
-	ChatService_DeleteChat_FullMethodName       = "/messenger.ChatService/DeleteChat"
-	ChatService_DeleteProfile_FullMethodName    = "/messenger.ChatService/DeleteProfile"
+	ChatService_Chat_FullMethodName              = "/messenger.ChatService/Chat"
+	ChatService_GetClients_FullMethodName        = "/messenger.ChatService/GetClients"
+	ChatService_GetAllUsers_FullMethodName       = "/messenger.ChatService/GetAllUsers"
+	ChatService_GetHistory_FullMethodName        = "/messenger.ChatService/GetHistory"
+	ChatService_SetReaction_FullMethodName       = "/messenger.ChatService/SetReaction"
+	ChatService_DeleteMessages_FullMethodName    = "/messenger.ChatService/DeleteMessages"
+	ChatService_RegisterToken_FullMethodName     = "/messenger.ChatService/RegisterToken"
+	ChatService_GetChats_FullMethodName          = "/messenger.ChatService/GetChats"
+	ChatService_CreateDirectChat_FullMethodName  = "/messenger.ChatService/CreateDirectChat"
+	ChatService_CreateGroupChat_FullMethodName   = "/messenger.ChatService/CreateGroupChat"
+	ChatService_UpdateUsername_FullMethodName    = "/messenger.ChatService/UpdateUsername"
+	ChatService_UpdatePassword_FullMethodName    = "/messenger.ChatService/UpdatePassword"
+	ChatService_MarkRead_FullMethodName          = "/messenger.ChatService/MarkRead"
+	ChatService_UpdateAvatar_FullMethodName      = "/messenger.ChatService/UpdateAvatar"
+	ChatService_UpdateProfile_FullMethodName     = "/messenger.ChatService/UpdateProfile"
+	ChatService_GetUserProfile_FullMethodName    = "/messenger.ChatService/GetUserProfile"
+	ChatService_GetUserAvatar_FullMethodName     = "/messenger.ChatService/GetUserAvatar"
+	ChatService_AddParticipant_FullMethodName    = "/messenger.ChatService/AddParticipant"
+	ChatService_RemoveParticipant_FullMethodName = "/messenger.ChatService/RemoveParticipant"
+	ChatService_DeleteChat_FullMethodName        = "/messenger.ChatService/DeleteChat"
+	ChatService_DeleteProfile_FullMethodName     = "/messenger.ChatService/DeleteProfile"
 )
 
 // ChatServiceClient is the client API for ChatService service.
@@ -56,7 +60,11 @@ type ChatServiceClient interface {
 	UpdatePassword(ctx context.Context, in *UpdatePasswordRequest, opts ...grpc.CallOption) (*UpdatePasswordResponse, error)
 	MarkRead(ctx context.Context, in *MarkReadRequest, opts ...grpc.CallOption) (*MarkReadResponse, error)
 	UpdateAvatar(ctx context.Context, in *UpdateAvatarRequest, opts ...grpc.CallOption) (*UpdateAvatarResponse, error)
+	UpdateProfile(ctx context.Context, in *UpdateProfileRequest, opts ...grpc.CallOption) (*UpdateProfileResponse, error)
+	GetUserProfile(ctx context.Context, in *GetUserProfileRequest, opts ...grpc.CallOption) (*GetUserProfileResponse, error)
 	GetUserAvatar(ctx context.Context, in *GetUserAvatarRequest, opts ...grpc.CallOption) (*GetUserAvatarResponse, error)
+	AddParticipant(ctx context.Context, in *AddParticipantRequest, opts ...grpc.CallOption) (*AddParticipantResponse, error)
+	RemoveParticipant(ctx context.Context, in *RemoveParticipantRequest, opts ...grpc.CallOption) (*RemoveParticipantResponse, error)
 	DeleteChat(ctx context.Context, in *DeleteChatRequest, opts ...grpc.CallOption) (*DeleteChatResponse, error)
 	DeleteProfile(ctx context.Context, in *DeleteProfileRequest, opts ...grpc.CallOption) (*DeleteProfileResponse, error)
 }
@@ -212,10 +220,50 @@ func (c *chatServiceClient) UpdateAvatar(ctx context.Context, in *UpdateAvatarRe
 	return out, nil
 }
 
+func (c *chatServiceClient) UpdateProfile(ctx context.Context, in *UpdateProfileRequest, opts ...grpc.CallOption) (*UpdateProfileResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateProfileResponse)
+	err := c.cc.Invoke(ctx, ChatService_UpdateProfile_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) GetUserProfile(ctx context.Context, in *GetUserProfileRequest, opts ...grpc.CallOption) (*GetUserProfileResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetUserProfileResponse)
+	err := c.cc.Invoke(ctx, ChatService_GetUserProfile_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *chatServiceClient) GetUserAvatar(ctx context.Context, in *GetUserAvatarRequest, opts ...grpc.CallOption) (*GetUserAvatarResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetUserAvatarResponse)
 	err := c.cc.Invoke(ctx, ChatService_GetUserAvatar_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) AddParticipant(ctx context.Context, in *AddParticipantRequest, opts ...grpc.CallOption) (*AddParticipantResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AddParticipantResponse)
+	err := c.cc.Invoke(ctx, ChatService_AddParticipant_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) RemoveParticipant(ctx context.Context, in *RemoveParticipantRequest, opts ...grpc.CallOption) (*RemoveParticipantResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RemoveParticipantResponse)
+	err := c.cc.Invoke(ctx, ChatService_RemoveParticipant_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -260,7 +308,11 @@ type ChatServiceServer interface {
 	UpdatePassword(context.Context, *UpdatePasswordRequest) (*UpdatePasswordResponse, error)
 	MarkRead(context.Context, *MarkReadRequest) (*MarkReadResponse, error)
 	UpdateAvatar(context.Context, *UpdateAvatarRequest) (*UpdateAvatarResponse, error)
+	UpdateProfile(context.Context, *UpdateProfileRequest) (*UpdateProfileResponse, error)
+	GetUserProfile(context.Context, *GetUserProfileRequest) (*GetUserProfileResponse, error)
 	GetUserAvatar(context.Context, *GetUserAvatarRequest) (*GetUserAvatarResponse, error)
+	AddParticipant(context.Context, *AddParticipantRequest) (*AddParticipantResponse, error)
+	RemoveParticipant(context.Context, *RemoveParticipantRequest) (*RemoveParticipantResponse, error)
 	DeleteChat(context.Context, *DeleteChatRequest) (*DeleteChatResponse, error)
 	DeleteProfile(context.Context, *DeleteProfileRequest) (*DeleteProfileResponse, error)
 	mustEmbedUnimplementedChatServiceServer()
@@ -315,8 +367,20 @@ func (UnimplementedChatServiceServer) MarkRead(context.Context, *MarkReadRequest
 func (UnimplementedChatServiceServer) UpdateAvatar(context.Context, *UpdateAvatarRequest) (*UpdateAvatarResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method UpdateAvatar not implemented")
 }
+func (UnimplementedChatServiceServer) UpdateProfile(context.Context, *UpdateProfileRequest) (*UpdateProfileResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateProfile not implemented")
+}
+func (UnimplementedChatServiceServer) GetUserProfile(context.Context, *GetUserProfileRequest) (*GetUserProfileResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetUserProfile not implemented")
+}
 func (UnimplementedChatServiceServer) GetUserAvatar(context.Context, *GetUserAvatarRequest) (*GetUserAvatarResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetUserAvatar not implemented")
+}
+func (UnimplementedChatServiceServer) AddParticipant(context.Context, *AddParticipantRequest) (*AddParticipantResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method AddParticipant not implemented")
+}
+func (UnimplementedChatServiceServer) RemoveParticipant(context.Context, *RemoveParticipantRequest) (*RemoveParticipantResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RemoveParticipant not implemented")
 }
 func (UnimplementedChatServiceServer) DeleteChat(context.Context, *DeleteChatRequest) (*DeleteChatResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteChat not implemented")
@@ -586,6 +650,42 @@ func _ChatService_UpdateAvatar_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ChatService_UpdateProfile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateProfileRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).UpdateProfile(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_UpdateProfile_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).UpdateProfile(ctx, req.(*UpdateProfileRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_GetUserProfile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetUserProfileRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).GetUserProfile(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_GetUserProfile_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).GetUserProfile(ctx, req.(*GetUserProfileRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ChatService_GetUserAvatar_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetUserAvatarRequest)
 	if err := dec(in); err != nil {
@@ -600,6 +700,42 @@ func _ChatService_GetUserAvatar_Handler(srv interface{}, ctx context.Context, de
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ChatServiceServer).GetUserAvatar(ctx, req.(*GetUserAvatarRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_AddParticipant_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AddParticipantRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).AddParticipant(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_AddParticipant_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).AddParticipant(ctx, req.(*AddParticipantRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_RemoveParticipant_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveParticipantRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).RemoveParticipant(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_RemoveParticipant_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).RemoveParticipant(ctx, req.(*RemoveParticipantRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -700,8 +836,24 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _ChatService_UpdateAvatar_Handler,
 		},
 		{
+			MethodName: "UpdateProfile",
+			Handler:    _ChatService_UpdateProfile_Handler,
+		},
+		{
+			MethodName: "GetUserProfile",
+			Handler:    _ChatService_GetUserProfile_Handler,
+		},
+		{
 			MethodName: "GetUserAvatar",
 			Handler:    _ChatService_GetUserAvatar_Handler,
+		},
+		{
+			MethodName: "AddParticipant",
+			Handler:    _ChatService_AddParticipant_Handler,
+		},
+		{
+			MethodName: "RemoveParticipant",
+			Handler:    _ChatService_RemoveParticipant_Handler,
 		},
 		{
 			MethodName: "DeleteChat",

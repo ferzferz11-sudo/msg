@@ -5,26 +5,46 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="ef919cf0-dee0-4e94-b631-d2fd26a26aae" name="Changes" comment="1.0.1.30">
+      <change afterPath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/ProfileActivity.kt" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/ui/adapter/MessageSwipeController.kt" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/ui/chat/ChatViewModelFactory.kt" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/client/android/app/src/main/res/drawable/bg_reactions.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/client/android/app/src/main/res/drawable/ic_attach.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/client/android/app/src/main/res/drawable/ic_camera.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/client/android/app/src/main/res/drawable/ic_edit.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/client/android/app/src/main/res/drawable/ic_file.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/client/android/app/src/main/res/drawable/ic_forward.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/client/android/app/src/main/res/drawable/ic_gallery.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/client/android/app/src/main/res/drawable/ic_location.xml" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/client/android/app/src/main/res/drawable/ic_reply_swipe.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/client/android/app/src/main/res/layout/activity_profile.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/client/android/app/src/main/res/layout/dialog_attachment_picker.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/client/android/app/src/main/res/menu/chat_menu.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/AndroidManifest.xml" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/AndroidManifest.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/ChatListActivity.kt" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/ChatListActivity.kt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/MainActivity.kt" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/MainActivity.kt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/NewChatActivity.kt" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/NewChatActivity.kt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/data/grpc/RealGrpcClient.kt" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/data/grpc/RealGrpcClient.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/data/proto/MessengerProto.kt" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/data/proto/MessengerProto.kt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/ui/adapter/ChatAdapter.kt" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/ui/adapter/ChatAdapter.kt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/ui/adapter/MessageAdapter.kt" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/ui/adapter/MessageAdapter.kt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/client/android/app/src/main/res/drawable-night/bg_message_incoming.xml" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/res/drawable-night/bg_message_incoming.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/res/layout/activity_new_chat.xml" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/res/layout/activity_new_chat.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/client/android/app/src/main/res/layout/item_message.xml" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/res/layout/item_message.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/client/android/app/src/main/res/values-night/colors.xml" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/res/values-night/colors.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/res/values-ru/strings.xml" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/res/values-ru/strings.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/client/android/app/src/main/res/values-v23/themes.xml" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/res/values-v23/themes.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/client/android/app/src/main/res/values/colors.xml" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/res/values/colors.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/client/android/app/src/main/res/values/strings.xml" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/res/values/strings.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/client/android/app/src/main/res/values/themes.xml" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/res/values/themes.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/client/android/version.txt" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/version.txt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/db.go" beforeDir="false" afterPath="$PROJECT_DIR$/db.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gen/messenger.pb.go" beforeDir="false" afterPath="$PROJECT_DIR$/gen/messenger.pb.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gen/messenger_grpc.pb.go" beforeDir="false" afterPath="$PROJECT_DIR$/gen/messenger_grpc.pb.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/http_server.go" beforeDir="false" afterPath="$PROJECT_DIR$/http_server.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/messenger.proto" beforeDir="false" afterPath="$PROJECT_DIR$/messenger.proto" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/server.go" beforeDir="false" afterPath="$PROJECT_DIR$/server.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

@@ -1,7 +1,5 @@
-// Lavender Messenger - HTTP Server for Avatar Uploads
+// Lavender Messenger - HTTP Server for Uploads
 // Author: Pavel Davydov (ferz)
-//
-// This file handles HTTP requests for avatar uploads and serving
 
 package main
 
@@ -19,29 +17,37 @@ import (
 
 const (
 	maxUploadSize   = 10 * 1024 * 1024 // 10MB
-	uploadPath      = "./uploads/avatars"
+	avatarsPath     = "./uploads/avatars"
+	imagesPath      = "./uploads/images"
+	filesPath       = "./uploads/files"
 	defaultHTTPPort = "8082"
 )
 
-// closeFile safely closes a file and logs any error
 func closeFile(file io.ReadCloser) {
 	if err := file.Close(); err != nil {
 		log.Printf("Error closing file: %v", err)
 	}
 }
 
-// StartHTTPServer starts the HTTP server for avatar uploads
 func StartHTTPServer(port string) {
-	// Ensure upload directory exists
-	if err := os.MkdirAll(uploadPath, 0755); err != nil {
-		log.Printf("Failed to create upload directory: %v", err)
-		return
-	}
+	// Ensure directories exist
+	os.MkdirAll(avatarsPath, 0755)
+	os.MkdirAll(imagesPath, 0755)
+	os.MkdirAll(filesPath, 0755)
 
 	http.HandleFunc("/upload-avatar", uploadAvatarHandler)
 	http.HandleFunc("/upload-image", uploadImageHandler)
-	http.HandleFunc("/avatars/", serveAvatarHandler)
-	http.HandleFunc("/images/", serveImageHandler)
+	http.HandleFunc("/upload-file", uploadFileHandler)
+
+	http.HandleFunc("/avatars/", func(w http.ResponseWriter, r *http.Request) {
+		serveFileHandler(w, r, "/avatars/", avatarsPath)
+	})
+	http.HandleFunc("/images/", func(w http.ResponseWriter, r *http.Request) {
+		serveFileHandler(w, r, "/images/", imagesPath)
+	})
+	http.HandleFunc("/files/", func(w http.ResponseWriter, r *http.Request) {
+		serveFileHandler(w, r, "/files/", filesPath)
+	})
 
 	log.Printf("HTTP server started on port %s", port)
 	if err := http.ListenAndServe("0.0.0.0:"+port, nil); err != nil {
@@ -49,218 +55,114 @@ func StartHTTPServer(port string) {
 	}
 }
 
-// uploadAvatarHandler handles avatar upload requests
 func uploadAvatarHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	// Limit upload size
-	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
-	if err := r.ParseMultipartForm(maxUploadSize); err != nil {
-		log.Printf("Failed to parse multipart form: %v", err)
-		http.Error(w, "File too large", http.StatusBadRequest)
-		return
-	}
-
-	file, handler, err := r.FormFile("avatar")
-	if err != nil {
-		log.Printf("Failed to retrieve file from form: %v", err)
-		http.Error(w, "Error retrieving file", http.StatusBadRequest)
-		return
-	}
-	defer closeFile(file)
-
-	// Validate file type
-	contentType := handler.Header.Get("Content-Type")
-	if !strings.HasPrefix(contentType, "image/") {
-		log.Printf("Invalid file type: %s", contentType)
-		http.Error(w, "Invalid file type", http.StatusBadRequest)
-		return
-	}
-
-	// Read file content
-	fileBytes, err := io.ReadAll(file)
-	if err != nil {
-		log.Printf("Failed to read file: %v", err)
-		http.Error(w, "Error reading file", http.StatusInternalServerError)
-		return
-	}
-
-	// Generate unique filename based on content hash
-	hash := md5.Sum(fileBytes)
-	// Determine file extension based on Content-Type
-	var ext string
-	switch contentType {
-	case "image/gif":
-		ext = ".gif"
-	case "image/png":
-		ext = ".png"
-	case "image/jpeg", "image/jpg":
-		ext = ".jpg"
-	default:
-		ext = ".jpg" // Default to jpg
-	}
-	filename := hex.EncodeToString(hash[:]) + ext
-	filePath := filepath.Join(uploadPath, filename)
-
-	// Save file
-	if err := os.WriteFile(filePath, fileBytes, 0644); err != nil {
-		log.Printf("Failed to save file: %v", err)
-		http.Error(w, "Error saving file", http.StatusInternalServerError)
-		return
-	}
-
-	log.Printf("Avatar uploaded successfully: %s", filename)
-
-	// Return the URL
-	httpPort := os.Getenv("HTTP_PORT")
-	if httpPort == "" {
-		httpPort = defaultHTTPPort
-	}
-	avatarURL := fmt.Sprintf("http://159.195.38.145:%s/avatars/%s", httpPort, filename)
-	w.Header().Set("Content-Type", "application/json")
-	if _, err := fmt.Fprintf(w, `{"url": "%s"}`, avatarURL); err != nil {
-		log.Printf("Failed to write response: %v", err)
-	}
+	handleUpload(w, r, "avatar", avatarsPath, "/avatars/")
 }
 
-// uploadImageHandler handles message image upload requests
 func uploadImageHandler(w http.ResponseWriter, r *http.Request) {
+	handleUpload(w, r, "image", imagesPath, "/images/")
+}
+
+func uploadFileHandler(w http.ResponseWriter, r *http.Request) {
+	handleUpload(w, r, "file", filesPath, "/files/")
+}
+
+func handleUpload(w http.ResponseWriter, r *http.Request, formKey, saveDir, urlPrefix string) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	// Limit upload size
 	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
 	if err := r.ParseMultipartForm(maxUploadSize); err != nil {
-		log.Printf("Failed to parse multipart form: %v", err)
 		http.Error(w, "File too large", http.StatusBadRequest)
 		return
 	}
 
-	file, handler, err := r.FormFile("image")
+	file, handler, err := r.FormFile(formKey)
 	if err != nil {
-		log.Printf("Failed to retrieve file from form: %v", err)
 		http.Error(w, "Error retrieving file", http.StatusBadRequest)
 		return
 	}
 	defer closeFile(file)
 
-	// Validate file type
-	contentType := handler.Header.Get("Content-Type")
-	if !strings.HasPrefix(contentType, "image/") {
-		log.Printf("Invalid file type: %s", contentType)
-		http.Error(w, "Invalid file type", http.StatusBadRequest)
-		return
-	}
-
-	// Read file content
 	fileBytes, err := io.ReadAll(file)
 	if err != nil {
-		log.Printf("Failed to read file: %v", err)
 		http.Error(w, "Error reading file", http.StatusInternalServerError)
 		return
 	}
 
-	// Generate unique filename based on content hash
-	hash := md5.Sum(fileBytes)
-	// Determine file extension based on Content-Type
-	var ext string
-	switch contentType {
-	case "image/gif":
-		ext = ".gif"
-	case "image/png":
-		ext = ".png"
-	case "image/jpeg", "image/jpg":
-		ext = ".jpg"
-	default:
-		ext = ".jpg" // Default to jpg
+	// For files, we might want to keep the original name or hash it
+	var filename string
+	if formKey == "file" {
+		filename = handler.Filename
+	} else {
+		hash := md5.Sum(fileBytes)
+		ext := filepath.Ext(handler.Filename)
+		if ext == "" {
+			ext = ".jpg"
+		}
+		filename = hex.EncodeToString(hash[:]) + ext
 	}
-	filename := hex.EncodeToString(hash[:]) + ext
-	filePath := filepath.Join(uploadPath, filename)
 
-	// Save file
+	filePath := filepath.Join(saveDir, filename)
 	if err := os.WriteFile(filePath, fileBytes, 0644); err != nil {
-		log.Printf("Failed to save file: %v", err)
 		http.Error(w, "Error saving file", http.StatusInternalServerError)
 		return
 	}
 
-	log.Printf("Image uploaded successfully: %s", filename)
-
-	// Return the URL
+	publicIP := "159.195.38.145"
 	httpPort := os.Getenv("HTTP_PORT")
 	if httpPort == "" {
 		httpPort = defaultHTTPPort
 	}
-	imageURL := fmt.Sprintf("http://159.195.38.145:%s/images/%s", httpPort, filename)
+
+	fileURL := fmt.Sprintf("http://%s:%s%s%s", publicIP, httpPort, urlPrefix, filename)
 	w.Header().Set("Content-Type", "application/json")
-	if _, err := fmt.Fprintf(w, `{"url": "%s"}`, imageURL); err != nil {
-		log.Printf("Failed to write response: %v", err)
-	}
+	fmt.Fprintf(w, `{"url": "%s"}`, fileURL)
 }
 
-// serveAvatarHandler serves uploaded avatar images
-func serveAvatarHandler(w http.ResponseWriter, r *http.Request) {
-	filename := strings.TrimPrefix(r.URL.Path, "/avatars/")
-	filePath := filepath.Join(uploadPath, filename)
-
-	// Check if file exists
+func serveFileHandler(w http.ResponseWriter, r *http.Request, prefix, dir string) {
+	filename := strings.TrimPrefix(r.URL.Path, prefix)
+	filePath := filepath.Join(dir, filename)
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
 		http.Error(w, "File not found", http.StatusNotFound)
 		return
 	}
-
-	// Serve file
 	http.ServeFile(w, r, filePath)
 }
 
-// serveImageHandler serves uploaded message images
-func serveImageHandler(w http.ResponseWriter, r *http.Request) {
-	filename := strings.TrimPrefix(r.URL.Path, "/images/")
-	filePath := filepath.Join(uploadPath, filename)
-
-	// Check if file exists
-	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		http.Error(w, "File not found", http.StatusNotFound)
-		return
-	}
-
-	// Serve file
-	http.ServeFile(w, r, filePath)
-}
-
-// DeleteImageFile deletes an image file given its URL
+// DeleteImageFile deletes an image or file from the server
 func DeleteImageFile(imageURL string) error {
 	if imageURL == "" {
-		return nil // Nothing to delete
+		return nil
 	}
 
-	// Extract filename from URL
-	// URL format: http://159.195.38.145:8082/images/filename.jpg
+	// URL format: http://159.195.38.145:8082/[prefix]/filename
 	parts := strings.Split(imageURL, "/")
-	if len(parts) < 1 {
-		return fmt.Errorf("invalid image URL format")
+	if len(parts) < 2 {
+		return fmt.Errorf("invalid file URL format")
 	}
 
 	filename := parts[len(parts)-1]
-	filePath := filepath.Join(uploadPath, filename)
+	prefix := parts[len(parts)-2]
 
-	// Check if file exists
+	var saveDir string
+	switch prefix {
+	case "avatars":
+		saveDir = avatarsPath
+	case "images":
+		saveDir = imagesPath
+	case "files":
+		saveDir = filesPath
+	default:
+		return fmt.Errorf("unknown file prefix: %s", prefix)
+	}
+
+	filePath := filepath.Join(saveDir, filename)
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		log.Printf("Image file not found, skipping deletion: %s", filename)
-		return nil // File doesn't exist, nothing to delete
+		return nil // Already deleted
 	}
 
-	// Delete file
-	if err := os.Remove(filePath); err != nil {
-		log.Printf("Failed to delete image file %s: %v", filename, err)
-		return err
-	}
-
-	log.Printf("Successfully deleted image file: %s", filename)
-	return nil
+	return os.Remove(filePath)
 }
