@@ -2,6 +2,51 @@
 
 **Author:** Pavel Davydov (ferz)
 
+## [1.0.1.39] - 2026-04-24
+- **Android: FCM Push Notifications Improvements**
+  - **Token Registration Fixes:**
+    - Added automatic token registration in `onNewToken` for token updates
+    - Added delay in token registration to ensure username is loaded
+    - Fixed token registration after app reinstallation
+  - **Push Notification Logic:**
+    - Changed to send push notifications to all users in room (not just offline)
+    - This ensures background users receive notifications even with active gRPC connection
+    - Combined notification + data payload for better compatibility
+  - **Notification History:**
+    - Added "Test Notification" button for local testing
+    - Fixed notification channel creation for test notifications
+    - FCM token display with copy functionality
+  - **Server Updates:**
+    - Updated Firebase credentials file path
+    - Simplified push notification logic (send to all room participants)
+    - Server version: 1.0.1.32
+  - **Android Version:** 1.0.1.39
+  - **Bug Fixes:**
+    - Fixed "Requested entity was not found" error after app reinstallation
+    - Fixed Context import in LavenderMessagingService
+
+## [1.0.1.38] - 2026-04-23
+- **Android: FCM Push Notifications**
+  - **Firebase Cloud Messaging Integration:**
+    - Added Firebase Admin SDK to server for push notification delivery
+    - Implemented FCM token registration on Android client
+    - Added POST_NOTIFICATIONS permission request for Android 13+
+    - Real-time push notifications for offline users
+  - **Notification History:**
+    - Added NotificationHistory class to track received notifications
+    - New "Notification History" menu item in ChatListActivity
+    - View last 20 notifications with timestamp, title, body, and sender
+    - Clear notification history option
+  - **Server Updates:**
+    - Firebase Admin SDK initialization with service account credentials
+    - Real push notification sending via Firebase Messaging API
+    - Automatic push notifications to offline users in chat rooms
+    - Server version: 1.0.1.31
+  - **Android Version:** 1.0.1.38
+  - **Bug Fixes:**
+    - Fixed inflate calls in ChatListActivity to prevent IllegalStateException
+    - Fixed chat deletion dialog inflation crash
+
 ## [1.0.1.37] - 2026-04-23
 - **Android: Profile Editing Redesign**
   - **New EditProfileActivity:**

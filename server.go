@@ -17,13 +17,17 @@ import (
 
 	"github.com/google/uuid"
 	"google.golang.org/protobuf/types/known/timestamppb"
+
+	firebase "firebase.google.com/go/v4"
+	"firebase.google.com/go/v4/messaging"
 )
 
 // server implements the gRPC ChatService interface
 type server struct {
 	gen.UnimplementedChatServiceServer
-	hub *Hub // Hub for managing client connections
-	db  *DB  // Database for message persistence
+	hub         *Hub          // Hub for managing client connections
+	db          *DB           // Database for message persistence
+	firebaseApp *firebase.App // Firebase Admin SDK instance
 }
 
 // Chat handles bidirectional streaming for real-time messaging
@@ -192,6 +196,48 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 
 		// Broadcast message to all connected clients
 		s.hub.Broadcast(msg)
+
+		// Send push notification to all users in the room (except sender)
+		// This ensures users in background receive notifications
+		allUsers, err := s.db.GetAllUsers()
+		if err != nil {
+			log.Printf("Failed to get all users for push notifications: %v", err)
+		} else {
+			for _, user := range allUsers {
+				// Skip the sender
+				if user == msg.User {
+					continue
+				}
+
+				// Check if user is in the room
+				userInRoom := false
+				if roomID == "general" {
+					userInRoom = true // All users are in general
+				} else {
+					// Check if user is a participant in the room
+					chat, err := s.db.GetChat(roomID)
+					if err == nil {
+						var participants []string
+						json.Unmarshal([]byte(chat.Participants), &participants)
+						for _, p := range participants {
+							if p == user {
+								userInRoom = true
+								break
+							}
+						}
+					}
+				}
+
+				if !userInRoom {
+					continue
+				}
+
+				// Send push notification to all users in the room
+				// Online users will receive via gRPC, background users via push
+				log.Printf("Sending push notification to user: %s", user)
+				s.sendPushNotification(user, msg.User, msg.Text)
+			}
+		}
 	}
 }
 
@@ -618,14 +664,43 @@ func (s *server) DeleteProfile(_ context.Context, req *gen.DeleteProfileRequest)
 
 // sendPushNotification отправляет уведомление через FCM
 func (s *server) sendPushNotification(user, title, body string) {
-	token, err := s.db.GetUserToken(user)
-	if err != nil || token == "" {
+	if s.firebaseApp == nil {
+		log.Printf("Firebase not initialized, skipping push notification to %s", user)
 		return
 	}
 
-	// Здесь будет логика отправки HTTP запроса к Firebase
-	// Для работы нужно будет добавить FIREBASE_SERVER_KEY в .env
-	log.Printf("Sending push to %s (token: %s...) - Title: %s, Body: %s", user, token[:10], title, body)
+	token, err := s.db.GetUserToken(user)
+	if err != nil || token == "" {
+		log.Printf("No FCM token found for user %s", user)
+		return
+	}
+
+	ctx := context.Background()
+	client, err := s.firebaseApp.Messaging(ctx)
+	if err != nil {
+		log.Printf("Failed to get Firebase messaging client: %v", err)
+		return
+	}
+
+	message := &messaging.Message{
+		Token: token,
+		Notification: &messaging.Notification{
+			Title: title,
+			Body:  body,
+		},
+		Data: map[string]string{
+			"title": title,
+			"body":  body,
+		},
+	}
+
+	_, err = client.Send(ctx, message)
+	if err != nil {
+		log.Printf("Failed to send push notification to %s: %v", user, err)
+		return
+	}
+
+	log.Printf("Push notification sent successfully to %s", user)
 }
 
 // DeleteMessages deletes a list of messages

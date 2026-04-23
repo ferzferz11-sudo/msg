@@ -7,6 +7,7 @@
 package main
 
 import (
+	"context"
 	"fmt"     // Standard formatting package for console output
 	"log"     // Standard logging package
 	"net"     // Network functionality for TCP listener
@@ -19,12 +20,17 @@ import (
 	"google.golang.org/grpc"   // gRPC framework for RPC communication
 	"google.golang.org/grpc/keepalive"
 	"time"
+
+	firebase "firebase.google.com/go/v4"
+	"google.golang.org/api/option"
 )
 
 const (
 	// serverVersion indicates the current version of the Lavender messaging server
-	serverVersion = "1.0.1.30"
+	serverVersion = "1.0.1.32"
 )
+
+var firebaseApp *firebase.App
 
 // main is the entry point of the Lavender messaging server application
 // It initializes all necessary components: environment variables, database connection,
@@ -37,6 +43,20 @@ func main() {
 	// If .env file doesn't exist, fall back to system environment variables
 	if err := godotenv.Load(); err != nil {
 		log.Println("No .env file found or error loading it, using system environment variables")
+	}
+
+	// Initialize Firebase Admin SDK
+	firebaseCredentials := os.Getenv("FIREBASE_CREDENTIALS_PATH")
+	if firebaseCredentials == "" {
+		firebaseCredentials = "lavender-messenger-firebase-adminsdk-fbsvc-1b8ed485d7.json"
+	}
+	opt := option.WithCredentialsFile(firebaseCredentials)
+	var err error
+	firebaseApp, err = firebase.NewApp(context.Background(), nil, opt)
+	if err != nil {
+		log.Printf("Warning: Failed to initialize Firebase: %v (Push notifications will not work)", err)
+	} else {
+		log.Println("Firebase Admin SDK initialized successfully")
 	}
 
 	// Read server address from environment variables
@@ -96,8 +116,9 @@ func main() {
 	// Create our chat service instance with Hub for connection management
 	// and database for message persistence
 	srv := &server{
-		hub: NewHub(), // Hub manages all active client connections
-		db:  db,       // Database connection for storing messages
+		hub:         NewHub(),    // Hub manages all active client connections
+		db:          db,          // Database connection for storing messages
+		firebaseApp: firebaseApp, // Firebase Admin SDK instance
 	}
 
 	// Register our chat service with the gRPC server
