@@ -155,7 +155,8 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 		// Determine room ID
 		roomID := msg.RoomId
 		if roomID == "" {
-			roomID = "general"
+			log.Printf("Skipping message with empty room ID from %s", msg.User)
+			continue
 		}
 
 		// Skip join messages (don't save to database)
@@ -209,21 +210,16 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 					continue
 				}
 
-				// Check if user is in the room
+				// Check if user is a participant in the room
 				userInRoom := false
-				if roomID == "general" {
-					userInRoom = true // All users are in general
-				} else {
-					// Check if user is a participant in the room
-					chat, err := s.db.GetChat(roomID)
-					if err == nil {
-						var participants []string
-						json.Unmarshal([]byte(chat.Participants), &participants)
-						for _, p := range participants {
-							if p == user {
-								userInRoom = true
-								break
-							}
+				chat, err := s.db.GetChat(roomID)
+				if err == nil {
+					var participants []string
+					json.Unmarshal([]byte(chat.Participants), &participants)
+					for _, p := range participants {
+						if p == user {
+							userInRoom = true
+							break
 						}
 					}
 				}
@@ -274,7 +270,7 @@ func (s *server) GetHistory(_ context.Context, req *gen.GetHistoryRequest) (*gen
 
 	roomID := req.Room
 	if roomID == "" {
-		roomID = "general"
+		return &gen.GetHistoryResponse{Messages: nil}, nil
 	}
 
 	rawMessages, err := s.db.GetMessages(limit, roomID)
@@ -616,10 +612,6 @@ func (s *server) RemoveParticipant(_ context.Context, req *gen.RemoveParticipant
 func (s *server) DeleteChat(_ context.Context, req *gen.DeleteChatRequest) (*gen.DeleteChatResponse, error) {
 	if req.ChatId == "" {
 		return &gen.DeleteChatResponse{Success: false, Message: "Chat ID is required"}, nil
-	}
-
-	if req.ChatId == "general" {
-		return &gen.DeleteChatResponse{Success: false, Message: "Cannot delete General Chat"}, nil
 	}
 
 	// 1. Get all image URLs for messages in this chat

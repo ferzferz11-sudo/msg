@@ -103,7 +103,7 @@ func ConnectDB() (*DB, error) {
 		`DO $$
 		 BEGIN
 		  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='room_id') THEN
-		    ALTER TABLE messages ADD COLUMN room_id VARCHAR(255) DEFAULT 'general';
+		    ALTER TABLE messages ADD COLUMN room_id VARCHAR(255) DEFAULT '';
 		  END IF;
 		 END $$;`,
 		// Migration: Add is_read to messages
@@ -167,7 +167,7 @@ func ConnectDB() (*DB, error) {
 		`CREATE TABLE IF NOT EXISTS chats (
 			id VARCHAR(255) PRIMARY KEY,
 			name VARCHAR(255) NOT NULL,
-			type VARCHAR(50) NOT NULL, -- 'general' or 'direct'
+			type VARCHAR(50) NOT NULL, -- 'direct' or 'group'
 			participants TEXT NOT NULL, -- JSON array of usernames
 			created_at TIMESTAMP NOT NULL DEFAULT NOW()
 		);`,
@@ -228,7 +228,7 @@ func (db *DB) GetMessages(limit int, roomID string) ([]struct {
 	ImageURL           string
 	Edited             bool
 }, error) {
-	query := `SELECT COALESCE(m.message_id, ''), m.username, m.encrypted_text, m.created_at, COALESCE(m.replied_to_message_id, ''), COALESCE(m.replied_to_user, ''), COALESCE(m.replied_to_text, ''), COALESCE(m.room_id, 'general'), m.is_read, u.avatar_url, COALESCE(m.image_url, ''), COALESCE(m.edited, false)
+	query := `SELECT COALESCE(m.message_id, ''), m.username, m.encrypted_text, m.created_at, COALESCE(m.replied_to_message_id, ''), COALESCE(m.replied_to_user, ''), COALESCE(m.replied_to_text, ''), COALESCE(m.room_id, ''), m.is_read, u.avatar_url, COALESCE(m.image_url, ''), COALESCE(m.edited, false)
 	             FROM messages m
 	             LEFT JOIN users u ON m.username = u.username
 	             WHERE m.room_id = $1 ORDER BY m.created_at DESC LIMIT $2`
@@ -676,7 +676,7 @@ func (db *DB) GetUserChats(username string) ([]struct {
 		 AND m.username != $1) as unread_count,
 		(SELECT MAX(m.created_at) FROM messages m WHERE m.room_id = c.id) as last_message_time
 		FROM chats c
-		WHERE c.participants LIKE $2 OR c.type = 'general' OR (c.type = 'group' AND c.participants LIKE $2)`
+		WHERE c.participants LIKE $2 OR (c.type = 'group' AND c.participants LIKE $2)`
 
 	rows, err := db.Query(query, username, "%"+username+"%")
 	if err != nil {

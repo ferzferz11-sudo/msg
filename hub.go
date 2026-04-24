@@ -35,7 +35,7 @@ func (h *Hub) Register(stream gen.ChatService_ChatServer) {
 	h.mu.Lock()
 	h.clients[stream] = "Anonymous"
 	h.authenticated[stream] = false
-	h.rooms[stream] = "general"
+	h.rooms[stream] = ""
 	h.mu.Unlock()
 }
 
@@ -108,7 +108,7 @@ func (h *Hub) Broadcast(msg *gen.Message) {
 
 	roomID := msg.RoomId
 	if roomID == "" {
-		roomID = "general"
+		return
 	}
 
 	for stream := range h.clients {
