@@ -150,7 +150,9 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 		// Skip empty messages (unless they have an image)
 		if strings.TrimSpace(msg.Text) == "" && msg.ImageUrl == "" {
 			if roomID != "" {
-				log.Printf("Auth signal from %s for room %s", msg.User, roomID)
+				log.Printf("Auth signal from %s (Session room: %s)", msg.User, roomID)
+			} else {
+				log.Printf("Global Auth signal from %s", msg.User)
 			}
 			continue
 		}
@@ -361,7 +363,12 @@ func (s *server) RegisterToken(_ context.Context, req *gen.TokenRequest) (*gen.T
 		log.Printf("Failed to save token for %s: %v", req.User, err)
 		return &gen.TokenResponse{Success: false}, err
 	}
-	log.Printf("Registered FCM token for user: %s", req.User)
+
+	displayToken := req.Token
+	if len(displayToken) > 20 {
+		displayToken = displayToken[:20] + "..."
+	}
+	log.Printf("Registered FCM token for user %s: [%s]", req.User, displayToken)
 	return &gen.TokenResponse{Success: true}, nil
 }
 
