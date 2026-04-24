@@ -312,10 +312,21 @@ func (db *DB) GetMessages(limit int, roomID string) ([]struct {
 
 // SetReaction saves or updates a reaction
 func (db *DB) SetReaction(messageID string, username string, emoji string) error {
+	// Check if message exists first to avoid foreign key constraint violation
+	var exists bool
+	checkQuery := `SELECT EXISTS(SELECT 1 FROM messages WHERE message_id = $1)`
+	err := db.QueryRow(checkQuery, messageID).Scan(&exists)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return fmt.Errorf("message not found")
+	}
+
 	query := `INSERT INTO reactions (message_id, username, emoji)
               VALUES ($1, $2, $3)
               ON CONFLICT (message_id, username) DO UPDATE SET emoji = $3`
-	_, err := db.Exec(query, messageID, username, emoji)
+	_, err = db.Exec(query, messageID, username, emoji)
 	return err
 }
 

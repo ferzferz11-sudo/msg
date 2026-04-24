@@ -2,7 +2,7 @@
 
 **Author:** Pavel Davydov (ferz)
 
-**Version:** 1.0.1.40
+**Version:** 1.0.1.42
 
 A real-time secure messaging application with gRPC server and multiple client implementations.
 
@@ -255,7 +255,12 @@ LavenderMessenger/
 ## Recent Changes
 
 ### Bug Fixes
+- **Reaction foreign key constraint**: Fixed foreign key constraint violation in `SetReaction` when message doesn't exist. Added message existence check before inserting reaction.
 - **SQL NULL handling**: Fixed scanning error in `GetUserChats` when `last_message_time` is NULL for empty chats. Now uses `sql.NullTime` to properly handle NULL values from the MAX() subquery.
+
+### Features
+- **Push notification improvements**: Added `room_id` to push notification data payload for proper chat navigation on notification click.
+- **Auto-navigation**: Server now sends room_id with push notifications to enable direct chat opening from notifications.
 
 ### Security Fixes
 - **CVE-2026-33809**: Updated `golang.org/x/image` to v0.38.0+ (was v0.24.0)

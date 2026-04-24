@@ -2,6 +2,19 @@
 
 **Author:** Pavel Davydov (ferz)
 
+## [1.0.1.42] - 2026-04-24
+- **Server: Push Notification Room Navigation**
+  - Added `room_id` to push notification data payload
+  - Updated `sendPushNotification` to accept and include room_id parameter
+  - Enables direct chat navigation when clicking on push notifications
+  - Server version: 1.0.1.42
+
+## [1.0.1.41] - 2026-04-24
+- **Server: Reaction Foreign Key Constraint Fix**
+  - Fixed foreign key constraint violation in `SetReaction` when message doesn't exist
+  - Added message existence check before inserting reaction to prevent "reactions_message_id_fkey" error
+  - Server version: 1.0.1.41
+
 ## [1.0.1.40] - 2026-04-24
 - **Server: SQL NULL Handling Fix**
   - Fixed scanning error in `GetUserChats` when `last_message_time` is NULL for empty chats

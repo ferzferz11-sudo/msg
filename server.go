@@ -235,7 +235,7 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 				// Send push notification to all users in the room
 				// Online users will receive via gRPC, background users via push
 				log.Printf("Sending push notification to user: %s", user)
-				s.sendPushNotification(user, msg.User, msg.Text)
+				s.sendPushNotification(user, msg.User, msg.Text, roomID)
 			}
 		}
 	}
@@ -664,7 +664,7 @@ func (s *server) DeleteProfile(_ context.Context, req *gen.DeleteProfileRequest)
 }
 
 // sendPushNotification отправляет уведомление через FCM
-func (s *server) sendPushNotification(user, title, body string) {
+func (s *server) sendPushNotification(user, title, body, roomID string) {
 	if s.firebaseApp == nil {
 		log.Printf("Firebase not initialized, skipping push notification to %s", user)
 		return
@@ -690,8 +690,9 @@ func (s *server) sendPushNotification(user, title, body string) {
 			Body:  body,
 		},
 		Data: map[string]string{
-			"title": title,
-			"body":  body,
+			"title":   title,
+			"body":    body,
+			"room_id": roomID,
 		},
 	}
 

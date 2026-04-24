@@ -4,11 +4,11 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="ef919cf0-dee0-4e94-b631-d2fd26a26aae" name="Changes" comment="1.0.1.39">
+    <list default="true" id="ef919cf0-dee0-4e94-b631-d2fd26a26aae" name="Changes" comment="1.0.1.40">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CHANGELOG.md" beforeDir="false" afterPath="$PROJECT_DIR$/CHANGELOG.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/db.go" beforeDir="false" afterPath="$PROJECT_DIR$/db.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gen/messenger.pb.go" beforeDir="false" afterPath="$PROJECT_DIR$/gen/messenger.pb.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/messenger.proto" beforeDir="false" afterPath="$PROJECT_DIR$/messenger.proto" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/server.go" beforeDir="false" afterPath="$PROJECT_DIR$/server.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -115,7 +115,8 @@
     <MESSAGE value="1.0.1.36" />
     <MESSAGE value="1.0.1.37" />
     <MESSAGE value="1.0.1.39" />
-    <option name="LAST_COMMIT_MESSAGE" value="1.0.1.39" />
+    <MESSAGE value="1.0.1.40" />
+    <option name="LAST_COMMIT_MESSAGE" value="1.0.1.40" />
   </component>
   <component name="VgoModernizerVersionTracker">
     <upgrades>
