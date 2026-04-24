@@ -803,15 +803,16 @@ func (x *TokenResponse) GetSuccess() bool {
 }
 
 type ChatInfo struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	Type          string                 `protobuf:"bytes,3,opt,name=type,proto3" json:"type,omitempty"`
-	Participants  string                 `protobuf:"bytes,4,opt,name=participants,proto3" json:"participants,omitempty"`
-	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UnreadCount   int32                  `protobuf:"varint,6,opt,name=unread_count,json=unreadCount,proto3" json:"unread_count,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Id              string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name            string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Type            string                 `protobuf:"bytes,3,opt,name=type,proto3" json:"type,omitempty"`
+	Participants    string                 `protobuf:"bytes,4,opt,name=participants,proto3" json:"participants,omitempty"`
+	CreatedAt       *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UnreadCount     int32                  `protobuf:"varint,6,opt,name=unread_count,json=unreadCount,proto3" json:"unread_count,omitempty"`
+	LastMessageTime *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=last_message_time,json=lastMessageTime,proto3" json:"last_message_time,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *ChatInfo) Reset() {
@@ -884,6 +885,13 @@ func (x *ChatInfo) GetUnreadCount() int32 {
 		return x.UnreadCount
 	}
 	return 0
+}
+
+func (x *ChatInfo) GetLastMessageTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.LastMessageTime
+	}
+	return nil
 }
 
 type GetChatsRequest struct {
@@ -2467,7 +2475,7 @@ const file_messenger_proto_rawDesc = "" +
 	"\x04user\x18\x01 \x01(\tR\x04user\x12\x14\n" +
 	"\x05token\x18\x02 \x01(\tR\x05token\")\n" +
 	"\rTokenResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess\"\xc4\x01\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\"\x8c\x02\n" +
 	"\bChatInfo\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
@@ -2475,7 +2483,8 @@ const file_messenger_proto_rawDesc = "" +
 	"\fparticipants\x18\x04 \x01(\tR\fparticipants\x129\n" +
 	"\n" +
 	"created_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12!\n" +
-	"\funread_count\x18\x06 \x01(\x05R\vunreadCount\"-\n" +
+	"\funread_count\x18\x06 \x01(\x05R\vunreadCount\x12F\n" +
+	"\x11last_message_time\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\x0flastMessageTime\"-\n" +
 	"\x0fGetChatsRequest\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\"=\n" +
 	"\x10GetChatsResponse\x12)\n" +
@@ -2662,56 +2671,57 @@ var file_messenger_proto_depIdxs = []int32{
 	0,  // 3: messenger.GetHistoryResponse.messages:type_name -> messenger.Message
 	0,  // 4: messenger.DeleteMessagesRequest.messages:type_name -> messenger.Message
 	46, // 5: messenger.ChatInfo.created_at:type_name -> google.protobuf.Timestamp
-	15, // 6: messenger.GetChatsResponse.chats:type_name -> messenger.ChatInfo
-	0,  // 7: messenger.ChatService.Chat:input_type -> messenger.Message
-	4,  // 8: messenger.ChatService.GetClients:input_type -> messenger.ClientListRequest
-	6,  // 9: messenger.ChatService.GetAllUsers:input_type -> messenger.GetAllUsersRequest
-	9,  // 10: messenger.ChatService.GetHistory:input_type -> messenger.GetHistoryRequest
-	2,  // 11: messenger.ChatService.SetReaction:input_type -> messenger.ReactionRequest
-	11, // 12: messenger.ChatService.DeleteMessages:input_type -> messenger.DeleteMessagesRequest
-	13, // 13: messenger.ChatService.RegisterToken:input_type -> messenger.TokenRequest
-	16, // 14: messenger.ChatService.GetChats:input_type -> messenger.GetChatsRequest
-	18, // 15: messenger.ChatService.CreateDirectChat:input_type -> messenger.CreateDirectChatRequest
-	20, // 16: messenger.ChatService.CreateGroupChat:input_type -> messenger.CreateGroupChatRequest
-	22, // 17: messenger.ChatService.UpdateUsername:input_type -> messenger.UpdateUsernameRequest
-	24, // 18: messenger.ChatService.UpdatePassword:input_type -> messenger.UpdatePasswordRequest
-	26, // 19: messenger.ChatService.MarkRead:input_type -> messenger.MarkReadRequest
-	28, // 20: messenger.ChatService.UpdateAvatar:input_type -> messenger.UpdateAvatarRequest
-	30, // 21: messenger.ChatService.UpdateProfile:input_type -> messenger.UpdateProfileRequest
-	32, // 22: messenger.ChatService.GetUserProfile:input_type -> messenger.GetUserProfileRequest
-	34, // 23: messenger.ChatService.GetUserAvatar:input_type -> messenger.GetUserAvatarRequest
-	36, // 24: messenger.ChatService.AddParticipant:input_type -> messenger.AddParticipantRequest
-	38, // 25: messenger.ChatService.RemoveParticipant:input_type -> messenger.RemoveParticipantRequest
-	40, // 26: messenger.ChatService.EditMessage:input_type -> messenger.EditMessageRequest
-	42, // 27: messenger.ChatService.DeleteChat:input_type -> messenger.DeleteChatRequest
-	44, // 28: messenger.ChatService.DeleteProfile:input_type -> messenger.DeleteProfileRequest
-	0,  // 29: messenger.ChatService.Chat:output_type -> messenger.Message
-	5,  // 30: messenger.ChatService.GetClients:output_type -> messenger.ClientListResponse
-	7,  // 31: messenger.ChatService.GetAllUsers:output_type -> messenger.GetAllUsersResponse
-	10, // 32: messenger.ChatService.GetHistory:output_type -> messenger.GetHistoryResponse
-	3,  // 33: messenger.ChatService.SetReaction:output_type -> messenger.ReactionResponse
-	12, // 34: messenger.ChatService.DeleteMessages:output_type -> messenger.DeleteMessagesResponse
-	14, // 35: messenger.ChatService.RegisterToken:output_type -> messenger.TokenResponse
-	17, // 36: messenger.ChatService.GetChats:output_type -> messenger.GetChatsResponse
-	19, // 37: messenger.ChatService.CreateDirectChat:output_type -> messenger.CreateDirectChatResponse
-	21, // 38: messenger.ChatService.CreateGroupChat:output_type -> messenger.CreateGroupChatResponse
-	23, // 39: messenger.ChatService.UpdateUsername:output_type -> messenger.UpdateUsernameResponse
-	25, // 40: messenger.ChatService.UpdatePassword:output_type -> messenger.UpdatePasswordResponse
-	27, // 41: messenger.ChatService.MarkRead:output_type -> messenger.MarkReadResponse
-	29, // 42: messenger.ChatService.UpdateAvatar:output_type -> messenger.UpdateAvatarResponse
-	31, // 43: messenger.ChatService.UpdateProfile:output_type -> messenger.UpdateProfileResponse
-	33, // 44: messenger.ChatService.GetUserProfile:output_type -> messenger.GetUserProfileResponse
-	35, // 45: messenger.ChatService.GetUserAvatar:output_type -> messenger.GetUserAvatarResponse
-	37, // 46: messenger.ChatService.AddParticipant:output_type -> messenger.AddParticipantResponse
-	39, // 47: messenger.ChatService.RemoveParticipant:output_type -> messenger.RemoveParticipantResponse
-	41, // 48: messenger.ChatService.EditMessage:output_type -> messenger.EditMessageResponse
-	43, // 49: messenger.ChatService.DeleteChat:output_type -> messenger.DeleteChatResponse
-	45, // 50: messenger.ChatService.DeleteProfile:output_type -> messenger.DeleteProfileResponse
-	29, // [29:51] is the sub-list for method output_type
-	7,  // [7:29] is the sub-list for method input_type
-	7,  // [7:7] is the sub-list for extension type_name
-	7,  // [7:7] is the sub-list for extension extendee
-	0,  // [0:7] is the sub-list for field type_name
+	46, // 6: messenger.ChatInfo.last_message_time:type_name -> google.protobuf.Timestamp
+	15, // 7: messenger.GetChatsResponse.chats:type_name -> messenger.ChatInfo
+	0,  // 8: messenger.ChatService.Chat:input_type -> messenger.Message
+	4,  // 9: messenger.ChatService.GetClients:input_type -> messenger.ClientListRequest
+	6,  // 10: messenger.ChatService.GetAllUsers:input_type -> messenger.GetAllUsersRequest
+	9,  // 11: messenger.ChatService.GetHistory:input_type -> messenger.GetHistoryRequest
+	2,  // 12: messenger.ChatService.SetReaction:input_type -> messenger.ReactionRequest
+	11, // 13: messenger.ChatService.DeleteMessages:input_type -> messenger.DeleteMessagesRequest
+	13, // 14: messenger.ChatService.RegisterToken:input_type -> messenger.TokenRequest
+	16, // 15: messenger.ChatService.GetChats:input_type -> messenger.GetChatsRequest
+	18, // 16: messenger.ChatService.CreateDirectChat:input_type -> messenger.CreateDirectChatRequest
+	20, // 17: messenger.ChatService.CreateGroupChat:input_type -> messenger.CreateGroupChatRequest
+	22, // 18: messenger.ChatService.UpdateUsername:input_type -> messenger.UpdateUsernameRequest
+	24, // 19: messenger.ChatService.UpdatePassword:input_type -> messenger.UpdatePasswordRequest
+	26, // 20: messenger.ChatService.MarkRead:input_type -> messenger.MarkReadRequest
+	28, // 21: messenger.ChatService.UpdateAvatar:input_type -> messenger.UpdateAvatarRequest
+	30, // 22: messenger.ChatService.UpdateProfile:input_type -> messenger.UpdateProfileRequest
+	32, // 23: messenger.ChatService.GetUserProfile:input_type -> messenger.GetUserProfileRequest
+	34, // 24: messenger.ChatService.GetUserAvatar:input_type -> messenger.GetUserAvatarRequest
+	36, // 25: messenger.ChatService.AddParticipant:input_type -> messenger.AddParticipantRequest
+	38, // 26: messenger.ChatService.RemoveParticipant:input_type -> messenger.RemoveParticipantRequest
+	40, // 27: messenger.ChatService.EditMessage:input_type -> messenger.EditMessageRequest
+	42, // 28: messenger.ChatService.DeleteChat:input_type -> messenger.DeleteChatRequest
+	44, // 29: messenger.ChatService.DeleteProfile:input_type -> messenger.DeleteProfileRequest
+	0,  // 30: messenger.ChatService.Chat:output_type -> messenger.Message
+	5,  // 31: messenger.ChatService.GetClients:output_type -> messenger.ClientListResponse
+	7,  // 32: messenger.ChatService.GetAllUsers:output_type -> messenger.GetAllUsersResponse
+	10, // 33: messenger.ChatService.GetHistory:output_type -> messenger.GetHistoryResponse
+	3,  // 34: messenger.ChatService.SetReaction:output_type -> messenger.ReactionResponse
+	12, // 35: messenger.ChatService.DeleteMessages:output_type -> messenger.DeleteMessagesResponse
+	14, // 36: messenger.ChatService.RegisterToken:output_type -> messenger.TokenResponse
+	17, // 37: messenger.ChatService.GetChats:output_type -> messenger.GetChatsResponse
+	19, // 38: messenger.ChatService.CreateDirectChat:output_type -> messenger.CreateDirectChatResponse
+	21, // 39: messenger.ChatService.CreateGroupChat:output_type -> messenger.CreateGroupChatResponse
+	23, // 40: messenger.ChatService.UpdateUsername:output_type -> messenger.UpdateUsernameResponse
+	25, // 41: messenger.ChatService.UpdatePassword:output_type -> messenger.UpdatePasswordResponse
+	27, // 42: messenger.ChatService.MarkRead:output_type -> messenger.MarkReadResponse
+	29, // 43: messenger.ChatService.UpdateAvatar:output_type -> messenger.UpdateAvatarResponse
+	31, // 44: messenger.ChatService.UpdateProfile:output_type -> messenger.UpdateProfileResponse
+	33, // 45: messenger.ChatService.GetUserProfile:output_type -> messenger.GetUserProfileResponse
+	35, // 46: messenger.ChatService.GetUserAvatar:output_type -> messenger.GetUserAvatarResponse
+	37, // 47: messenger.ChatService.AddParticipant:output_type -> messenger.AddParticipantResponse
+	39, // 48: messenger.ChatService.RemoveParticipant:output_type -> messenger.RemoveParticipantResponse
+	41, // 49: messenger.ChatService.EditMessage:output_type -> messenger.EditMessageResponse
+	43, // 50: messenger.ChatService.DeleteChat:output_type -> messenger.DeleteChatResponse
+	45, // 51: messenger.ChatService.DeleteProfile:output_type -> messenger.DeleteProfileResponse
+	30, // [30:52] is the sub-list for method output_type
+	8,  // [8:30] is the sub-list for method input_type
+	8,  // [8:8] is the sub-list for extension type_name
+	8,  // [8:8] is the sub-list for extension extendee
+	0,  // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_messenger_proto_init() }

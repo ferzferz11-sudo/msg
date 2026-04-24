@@ -647,21 +647,23 @@ func (db *DB) GetChat(id string) (struct {
 	return chat, err
 }
 
-// GetUserChats retrieves all chats for a specific user with unread count
+// GetUserChats retrieves all chats for a specific user with unread count and last message time
 func (db *DB) GetUserChats(username string) ([]struct {
-	ID           string
-	Name         string
-	Type         string
-	Participants string
-	CreatedAt    time.Time
-	UnreadCount  int
+	ID              string
+	Name            string
+	Type            string
+	Participants    string
+	CreatedAt       time.Time
+	UnreadCount     int
+	LastMessageTime time.Time
 }, error) {
 	query := `
 		SELECT c.id, c.name, c.type, c.participants, c.created_at,
 		(SELECT COUNT(*) FROM messages m
 		 WHERE m.room_id = c.id
 		 AND m.is_read = FALSE
-		 AND m.username != $1) as unread_count
+		 AND m.username != $1) as unread_count,
+		(SELECT MAX(m.created_at) FROM messages m WHERE m.room_id = c.id) as last_message_time
 		FROM chats c
 		WHERE c.participants LIKE $2 OR c.type = 'general' OR (c.type = 'group' AND c.participants LIKE $2)`
 
@@ -677,28 +679,50 @@ func (db *DB) GetUserChats(username string) ([]struct {
 	}()
 
 	var results []struct {
-		ID           string
-		Name         string
-		Type         string
-		Participants string
-		CreatedAt    time.Time
-		UnreadCount  int
+		ID              string
+		Name            string
+		Type            string
+		Participants    string
+		CreatedAt       time.Time
+		UnreadCount     int
+		LastMessageTime time.Time
 	}
 
 	for rows.Next() {
 		var c struct {
-			ID           string
-			Name         string
-			Type         string
-			Participants string
-			CreatedAt    time.Time
-			UnreadCount  int
+			ID              string
+			Name            string
+			Type            string
+			Participants    string
+			CreatedAt       time.Time
+			UnreadCount     int
+			LastMessageTime sql.NullTime
 		}
-		if err := rows.Scan(&c.ID, &c.Name, &c.Type, &c.Participants, &c.CreatedAt, &c.UnreadCount); err != nil {
+		if err := rows.Scan(&c.ID, &c.Name, &c.Type, &c.Participants, &c.CreatedAt, &c.UnreadCount, &c.LastMessageTime); err != nil {
 			log.Printf("Error scanning chat row: %v", err)
 			return nil, err
 		}
-		results = append(results, c)
+		lastMessageTime := time.Time{}
+		if c.LastMessageTime.Valid {
+			lastMessageTime = c.LastMessageTime.Time
+		}
+		results = append(results, struct {
+			ID              string
+			Name            string
+			Type            string
+			Participants    string
+			CreatedAt       time.Time
+			UnreadCount     int
+			LastMessageTime time.Time
+		}{
+			ID:              c.ID,
+			Name:            c.Name,
+			Type:            c.Type,
+			Participants:    c.Participants,
+			CreatedAt:       c.CreatedAt,
+			UnreadCount:     c.UnreadCount,
+			LastMessageTime: lastMessageTime,
+		})
 	}
 	return results, nil
 }

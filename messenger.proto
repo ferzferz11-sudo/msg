@@ -84,6 +84,7 @@ message ChatInfo {
   string participants = 4;
   google.protobuf.Timestamp created_at = 5;
   int32 unread_count = 6;
+  google.protobuf.Timestamp last_message_time = 7;
 }
 
 message GetChatsRequest {

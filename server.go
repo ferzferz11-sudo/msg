@@ -377,12 +377,13 @@ func (s *server) GetChats(_ context.Context, req *gen.GetChatsRequest) (*gen.Get
 	var chatInfos []*gen.ChatInfo
 	for _, c := range chats {
 		chatInfos = append(chatInfos, &gen.ChatInfo{
-			Id:           c.ID,
-			Name:         c.Name,
-			Type:         c.Type,
-			Participants: c.Participants,
-			CreatedAt:    timestamppb.New(c.CreatedAt),
-			UnreadCount:  int32(c.UnreadCount),
+			Id:              c.ID,
+			Name:            c.Name,
+			Type:            c.Type,
+			Participants:    c.Participants,
+			CreatedAt:       timestamppb.New(c.CreatedAt),
+			UnreadCount:     int32(c.UnreadCount),
+			LastMessageTime: timestamppb.New(c.LastMessageTime),
 		})
 	}
 

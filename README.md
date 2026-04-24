@@ -2,7 +2,7 @@
 
 **Author:** Pavel Davydov (ferz)
 
-**Version:** 1.0.1.39
+**Version:** 1.0.1.40
 
 A real-time secure messaging application with gRPC server and multiple client implementations.
 
@@ -253,6 +253,9 @@ LavenderMessenger/
 - **Protocol**: Protocol Buffers for message serialization
 
 ## Recent Changes
+
+### Bug Fixes
+- **SQL NULL handling**: Fixed scanning error in `GetUserChats` when `last_message_time` is NULL for empty chats. Now uses `sql.NullTime` to properly handle NULL values from the MAX() subquery.
 
 ### Security Fixes
 - **CVE-2026-33809**: Updated `golang.org/x/image` to v0.38.0+ (was v0.24.0)

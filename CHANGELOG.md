@@ -2,6 +2,13 @@
 
 **Author:** Pavel Davydov (ferz)
 
+## [1.0.1.40] - 2026-04-24
+- **Server: SQL NULL Handling Fix**
+  - Fixed scanning error in `GetUserChats` when `last_message_time` is NULL for empty chats
+  - Now uses `sql.NullTime` to properly handle NULL values from MAX() subquery
+  - Resolves "unsupported Scan, storing driver.Value type <nil> into type *time.Time" error
+  - Server version: 1.0.1.40
+
 ## [1.0.1.39] - 2026-04-24
 - **Android: FCM Push Notifications Improvements**
   - **Token Registration Fixes:**
