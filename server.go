@@ -144,16 +144,19 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 		trimmedUser := strings.TrimSpace(msg.User)
 		msg.User = trimmedUser
 
-		log.Printf("[%s]: %s (ImageURL: %s)", msg.User, msg.Text, msg.ImageUrl)
+		// Determine room ID
+		roomID := msg.RoomId
 
 		// Skip empty messages (unless they have an image)
 		if strings.TrimSpace(msg.Text) == "" && msg.ImageUrl == "" {
-			log.Printf("Skipping empty message from %s", msg.User)
+			if roomID != "" {
+				log.Printf("Auth signal from %s for room %s", msg.User, roomID)
+			}
 			continue
 		}
 
-		// Determine room ID
-		roomID := msg.RoomId
+		log.Printf("[%s] in %s: %s (ImageURL: %s)", msg.User, roomID, msg.Text, msg.ImageUrl)
+
 		if roomID == "" {
 			log.Printf("Skipping message with empty room ID from %s", msg.User)
 			continue
