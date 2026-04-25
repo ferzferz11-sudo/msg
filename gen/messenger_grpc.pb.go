@@ -22,6 +22,7 @@ const (
 	ChatService_Chat_FullMethodName               = "/messenger.ChatService/Chat"
 	ChatService_GetClients_FullMethodName         = "/messenger.ChatService/GetClients"
 	ChatService_GetAllUsers_FullMethodName        = "/messenger.ChatService/GetAllUsers"
+	ChatService_GetAllChats_FullMethodName        = "/messenger.ChatService/GetAllChats"
 	ChatService_GetHistory_FullMethodName         = "/messenger.ChatService/GetHistory"
 	ChatService_SetReaction_FullMethodName        = "/messenger.ChatService/SetReaction"
 	ChatService_DeleteMessages_FullMethodName     = "/messenger.ChatService/DeleteMessages"
@@ -59,6 +60,7 @@ type ChatServiceClient interface {
 	Chat(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[Message, Message], error)
 	GetClients(ctx context.Context, in *ClientListRequest, opts ...grpc.CallOption) (*ClientListResponse, error)
 	GetAllUsers(ctx context.Context, in *GetAllUsersRequest, opts ...grpc.CallOption) (*GetAllUsersResponse, error)
+	GetAllChats(ctx context.Context, in *GetAllChatsRequest, opts ...grpc.CallOption) (*GetAllChatsResponse, error)
 	GetHistory(ctx context.Context, in *GetHistoryRequest, opts ...grpc.CallOption) (*GetHistoryResponse, error)
 	SetReaction(ctx context.Context, in *ReactionRequest, opts ...grpc.CallOption) (*ReactionResponse, error)
 	DeleteMessages(ctx context.Context, in *DeleteMessagesRequest, opts ...grpc.CallOption) (*DeleteMessagesResponse, error)
@@ -124,6 +126,16 @@ func (c *chatServiceClient) GetAllUsers(ctx context.Context, in *GetAllUsersRequ
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetAllUsersResponse)
 	err := c.cc.Invoke(ctx, ChatService_GetAllUsers_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) GetAllChats(ctx context.Context, in *GetAllChatsRequest, opts ...grpc.CallOption) (*GetAllChatsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetAllChatsResponse)
+	err := c.cc.Invoke(ctx, ChatService_GetAllChats_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -417,6 +429,7 @@ type ChatServiceServer interface {
 	Chat(grpc.BidiStreamingServer[Message, Message]) error
 	GetClients(context.Context, *ClientListRequest) (*ClientListResponse, error)
 	GetAllUsers(context.Context, *GetAllUsersRequest) (*GetAllUsersResponse, error)
+	GetAllChats(context.Context, *GetAllChatsRequest) (*GetAllChatsResponse, error)
 	GetHistory(context.Context, *GetHistoryRequest) (*GetHistoryResponse, error)
 	SetReaction(context.Context, *ReactionRequest) (*ReactionResponse, error)
 	DeleteMessages(context.Context, *DeleteMessagesRequest) (*DeleteMessagesResponse, error)
@@ -463,6 +476,9 @@ func (UnimplementedChatServiceServer) GetClients(context.Context, *ClientListReq
 }
 func (UnimplementedChatServiceServer) GetAllUsers(context.Context, *GetAllUsersRequest) (*GetAllUsersResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetAllUsers not implemented")
+}
+func (UnimplementedChatServiceServer) GetAllChats(context.Context, *GetAllChatsRequest) (*GetAllChatsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetAllChats not implemented")
 }
 func (UnimplementedChatServiceServer) GetHistory(context.Context, *GetHistoryRequest) (*GetHistoryResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetHistory not implemented")
@@ -608,6 +624,24 @@ func _ChatService_GetAllUsers_Handler(srv interface{}, ctx context.Context, dec 
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ChatServiceServer).GetAllUsers(ctx, req.(*GetAllUsersRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_GetAllChats_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetAllChatsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).GetAllChats(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_GetAllChats_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).GetAllChats(ctx, req.(*GetAllChatsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1130,6 +1164,10 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetAllUsers",
 			Handler:    _ChatService_GetAllUsers_Handler,
+		},
+		{
+			MethodName: "GetAllChats",
+			Handler:    _ChatService_GetAllChats_Handler,
 		},
 		{
 			MethodName: "GetHistory",

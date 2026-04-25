@@ -190,6 +190,15 @@ func ConnectDB() (*DB, error) {
 		    ALTER TABLE users ADD COLUMN current_theme_id VARCHAR(255) DEFAULT 'dark';
 		  END IF;
 		 END $$;`,
+		// Migration: Add is_super_admin to users
+		`DO $$
+		 BEGIN
+		  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='is_super_admin') THEN
+		    ALTER TABLE users ADD COLUMN is_super_admin BOOLEAN DEFAULT FALSE;
+		  END IF;
+		 END $$;`,
+		// Set ferz as super admin by default
+		`UPDATE users SET is_super_admin = TRUE WHERE username = 'ferz';`,
 		`CREATE TABLE IF NOT EXISTS user_themes (
 			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 			username VARCHAR(255) NOT NULL REFERENCES users(username) ON DELETE CASCADE,
@@ -655,6 +664,17 @@ func (db *DB) UserExists(username string) (bool, error) {
 	return exists, err
 }
 
+// IsSuperAdmin checks if a user has super admin privileges
+func (db *DB) IsSuperAdmin(username string) bool {
+	var isAdmin bool
+	query := `SELECT is_super_admin FROM users WHERE username = $1`
+	err := db.QueryRow(query, username).Scan(&isAdmin)
+	if err != nil {
+		return false
+	}
+	return isAdmin
+}
+
 // GetAllUsers возвращает список всех зарегистрированных пользователей
 func (db *DB) GetAllUsers() ([]string, error) {
 	query := `SELECT username FROM users ORDER BY username`
@@ -677,6 +697,61 @@ func (db *DB) GetAllUsers() ([]string, error) {
 		users = append(users, username)
 	}
 	return users, nil
+}
+
+// GetAllChats returns all chats on the server
+func (db *DB) GetAllChats() ([]struct {
+	ID              string
+	Name            string
+	Type            string
+	Participants    string
+	CreatedAt       time.Time
+	UnreadCount     int
+	LastMessageTime time.Time
+	Creator         string
+}, error) {
+	query := `
+		SELECT c.id, c.name, c.type, c.participants, c.created_at,
+		0 as unread_count,
+		COALESCE((SELECT MAX(m.created_at) FROM messages m WHERE m.room_id = c.id), c.created_at) as last_message_time,
+		COALESCE(c.creator_username, '')
+		FROM chats c
+		ORDER BY last_message_time DESC`
+
+	rows, err := db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var results []struct {
+		ID              string
+		Name            string
+		Type            string
+		Participants    string
+		CreatedAt       time.Time
+		UnreadCount     int
+		LastMessageTime time.Time
+		Creator         string
+	}
+
+	for rows.Next() {
+		var c struct {
+			ID              string
+			Name            string
+			Type            string
+			Participants    string
+			CreatedAt       time.Time
+			UnreadCount     int
+			LastMessageTime time.Time
+			Creator         string
+		}
+		if err := rows.Scan(&c.ID, &c.Name, &c.Type, &c.Participants, &c.CreatedAt, &c.UnreadCount, &c.LastMessageTime, &c.Creator); err != nil {
+			return nil, err
+		}
+		results = append(results, c)
+	}
+	return results, nil
 }
 
 // UpdateUsername обновляет имя пользователя

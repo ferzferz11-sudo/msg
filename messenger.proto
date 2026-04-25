@@ -20,6 +20,7 @@ message Message {
   string image_url = 13; // URL of the attached image
   bool edited = 14; // Whether the message has been edited
   string client_version = 15; // Client application version
+  bool is_super_admin = 16; // Whether the user is a super admin
 }
 
 message Reaction {
@@ -46,6 +47,12 @@ message GetAllUsersRequest {}
 
 message GetAllUsersResponse {
   repeated string users = 1;
+}
+
+message GetAllChatsRequest {}
+
+message GetAllChatsResponse {
+  repeated ChatInfo chats = 1;
 }
 
 message CreateChatRequest {
@@ -338,6 +345,7 @@ service ChatService {
   rpc Chat(stream Message) returns (stream Message);
   rpc GetClients(ClientListRequest) returns (ClientListResponse);
   rpc GetAllUsers(GetAllUsersRequest) returns (GetAllUsersResponse);
+  rpc GetAllChats(GetAllChatsRequest) returns (GetAllChatsResponse);
   rpc GetHistory(GetHistoryRequest) returns (GetHistoryResponse);
   rpc SetReaction(ReactionRequest) returns (ReactionResponse);
   rpc DeleteMessages(DeleteMessagesRequest) returns (DeleteMessagesResponse);
