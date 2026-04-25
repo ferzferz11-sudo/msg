@@ -2842,6 +2842,7 @@ type CustomTheme struct {
 	TextPrimaryColor   string                 `protobuf:"bytes,8,opt,name=text_primary_color,json=textPrimaryColor,proto3" json:"text_primary_color,omitempty"`
 	TextSecondaryColor string                 `protobuf:"bytes,9,opt,name=text_secondary_color,json=textSecondaryColor,proto3" json:"text_secondary_color,omitempty"`
 	IsDark             bool                   `protobuf:"varint,10,opt,name=is_dark,json=isDark,proto3" json:"is_dark,omitempty"`
+	BackgroundImageUrl string                 `protobuf:"bytes,11,opt,name=background_image_url,json=backgroundImageUrl,proto3" json:"background_image_url,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -2944,6 +2945,13 @@ func (x *CustomTheme) GetIsDark() bool {
 		return x.IsDark
 	}
 	return false
+}
+
+func (x *CustomTheme) GetBackgroundImageUrl() string {
+	if x != nil {
+		return x.BackgroundImageUrl
+	}
+	return ""
 }
 
 type GetThemesRequest struct {
@@ -3513,7 +3521,7 @@ const file_messenger_proto_rawDesc = "" +
 	"\x19GetChatListVersionRequest\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\"6\n" +
 	"\x1aGetChatListVersionResponse\x12\x18\n" +
-	"\aversion\x18\x01 \x01(\x03R\aversion\"\xf3\x02\n" +
+	"\aversion\x18\x01 \x01(\x03R\aversion\"\xa5\x03\n" +
 	"\vCustomTheme\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12#\n" +
@@ -3525,7 +3533,8 @@ const file_messenger_proto_rawDesc = "" +
 	"\x12text_primary_color\x18\b \x01(\tR\x10textPrimaryColor\x120\n" +
 	"\x14text_secondary_color\x18\t \x01(\tR\x12textSecondaryColor\x12\x17\n" +
 	"\ais_dark\x18\n" +
-	" \x01(\bR\x06isDark\".\n" +
+	" \x01(\bR\x06isDark\x120\n" +
+	"\x14background_image_url\x18\v \x01(\tR\x12backgroundImageUrl\".\n" +
 	"\x10GetThemesRequest\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\"z\n" +
 	"\x11GetThemesResponse\x12(\n" +

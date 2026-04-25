@@ -89,21 +89,28 @@ func handleUpload(w http.ResponseWriter, r *http.Request, formKey, saveDir, urlP
 		return
 	}
 
+	log.Printf("Received upload request for key: %s", formKey)
+
 	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
 	if err := r.ParseMultipartForm(maxUploadSize); err != nil {
+		log.Printf("Upload error: file too large: %v", err)
 		http.Error(w, "File too large", http.StatusBadRequest)
 		return
 	}
 
 	file, handler, err := r.FormFile(formKey)
 	if err != nil {
+		log.Printf("Upload error: retrieving file for key %s: %v", formKey, err)
 		http.Error(w, "Error retrieving file", http.StatusBadRequest)
 		return
 	}
 	defer closeFile(file)
 
+	log.Printf("Uploading file: %s (size: %d bytes)", handler.Filename, handler.Size)
+
 	fileBytes, err := io.ReadAll(file)
 	if err != nil {
+		log.Printf("Upload error: reading file: %v", err)
 		http.Error(w, "Error reading file", http.StatusInternalServerError)
 		return
 	}
@@ -123,6 +130,7 @@ func handleUpload(w http.ResponseWriter, r *http.Request, formKey, saveDir, urlP
 
 	filePath := filepath.Join(saveDir, filename)
 	if err := os.WriteFile(filePath, fileBytes, 0644); err != nil {
+		log.Printf("Upload error: saving file to %s: %v", filePath, err)
 		http.Error(w, "Error saving file", http.StatusInternalServerError)
 		return
 	}
@@ -134,6 +142,7 @@ func handleUpload(w http.ResponseWriter, r *http.Request, formKey, saveDir, urlP
 	}
 
 	fileURL := fmt.Sprintf("http://%s:%s%s%s", publicIP, httpPort, urlPrefix, filename)
+	log.Printf("File uploaded successfully! URL: %s", fileURL)
 	w.Header().Set("Content-Type", "application/json")
 	fmt.Fprintf(w, `{"url": "%s"}`, fileURL)
 }

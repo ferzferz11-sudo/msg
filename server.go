@@ -183,7 +183,11 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 			continue
 		}
 
-		log.Printf("[%s] in %s: %s (ImageURL: %s)", msg.User, roomID, msg.Text, msg.ImageUrl)
+		if msg.ImageUrl != "" {
+			log.Printf("[%s] in %s: %s (ImageURL: %s)", msg.User, roomID, msg.Text, msg.ImageUrl)
+		} else {
+			log.Printf("[%s] in %s: %s", msg.User, roomID, msg.Text)
+		}
 
 		if roomID == "" {
 			log.Printf("Skipping message with empty room ID from %s", msg.User)
@@ -903,8 +907,11 @@ func (s *server) GetThemes(_ context.Context, req *gen.GetThemesRequest) (*gen.G
 			TextPrimaryColor:   t.TextPrimaryColor,
 			TextSecondaryColor: t.TextSecondaryColor,
 			IsDark:             t.IsDark,
+			BackgroundImageUrl: t.BackgroundImageUrl,
 		})
 	}
+
+	log.Printf("Retrieved %d custom themes for user %s (Current: %s)", len(customThemes), req.Username, currentID)
 
 	return &gen.GetThemesResponse{
 		CurrentThemeId: currentID,
@@ -913,15 +920,18 @@ func (s *server) GetThemes(_ context.Context, req *gen.GetThemesRequest) (*gen.G
 }
 
 func (s *server) SaveTheme(_ context.Context, req *gen.SaveThemeRequest) (*gen.SaveThemeResponse, error) {
+	log.Printf("Saving theme '%s' (ID: %s) for user %s. Background URL: %s", req.Theme.Name, req.Theme.Id, req.Username, req.Theme.BackgroundImageUrl)
 	err := s.db.SaveUserTheme(req.Username, req.Theme)
 	if err != nil {
 		log.Printf("Failed to save theme for %s: %v", req.Username, err)
 		return &gen.SaveThemeResponse{Success: false, Message: err.Error()}, nil
 	}
+	log.Printf("Theme '%s' saved successfully for %s", req.Theme.Name, req.Username)
 	return &gen.SaveThemeResponse{Success: true, Message: "Theme saved"}, nil
 }
 
 func (s *server) SetCurrentTheme(_ context.Context, req *gen.SetCurrentThemeRequest) (*gen.SetCurrentThemeResponse, error) {
+	log.Printf("Setting current theme to %s for user %s", req.ThemeId, req.Username)
 	err := s.db.SetCurrentTheme(req.Username, req.ThemeId)
 	if err != nil {
 		log.Printf("Failed to set current theme for %s: %v", req.Username, err)
@@ -931,10 +941,12 @@ func (s *server) SetCurrentTheme(_ context.Context, req *gen.SetCurrentThemeRequ
 }
 
 func (s *server) DeleteTheme(_ context.Context, req *gen.DeleteThemeRequest) (*gen.DeleteThemeResponse, error) {
+	log.Printf("Deleting theme %s for user %s", req.ThemeId, req.Username)
 	err := s.db.DeleteUserTheme(req.Username, req.ThemeId)
 	if err != nil {
 		log.Printf("Failed to delete theme for %s: %v", req.Username, err)
 		return &gen.DeleteThemeResponse{Success: false}, nil
 	}
+	log.Printf("Theme %s deleted successfully for %s", req.ThemeId, req.Username)
 	return &gen.DeleteThemeResponse{Success: true}, nil
 }

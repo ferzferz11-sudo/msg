@@ -283,6 +283,7 @@ message CustomTheme {
   string text_primary_color = 8;
   string text_secondary_color = 9;
   bool is_dark = 10;
+  string background_image_url = 11;
 }
 
 message GetThemesRequest {

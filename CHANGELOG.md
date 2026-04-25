@@ -2,6 +2,21 @@
 
 **Author:** Pavel Davydov (ferz)
 
+## [1.0.1.58] - 2026-04-26
+- **Full Custom Themes & Chat Backgrounds**
+  - **Android: Enhanced Theme Management**
+    - Fixed infinite loading spinner in `ChatListActivity` by clearing menu animations on state reset.
+    - Implemented `ThemeManager` for dynamic UI coloring, allowing themes to be independent of system dark/light mode.
+    - Added support for chat background images (URL-based and direct upload).
+    - Integrated background image selection and upload directly into the Theme Editor.
+    - Automatic transparency adjustment for message lists when a background image is active.
+  - **Server: Theme & Upload Improvements**
+    - Updated `messenger.proto` and database schema to support `background_image_url` in `CustomTheme`.
+    - Added database migration to add `background_image_url` column to `user_themes` table.
+    - Implemented detailed server-side logging for file uploads and theme persistence operations.
+    - Fixed Go package name conflicts by cleaning up duplicate proto-generated files in the root directory.
+  - Server version: 1.0.1.58
+
 ## [1.0.1.51] - 2026-04-25
 - **Server: Session Stability & Persistent Streams**
   - Improved session handling: navigating between rooms no longer causes client disconnection.

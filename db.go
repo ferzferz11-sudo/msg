@@ -203,8 +203,16 @@ func ConnectDB() (*DB, error) {
 			text_primary_color VARCHAR(10),
 			text_secondary_color VARCHAR(10),
 			is_dark BOOLEAN DEFAULT FALSE,
+			background_image_url VARCHAR(512),
 			UNIQUE(username, theme_id)
 		);`,
+		// Migration: Add background_image_url to user_themes
+		`DO $$
+		 BEGIN
+		  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='user_themes' AND column_name='background_image_url') THEN
+		    ALTER TABLE user_themes ADD COLUMN background_image_url VARCHAR(512);
+		  END IF;
+		 END $$;`,
 		// Migration: Add chat_list_version to users if it doesn't exist
 		`DO $$
 		 BEGIN
@@ -1269,6 +1277,7 @@ type UserTheme struct {
 	TextPrimaryColor   string
 	TextSecondaryColor string
 	IsDark             bool
+	BackgroundImageUrl string
 }
 
 // GetUserThemes retrieves current theme ID and all custom themes for a user
@@ -1279,7 +1288,7 @@ func (db *DB) GetUserThemes(username string) (string, []UserTheme, error) {
 		return "dark", nil, err
 	}
 
-	rows, err := db.Query(`SELECT theme_id, name, primary_color, on_primary_color, surface_color, on_surface_color, background_color, text_primary_color, text_secondary_color, is_dark
+	rows, err := db.Query(`SELECT theme_id, name, primary_color, on_primary_color, surface_color, on_surface_color, background_color, text_primary_color, text_secondary_color, is_dark, COALESCE(background_image_url, '')
 	                       FROM user_themes WHERE username = $1`, username)
 	if err != nil {
 		return currentID, nil, err
@@ -1289,7 +1298,7 @@ func (db *DB) GetUserThemes(username string) (string, []UserTheme, error) {
 	var themes []UserTheme
 	for rows.Next() {
 		var t UserTheme
-		err := rows.Scan(&t.ThemeID, &t.Name, &t.PrimaryColor, &t.OnPrimaryColor, &t.SurfaceColor, &t.OnSurfaceColor, &t.BackgroundColor, &t.TextPrimaryColor, &t.TextSecondaryColor, &t.IsDark)
+		err := rows.Scan(&t.ThemeID, &t.Name, &t.PrimaryColor, &t.OnPrimaryColor, &t.SurfaceColor, &t.OnSurfaceColor, &t.BackgroundColor, &t.TextPrimaryColor, &t.TextSecondaryColor, &t.IsDark, &t.BackgroundImageUrl)
 		if err == nil {
 			themes = append(themes, t)
 		}
@@ -1299,11 +1308,11 @@ func (db *DB) GetUserThemes(username string) (string, []UserTheme, error) {
 
 // SaveUserTheme saves or updates a custom theme
 func (db *DB) SaveUserTheme(username string, theme *gen.CustomTheme) error {
-	query := `INSERT INTO user_themes (username, theme_id, name, primary_color, on_primary_color, surface_color, on_surface_color, background_color, text_primary_color, text_secondary_color, is_dark)
-	          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+	query := `INSERT INTO user_themes (username, theme_id, name, primary_color, on_primary_color, surface_color, on_surface_color, background_color, text_primary_color, text_secondary_color, is_dark, background_image_url)
+	          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 	          ON CONFLICT (username, theme_id) DO UPDATE SET
-	          name = $3, primary_color = $4, on_primary_color = $5, surface_color = $6, on_surface_color = $7, background_color = $8, text_primary_color = $9, text_secondary_color = $10, is_dark = $11`
-	_, err := db.Exec(query, username, theme.Id, theme.Name, theme.PrimaryColor, theme.OnPrimaryColor, theme.SurfaceColor, theme.OnSurfaceColor, theme.BackgroundColor, theme.TextPrimaryColor, theme.TextSecondaryColor, theme.IsDark)
+	          name = $3, primary_color = $4, on_primary_color = $5, surface_color = $6, on_surface_color = $7, background_color = $8, text_primary_color = $9, text_secondary_color = $10, is_dark = $11, background_image_url = $12`
+	_, err := db.Exec(query, username, theme.Id, theme.Name, theme.PrimaryColor, theme.OnPrimaryColor, theme.SurfaceColor, theme.OnSurfaceColor, theme.BackgroundColor, theme.TextPrimaryColor, theme.TextSecondaryColor, theme.IsDark, theme.BackgroundImageUrl)
 	return err
 }
 
