@@ -269,6 +269,56 @@ message GetChatListVersionResponse {
   int64 version = 1;
 }
 
+message CustomTheme {
+  string id = 1;
+  string name = 2;
+  string primary_color = 3;
+  string on_primary_color = 4;
+  string surface_color = 5;
+  string on_surface_color = 6;
+  string background_color = 7;
+  string text_primary_color = 8;
+  string text_secondary_color = 9;
+  bool is_dark = 10;
+}
+
+message GetThemesRequest {
+  string username = 1;
+}
+
+message GetThemesResponse {
+  string current_theme_id = 1;
+  repeated CustomTheme custom_themes = 2;
+}
+
+message SaveThemeRequest {
+  string username = 1;
+  CustomTheme theme = 2;
+}
+
+message SaveThemeResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message SetCurrentThemeRequest {
+  string username = 1;
+  string theme_id = 2;
+}
+
+message SetCurrentThemeResponse {
+  bool success = 1;
+}
+
+message DeleteThemeRequest {
+  string username = 1;
+  string theme_id = 2;
+}
+
+message DeleteThemeResponse {
+  bool success = 1;
+}
+
 service ChatService {
   rpc Chat(stream Message) returns (stream Message);
   rpc GetClients(ClientListRequest) returns (ClientListResponse);
@@ -296,4 +346,8 @@ service ChatService {
   rpc AddContact(AddContactRequest) returns (AddContactResponse);
   rpc RemoveContact(RemoveContactRequest) returns (RemoveContactResponse);
   rpc GetContacts(GetContactsRequest) returns (GetContactsResponse);
+  rpc GetThemes(GetThemesRequest) returns (GetThemesResponse);
+  rpc SaveTheme(SaveThemeRequest) returns (SaveThemeResponse);
+  rpc SetCurrentTheme(SetCurrentThemeRequest) returns (SetCurrentThemeResponse);
+  rpc DeleteTheme(DeleteThemeRequest) returns (DeleteThemeResponse);
 }

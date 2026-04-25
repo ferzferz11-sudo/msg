@@ -830,3 +830,59 @@ func (s *server) GetChatListVersion(_ context.Context, req *gen.GetChatListVersi
 	}
 	return &gen.GetChatListVersionResponse{Version: version}, nil
 }
+
+func (s *server) GetThemes(_ context.Context, req *gen.GetThemesRequest) (*gen.GetThemesResponse, error) {
+	currentID, themes, err := s.db.GetUserThemes(req.Username)
+	if err != nil {
+		log.Printf("Failed to get themes for %s: %v", req.Username, err)
+		return &gen.GetThemesResponse{CurrentThemeId: "dark"}, nil
+	}
+
+	var customThemes []*gen.CustomTheme
+	for _, t := range themes {
+		customThemes = append(customThemes, &gen.CustomTheme{
+			Id:                 t.ThemeID,
+			Name:               t.Name,
+			PrimaryColor:       t.PrimaryColor,
+			OnPrimaryColor:     t.OnPrimaryColor,
+			SurfaceColor:       t.SurfaceColor,
+			OnSurfaceColor:     t.OnSurfaceColor,
+			BackgroundColor:    t.BackgroundColor,
+			TextPrimaryColor:   t.TextPrimaryColor,
+			TextSecondaryColor: t.TextSecondaryColor,
+			IsDark:             t.IsDark,
+		})
+	}
+
+	return &gen.GetThemesResponse{
+		CurrentThemeId: currentID,
+		CustomThemes:   customThemes,
+	}, nil
+}
+
+func (s *server) SaveTheme(_ context.Context, req *gen.SaveThemeRequest) (*gen.SaveThemeResponse, error) {
+	err := s.db.SaveUserTheme(req.Username, req.Theme)
+	if err != nil {
+		log.Printf("Failed to save theme for %s: %v", req.Username, err)
+		return &gen.SaveThemeResponse{Success: false, Message: err.Error()}, nil
+	}
+	return &gen.SaveThemeResponse{Success: true, Message: "Theme saved"}, nil
+}
+
+func (s *server) SetCurrentTheme(_ context.Context, req *gen.SetCurrentThemeRequest) (*gen.SetCurrentThemeResponse, error) {
+	err := s.db.SetCurrentTheme(req.Username, req.ThemeId)
+	if err != nil {
+		log.Printf("Failed to set current theme for %s: %v", req.Username, err)
+		return &gen.SetCurrentThemeResponse{Success: false}, nil
+	}
+	return &gen.SetCurrentThemeResponse{Success: true}, nil
+}
+
+func (s *server) DeleteTheme(_ context.Context, req *gen.DeleteThemeRequest) (*gen.DeleteThemeResponse, error) {
+	err := s.db.DeleteUserTheme(req.Username, req.ThemeId)
+	if err != nil {
+		log.Printf("Failed to delete theme for %s: %v", req.Username, err)
+		return &gen.DeleteThemeResponse{Success: false}, nil
+	}
+	return &gen.DeleteThemeResponse{Success: true}, nil
+}

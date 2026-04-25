@@ -7,6 +7,7 @@
 package main
 
 import (
+	"LavenderMessenger/gen"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -162,7 +163,30 @@ func ConnectDB() (*DB, error) {
 			avatar_url VARCHAR(512),
 			bio TEXT,
 			status VARCHAR(255),
-			chat_list_version BIGINT DEFAULT 0
+			chat_list_version BIGINT DEFAULT 0,
+			current_theme_id VARCHAR(255) DEFAULT 'dark'
+		);`,
+		// Migration: Add current_theme_id to users
+		`DO $$
+		 BEGIN
+		  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='current_theme_id') THEN
+		    ALTER TABLE users ADD COLUMN current_theme_id VARCHAR(255) DEFAULT 'dark';
+		  END IF;
+		 END $$;`,
+		`CREATE TABLE IF NOT EXISTS user_themes (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			username VARCHAR(255) NOT NULL REFERENCES users(username) ON DELETE CASCADE,
+			theme_id VARCHAR(255) NOT NULL,
+			name VARCHAR(255) NOT NULL,
+			primary_color VARCHAR(10),
+			on_primary_color VARCHAR(10),
+			surface_color VARCHAR(10),
+			on_surface_color VARCHAR(10),
+			background_color VARCHAR(10),
+			text_primary_color VARCHAR(10),
+			text_secondary_color VARCHAR(10),
+			is_dark BOOLEAN DEFAULT FALSE,
+			UNIQUE(username, theme_id)
 		);`,
 		// Migration: Add chat_list_version to users if it doesn't exist
 		`DO $$
@@ -688,7 +712,13 @@ func (db *DB) UpdateUsername(oldUsername, newUsername string) error {
 		return err
 	}
 
-	// 7. Обновляем участников в чатах (самое сложное из-за JSON)
+	// 7. Обновляем темы пользователя
+	_, err = tx.Exec(`UPDATE user_themes SET username = $1 WHERE username = $2`, newUsername, oldUsername)
+	if err != nil {
+		return err
+	}
+
+	// 8. Обновляем участников в чатах (самое сложное из-за JSON)
 	// Используем безопасную замену в JSON массиве
 	oldJson := fmt.Sprintf("\"%s\"", oldUsername)
 	newJson := fmt.Sprintf("\"%s\"", newUsername)
@@ -1194,4 +1224,66 @@ func (db *DB) IncrementParticipantsChatListVersion(chatID string) error {
 		_ = db.IncrementUserChatListVersion(p)
 	}
 	return nil
+}
+
+// UserTheme represents a custom theme in the database
+type UserTheme struct {
+	ThemeID            string
+	Name               string
+	PrimaryColor       string
+	OnPrimaryColor     string
+	SurfaceColor       string
+	OnSurfaceColor     string
+	BackgroundColor    string
+	TextPrimaryColor   string
+	TextSecondaryColor string
+	IsDark             bool
+}
+
+// GetUserThemes retrieves current theme ID and all custom themes for a user
+func (db *DB) GetUserThemes(username string) (string, []UserTheme, error) {
+	var currentID string
+	err := db.QueryRow(`SELECT current_theme_id FROM users WHERE username = $1`, username).Scan(&currentID)
+	if err != nil {
+		return "dark", nil, err
+	}
+
+	rows, err := db.Query(`SELECT theme_id, name, primary_color, on_primary_color, surface_color, on_surface_color, background_color, text_primary_color, text_secondary_color, is_dark
+	                       FROM user_themes WHERE username = $1`, username)
+	if err != nil {
+		return currentID, nil, err
+	}
+	defer rows.Close()
+
+	var themes []UserTheme
+	for rows.Next() {
+		var t UserTheme
+		err := rows.Scan(&t.ThemeID, &t.Name, &t.PrimaryColor, &t.OnPrimaryColor, &t.SurfaceColor, &t.OnSurfaceColor, &t.BackgroundColor, &t.TextPrimaryColor, &t.TextSecondaryColor, &t.IsDark)
+		if err == nil {
+			themes = append(themes, t)
+		}
+	}
+	return currentID, themes, nil
+}
+
+// SaveUserTheme saves or updates a custom theme
+func (db *DB) SaveUserTheme(username string, theme *gen.CustomTheme) error {
+	query := `INSERT INTO user_themes (username, theme_id, name, primary_color, on_primary_color, surface_color, on_surface_color, background_color, text_primary_color, text_secondary_color, is_dark)
+	          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+	          ON CONFLICT (username, theme_id) DO UPDATE SET
+	          name = $3, primary_color = $4, on_primary_color = $5, surface_color = $6, on_surface_color = $7, background_color = $8, text_primary_color = $9, text_secondary_color = $10, is_dark = $11`
+	_, err := db.Exec(query, username, theme.Id, theme.Name, theme.PrimaryColor, theme.OnPrimaryColor, theme.SurfaceColor, theme.OnSurfaceColor, theme.BackgroundColor, theme.TextPrimaryColor, theme.TextSecondaryColor, theme.IsDark)
+	return err
+}
+
+// SetCurrentTheme updates the user's selected theme ID
+func (db *DB) SetCurrentTheme(username, themeID string) error {
+	_, err := db.Exec(`UPDATE users SET current_theme_id = $1 WHERE username = $2`, themeID, username)
+	return err
+}
+
+// DeleteUserTheme removes a custom theme
+func (db *DB) DeleteUserTheme(username, themeID string) error {
+	_, err := db.Exec(`DELETE FROM user_themes WHERE username = $1 AND theme_id = $2`, username, themeID)
+	return err
 }

@@ -27,7 +27,7 @@ import (
 
 const (
 	// serverVersion indicates the current version of the Lavender messaging server
-	serverVersion = "1.0.1.38"
+	serverVersion = "1.0.1.39"
 )
 
 var firebaseApp *firebase.App
@@ -134,6 +134,13 @@ func main() {
 		httpPort = "8082"
 	}
 	go StartHTTPServer(httpPort)
+
+	// Start HTTP server for APK updates in a goroutine
+	apkPort := os.Getenv("APK_PORT")
+	if apkPort == "" {
+		apkPort = "8081"
+	}
+	go StartAPKServer(apkPort)
 
 	// Start the gRPC server and begin serving client requests
 	// This is a blocking call that runs until the application is terminated

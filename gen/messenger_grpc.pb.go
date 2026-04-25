@@ -45,6 +45,10 @@ const (
 	ChatService_AddContact_FullMethodName         = "/messenger.ChatService/AddContact"
 	ChatService_RemoveContact_FullMethodName      = "/messenger.ChatService/RemoveContact"
 	ChatService_GetContacts_FullMethodName        = "/messenger.ChatService/GetContacts"
+	ChatService_GetThemes_FullMethodName          = "/messenger.ChatService/GetThemes"
+	ChatService_SaveTheme_FullMethodName          = "/messenger.ChatService/SaveTheme"
+	ChatService_SetCurrentTheme_FullMethodName    = "/messenger.ChatService/SetCurrentTheme"
+	ChatService_DeleteTheme_FullMethodName        = "/messenger.ChatService/DeleteTheme"
 )
 
 // ChatServiceClient is the client API for ChatService service.
@@ -77,6 +81,10 @@ type ChatServiceClient interface {
 	AddContact(ctx context.Context, in *AddContactRequest, opts ...grpc.CallOption) (*AddContactResponse, error)
 	RemoveContact(ctx context.Context, in *RemoveContactRequest, opts ...grpc.CallOption) (*RemoveContactResponse, error)
 	GetContacts(ctx context.Context, in *GetContactsRequest, opts ...grpc.CallOption) (*GetContactsResponse, error)
+	GetThemes(ctx context.Context, in *GetThemesRequest, opts ...grpc.CallOption) (*GetThemesResponse, error)
+	SaveTheme(ctx context.Context, in *SaveThemeRequest, opts ...grpc.CallOption) (*SaveThemeResponse, error)
+	SetCurrentTheme(ctx context.Context, in *SetCurrentThemeRequest, opts ...grpc.CallOption) (*SetCurrentThemeResponse, error)
+	DeleteTheme(ctx context.Context, in *DeleteThemeRequest, opts ...grpc.CallOption) (*DeleteThemeResponse, error)
 }
 
 type chatServiceClient struct {
@@ -350,6 +358,46 @@ func (c *chatServiceClient) GetContacts(ctx context.Context, in *GetContactsRequ
 	return out, nil
 }
 
+func (c *chatServiceClient) GetThemes(ctx context.Context, in *GetThemesRequest, opts ...grpc.CallOption) (*GetThemesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetThemesResponse)
+	err := c.cc.Invoke(ctx, ChatService_GetThemes_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) SaveTheme(ctx context.Context, in *SaveThemeRequest, opts ...grpc.CallOption) (*SaveThemeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SaveThemeResponse)
+	err := c.cc.Invoke(ctx, ChatService_SaveTheme_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) SetCurrentTheme(ctx context.Context, in *SetCurrentThemeRequest, opts ...grpc.CallOption) (*SetCurrentThemeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SetCurrentThemeResponse)
+	err := c.cc.Invoke(ctx, ChatService_SetCurrentTheme_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) DeleteTheme(ctx context.Context, in *DeleteThemeRequest, opts ...grpc.CallOption) (*DeleteThemeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteThemeResponse)
+	err := c.cc.Invoke(ctx, ChatService_DeleteTheme_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ChatServiceServer is the server API for ChatService service.
 // All implementations must embed UnimplementedChatServiceServer
 // for forward compatibility.
@@ -380,6 +428,10 @@ type ChatServiceServer interface {
 	AddContact(context.Context, *AddContactRequest) (*AddContactResponse, error)
 	RemoveContact(context.Context, *RemoveContactRequest) (*RemoveContactResponse, error)
 	GetContacts(context.Context, *GetContactsRequest) (*GetContactsResponse, error)
+	GetThemes(context.Context, *GetThemesRequest) (*GetThemesResponse, error)
+	SaveTheme(context.Context, *SaveThemeRequest) (*SaveThemeResponse, error)
+	SetCurrentTheme(context.Context, *SetCurrentThemeRequest) (*SetCurrentThemeResponse, error)
+	DeleteTheme(context.Context, *DeleteThemeRequest) (*DeleteThemeResponse, error)
 	mustEmbedUnimplementedChatServiceServer()
 }
 
@@ -467,6 +519,18 @@ func (UnimplementedChatServiceServer) RemoveContact(context.Context, *RemoveCont
 }
 func (UnimplementedChatServiceServer) GetContacts(context.Context, *GetContactsRequest) (*GetContactsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetContacts not implemented")
+}
+func (UnimplementedChatServiceServer) GetThemes(context.Context, *GetThemesRequest) (*GetThemesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetThemes not implemented")
+}
+func (UnimplementedChatServiceServer) SaveTheme(context.Context, *SaveThemeRequest) (*SaveThemeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SaveTheme not implemented")
+}
+func (UnimplementedChatServiceServer) SetCurrentTheme(context.Context, *SetCurrentThemeRequest) (*SetCurrentThemeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetCurrentTheme not implemented")
+}
+func (UnimplementedChatServiceServer) DeleteTheme(context.Context, *DeleteThemeRequest) (*DeleteThemeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteTheme not implemented")
 }
 func (UnimplementedChatServiceServer) mustEmbedUnimplementedChatServiceServer() {}
 func (UnimplementedChatServiceServer) testEmbeddedByValue()                     {}
@@ -946,6 +1010,78 @@ func _ChatService_GetContacts_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ChatService_GetThemes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetThemesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).GetThemes(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_GetThemes_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).GetThemes(ctx, req.(*GetThemesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_SaveTheme_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SaveThemeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).SaveTheme(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_SaveTheme_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).SaveTheme(ctx, req.(*SaveThemeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_SetCurrentTheme_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetCurrentThemeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).SetCurrentTheme(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_SetCurrentTheme_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).SetCurrentTheme(ctx, req.(*SetCurrentThemeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_DeleteTheme_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteThemeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).DeleteTheme(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_DeleteTheme_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).DeleteTheme(ctx, req.(*DeleteThemeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ChatService_ServiceDesc is the grpc.ServiceDesc for ChatService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1052,6 +1188,22 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetContacts",
 			Handler:    _ChatService_GetContacts_Handler,
+		},
+		{
+			MethodName: "GetThemes",
+			Handler:    _ChatService_GetThemes_Handler,
+		},
+		{
+			MethodName: "SaveTheme",
+			Handler:    _ChatService_SaveTheme_Handler,
+		},
+		{
+			MethodName: "SetCurrentTheme",
+			Handler:    _ChatService_SetCurrentTheme_Handler,
+		},
+		{
+			MethodName: "DeleteTheme",
+			Handler:    _ChatService_DeleteTheme_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

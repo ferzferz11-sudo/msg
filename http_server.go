@@ -55,6 +55,22 @@ func StartHTTPServer(port string) {
 	}
 }
 
+func StartAPKServer(port string) {
+	apkDir := os.Getenv("APK_DIR")
+	if apkDir == "" {
+		apkDir = "/home/ferz/LavenderMessengerAndroid"
+	}
+
+	mux := http.NewServeMux()
+	fileServer := http.FileServer(http.Dir(apkDir))
+	mux.Handle("/", fileServer)
+
+	log.Printf("APK server started on port %s serving %s", port, apkDir)
+	if err := http.ListenAndServe("0.0.0.0:"+port, mux); err != nil {
+		log.Printf("APK server error: %v", err)
+	}
+}
+
 func uploadAvatarHandler(w http.ResponseWriter, r *http.Request) {
 	handleUpload(w, r, "avatar", avatarsPath, "/avatars/")
 }
