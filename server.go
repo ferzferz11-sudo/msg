@@ -790,3 +790,32 @@ func (s *server) EditMessage(_ context.Context, req *gen.EditMessageRequest) (*g
 	log.Printf("Edited message %s", req.MessageId)
 	return &gen.EditMessageResponse{Success: true, Message: "Message edited successfully"}, nil
 }
+
+func (s *server) AddContact(_ context.Context, req *gen.AddContactRequest) (*gen.AddContactResponse, error) {
+	err := s.db.AddContact(req.Username, req.ContactUsername)
+	if err != nil {
+		log.Printf("Failed to add contact %s for %s: %v", req.ContactUsername, req.Username, err)
+		return &gen.AddContactResponse{Success: false, Message: err.Error()}, nil
+	}
+	log.Printf("User %s added contact %s", req.Username, req.ContactUsername)
+	return &gen.AddContactResponse{Success: true, Message: "Contact added successfully"}, nil
+}
+
+func (s *server) RemoveContact(_ context.Context, req *gen.RemoveContactRequest) (*gen.RemoveContactResponse, error) {
+	err := s.db.RemoveContact(req.Username, req.ContactUsername)
+	if err != nil {
+		log.Printf("Failed to remove contact %s for %s: %v", req.ContactUsername, req.Username, err)
+		return &gen.RemoveContactResponse{Success: false, Message: err.Error()}, nil
+	}
+	log.Printf("User %s removed contact %s", req.Username, req.ContactUsername)
+	return &gen.RemoveContactResponse{Success: true, Message: "Contact removed successfully"}, nil
+}
+
+func (s *server) GetContacts(_ context.Context, req *gen.GetContactsRequest) (*gen.GetContactsResponse, error) {
+	contacts, err := s.db.GetContacts(req.Username)
+	if err != nil {
+		log.Printf("Failed to get contacts for %s: %v", req.Username, err)
+		return &gen.GetContactsResponse{Contacts: nil}, nil
+	}
+	return &gen.GetContactsResponse{Contacts: contacts}, nil
+}

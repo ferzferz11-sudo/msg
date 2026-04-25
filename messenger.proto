@@ -233,6 +233,34 @@ message DeleteProfileResponse {
   string message = 2;
 }
 
+message AddContactRequest {
+  string username = 1;
+  string contact_username = 2;
+}
+
+message AddContactResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message RemoveContactRequest {
+  string username = 1;
+  string contact_username = 2;
+}
+
+message RemoveContactResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message GetContactsRequest {
+  string username = 1;
+}
+
+message GetContactsResponse {
+  repeated string contacts = 1;
+}
+
 service ChatService {
   rpc Chat(stream Message) returns (stream Message);
   rpc GetClients(ClientListRequest) returns (ClientListResponse);
@@ -256,4 +284,7 @@ service ChatService {
   rpc EditMessage(EditMessageRequest) returns (EditMessageResponse);
   rpc DeleteChat(DeleteChatRequest) returns (DeleteChatResponse);
   rpc DeleteProfile(DeleteProfileRequest) returns (DeleteProfileResponse);
+  rpc AddContact(AddContactRequest) returns (AddContactResponse);
+  rpc RemoveContact(RemoveContactRequest) returns (RemoveContactResponse);
+  rpc GetContacts(GetContactsRequest) returns (GetContactsResponse);
 }

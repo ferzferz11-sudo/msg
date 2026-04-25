@@ -153,24 +153,90 @@ func ConnectDB() (*DB, error) {
 			updated_at TIMESTAMP NOT NULL
 		);`,
 		`CREATE TABLE IF NOT EXISTS users (
-			username VARCHAR(255) PRIMARY KEY,
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			username VARCHAR(255) UNIQUE NOT NULL,
 			password_hash VARCHAR(255) NOT NULL,
-			created_at TIMESTAMP NOT NULL DEFAULT NOW()
+			created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+			avatar_url VARCHAR(512),
+			bio TEXT,
+			status VARCHAR(255)
 		);`,
-		// Migration: Add avatar_url to users
+		// Migration for existing tables: Add UUID id to users
 		`DO $$
 		 BEGIN
-		  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='avatar_url') THEN
-		    ALTER TABLE users ADD COLUMN avatar_url VARCHAR(512);
+		  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='id') THEN
+		    ALTER TABLE users ADD COLUMN id UUID DEFAULT gen_random_uuid();
+		    ALTER TABLE users ADD CONSTRAINT users_id_key UNIQUE (id);
 		  END IF;
 		 END $$;`,
-		`CREATE TABLE IF NOT EXISTS chats (
-			id VARCHAR(255) PRIMARY KEY,
-			name VARCHAR(255) NOT NULL,
-			type VARCHAR(50) NOT NULL, -- 'direct' or 'group'
-			participants TEXT NOT NULL, -- JSON array of usernames
-			created_at TIMESTAMP NOT NULL DEFAULT NOW()
+		`CREATE TABLE IF NOT EXISTS contacts (
+			id SERIAL PRIMARY KEY,
+			user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+			contact_id UUID REFERENCES users(id) ON DELETE CASCADE,
+			username VARCHAR(255) NOT NULL,
+			contact_username VARCHAR(255) NOT NULL,
+			created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+			UNIQUE (user_id, contact_id)
 		);`,
+		// Migration: Add user_id and contact_id to contacts if they don't exist
+		`DO $$
+		 BEGIN
+		  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='contacts' AND column_name='user_id') THEN
+		    ALTER TABLE contacts ADD COLUMN user_id UUID REFERENCES users(id) ON DELETE CASCADE;
+		    ALTER TABLE contacts ADD COLUMN contact_id UUID REFERENCES users(id) ON DELETE CASCADE;
+		  END IF;
+		 END $$;`,
+		// Data Migration: Fill contacts from chats using proper mapping
+		`INSERT INTO contacts (user_id, contact_id, username, contact_username)
+		 SELECT u1.id, u2.id, u1.username, u2.username
+		 FROM (
+		     SELECT id as chat_id, json_array_elements_text(CASE
+		         WHEN participants ~ '^\[.*\]$' THEN participants::json
+		         ELSE ('["' || REPLACE(participants, ',', '","') || '"]')::json
+		     END) as uname FROM chats
+		 ) p1
+		 JOIN (
+		     SELECT id as chat_id, json_array_elements_text(CASE
+		         WHEN participants ~ '^\[.*\]$' THEN participants::json
+		         ELSE ('["' || REPLACE(participants, ',', '","') || '"]')::json
+		     END) as cname FROM chats
+		 ) p2 ON p1.chat_id = p2.chat_id
+		 JOIN users u1 ON u1.username = p1.uname
+		 JOIN users u2 ON u2.username = p2.cname
+		 WHERE p1.uname != p2.cname
+		 ON CONFLICT DO NOTHING;`,
+		// Add user_id to other tables for future-proofing
+		`DO $$
+		 BEGIN
+		  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='user_id') THEN
+		    ALTER TABLE messages ADD COLUMN user_id UUID REFERENCES users(id) ON DELETE SET NULL;
+		  END IF;
+		 END $$;`,
+		`UPDATE messages m SET user_id = u.id FROM users u WHERE m.username = u.username AND m.user_id IS NULL;`,
+		// user_tokens migration
+		`DO $$
+		 BEGIN
+		  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='user_tokens' AND column_name='user_id') THEN
+		    ALTER TABLE user_tokens ADD COLUMN user_id UUID REFERENCES users(id) ON DELETE CASCADE;
+		  END IF;
+		 END $$;`,
+		`UPDATE user_tokens t SET user_id = u.id FROM users u WHERE t.username = u.username AND t.user_id IS NULL;`,
+		// reactions migration
+		`DO $$
+		 BEGIN
+		  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='reactions' AND column_name='user_id') THEN
+		    ALTER TABLE reactions ADD COLUMN user_id UUID REFERENCES users(id) ON DELETE CASCADE;
+		  END IF;
+		 END $$;`,
+		`UPDATE reactions r SET user_id = u.id FROM users u WHERE r.username = u.username AND r.user_id IS NULL;`,
+		// user_chat_metadata migration
+		`DO $$
+		 BEGIN
+		  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='user_chat_metadata' AND column_name='user_id') THEN
+		    ALTER TABLE user_chat_metadata ADD COLUMN user_id UUID REFERENCES users(id) ON DELETE CASCADE;
+		  END IF;
+		 END $$;`,
+		`UPDATE user_chat_metadata m SET user_id = u.id FROM users u WHERE m.username = u.username AND m.user_id IS NULL;`,
 	}
 
 	for _, query := range queries {
@@ -208,7 +274,8 @@ func (db *DB) Close() error {
 
 // SaveMessage stores an encrypted message in the database
 func (db *DB) SaveMessage(messageID string, username string, encryptedText []byte, createdAt time.Time, repliedToMessageID string, repliedToUser string, repliedToText string, roomID string, imageURL string) error {
-	query := `INSERT INTO messages (message_id, username, encrypted_text, created_at, replied_to_message_id, replied_to_user, replied_to_text, room_id, is_read, image_url) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, FALSE, $9)`
+	query := `INSERT INTO messages (message_id, username, user_id, encrypted_text, created_at, replied_to_message_id, replied_to_user, replied_to_text, room_id, is_read, image_url)
+	          SELECT $1, $2, id, $3, $4, $5, $6, $7, $8, FALSE, $9 FROM users WHERE username = $2`
 	_, err := db.Exec(query, messageID, username, encryptedText, createdAt, repliedToMessageID, repliedToUser, repliedToText, roomID, imageURL)
 	return err
 }
@@ -323,8 +390,8 @@ func (db *DB) SetReaction(messageID string, username string, emoji string) error
 		return fmt.Errorf("message not found")
 	}
 
-	query := `INSERT INTO reactions (message_id, username, emoji)
-              VALUES ($1, $2, $3)
+	query := `INSERT INTO reactions (message_id, username, user_id, emoji)
+	          SELECT $1, $2, id, $3 FROM users WHERE username = $2
               ON CONFLICT (message_id, username) DO UPDATE SET emoji = $3`
 	_, err = db.Exec(query, messageID, username, emoji)
 	return err
@@ -471,8 +538,8 @@ func (db *DB) DeleteChat(chatID string) error {
 
 // SaveUserToken сохраняет или обновляет FCM токен пользователя
 func (db *DB) SaveUserToken(username, token string) error {
-	query := `INSERT INTO user_tokens (username, fcm_token, updated_at)
-              VALUES ($1, $2, $3)
+	query := `INSERT INTO user_tokens (username, user_id, fcm_token, updated_at)
+	          SELECT $1, id, $2, $3 FROM users WHERE username = $1
               ON CONFLICT (username) DO UPDATE SET fcm_token = $2, updated_at = $3`
 	_, err := db.Exec(query, username, token, time.Now())
 	return err
@@ -552,27 +619,81 @@ func (db *DB) UpdateUsername(oldUsername, newUsername string) error {
 		return fmt.Errorf("username already taken")
 	}
 
-	// Обновляем имя пользователя
-	query := `UPDATE users SET username = $1 WHERE username = $2`
-	result, err := db.Exec(query, newUsername, oldUsername)
+	// Начинаем транзакцию для атомарного обновления во всех таблицах
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// 1. Обновляем основную таблицу пользователей
+	_, err = tx.Exec(`UPDATE users SET username = $1 WHERE username = $2`, newUsername, oldUsername)
 	if err != nil {
 		return err
 	}
 
-	// Проверяем, что пользователь существовал
-	rowsAffected, _ := result.RowsAffected()
-	if rowsAffected == 0 {
-		return fmt.Errorf("user not found")
-	}
-
-	// Обновляем имя пользователя в таблице чатов
-	query = `UPDATE chats SET participants = REPLACE(participants, $1, $2) WHERE participants LIKE $1`
-	_, err = db.Exec(query, oldUsername, newUsername)
+	// 2. Обновляем сообщения
+	_, err = tx.Exec(`UPDATE messages SET username = $1 WHERE username = $2`, newUsername, oldUsername)
 	if err != nil {
-		log.Printf("Warning: failed to update username in chats: %v", err)
+		return err
+	}
+	_, err = tx.Exec(`UPDATE messages SET replied_to_user = $1 WHERE replied_to_user = $2`, newUsername, oldUsername)
+	if err != nil {
+		return err
 	}
 
-	return nil
+	// 3. Обновляем контакты (обе стороны)
+	_, err = tx.Exec(`UPDATE contacts SET username = $1 WHERE username = $2`, newUsername, oldUsername)
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(`UPDATE contacts SET contact_username = $1 WHERE contact_username = $2`, newUsername, oldUsername)
+	if err != nil {
+		return err
+	}
+
+	// 4. Обновляем токены уведомлений
+	_, err = tx.Exec(`UPDATE user_tokens SET username = $1 WHERE username = $2`, newUsername, oldUsername)
+	if err != nil {
+		return err
+	}
+
+	// 5. Обновляем метаданные чатов (last_read_at и т.д.)
+	_, err = tx.Exec(`UPDATE user_chat_metadata SET username = $1 WHERE username = $2`, newUsername, oldUsername)
+	if err != nil {
+		return err
+	}
+
+	// 6. Обновляем реакции
+	_, err = tx.Exec(`UPDATE reactions SET username = $1 WHERE username = $2`, newUsername, oldUsername)
+	if err != nil {
+		return err
+	}
+
+	// 7. Обновляем участников в чатах (самое сложное из-за JSON)
+	// Используем безопасную замену в JSON массиве
+	oldJson := fmt.Sprintf("\"%s\"", oldUsername)
+	newJson := fmt.Sprintf("\"%s\"", newUsername)
+
+	query := `UPDATE chats
+              SET participants = (
+                  SELECT json_agg(CASE WHEN elem::text = $1 THEN $2::json ELSE elem END)
+                  FROM json_array_elements(participants::json) AS elem
+              )::text
+              WHERE participants::json @> $1::json`
+
+	_, err = tx.Exec(query, oldJson, newJson)
+	if err != nil {
+		log.Printf("Warning: failed to update username in chats via JSON: %v. Falling back to REPLACE.", err)
+		// Фолбек на простой REPLACE если JSON функции не сработали (хотя в Postgres они должны быть)
+		_, err = tx.Exec(`UPDATE chats SET participants = REPLACE(participants, $1, $2) WHERE participants LIKE $3`,
+			oldJson, newJson, "%"+oldJson+"%")
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
 }
 
 // UpdatePassword обновляет пароль пользователя
@@ -741,8 +862,8 @@ func (db *DB) GetUserChats(username string) ([]struct {
 // MarkRead updates the last read time for a user in a room and marks messages as read
 func (db *DB) MarkRead(roomID, username string) error {
 	// 1. Update user_chat_metadata
-	query1 := `INSERT INTO user_chat_metadata (username, room_id, last_read_at)
-              VALUES ($1, $2, NOW())
+	query1 := `INSERT INTO user_chat_metadata (username, user_id, room_id, last_read_at)
+	          SELECT $1, id, $2, NOW() FROM users WHERE username = $1
               ON CONFLICT (username, room_id) DO UPDATE SET last_read_at = NOW()`
 	_, err := db.Exec(query1, username, roomID)
 	if err != nil {
@@ -836,7 +957,13 @@ func (db *DB) DeleteProfile(username string) error {
 		return fmt.Errorf("failed to delete user metadata: %w", err)
 	}
 
-	// 8. Delete the user itself
+	// 8. Delete user's contacts (both as owner and as contact)
+	_, err = tx.Exec(`DELETE FROM contacts WHERE username = $1 OR contact_username = $1`, username)
+	if err != nil {
+		return fmt.Errorf("failed to delete user contacts: %w", err)
+	}
+
+	// 9. Delete the user itself
 	_, err = tx.Exec(`DELETE FROM users WHERE username = $1`, username)
 	if err != nil {
 		return fmt.Errorf("failed to delete user: %w", err)
@@ -934,9 +1061,68 @@ func (db *DB) UpdateProfile(username, bio, status string) error {
 
 // UpdateChatParticipants updates the participants of a chat
 func (db *DB) UpdateChatParticipants(chatID, participants string) error {
-	query := `UPDATE chats SET participants = $1 WHERE message_id = $2`
+	query := `UPDATE chats SET participants = $1 WHERE id = $2`
 	_, err := db.Exec(query, participants, chatID)
 	return err
+}
+
+// AddContact adds a contact for a user
+func (db *DB) AddContact(username, contactUsername string) error {
+	query := `INSERT INTO contacts (user_id, contact_id, username, contact_username)
+	          SELECT u1.id, u2.id, u1.username, u2.username
+	          FROM users u1, users u2
+	          WHERE u1.username = $1 AND u2.username = $2
+	          ON CONFLICT (user_id, contact_id) DO NOTHING`
+	_, err := db.Exec(query, username, contactUsername)
+	return err
+}
+
+// RemoveContact removes a contact for a user
+func (db *DB) RemoveContact(username, contactUsername string) error {
+	_, err := db.Exec(`DELETE FROM contacts WHERE username = $1 AND contact_username = $2`, username, contactUsername)
+	return err
+}
+
+// GetContacts retrieves all contacts for a user
+func (db *DB) GetContacts(username string) ([]string, error) {
+	// We join with users to get the CURRENT username of the contact,
+	// in case they changed it but we are still linked by contact_id
+	query := `SELECT u_contact.username
+	          FROM contacts c
+	          JOIN users u_me ON c.user_id = u_me.id
+	          JOIN users u_contact ON c.contact_id = u_contact.id
+	          WHERE u_me.username = $1`
+
+	rows, err := db.Query(query, username)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var contacts []string
+	for rows.Next() {
+		var contact string
+		if err := rows.Scan(&contact); err != nil {
+			return nil, err
+		}
+		contacts = append(contacts, contact)
+	}
+
+	// Fallback for old records without user_id links
+	if len(contacts) == 0 {
+		rows, err := db.Query(`SELECT contact_username FROM contacts WHERE username = $1`, username)
+		if err == nil {
+			defer rows.Close()
+			for rows.Next() {
+				var contact string
+				if err := rows.Scan(&contact); err == nil {
+					contacts = append(contacts, contact)
+				}
+			}
+		}
+	}
+
+	return contacts, nil
 }
 
 // UpdateMessageText updates the text of a message by UUID and marks it as edited
