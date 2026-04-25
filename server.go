@@ -43,6 +43,7 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 		// Unregister the client when the connection ends
 		s.hub.Unregister(stream)
 		log.Printf("Client disconnected: %s", connectedUser)
+		s.broadcastOnlineUsers()
 	}()
 
 	for {
@@ -125,6 +126,7 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 			// Mark stream as authenticated
 			s.hub.SetAuthenticated(stream, true)
 			log.Printf("User authenticated: %s", msg.User)
+			s.broadcastOnlineUsers()
 
 			// Clear password from message before broadcasting
 			msg.Password = ""
@@ -726,6 +728,18 @@ func (s *server) sendPushNotification(user, title, body, roomID string) {
 	}
 
 	log.Printf("Push notification sent successfully to %s", user)
+}
+
+func (s *server) broadcastOnlineUsers() {
+	users := s.hub.GetOnlineUsers()
+	usersJson, _ := json.Marshal(users)
+	msg := &gen.Message{
+		User:      "SYSTEM",
+		Text:      "ONLINE_USERS_UPDATE:" + string(usersJson),
+		Id:        uuid.New().String(),
+		CreatedAt: timestamppb.Now(),
+	}
+	s.hub.BroadcastGlobal(msg)
 }
 
 // DeleteMessages deletes a list of messages

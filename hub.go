@@ -100,6 +100,18 @@ func (h *Hub) GetOnlineUsers() []string {
 	return users
 }
 
+// BroadcastGlobal sends a message to all connected and authenticated clients
+func (h *Hub) BroadcastGlobal(msg *gen.Message) {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	for stream, auth := range h.authenticated {
+		if auth {
+			_ = stream.Send(msg)
+		}
+	}
+}
+
 // Broadcast sends a message to all connected clients in the same room
 func (h *Hub) Broadcast(msg *gen.Message) {
 	h.mu.RLock()
