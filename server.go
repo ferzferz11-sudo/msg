@@ -14,6 +14,8 @@ import (
 	"io"
 	"log"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -28,6 +30,7 @@ type server struct {
 	hub         *Hub          // Hub for managing client connections
 	db          *DB           // Database for message persistence
 	firebaseApp *firebase.App // Firebase Admin SDK instance
+	recentMsgs  sync.Map      // Cache for deduplicating identical rapid messages
 }
 
 // Chat handles bidirectional streaming for real-time messaging
@@ -125,6 +128,20 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 
 			// Clear password from message before broadcasting
 			msg.Password = ""
+		}
+
+		// Deduplication logic for identical rapid messages
+		// Prevents double-posting from some source apps (e.g. Google Photos)
+		if msg.Text != "" || msg.ImageUrl != "" {
+			msgHash := fmt.Sprintf("%s:%s:%s:%s", msg.User, msg.RoomId, msg.Text, msg.ImageUrl)
+			now := time.Now()
+			if lastTime, ok := s.recentMsgs.Load(msgHash); ok {
+				if now.Sub(lastTime.(time.Time)) < 2*time.Second {
+					log.Printf("Deduplicated identical message from %s in %s", msg.User, msg.RoomId)
+					continue
+				}
+			}
+			s.recentMsgs.Store(msgHash, now)
 		}
 
 		// Reject messages from unauthenticated streams (except first auth message)

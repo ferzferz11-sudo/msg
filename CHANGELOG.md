@@ -2,6 +2,15 @@
 
 **Author:** Pavel Davydov (ferz)
 
+## [1.0.1.43] - 2026-04-25
+- **Server: Message Deduplication & UX Improvements**
+  - Added message deduplication logic to prevent double-posting from source apps (e.g. Google Photos)
+  - Full integration of Custom Themes management and storage
+  - Dedicated APK distribution server on port 8081
+  - Automated deployment script for Mac-to-Linux cross-compilation
+  - Improved logging with username context for connections/disconnections
+  - Server version: 1.0.1.43
+
 ## [1.0.1.42] - 2026-04-24
 - **Server: Push Notification Room Navigation**
   - Added `room_id` to push notification data payload
