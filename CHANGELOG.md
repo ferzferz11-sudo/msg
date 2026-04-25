@@ -2,6 +2,13 @@
 
 **Author:** Pavel Davydov (ferz)
 
+## [1.0.1.47] - 2026-04-25
+- **Server: Deployment & Online Status Finalization**
+  - Refactored deployment logic into local/remote parts for non-blocking execution.
+  - Resolved race condition in online status broadcasting (fixed "Anonymous" bug).
+  - Synchronized server version with major stability improvements.
+  - Server version: 1.0.1.47
+
 ## [1.0.1.46] - 2026-04-25
 - **Server: Online Status Reliability Fix**
   - Fixed a race condition where users would appear as "Anonymous" in the online list during connection.

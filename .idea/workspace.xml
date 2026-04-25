@@ -5,7 +5,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="ef919cf0-dee0-4e94-b631-d2fd26a26aae" name="Changes" comment="1.0.1.40">
-      <change beforePath="$PROJECT_DIR$/lavender-server" beforeDir="false" afterPath="$PROJECT_DIR$/lavender-server" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/android/version.txt" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/version.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/deploy.sh" beforeDir="false" afterPath="$PROJECT_DIR$/deploy.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lavender-server" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
