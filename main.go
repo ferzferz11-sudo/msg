@@ -27,7 +27,7 @@ import (
 
 const (
 	// serverVersion indicates the current version of the Lavender messaging server
-	serverVersion = "1.0.1.50"
+	serverVersion = "1.0.1.51"
 )
 
 var firebaseApp *firebase.App

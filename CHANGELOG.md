@@ -2,6 +2,13 @@
 
 **Author:** Pavel Davydov (ferz)
 
+## [1.0.1.51] - 2026-04-25
+- **Server: Session Stability & Persistent Streams**
+  - Improved session handling: navigating between rooms no longer causes client disconnection.
+  - Added support for lightweight "room switch" signals within a single gRPC stream.
+  - Corrected versioning synchronization.
+  - Server version: 1.0.1.51
+
 ## [1.0.1.50] - 2026-04-25
 - **Server: Database Migration Fix**
   - Fixed SQL syntax error in chat creator migration: replaced invalid subscripting with `->>0` operator.
