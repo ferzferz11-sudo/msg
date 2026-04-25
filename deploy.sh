@@ -19,7 +19,20 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# 2. Синхронизация кода и бинарного файла
+# 2. Создание серверного скрипта запуска (Server-side restart script)
+cat << 'EOF' > start.sh
+#!/bin/bash
+# Server-side script to safely restart the Lavender Server
+cd "$(dirname "$0")"
+# Kill existing process
+pkill lavender-server || true
+# Start server in background with log redirection
+nohup ./lavender-server > logs.txt 2>&1 &
+echo "Server started in background."
+EOF
+chmod +x start.sh
+
+# 3. Синхронизация кода, бинарного файла и скрипта запуска
 echo "📦 Syncing files to server..."
 rsync -avz -e "ssh -p $REMOTE_PORT -i $REMOTE_KEY" \
     --exclude '.git' \
@@ -28,17 +41,16 @@ rsync -avz -e "ssh -p $REMOTE_PORT -i $REMOTE_KEY" \
     --exclude 'client' \
     ./ $REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/
 
-# 3. Перезапуск сервера
-echo "🔄 Restarting remote server..."
-# Используем -f для ssh, чтобы он ушел в бэкграунд сразу после выполнения команды
-# И полностью перенаправляем потоки внутри удаленной команды
+# 4. Удаленный запуск
+echo "🔄 Triggering remote restart..."
+# Выполняем скрипт и сразу отключаемся
 ssh -p $REMOTE_PORT -i $REMOTE_KEY $REMOTE_USER@$REMOTE_HOST \
-    "cd $REMOTE_DIR && chmod +x lavender-server && \
-    (pkill lavender-server || true) && \
-    nohup ./lavender-server > logs.txt 2>&1 < /dev/null &"
+    "bash $REMOTE_DIR/start.sh"
 
-# Удаляем локальный линукс-бинарник
+# Удаляем временные локальные файлы
 rm lavender-server
+rm start.sh
 
-echo "✅ Server deployment successful!"
-echo "📝 Server is running in background. You can check logs on the server: tail -f $REMOTE_DIR/logs.txt"
+echo "✅ Deployment completed!"
+echo "📝 Control returned to local console."
+echo "📝 You can monitor logs on server: tail -f $REMOTE_DIR/logs.txt"
