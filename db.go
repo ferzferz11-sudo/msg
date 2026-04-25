@@ -8,9 +8,11 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	_ "github.com/lib/pq" // PostgreSQL driver
@@ -159,8 +161,16 @@ func ConnectDB() (*DB, error) {
 			created_at TIMESTAMP NOT NULL DEFAULT NOW(),
 			avatar_url VARCHAR(512),
 			bio TEXT,
-			status VARCHAR(255)
+			status VARCHAR(255),
+			chat_list_version BIGINT DEFAULT 0
 		);`,
+		// Migration: Add chat_list_version to users if it doesn't exist
+		`DO $$
+		 BEGIN
+		  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='chat_list_version') THEN
+		    ALTER TABLE users ADD COLUMN chat_list_version BIGINT DEFAULT 0;
+		  END IF;
+		 END $$;`,
 		// Migration for existing tables: Add UUID id to users
 		`DO $$
 		 BEGIN
@@ -277,6 +287,11 @@ func (db *DB) SaveMessage(messageID string, username string, encryptedText []byt
 	query := `INSERT INTO messages (message_id, username, user_id, encrypted_text, created_at, replied_to_message_id, replied_to_user, replied_to_text, room_id, is_read, image_url)
 	          VALUES ($1, $2::text, (SELECT id FROM users WHERE username = $2::text), $3, $4, $5, $6, $7, $8, FALSE, $9)`
 	_, err := db.Exec(query, messageID, username, encryptedText, createdAt, repliedToMessageID, repliedToUser, repliedToText, roomID, imageURL)
+
+	if err == nil && roomID != "" {
+		_ = db.IncrementParticipantsChatListVersion(roomID)
+	}
+
 	return err
 }
 
@@ -515,6 +530,9 @@ func (db *DB) GetChatMessagesImageURLs(roomID string) ([]string, error) {
 
 // DeleteChat removes a chat and all its associated data
 func (db *DB) DeleteChat(chatID string) error {
+	// Increment version for all participants before deleting the chat
+	_ = db.IncrementParticipantsChatListVersion(chatID)
+
 	// 1. Delete messages (reactions will be deleted via ON DELETE CASCADE)
 	_, err := db.Exec(`DELETE FROM messages WHERE room_id = $1`, chatID)
 	if err != nil {
@@ -756,6 +774,12 @@ func (db *DB) GetUserAvatar(username string) (string, error) {
 func (db *DB) CreateChat(id, name, chatType, participants string) error {
 	query := `INSERT INTO chats (id, name, type, participants, created_at) VALUES ($1, $2, $3, $4, NOW())`
 	_, err := db.Exec(query, id, name, chatType, participants)
+
+	if err == nil {
+		// Increment version for all participants when a new chat is created
+		_ = db.IncrementParticipantsChatListVersion(id)
+	}
+
 	return err
 }
 
@@ -869,6 +893,9 @@ func (db *DB) MarkRead(roomID, username string) error {
 	if err != nil {
 		return err
 	}
+
+	// Increment version for the user who marked messages as read (unread count changed)
+	_ = db.IncrementUserChatListVersion(username)
 
 	// 2. Update messages table for the "double check"
 	query2 := `UPDATE messages SET is_read = TRUE WHERE room_id = $1 AND username != $2 AND is_read = FALSE`
@@ -1135,4 +1162,36 @@ func (db *DB) UpdateMessageText(messageID, newText string) error {
 	query := `UPDATE messages SET encrypted_text = $1, edited = true WHERE message_id = $2`
 	_, err = db.Exec(query, encrypted, messageID)
 	return err
+}
+
+// GetUserChatListVersion returns the current version of the user's chat list
+func (db *DB) GetUserChatListVersion(username string) (int64, error) {
+	var version int64
+	err := db.QueryRow(`SELECT chat_list_version FROM users WHERE username = $1`, username).Scan(&version)
+	return version, err
+}
+
+// IncrementUserChatListVersion increments the chat list version for a specific user
+func (db *DB) IncrementUserChatListVersion(username string) error {
+	_, err := db.Exec(`UPDATE users SET chat_list_version = chat_list_version + 1 WHERE username = $1`, username)
+	return err
+}
+
+// IncrementParticipantsChatListVersion increments the version for all participants in a chat
+func (db *DB) IncrementParticipantsChatListVersion(chatID string) error {
+	chat, err := db.GetChat(chatID)
+	if err != nil {
+		return err
+	}
+
+	var participants []string
+	if err := json.Unmarshal([]byte(chat.Participants), &participants); err != nil {
+		// Fallback for comma separated if needed, but modern system uses JSON
+		participants = strings.Split(strings.Trim(chat.Participants, "[]\""), "\",\"")
+	}
+
+	for _, p := range participants {
+		_ = db.IncrementUserChatListVersion(p)
+	}
+	return nil
 }

@@ -261,6 +261,14 @@ message GetContactsResponse {
   repeated string contacts = 1;
 }
 
+message GetChatListVersionRequest {
+  string username = 1;
+}
+
+message GetChatListVersionResponse {
+  int64 version = 1;
+}
+
 service ChatService {
   rpc Chat(stream Message) returns (stream Message);
   rpc GetClients(ClientListRequest) returns (ClientListResponse);
@@ -270,6 +278,7 @@ service ChatService {
   rpc DeleteMessages(DeleteMessagesRequest) returns (DeleteMessagesResponse);
   rpc RegisterToken(TokenRequest) returns (TokenResponse);
   rpc GetChats(GetChatsRequest) returns (GetChatsResponse);
+  rpc GetChatListVersion(GetChatListVersionRequest) returns (GetChatListVersionResponse);
   rpc CreateDirectChat(CreateDirectChatRequest) returns (CreateDirectChatResponse);
   rpc CreateGroupChat(CreateGroupChatRequest) returns (CreateGroupChatResponse);
   rpc UpdateUsername(UpdateUsernameRequest) returns (UpdateUsernameResponse);

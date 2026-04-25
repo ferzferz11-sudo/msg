@@ -19,31 +19,32 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	ChatService_Chat_FullMethodName              = "/messenger.ChatService/Chat"
-	ChatService_GetClients_FullMethodName        = "/messenger.ChatService/GetClients"
-	ChatService_GetAllUsers_FullMethodName       = "/messenger.ChatService/GetAllUsers"
-	ChatService_GetHistory_FullMethodName        = "/messenger.ChatService/GetHistory"
-	ChatService_SetReaction_FullMethodName       = "/messenger.ChatService/SetReaction"
-	ChatService_DeleteMessages_FullMethodName    = "/messenger.ChatService/DeleteMessages"
-	ChatService_RegisterToken_FullMethodName     = "/messenger.ChatService/RegisterToken"
-	ChatService_GetChats_FullMethodName          = "/messenger.ChatService/GetChats"
-	ChatService_CreateDirectChat_FullMethodName  = "/messenger.ChatService/CreateDirectChat"
-	ChatService_CreateGroupChat_FullMethodName   = "/messenger.ChatService/CreateGroupChat"
-	ChatService_UpdateUsername_FullMethodName    = "/messenger.ChatService/UpdateUsername"
-	ChatService_UpdatePassword_FullMethodName    = "/messenger.ChatService/UpdatePassword"
-	ChatService_MarkRead_FullMethodName          = "/messenger.ChatService/MarkRead"
-	ChatService_UpdateAvatar_FullMethodName      = "/messenger.ChatService/UpdateAvatar"
-	ChatService_UpdateProfile_FullMethodName     = "/messenger.ChatService/UpdateProfile"
-	ChatService_GetUserProfile_FullMethodName    = "/messenger.ChatService/GetUserProfile"
-	ChatService_GetUserAvatar_FullMethodName     = "/messenger.ChatService/GetUserAvatar"
-	ChatService_AddParticipant_FullMethodName    = "/messenger.ChatService/AddParticipant"
-	ChatService_RemoveParticipant_FullMethodName = "/messenger.ChatService/RemoveParticipant"
-	ChatService_EditMessage_FullMethodName       = "/messenger.ChatService/EditMessage"
-	ChatService_DeleteChat_FullMethodName        = "/messenger.ChatService/DeleteChat"
-	ChatService_DeleteProfile_FullMethodName     = "/messenger.ChatService/DeleteProfile"
-	ChatService_AddContact_FullMethodName        = "/messenger.ChatService/AddContact"
-	ChatService_RemoveContact_FullMethodName     = "/messenger.ChatService/RemoveContact"
-	ChatService_GetContacts_FullMethodName       = "/messenger.ChatService/GetContacts"
+	ChatService_Chat_FullMethodName               = "/messenger.ChatService/Chat"
+	ChatService_GetClients_FullMethodName         = "/messenger.ChatService/GetClients"
+	ChatService_GetAllUsers_FullMethodName        = "/messenger.ChatService/GetAllUsers"
+	ChatService_GetHistory_FullMethodName         = "/messenger.ChatService/GetHistory"
+	ChatService_SetReaction_FullMethodName        = "/messenger.ChatService/SetReaction"
+	ChatService_DeleteMessages_FullMethodName     = "/messenger.ChatService/DeleteMessages"
+	ChatService_RegisterToken_FullMethodName      = "/messenger.ChatService/RegisterToken"
+	ChatService_GetChats_FullMethodName           = "/messenger.ChatService/GetChats"
+	ChatService_GetChatListVersion_FullMethodName = "/messenger.ChatService/GetChatListVersion"
+	ChatService_CreateDirectChat_FullMethodName   = "/messenger.ChatService/CreateDirectChat"
+	ChatService_CreateGroupChat_FullMethodName    = "/messenger.ChatService/CreateGroupChat"
+	ChatService_UpdateUsername_FullMethodName     = "/messenger.ChatService/UpdateUsername"
+	ChatService_UpdatePassword_FullMethodName     = "/messenger.ChatService/UpdatePassword"
+	ChatService_MarkRead_FullMethodName           = "/messenger.ChatService/MarkRead"
+	ChatService_UpdateAvatar_FullMethodName       = "/messenger.ChatService/UpdateAvatar"
+	ChatService_UpdateProfile_FullMethodName      = "/messenger.ChatService/UpdateProfile"
+	ChatService_GetUserProfile_FullMethodName     = "/messenger.ChatService/GetUserProfile"
+	ChatService_GetUserAvatar_FullMethodName      = "/messenger.ChatService/GetUserAvatar"
+	ChatService_AddParticipant_FullMethodName     = "/messenger.ChatService/AddParticipant"
+	ChatService_RemoveParticipant_FullMethodName  = "/messenger.ChatService/RemoveParticipant"
+	ChatService_EditMessage_FullMethodName        = "/messenger.ChatService/EditMessage"
+	ChatService_DeleteChat_FullMethodName         = "/messenger.ChatService/DeleteChat"
+	ChatService_DeleteProfile_FullMethodName      = "/messenger.ChatService/DeleteProfile"
+	ChatService_AddContact_FullMethodName         = "/messenger.ChatService/AddContact"
+	ChatService_RemoveContact_FullMethodName      = "/messenger.ChatService/RemoveContact"
+	ChatService_GetContacts_FullMethodName        = "/messenger.ChatService/GetContacts"
 )
 
 // ChatServiceClient is the client API for ChatService service.
@@ -58,6 +59,7 @@ type ChatServiceClient interface {
 	DeleteMessages(ctx context.Context, in *DeleteMessagesRequest, opts ...grpc.CallOption) (*DeleteMessagesResponse, error)
 	RegisterToken(ctx context.Context, in *TokenRequest, opts ...grpc.CallOption) (*TokenResponse, error)
 	GetChats(ctx context.Context, in *GetChatsRequest, opts ...grpc.CallOption) (*GetChatsResponse, error)
+	GetChatListVersion(ctx context.Context, in *GetChatListVersionRequest, opts ...grpc.CallOption) (*GetChatListVersionResponse, error)
 	CreateDirectChat(ctx context.Context, in *CreateDirectChatRequest, opts ...grpc.CallOption) (*CreateDirectChatResponse, error)
 	CreateGroupChat(ctx context.Context, in *CreateGroupChatRequest, opts ...grpc.CallOption) (*CreateGroupChatResponse, error)
 	UpdateUsername(ctx context.Context, in *UpdateUsernameRequest, opts ...grpc.CallOption) (*UpdateUsernameResponse, error)
@@ -162,6 +164,16 @@ func (c *chatServiceClient) GetChats(ctx context.Context, in *GetChatsRequest, o
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetChatsResponse)
 	err := c.cc.Invoke(ctx, ChatService_GetChats_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) GetChatListVersion(ctx context.Context, in *GetChatListVersionRequest, opts ...grpc.CallOption) (*GetChatListVersionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetChatListVersionResponse)
+	err := c.cc.Invoke(ctx, ChatService_GetChatListVersion_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -350,6 +362,7 @@ type ChatServiceServer interface {
 	DeleteMessages(context.Context, *DeleteMessagesRequest) (*DeleteMessagesResponse, error)
 	RegisterToken(context.Context, *TokenRequest) (*TokenResponse, error)
 	GetChats(context.Context, *GetChatsRequest) (*GetChatsResponse, error)
+	GetChatListVersion(context.Context, *GetChatListVersionRequest) (*GetChatListVersionResponse, error)
 	CreateDirectChat(context.Context, *CreateDirectChatRequest) (*CreateDirectChatResponse, error)
 	CreateGroupChat(context.Context, *CreateGroupChatRequest) (*CreateGroupChatResponse, error)
 	UpdateUsername(context.Context, *UpdateUsernameRequest) (*UpdateUsernameResponse, error)
@@ -400,6 +413,9 @@ func (UnimplementedChatServiceServer) RegisterToken(context.Context, *TokenReque
 }
 func (UnimplementedChatServiceServer) GetChats(context.Context, *GetChatsRequest) (*GetChatsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetChats not implemented")
+}
+func (UnimplementedChatServiceServer) GetChatListVersion(context.Context, *GetChatListVersionRequest) (*GetChatListVersionResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetChatListVersion not implemented")
 }
 func (UnimplementedChatServiceServer) CreateDirectChat(context.Context, *CreateDirectChatRequest) (*CreateDirectChatResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateDirectChat not implemented")
@@ -602,6 +618,24 @@ func _ChatService_GetChats_Handler(srv interface{}, ctx context.Context, dec fun
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ChatServiceServer).GetChats(ctx, req.(*GetChatsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_GetChatListVersion_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetChatListVersionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).GetChatListVersion(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_GetChatListVersion_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).GetChatListVersion(ctx, req.(*GetChatListVersionRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -946,6 +980,10 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetChats",
 			Handler:    _ChatService_GetChats_Handler,
+		},
+		{
+			MethodName: "GetChatListVersion",
+			Handler:    _ChatService_GetChatListVersion_Handler,
 		},
 		{
 			MethodName: "CreateDirectChat",

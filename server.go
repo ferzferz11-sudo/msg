@@ -822,3 +822,11 @@ func (s *server) GetContacts(_ context.Context, req *gen.GetContactsRequest) (*g
 	}
 	return &gen.GetContactsResponse{Contacts: contacts}, nil
 }
+
+func (s *server) GetChatListVersion(_ context.Context, req *gen.GetChatListVersionRequest) (*gen.GetChatListVersionResponse, error) {
+	version, err := s.db.GetUserChatListVersion(req.Username)
+	if err != nil {
+		return &gen.GetChatListVersionResponse{Version: 0}, nil
+	}
+	return &gen.GetChatListVersionResponse{Version: version}, nil
+}
