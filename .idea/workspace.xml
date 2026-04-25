@@ -4,22 +4,7 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="ef919cf0-dee0-4e94-b631-d2fd26a26aae" name="Changes" comment="1.0.1.40">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/ChatListActivity.kt" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/ChatListActivity.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/MainActivity.kt" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/MainActivity.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/NewChatActivity.kt" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/NewChatActivity.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/ProfileActivity.kt" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/ProfileActivity.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/data/grpc/GrpcClient.kt" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/data/grpc/GrpcClient.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/data/grpc/RealGrpcClient.kt" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/data/grpc/RealGrpcClient.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/data/proto/MessengerProto.kt" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/data/proto/MessengerProto.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/data/proto/ProtoUtils.kt" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/data/proto/ProtoUtils.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/ui/adapter/MessageAdapter.kt" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/ui/adapter/MessageAdapter.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/ui/adapter/MessageSwipeController.kt" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/ui/adapter/MessageSwipeController.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gen/messenger.pb.go" beforeDir="false" afterPath="$PROJECT_DIR$/gen/messenger.pb.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/messenger.proto" beforeDir="false" afterPath="$PROJECT_DIR$/messenger.proto" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server.go" beforeDir="false" afterPath="$PROJECT_DIR$/server.go" afterDir="false" />
-    </list>
+    <list default="true" id="ef919cf0-dee0-4e94-b631-d2fd26a26aae" name="Changes" comment="1.0.1.40" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
