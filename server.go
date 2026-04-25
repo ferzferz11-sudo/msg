@@ -606,6 +606,50 @@ func (s *server) AddParticipant(_ context.Context, req *gen.AddParticipantReques
 	return &gen.AddParticipantResponse{Success: true, Message: "User added successfully"}, nil
 }
 
+// AddParticipants adds multiple users to a group chat
+func (s *server) AddParticipants(_ context.Context, req *gen.AddParticipantsRequest) (*gen.AddParticipantsResponse, error) {
+	chat, err := s.db.GetChat(req.ChatId)
+	if err != nil {
+		return &gen.AddParticipantsResponse{Success: false, Message: "Chat not found"}, nil
+	}
+
+	if chat.Type != "group" {
+		return &gen.AddParticipantsResponse{Success: false, Message: "Participants can only be added to group chats"}, nil
+	}
+
+	var participants []string
+	if err := json.Unmarshal([]byte(chat.Participants), &participants); err != nil {
+		return &gen.AddParticipantsResponse{Success: false, Message: "Internal error parsing participants"}, nil
+	}
+
+	// Helper map for checking existence
+	exists := make(map[string]bool)
+	for _, p := range participants {
+		exists[p] = true
+	}
+
+	addedCount := 0
+	for _, username := range req.Usernames {
+		if !exists[username] {
+			participants = append(participants, username)
+			exists[username] = true
+			addedCount++
+		}
+	}
+
+	if addedCount == 0 {
+		return &gen.AddParticipantsResponse{Success: true, Message: "All users already in chat"}, nil
+	}
+
+	updatedParticipants, _ := json.Marshal(participants)
+
+	if err := s.db.UpdateChatParticipants(req.ChatId, string(updatedParticipants)); err != nil {
+		return &gen.AddParticipantsResponse{Success: false, Message: "Failed to update participants"}, nil
+	}
+
+	return &gen.AddParticipantsResponse{Success: true, Message: fmt.Sprintf("Successfully added %d users", addedCount)}, nil
+}
+
 // RemoveParticipant removes a user from a group chat
 func (s *server) RemoveParticipant(_ context.Context, req *gen.RemoveParticipantRequest) (*gen.RemoveParticipantResponse, error) {
 	chat, err := s.db.GetChat(req.ChatId)
