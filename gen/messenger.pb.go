@@ -2422,6 +2422,302 @@ func (x *DeleteProfileResponse) GetMessage() string {
 	return ""
 }
 
+type AddContactRequest struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Username        string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
+	ContactUsername string                 `protobuf:"bytes,2,opt,name=contact_username,json=contactUsername,proto3" json:"contact_username,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *AddContactRequest) Reset() {
+	*x = AddContactRequest{}
+	mi := &file_messenger_proto_msgTypes[46]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AddContactRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AddContactRequest) ProtoMessage() {}
+
+func (x *AddContactRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_messenger_proto_msgTypes[46]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AddContactRequest.ProtoReflect.Descriptor instead.
+func (*AddContactRequest) Descriptor() ([]byte, []int) {
+	return file_messenger_proto_rawDescGZIP(), []int{46}
+}
+
+func (x *AddContactRequest) GetUsername() string {
+	if x != nil {
+		return x.Username
+	}
+	return ""
+}
+
+func (x *AddContactRequest) GetContactUsername() string {
+	if x != nil {
+		return x.ContactUsername
+	}
+	return ""
+}
+
+type AddContactResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AddContactResponse) Reset() {
+	*x = AddContactResponse{}
+	mi := &file_messenger_proto_msgTypes[47]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AddContactResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AddContactResponse) ProtoMessage() {}
+
+func (x *AddContactResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_messenger_proto_msgTypes[47]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AddContactResponse.ProtoReflect.Descriptor instead.
+func (*AddContactResponse) Descriptor() ([]byte, []int) {
+	return file_messenger_proto_rawDescGZIP(), []int{47}
+}
+
+func (x *AddContactResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *AddContactResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+type RemoveContactRequest struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Username        string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
+	ContactUsername string                 `protobuf:"bytes,2,opt,name=contact_username,json=contactUsername,proto3" json:"contact_username,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *RemoveContactRequest) Reset() {
+	*x = RemoveContactRequest{}
+	mi := &file_messenger_proto_msgTypes[48]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RemoveContactRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RemoveContactRequest) ProtoMessage() {}
+
+func (x *RemoveContactRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_messenger_proto_msgTypes[48]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RemoveContactRequest.ProtoReflect.Descriptor instead.
+func (*RemoveContactRequest) Descriptor() ([]byte, []int) {
+	return file_messenger_proto_rawDescGZIP(), []int{48}
+}
+
+func (x *RemoveContactRequest) GetUsername() string {
+	if x != nil {
+		return x.Username
+	}
+	return ""
+}
+
+func (x *RemoveContactRequest) GetContactUsername() string {
+	if x != nil {
+		return x.ContactUsername
+	}
+	return ""
+}
+
+type RemoveContactResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RemoveContactResponse) Reset() {
+	*x = RemoveContactResponse{}
+	mi := &file_messenger_proto_msgTypes[49]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RemoveContactResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RemoveContactResponse) ProtoMessage() {}
+
+func (x *RemoveContactResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_messenger_proto_msgTypes[49]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RemoveContactResponse.ProtoReflect.Descriptor instead.
+func (*RemoveContactResponse) Descriptor() ([]byte, []int) {
+	return file_messenger_proto_rawDescGZIP(), []int{49}
+}
+
+func (x *RemoveContactResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *RemoveContactResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+type GetContactsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Username      string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetContactsRequest) Reset() {
+	*x = GetContactsRequest{}
+	mi := &file_messenger_proto_msgTypes[50]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetContactsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetContactsRequest) ProtoMessage() {}
+
+func (x *GetContactsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_messenger_proto_msgTypes[50]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetContactsRequest.ProtoReflect.Descriptor instead.
+func (*GetContactsRequest) Descriptor() ([]byte, []int) {
+	return file_messenger_proto_rawDescGZIP(), []int{50}
+}
+
+func (x *GetContactsRequest) GetUsername() string {
+	if x != nil {
+		return x.Username
+	}
+	return ""
+}
+
+type GetContactsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Contacts      []string               `protobuf:"bytes,1,rep,name=contacts,proto3" json:"contacts,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetContactsResponse) Reset() {
+	*x = GetContactsResponse{}
+	mi := &file_messenger_proto_msgTypes[51]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetContactsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetContactsResponse) ProtoMessage() {}
+
+func (x *GetContactsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_messenger_proto_msgTypes[51]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetContactsResponse.ProtoReflect.Descriptor instead.
+func (*GetContactsResponse) Descriptor() ([]byte, []int) {
+	return file_messenger_proto_rawDescGZIP(), []int{51}
+}
+
+func (x *GetContactsResponse) GetContacts() []string {
+	if x != nil {
+		return x.Contacts
+	}
+	return nil
+}
+
 var File_messenger_proto protoreflect.FileDescriptor
 
 const file_messenger_proto_rawDesc = "" +
@@ -2574,7 +2870,23 @@ const file_messenger_proto_rawDesc = "" +
 	"\busername\x18\x01 \x01(\tR\busername\"K\n" +
 	"\x15DeleteProfileResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage2\xeb\r\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"Z\n" +
+	"\x11AddContactRequest\x12\x1a\n" +
+	"\busername\x18\x01 \x01(\tR\busername\x12)\n" +
+	"\x10contact_username\x18\x02 \x01(\tR\x0fcontactUsername\"H\n" +
+	"\x12AddContactResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"]\n" +
+	"\x14RemoveContactRequest\x12\x1a\n" +
+	"\busername\x18\x01 \x01(\tR\busername\x12)\n" +
+	"\x10contact_username\x18\x02 \x01(\tR\x0fcontactUsername\"K\n" +
+	"\x15RemoveContactResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"0\n" +
+	"\x12GetContactsRequest\x12\x1a\n" +
+	"\busername\x18\x01 \x01(\tR\busername\"1\n" +
+	"\x13GetContactsResponse\x12\x1a\n" +
+	"\bcontacts\x18\x01 \x03(\tR\bcontacts2\xd8\x0f\n" +
 	"\vChatService\x122\n" +
 	"\x04Chat\x12\x12.messenger.Message\x1a\x12.messenger.Message(\x010\x01\x12I\n" +
 	"\n" +
@@ -2600,7 +2912,11 @@ const file_messenger_proto_rawDesc = "" +
 	"\vEditMessage\x12\x1d.messenger.EditMessageRequest\x1a\x1e.messenger.EditMessageResponse\x12I\n" +
 	"\n" +
 	"DeleteChat\x12\x1c.messenger.DeleteChatRequest\x1a\x1d.messenger.DeleteChatResponse\x12R\n" +
-	"\rDeleteProfile\x12\x1f.messenger.DeleteProfileRequest\x1a .messenger.DeleteProfileResponseB\aZ\x05./genb\x06proto3"
+	"\rDeleteProfile\x12\x1f.messenger.DeleteProfileRequest\x1a .messenger.DeleteProfileResponse\x12I\n" +
+	"\n" +
+	"AddContact\x12\x1c.messenger.AddContactRequest\x1a\x1d.messenger.AddContactResponse\x12R\n" +
+	"\rRemoveContact\x12\x1f.messenger.RemoveContactRequest\x1a .messenger.RemoveContactResponse\x12L\n" +
+	"\vGetContacts\x12\x1d.messenger.GetContactsRequest\x1a\x1e.messenger.GetContactsResponseB\aZ\x05./genb\x06proto3"
 
 var (
 	file_messenger_proto_rawDescOnce sync.Once
@@ -2614,7 +2930,7 @@ func file_messenger_proto_rawDescGZIP() []byte {
 	return file_messenger_proto_rawDescData
 }
 
-var file_messenger_proto_msgTypes = make([]protoimpl.MessageInfo, 46)
+var file_messenger_proto_msgTypes = make([]protoimpl.MessageInfo, 52)
 var file_messenger_proto_goTypes = []any{
 	(*Message)(nil),                   // 0: messenger.Message
 	(*Reaction)(nil),                  // 1: messenger.Reaction
@@ -2662,16 +2978,22 @@ var file_messenger_proto_goTypes = []any{
 	(*DeleteChatResponse)(nil),        // 43: messenger.DeleteChatResponse
 	(*DeleteProfileRequest)(nil),      // 44: messenger.DeleteProfileRequest
 	(*DeleteProfileResponse)(nil),     // 45: messenger.DeleteProfileResponse
-	(*timestamppb.Timestamp)(nil),     // 46: google.protobuf.Timestamp
+	(*AddContactRequest)(nil),         // 46: messenger.AddContactRequest
+	(*AddContactResponse)(nil),        // 47: messenger.AddContactResponse
+	(*RemoveContactRequest)(nil),      // 48: messenger.RemoveContactRequest
+	(*RemoveContactResponse)(nil),     // 49: messenger.RemoveContactResponse
+	(*GetContactsRequest)(nil),        // 50: messenger.GetContactsRequest
+	(*GetContactsResponse)(nil),       // 51: messenger.GetContactsResponse
+	(*timestamppb.Timestamp)(nil),     // 52: google.protobuf.Timestamp
 }
 var file_messenger_proto_depIdxs = []int32{
-	46, // 0: messenger.Message.created_at:type_name -> google.protobuf.Timestamp
+	52, // 0: messenger.Message.created_at:type_name -> google.protobuf.Timestamp
 	1,  // 1: messenger.Message.reactions:type_name -> messenger.Reaction
 	1,  // 2: messenger.ReactionRequest.reaction:type_name -> messenger.Reaction
 	0,  // 3: messenger.GetHistoryResponse.messages:type_name -> messenger.Message
 	0,  // 4: messenger.DeleteMessagesRequest.messages:type_name -> messenger.Message
-	46, // 5: messenger.ChatInfo.created_at:type_name -> google.protobuf.Timestamp
-	46, // 6: messenger.ChatInfo.last_message_time:type_name -> google.protobuf.Timestamp
+	52, // 5: messenger.ChatInfo.created_at:type_name -> google.protobuf.Timestamp
+	52, // 6: messenger.ChatInfo.last_message_time:type_name -> google.protobuf.Timestamp
 	15, // 7: messenger.GetChatsResponse.chats:type_name -> messenger.ChatInfo
 	0,  // 8: messenger.ChatService.Chat:input_type -> messenger.Message
 	4,  // 9: messenger.ChatService.GetClients:input_type -> messenger.ClientListRequest
@@ -2695,30 +3017,36 @@ var file_messenger_proto_depIdxs = []int32{
 	40, // 27: messenger.ChatService.EditMessage:input_type -> messenger.EditMessageRequest
 	42, // 28: messenger.ChatService.DeleteChat:input_type -> messenger.DeleteChatRequest
 	44, // 29: messenger.ChatService.DeleteProfile:input_type -> messenger.DeleteProfileRequest
-	0,  // 30: messenger.ChatService.Chat:output_type -> messenger.Message
-	5,  // 31: messenger.ChatService.GetClients:output_type -> messenger.ClientListResponse
-	7,  // 32: messenger.ChatService.GetAllUsers:output_type -> messenger.GetAllUsersResponse
-	10, // 33: messenger.ChatService.GetHistory:output_type -> messenger.GetHistoryResponse
-	3,  // 34: messenger.ChatService.SetReaction:output_type -> messenger.ReactionResponse
-	12, // 35: messenger.ChatService.DeleteMessages:output_type -> messenger.DeleteMessagesResponse
-	14, // 36: messenger.ChatService.RegisterToken:output_type -> messenger.TokenResponse
-	17, // 37: messenger.ChatService.GetChats:output_type -> messenger.GetChatsResponse
-	19, // 38: messenger.ChatService.CreateDirectChat:output_type -> messenger.CreateDirectChatResponse
-	21, // 39: messenger.ChatService.CreateGroupChat:output_type -> messenger.CreateGroupChatResponse
-	23, // 40: messenger.ChatService.UpdateUsername:output_type -> messenger.UpdateUsernameResponse
-	25, // 41: messenger.ChatService.UpdatePassword:output_type -> messenger.UpdatePasswordResponse
-	27, // 42: messenger.ChatService.MarkRead:output_type -> messenger.MarkReadResponse
-	29, // 43: messenger.ChatService.UpdateAvatar:output_type -> messenger.UpdateAvatarResponse
-	31, // 44: messenger.ChatService.UpdateProfile:output_type -> messenger.UpdateProfileResponse
-	33, // 45: messenger.ChatService.GetUserProfile:output_type -> messenger.GetUserProfileResponse
-	35, // 46: messenger.ChatService.GetUserAvatar:output_type -> messenger.GetUserAvatarResponse
-	37, // 47: messenger.ChatService.AddParticipant:output_type -> messenger.AddParticipantResponse
-	39, // 48: messenger.ChatService.RemoveParticipant:output_type -> messenger.RemoveParticipantResponse
-	41, // 49: messenger.ChatService.EditMessage:output_type -> messenger.EditMessageResponse
-	43, // 50: messenger.ChatService.DeleteChat:output_type -> messenger.DeleteChatResponse
-	45, // 51: messenger.ChatService.DeleteProfile:output_type -> messenger.DeleteProfileResponse
-	30, // [30:52] is the sub-list for method output_type
-	8,  // [8:30] is the sub-list for method input_type
+	46, // 30: messenger.ChatService.AddContact:input_type -> messenger.AddContactRequest
+	48, // 31: messenger.ChatService.RemoveContact:input_type -> messenger.RemoveContactRequest
+	50, // 32: messenger.ChatService.GetContacts:input_type -> messenger.GetContactsRequest
+	0,  // 33: messenger.ChatService.Chat:output_type -> messenger.Message
+	5,  // 34: messenger.ChatService.GetClients:output_type -> messenger.ClientListResponse
+	7,  // 35: messenger.ChatService.GetAllUsers:output_type -> messenger.GetAllUsersResponse
+	10, // 36: messenger.ChatService.GetHistory:output_type -> messenger.GetHistoryResponse
+	3,  // 37: messenger.ChatService.SetReaction:output_type -> messenger.ReactionResponse
+	12, // 38: messenger.ChatService.DeleteMessages:output_type -> messenger.DeleteMessagesResponse
+	14, // 39: messenger.ChatService.RegisterToken:output_type -> messenger.TokenResponse
+	17, // 40: messenger.ChatService.GetChats:output_type -> messenger.GetChatsResponse
+	19, // 41: messenger.ChatService.CreateDirectChat:output_type -> messenger.CreateDirectChatResponse
+	21, // 42: messenger.ChatService.CreateGroupChat:output_type -> messenger.CreateGroupChatResponse
+	23, // 43: messenger.ChatService.UpdateUsername:output_type -> messenger.UpdateUsernameResponse
+	25, // 44: messenger.ChatService.UpdatePassword:output_type -> messenger.UpdatePasswordResponse
+	27, // 45: messenger.ChatService.MarkRead:output_type -> messenger.MarkReadResponse
+	29, // 46: messenger.ChatService.UpdateAvatar:output_type -> messenger.UpdateAvatarResponse
+	31, // 47: messenger.ChatService.UpdateProfile:output_type -> messenger.UpdateProfileResponse
+	33, // 48: messenger.ChatService.GetUserProfile:output_type -> messenger.GetUserProfileResponse
+	35, // 49: messenger.ChatService.GetUserAvatar:output_type -> messenger.GetUserAvatarResponse
+	37, // 50: messenger.ChatService.AddParticipant:output_type -> messenger.AddParticipantResponse
+	39, // 51: messenger.ChatService.RemoveParticipant:output_type -> messenger.RemoveParticipantResponse
+	41, // 52: messenger.ChatService.EditMessage:output_type -> messenger.EditMessageResponse
+	43, // 53: messenger.ChatService.DeleteChat:output_type -> messenger.DeleteChatResponse
+	45, // 54: messenger.ChatService.DeleteProfile:output_type -> messenger.DeleteProfileResponse
+	47, // 55: messenger.ChatService.AddContact:output_type -> messenger.AddContactResponse
+	49, // 56: messenger.ChatService.RemoveContact:output_type -> messenger.RemoveContactResponse
+	51, // 57: messenger.ChatService.GetContacts:output_type -> messenger.GetContactsResponse
+	33, // [33:58] is the sub-list for method output_type
+	8,  // [8:33] is the sub-list for method input_type
 	8,  // [8:8] is the sub-list for extension type_name
 	8,  // [8:8] is the sub-list for extension extendee
 	0,  // [0:8] is the sub-list for field type_name
@@ -2735,7 +3063,7 @@ func file_messenger_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_messenger_proto_rawDesc), len(file_messenger_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   46,
+			NumMessages:   52,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

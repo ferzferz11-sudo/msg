@@ -5,10 +5,23 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="ef919cf0-dee0-4e94-b631-d2fd26a26aae" name="Changes" comment="1.0.1.40">
+      <change afterPath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/ContactsActivity.kt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/ui/adapter/UserAdapter.kt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/client/android/app/src/main/res/drawable/ic_contacts.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/client/android/app/src/main/res/layout/activity_contacts.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/client/android/app/src/main/res/layout/dialog_add_contact.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/CHANGELOG.md" beforeDir="false" afterPath="$PROJECT_DIR$/CHANGELOG.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/AndroidManifest.xml" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/AndroidManifest.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/ChatListActivity.kt" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/ChatListActivity.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/data/grpc/GrpcClient.kt" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/data/grpc/GrpcClient.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/data/grpc/RealGrpcClient.kt" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/data/grpc/RealGrpcClient.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/data/proto/MessengerProto.kt" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/data/proto/MessengerProto.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/res/menu/chat_list_menu.xml" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/res/menu/chat_list_menu.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/res/values-ru/strings.xml" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/res/values-ru/strings.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/res/values/strings.xml" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/res/values/strings.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/db.go" beforeDir="false" afterPath="$PROJECT_DIR$/db.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gen/messenger.pb.go" beforeDir="false" afterPath="$PROJECT_DIR$/gen/messenger.pb.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gen/messenger_grpc.pb.go" beforeDir="false" afterPath="$PROJECT_DIR$/gen/messenger_grpc.pb.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/server.go" beforeDir="false" afterPath="$PROJECT_DIR$/server.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -18,7 +31,7 @@
   </component>
   <component name="GOROOT" url="file://$USER_HOME$/goSDK/go1.26.1" />
   <component name="Git.Settings">
-    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/client/android" />
     <option name="ROOT_SYNC" value="DONT_SYNC" />
   </component>
   <component name="GitHubPullRequestSearchHistory">{
@@ -61,9 +74,9 @@
     "RunOnceActivity.typescript.service.memoryLimit.init": "true",
     "SHARE_PROJECT_CONFIGURATION_FILES": "true",
     "codeWithMe.voiceChat.enabledByDefault": "false",
-    "com.google.cloudcode.ide_session_index": "20260423_0001",
+    "com.google.cloudcode.ide_session_index": "20260425_0002",
     "com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1": "true",
-    "git-widget-placeholder": "main",
+    "git-widget-placeholder": "master",
     "go.sdk.automatically.set": "true",
     "junie.onboarding.icon.badge.shown": "true",
     "last_opened_file_path": "/Users/paveld/GolandProjects/LavenderMessenger/client/console",
@@ -99,6 +112,9 @@
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
+  </component>
+  <component name="UnknownFeatures">
+    <option featureType="com.intellij.fileTypeFactory" implementationName="*.kt" />
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="v0.9.1 18apr" />

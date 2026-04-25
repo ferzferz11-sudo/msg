@@ -32,15 +32,15 @@ type server struct {
 
 // Chat handles bidirectional streaming for real-time messaging
 func (s *server) Chat(stream gen.ChatService_ChatServer) error {
+	var connectedUser string = "Anonymous"
+
 	// Register the new client stream with the hub
 	s.hub.Register(stream)
 	defer func() {
 		// Unregister the client when the connection ends
 		s.hub.Unregister(stream)
-		log.Println("Client disconnected")
+		log.Printf("Client disconnected: %s", connectedUser)
 	}()
-
-	log.Println("New client connected")
 
 	for {
 		// Receive message from client
@@ -57,6 +57,9 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 			// Trim username to avoid whitespace issues
 			trimmedUser := strings.TrimSpace(msg.User)
 			msg.User = trimmedUser
+			connectedUser = msg.User
+
+			log.Printf("Auth attempt: %s", connectedUser)
 
 			// Check if user exists first
 			userExists, err := s.db.UserExists(msg.User)

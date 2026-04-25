@@ -275,7 +275,7 @@ func (db *DB) Close() error {
 // SaveMessage stores an encrypted message in the database
 func (db *DB) SaveMessage(messageID string, username string, encryptedText []byte, createdAt time.Time, repliedToMessageID string, repliedToUser string, repliedToText string, roomID string, imageURL string) error {
 	query := `INSERT INTO messages (message_id, username, user_id, encrypted_text, created_at, replied_to_message_id, replied_to_user, replied_to_text, room_id, is_read, image_url)
-	          SELECT $1, $2, id, $3, $4, $5, $6, $7, $8, FALSE, $9 FROM users WHERE username = $2`
+	          VALUES ($1, $2::text, (SELECT id FROM users WHERE username = $2::text), $3, $4, $5, $6, $7, $8, FALSE, $9)`
 	_, err := db.Exec(query, messageID, username, encryptedText, createdAt, repliedToMessageID, repliedToUser, repliedToText, roomID, imageURL)
 	return err
 }
@@ -391,7 +391,7 @@ func (db *DB) SetReaction(messageID string, username string, emoji string) error
 	}
 
 	query := `INSERT INTO reactions (message_id, username, user_id, emoji)
-	          SELECT $1, $2, id, $3 FROM users WHERE username = $2
+	          VALUES ($1, $2::text, (SELECT id FROM users WHERE username = $2::text), $3)
               ON CONFLICT (message_id, username) DO UPDATE SET emoji = $3`
 	_, err = db.Exec(query, messageID, username, emoji)
 	return err
@@ -539,7 +539,7 @@ func (db *DB) DeleteChat(chatID string) error {
 // SaveUserToken сохраняет или обновляет FCM токен пользователя
 func (db *DB) SaveUserToken(username, token string) error {
 	query := `INSERT INTO user_tokens (username, user_id, fcm_token, updated_at)
-	          SELECT $1, id, $2, $3 FROM users WHERE username = $1
+	          VALUES ($1::text, (SELECT id FROM users WHERE username = $1::text), $2, $3)
               ON CONFLICT (username) DO UPDATE SET fcm_token = $2, updated_at = $3`
 	_, err := db.Exec(query, username, token, time.Now())
 	return err
@@ -863,7 +863,7 @@ func (db *DB) GetUserChats(username string) ([]struct {
 func (db *DB) MarkRead(roomID, username string) error {
 	// 1. Update user_chat_metadata
 	query1 := `INSERT INTO user_chat_metadata (username, user_id, room_id, last_read_at)
-	          SELECT $1, id, $2, NOW() FROM users WHERE username = $1
+	          VALUES ($1::text, (SELECT id FROM users WHERE username = $1::text), $2, NOW())
               ON CONFLICT (username, room_id) DO UPDATE SET last_read_at = NOW()`
 	_, err := db.Exec(query1, username, roomID)
 	if err != nil {
