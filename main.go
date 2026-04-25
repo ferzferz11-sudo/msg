@@ -27,7 +27,7 @@ import (
 
 const (
 	// serverVersion indicates the current version of the Lavender messaging server
-	serverVersion = "1.0.1.47"
+	serverVersion = "1.0.1.48"
 )
 
 var firebaseApp *firebase.App
@@ -111,6 +111,13 @@ func main() {
 			MinTime:             5 * time.Second, // Minimum time between client pings
 			PermitWithoutStream: true,            // Allow pings even without active streams
 		}),
+		grpc.KeepaliveParams(keepalive.ServerParameters{
+			MaxConnectionIdle:     15 * time.Minute,
+			MaxConnectionAge:      30 * time.Minute,
+			MaxConnectionAgeGrace: 5 * time.Second,
+			Time:                  10 * time.Second, // Ping clients every 10s to keep connection alive
+			Timeout:               5 * time.Second,  // Wait 5s for ping response
+		}),
 	)
 
 	// Create our chat service instance with Hub for connection management
@@ -127,6 +134,14 @@ func main() {
 
 	// Log server startup information
 	log.Printf("Listening clients at %v", lis.Addr())
+
+	// Periodic online users broadcast (every 10 seconds for high reliability)
+	go func() {
+		for {
+			time.Sleep(10 * time.Second)
+			srv.broadcastOnlineUsers()
+		}
+	}()
 
 	// Start HTTP server for avatar uploads in a goroutine
 	httpPort := os.Getenv("HTTP_PORT")
