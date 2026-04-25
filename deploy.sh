@@ -30,14 +30,15 @@ rsync -avz -e "ssh -p $REMOTE_PORT -i $REMOTE_KEY" \
 
 # 3. Перезапуск сервера
 echo "🔄 Restarting remote server..."
+# Используем -f для ssh, чтобы он ушел в бэкграунд сразу после выполнения команды
+# И полностью перенаправляем потоки внутри удаленной команды
 ssh -p $REMOTE_PORT -i $REMOTE_KEY $REMOTE_USER@$REMOTE_HOST \
     "cd $REMOTE_DIR && chmod +x lavender-server && \
     (pkill lavender-server || true) && \
-    nohup ./lavender-server > logs.txt 2>&1 < /dev/null & \
-    sleep 1"
+    nohup ./lavender-server > logs.txt 2>&1 < /dev/null &"
 
-# Удаляем локальный линукс-бинарник, чтобы не мешался
+# Удаляем локальный линукс-бинарник
 rm lavender-server
 
 echo "✅ Server deployment successful!"
-echo "📝 Server version $(grep 'serverVersion =' main.go | cut -d'\"' -f2) is now live."
+echo "📝 Server is running in background. You can check logs on the server: tail -f $REMOTE_DIR/logs.txt"
