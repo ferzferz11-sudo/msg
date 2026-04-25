@@ -2,7 +2,7 @@
 
 **Author:** Pavel Davydov (ferz)
 
-**Version:** 1.0.1.58
+**Version:** 1.0.1.59
 
 A real-time secure messaging application with gRPC server and multiple client implementations.
 

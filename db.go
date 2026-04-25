@@ -579,28 +579,32 @@ func (db *DB) GetChatMessagesImageURLs(roomID string) ([]string, error) {
 
 // DeleteChat removes a chat and all its associated data
 func (db *DB) DeleteChat(chatID string) error {
-	// Increment version for all participants before deleting the chat
-	_ = db.IncrementParticipantsChatListVersion(chatID)
+	// Start a transaction for atomicity
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
 
 	// 1. Delete messages (reactions will be deleted via ON DELETE CASCADE)
-	_, err := db.Exec(`DELETE FROM messages WHERE room_id = $1`, chatID)
+	_, err = tx.Exec(`DELETE FROM messages WHERE room_id = $1`, chatID)
 	if err != nil {
 		return fmt.Errorf("failed to delete messages: %w", err)
 	}
 
 	// 2. Delete chat metadata
-	_, err = db.Exec(`DELETE FROM user_chat_metadata WHERE room_id = $1`, chatID)
+	_, err = tx.Exec(`DELETE FROM user_chat_metadata WHERE room_id = $1`, chatID)
 	if err != nil {
 		return fmt.Errorf("failed to delete chat metadata: %w", err)
 	}
 
 	// 3. Delete the chat itself
-	_, err = db.Exec(`DELETE FROM chats WHERE id = $1`, chatID)
+	_, err = tx.Exec(`DELETE FROM chats WHERE id = $1`, chatID)
 	if err != nil {
 		return fmt.Errorf("failed to delete chat: %w", err)
 	}
 
-	return nil
+	return tx.Commit()
 }
 
 // SaveUserToken сохраняет или обновляет FCM токен пользователя

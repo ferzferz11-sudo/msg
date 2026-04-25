@@ -19,6 +19,7 @@ message Message {
   string avatar_url = 12; // URL of the user's avatar
   string image_url = 13; // URL of the attached image
   bool edited = 14; // Whether the message has been edited
+  string client_version = 15; // Client application version
 }
 
 message Reaction {

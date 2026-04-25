@@ -63,7 +63,7 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 			msg.User = trimmedUser
 			connectedUser = msg.User
 
-			log.Printf("Auth attempt: %s", connectedUser)
+			log.Printf("Auth attempt: %s (Client Version: %s)", connectedUser, msg.ClientVersion)
 
 			// Check if user exists first
 			userExists, err := s.db.UserExists(msg.User)
@@ -129,7 +129,7 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 			s.hub.SetAuthenticated(stream, true)
 			connectedUser = msg.User
 
-			log.Printf("User authenticated: %s", msg.User)
+			log.Printf("User authenticated: %s (Client Version: %s)", msg.User, msg.ClientVersion)
 			s.broadcastOnlineUsers()
 
 			// Clear password from message before broadcasting
@@ -579,23 +579,28 @@ func (s *server) GetUserAvatar(_ context.Context, req *gen.GetUserAvatarRequest)
 
 // AddParticipant adds a user to a group chat
 func (s *server) AddParticipant(_ context.Context, req *gen.AddParticipantRequest) (*gen.AddParticipantResponse, error) {
+	log.Printf("AddParticipant: Adding user %s to chat %s", req.Username, req.ChatId)
 	chat, err := s.db.GetChat(req.ChatId)
 	if err != nil {
+		log.Printf("AddParticipant error: Chat %s not found", req.ChatId)
 		return &gen.AddParticipantResponse{Success: false, Message: "Chat not found"}, nil
 	}
 
 	if chat.Type != "group" {
+		log.Printf("AddParticipant error: Chat %s is not a group chat (type: %s)", req.ChatId, chat.Type)
 		return &gen.AddParticipantResponse{Success: false, Message: "Participants can only be added to group chats"}, nil
 	}
 
 	var participants []string
 	if err := json.Unmarshal([]byte(chat.Participants), &participants); err != nil {
+		log.Printf("AddParticipant error: Failed to parse participants for chat %s: %v", req.ChatId, err)
 		return &gen.AddParticipantResponse{Success: false, Message: "Internal error parsing participants"}, nil
 	}
 
 	// Check if user already in chat
 	for _, p := range participants {
 		if p == req.Username {
+			log.Printf("AddParticipant: User %s is already in chat %s", req.Username, req.ChatId)
 			return &gen.AddParticipantResponse{Success: false, Message: "User already in chat"}, nil
 		}
 	}
@@ -604,25 +609,35 @@ func (s *server) AddParticipant(_ context.Context, req *gen.AddParticipantReques
 	updatedParticipants, _ := json.Marshal(participants)
 
 	if err := s.db.UpdateChatParticipants(req.ChatId, string(updatedParticipants)); err != nil {
+		log.Printf("AddParticipant error: Failed to update DB for chat %s: %v", req.ChatId, err)
 		return &gen.AddParticipantResponse{Success: false, Message: "Failed to update participants"}, nil
 	}
 
+	// Notify all participants about the change
+	_ = s.db.IncrementParticipantsChatListVersion(req.ChatId)
+	s.broadcastOnlineUsers() // Refresh lists for everyone
+
+	log.Printf("AddParticipant success: User %s added to chat %s", req.Username, req.ChatId)
 	return &gen.AddParticipantResponse{Success: true, Message: "User added successfully"}, nil
 }
 
 // RemoveParticipant removes a user from a group chat
 func (s *server) RemoveParticipant(_ context.Context, req *gen.RemoveParticipantRequest) (*gen.RemoveParticipantResponse, error) {
+	log.Printf("RemoveParticipant: Removing user %s from chat %s", req.Username, req.ChatId)
 	chat, err := s.db.GetChat(req.ChatId)
 	if err != nil {
+		log.Printf("RemoveParticipant error: Chat %s not found", req.ChatId)
 		return &gen.RemoveParticipantResponse{Success: false, Message: "Chat not found"}, nil
 	}
 
 	if chat.Type != "group" {
+		log.Printf("RemoveParticipant error: Chat %s is not a group chat", req.ChatId)
 		return &gen.RemoveParticipantResponse{Success: false, Message: "Participants can only be removed from group chats"}, nil
 	}
 
 	var participants []string
 	if err := json.Unmarshal([]byte(chat.Participants), &participants); err != nil {
+		log.Printf("RemoveParticipant error: Failed to parse participants: %v", err)
 		return &gen.RemoveParticipantResponse{Success: false, Message: "Internal error parsing participants"}, nil
 	}
 
@@ -637,15 +652,23 @@ func (s *server) RemoveParticipant(_ context.Context, req *gen.RemoveParticipant
 	}
 
 	if !found {
+		log.Printf("RemoveParticipant error: User %s not in chat %s", req.Username, req.ChatId)
 		return &gen.RemoveParticipantResponse{Success: false, Message: "User not in chat"}, nil
 	}
 
 	updatedParticipants, _ := json.Marshal(newParticipants)
 
 	if err := s.db.UpdateChatParticipants(req.ChatId, string(updatedParticipants)); err != nil {
+		log.Printf("RemoveParticipant error: Failed to update DB: %v", err)
 		return &gen.RemoveParticipantResponse{Success: false, Message: "Failed to update participants"}, nil
 	}
 
+	// Notify all participants
+	_ = s.db.IncrementParticipantsChatListVersion(req.ChatId)
+	_ = s.db.IncrementUserChatListVersion(req.Username) // Notify the removed user too
+	s.broadcastOnlineUsers()
+
+	log.Printf("RemoveParticipant success: User %s removed from chat %s", req.Username, req.ChatId)
 	return &gen.RemoveParticipantResponse{Success: true, Message: "User removed successfully"}, nil
 }
 
@@ -655,28 +678,43 @@ func (s *server) DeleteChat(_ context.Context, req *gen.DeleteChatRequest) (*gen
 		return &gen.DeleteChatResponse{Success: false, Message: "Chat ID is required"}, nil
 	}
 
-	// 1. Get all image URLs for messages in this chat
+	log.Printf("DeleteChat: Deleting chat %s", req.ChatId)
+
+	// 1. Get all image URLs and participants before deletion
 	imageURLs, err := s.db.GetChatMessagesImageURLs(req.ChatId)
 	if err != nil {
-		log.Printf("Failed to get image URLs for chat %s: %v", req.ChatId, err)
-		// Continue anyway to delete the chat record
+		log.Printf("DeleteChat warning: Failed to get image URLs for chat %s: %v", req.ChatId, err)
+	}
+
+	chat, err := s.db.GetChat(req.ChatId)
+	var participants []string
+	if err == nil {
+		json.Unmarshal([]byte(chat.Participants), &participants)
 	}
 
 	// 2. Delete all image files from disk
 	for _, url := range imageURLs {
 		if err := DeleteImageFile(url); err != nil {
-			log.Printf("Failed to delete image file %s: %v", url, err)
+			log.Printf("DeleteChat error: Failed to delete image file %s: %v", url, err)
 		}
 	}
 
 	// 3. Delete the chat and all messages from database
 	err = s.db.DeleteChat(req.ChatId)
 	if err != nil {
-		log.Printf("Failed to delete chat %s from DB: %v", req.ChatId, err)
+		log.Printf("DeleteChat error: Failed to delete chat %s from DB: %v", req.ChatId, err)
 		return &gen.DeleteChatResponse{Success: false, Message: err.Error()}, err
 	}
 
-	log.Printf("Successfully deleted chat %s and all its content", req.ChatId)
+	// 4. Increment version for all former participants so their lists refresh
+	for _, p := range participants {
+		_ = s.db.IncrementUserChatListVersion(p)
+	}
+
+	// 5. Broadcast update signal
+	s.broadcastOnlineUsers()
+
+	log.Printf("DeleteChat success: Chat %s and all its content deleted", req.ChatId)
 	return &gen.DeleteChatResponse{Success: true, Message: "Chat deleted successfully"}, nil
 }
 

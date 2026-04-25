@@ -35,9 +35,10 @@ type Message struct {
 	RepliedToText      string                 `protobuf:"bytes,9,opt,name=replied_to_text,json=repliedToText,proto3" json:"replied_to_text,omitempty"`                  // Text of the message being replied to
 	RoomId             string                 `protobuf:"bytes,10,opt,name=room_id,json=roomId,proto3" json:"room_id,omitempty"`                                        // Room/chat ID for the message
 	IsRead             bool                   `protobuf:"varint,11,opt,name=is_read,json=isRead,proto3" json:"is_read,omitempty"`
-	AvatarUrl          string                 `protobuf:"bytes,12,opt,name=avatar_url,json=avatarUrl,proto3" json:"avatar_url,omitempty"` // URL of the user's avatar
-	ImageUrl           string                 `protobuf:"bytes,13,opt,name=image_url,json=imageUrl,proto3" json:"image_url,omitempty"`    // URL of the attached image
-	Edited             bool                   `protobuf:"varint,14,opt,name=edited,proto3" json:"edited,omitempty"`                       // Whether the message has been edited
+	AvatarUrl          string                 `protobuf:"bytes,12,opt,name=avatar_url,json=avatarUrl,proto3" json:"avatar_url,omitempty"`             // URL of the user's avatar
+	ImageUrl           string                 `protobuf:"bytes,13,opt,name=image_url,json=imageUrl,proto3" json:"image_url,omitempty"`                // URL of the attached image
+	Edited             bool                   `protobuf:"varint,14,opt,name=edited,proto3" json:"edited,omitempty"`                                   // Whether the message has been edited
+	ClientVersion      string                 `protobuf:"bytes,15,opt,name=client_version,json=clientVersion,proto3" json:"client_version,omitempty"` // Client application version
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -168,6 +169,13 @@ func (x *Message) GetEdited() bool {
 		return x.Edited
 	}
 	return false
+}
+
+func (x *Message) GetClientVersion() string {
+	if x != nil {
+		return x.ClientVersion
+	}
+	return ""
 }
 
 type Reaction struct {
@@ -3350,7 +3358,7 @@ var File_messenger_proto protoreflect.FileDescriptor
 
 const file_messenger_proto_rawDesc = "" +
 	"\n" +
-	"\x0fmessenger.proto\x12\tmessenger\x1a\x1fgoogle/protobuf/timestamp.proto\"\xd4\x03\n" +
+	"\x0fmessenger.proto\x12\tmessenger\x1a\x1fgoogle/protobuf/timestamp.proto\"\xfb\x03\n" +
 	"\aMessage\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04user\x18\x02 \x01(\tR\x04user\x12\x12\n" +
@@ -3368,7 +3376,8 @@ const file_messenger_proto_rawDesc = "" +
 	"\n" +
 	"avatar_url\x18\f \x01(\tR\tavatarUrl\x12\x1b\n" +
 	"\timage_url\x18\r \x01(\tR\bimageUrl\x12\x16\n" +
-	"\x06edited\x18\x0e \x01(\bR\x06edited\"4\n" +
+	"\x06edited\x18\x0e \x01(\bR\x06edited\x12%\n" +
+	"\x0eclient_version\x18\x0f \x01(\tR\rclientVersion\"4\n" +
 	"\bReaction\x12\x12\n" +
 	"\x04user\x18\x01 \x01(\tR\x04user\x12\x14\n" +
 	"\x05emoji\x18\x02 \x01(\tR\x05emoji\"a\n" +
