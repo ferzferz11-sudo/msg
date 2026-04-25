@@ -198,16 +198,6 @@ message AddParticipantResponse {
   string message = 2;
 }
 
-message AddParticipantsRequest {
-  string chat_id = 1;
-  repeated string usernames = 2;
-}
-
-message AddParticipantsResponse {
-  bool success = 1;
-  string message = 2;
-}
-
 message RemoveParticipantRequest {
   string chat_id = 1;
   string username = 2;
@@ -352,7 +342,6 @@ service ChatService {
   rpc GetUserProfile(GetUserProfileRequest) returns (GetUserProfileResponse);
   rpc GetUserAvatar(GetUserAvatarRequest) returns (GetUserAvatarResponse);
   rpc AddParticipant(AddParticipantRequest) returns (AddParticipantResponse);
-  rpc AddParticipants(AddParticipantsRequest) returns (AddParticipantsResponse);
   rpc RemoveParticipant(RemoveParticipantRequest) returns (RemoveParticipantResponse);
   rpc EditMessage(EditMessageRequest) returns (EditMessageResponse);
   rpc DeleteChat(DeleteChatRequest) returns (DeleteChatResponse);
