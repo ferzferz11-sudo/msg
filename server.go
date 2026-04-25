@@ -410,6 +410,7 @@ func (s *server) GetChats(_ context.Context, req *gen.GetChatsRequest) (*gen.Get
 			CreatedAt:       timestamppb.New(c.CreatedAt),
 			UnreadCount:     int32(c.UnreadCount),
 			LastMessageTime: timestamppb.New(c.LastMessageTime),
+			Creator:         c.Creator,
 		})
 	}
 
@@ -440,7 +441,7 @@ func (s *server) CreateGroupChat(_ context.Context, req *gen.CreateGroupChatRequ
 	}
 	participants += "]"
 
-	err := s.db.CreateChat(chatID, req.Name, "group", participants)
+	err := s.db.CreateChat(chatID, req.Name, "group", participants, req.Creator)
 	if err != nil {
 		log.Printf("Failed to create group chat: %v", err)
 		return &gen.CreateGroupChatResponse{Success: false}, err
@@ -732,6 +733,22 @@ func (s *server) DeleteMessages(_ context.Context, req *gen.DeleteMessagesReques
 	var anyDeleted bool
 	for _, msg := range req.Messages {
 		if msg == nil {
+			continue
+		}
+
+		// Permission check: only sender or group admin can delete
+		canDelete := false
+		if msg.User == req.RequesterUsername {
+			canDelete = true
+		} else if msg.RoomId != "" {
+			chat, err := s.db.GetChat(msg.RoomId)
+			if err == nil && chat.CreatorUsername == req.RequesterUsername {
+				canDelete = true
+			}
+		}
+
+		if !canDelete {
+			log.Printf("Unauthorized delete attempt by %s for message in %s", req.RequesterUsername, msg.RoomId)
 			continue
 		}
 

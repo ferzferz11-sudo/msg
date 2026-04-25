@@ -2,6 +2,12 @@
 
 **Author:** Pavel Davydov (ferz)
 
+## [1.0.1.44] - 2026-04-25
+- **Server: Group Admin and Permission Fixes**
+  - Updated `CreateGroupChat` to properly store the creator as the group admin
+  - Fixed compilation error in `server.go` due to missing arguments in `CreateChat` call
+  - Server version: 1.0.1.44
+
 ## [1.0.1.43] - 2026-04-25
 - **Server: Message Deduplication & UX Improvements**
   - Added message deduplication logic to prevent double-posting from source apps (e.g. Google Photos)

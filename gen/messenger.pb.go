@@ -619,10 +619,11 @@ func (x *GetHistoryResponse) GetMessages() []*Message {
 }
 
 type DeleteMessagesRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Messages      []*Message             `protobuf:"bytes,1,rep,name=messages,proto3" json:"messages,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	Messages          []*Message             `protobuf:"bytes,1,rep,name=messages,proto3" json:"messages,omitempty"`
+	RequesterUsername string                 `protobuf:"bytes,2,opt,name=requester_username,json=requesterUsername,proto3" json:"requester_username,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *DeleteMessagesRequest) Reset() {
@@ -660,6 +661,13 @@ func (x *DeleteMessagesRequest) GetMessages() []*Message {
 		return x.Messages
 	}
 	return nil
+}
+
+func (x *DeleteMessagesRequest) GetRequesterUsername() string {
+	if x != nil {
+		return x.RequesterUsername
+	}
+	return ""
 }
 
 type DeleteMessagesResponse struct {
@@ -811,6 +819,7 @@ type ChatInfo struct {
 	CreatedAt       *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	UnreadCount     int32                  `protobuf:"varint,6,opt,name=unread_count,json=unreadCount,proto3" json:"unread_count,omitempty"`
 	LastMessageTime *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=last_message_time,json=lastMessageTime,proto3" json:"last_message_time,omitempty"`
+	Creator         string                 `protobuf:"bytes,8,opt,name=creator,proto3" json:"creator,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -892,6 +901,13 @@ func (x *ChatInfo) GetLastMessageTime() *timestamppb.Timestamp {
 		return x.LastMessageTime
 	}
 	return nil
+}
+
+func (x *ChatInfo) GetCreator() string {
+	if x != nil {
+		return x.Creator
+	}
+	return ""
 }
 
 type GetChatsRequest struct {
@@ -1090,6 +1106,7 @@ type CreateGroupChatRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	Participants  []string               `protobuf:"bytes,2,rep,name=participants,proto3" json:"participants,omitempty"`
+	Creator       string                 `protobuf:"bytes,3,opt,name=creator,proto3" json:"creator,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1136,6 +1153,13 @@ func (x *CreateGroupChatRequest) GetParticipants() []string {
 		return x.Participants
 	}
 	return nil
+}
+
+func (x *CreateGroupChatRequest) GetCreator() string {
+	if x != nil {
+		return x.Creator
+	}
+	return ""
 }
 
 type CreateGroupChatResponse struct {
@@ -3358,16 +3382,17 @@ const file_messenger_proto_rawDesc = "" +
 	"\x05limit\x18\x01 \x01(\x05R\x05limit\x12\x12\n" +
 	"\x04room\x18\x02 \x01(\tR\x04room\"D\n" +
 	"\x12GetHistoryResponse\x12.\n" +
-	"\bmessages\x18\x01 \x03(\v2\x12.messenger.MessageR\bmessages\"G\n" +
+	"\bmessages\x18\x01 \x03(\v2\x12.messenger.MessageR\bmessages\"v\n" +
 	"\x15DeleteMessagesRequest\x12.\n" +
-	"\bmessages\x18\x01 \x03(\v2\x12.messenger.MessageR\bmessages\"2\n" +
+	"\bmessages\x18\x01 \x03(\v2\x12.messenger.MessageR\bmessages\x12-\n" +
+	"\x12requester_username\x18\x02 \x01(\tR\x11requesterUsername\"2\n" +
 	"\x16DeleteMessagesResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\"8\n" +
 	"\fTokenRequest\x12\x12\n" +
 	"\x04user\x18\x01 \x01(\tR\x04user\x12\x14\n" +
 	"\x05token\x18\x02 \x01(\tR\x05token\")\n" +
 	"\rTokenResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess\"\x8c\x02\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\"\xa6\x02\n" +
 	"\bChatInfo\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
@@ -3376,7 +3401,8 @@ const file_messenger_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12!\n" +
 	"\funread_count\x18\x06 \x01(\x05R\vunreadCount\x12F\n" +
-	"\x11last_message_time\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\x0flastMessageTime\"-\n" +
+	"\x11last_message_time\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\x0flastMessageTime\x12\x18\n" +
+	"\acreator\x18\b \x01(\tR\acreator\"-\n" +
 	"\x0fGetChatsRequest\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\"=\n" +
 	"\x10GetChatsResponse\x12)\n" +
@@ -3386,10 +3412,11 @@ const file_messenger_proto_rawDesc = "" +
 	"\x05user2\x18\x02 \x01(\tR\x05user2\"M\n" +
 	"\x18CreateDirectChatResponse\x12\x17\n" +
 	"\achat_id\x18\x01 \x01(\tR\x06chatId\x12\x18\n" +
-	"\asuccess\x18\x02 \x01(\bR\asuccess\"P\n" +
+	"\asuccess\x18\x02 \x01(\bR\asuccess\"j\n" +
 	"\x16CreateGroupChatRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\"\n" +
-	"\fparticipants\x18\x02 \x03(\tR\fparticipants\"L\n" +
+	"\fparticipants\x18\x02 \x03(\tR\fparticipants\x12\x18\n" +
+	"\acreator\x18\x03 \x01(\tR\acreator\"L\n" +
 	"\x17CreateGroupChatResponse\x12\x17\n" +
 	"\achat_id\x18\x01 \x01(\tR\x06chatId\x12\x18\n" +
 	"\asuccess\x18\x02 \x01(\bR\asuccess\"]\n" +

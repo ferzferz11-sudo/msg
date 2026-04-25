@@ -150,6 +150,21 @@ func ConnectDB() (*DB, error) {
 			emoji VARCHAR(50) NOT NULL,
 			UNIQUE(message_id, username)
 		);`,
+		`CREATE TABLE IF NOT EXISTS chats (
+			id VARCHAR(255) PRIMARY KEY,
+			name VARCHAR(255) NOT NULL,
+			type VARCHAR(50) NOT NULL, -- 'direct' or 'group'
+			participants TEXT NOT NULL, -- JSON array of usernames
+			creator_username VARCHAR(255),
+			created_at TIMESTAMP NOT NULL DEFAULT NOW()
+		);`,
+		// Migration: Add creator_username to chats if it doesn't exist
+		`DO $$
+		 BEGIN
+		  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='chats' AND column_name='creator_username') THEN
+		    ALTER TABLE chats ADD COLUMN creator_username VARCHAR(255);
+		  END IF;
+		 END $$;`,
 		`CREATE TABLE IF NOT EXISTS user_tokens (
 			username VARCHAR(255) PRIMARY KEY,
 			fcm_token TEXT NOT NULL,
@@ -718,7 +733,13 @@ func (db *DB) UpdateUsername(oldUsername, newUsername string) error {
 		return err
 	}
 
-	// 8. Обновляем участников в чатах (самое сложное из-за JSON)
+	// 8. Обновляем создателя чата
+	_, err = tx.Exec(`UPDATE chats SET creator_username = $1 WHERE creator_username = $2`, newUsername, oldUsername)
+	if err != nil {
+		return err
+	}
+
+	// 9. Обновляем участников в чатах (самое сложное из-за JSON)
 	// Используем безопасную замену в JSON массиве
 	oldJson := fmt.Sprintf("\"%s\"", oldUsername)
 	newJson := fmt.Sprintf("\"%s\"", newUsername)
@@ -801,9 +822,9 @@ func (db *DB) GetUserAvatar(username string) (string, error) {
 }
 
 // CreateChat creates a new chat room
-func (db *DB) CreateChat(id, name, chatType, participants string) error {
-	query := `INSERT INTO chats (id, name, type, participants, created_at) VALUES ($1, $2, $3, $4, NOW())`
-	_, err := db.Exec(query, id, name, chatType, participants)
+func (db *DB) CreateChat(id, name, chatType, participants, creator string) error {
+	query := `INSERT INTO chats (id, name, type, participants, creator_username, created_at) VALUES ($1, $2, $3, $4, $5, NOW())`
+	_, err := db.Exec(query, id, name, chatType, participants, creator)
 
 	if err == nil {
 		// Increment version for all participants when a new chat is created
@@ -815,21 +836,23 @@ func (db *DB) CreateChat(id, name, chatType, participants string) error {
 
 // GetChat retrieves a chat by ID
 func (db *DB) GetChat(id string) (struct {
-	ID           string
-	Name         string
-	Type         string
-	Participants string
-	CreatedAt    time.Time
+	ID              string
+	Name            string
+	Type            string
+	Participants    string
+	CreatedAt       time.Time
+	CreatorUsername string
 }, error) {
 	var chat struct {
-		ID           string
-		Name         string
-		Type         string
-		Participants string
-		CreatedAt    time.Time
+		ID              string
+		Name            string
+		Type            string
+		Participants    string
+		CreatedAt       time.Time
+		CreatorUsername string
 	}
-	query := `SELECT id, name, type, participants, created_at FROM chats WHERE id = $1`
-	err := db.QueryRow(query, id).Scan(&chat.ID, &chat.Name, &chat.Type, &chat.Participants, &chat.CreatedAt)
+	query := `SELECT id, name, type, participants, created_at, COALESCE(creator_username, '') FROM chats WHERE id = $1`
+	err := db.QueryRow(query, id).Scan(&chat.ID, &chat.Name, &chat.Type, &chat.Participants, &chat.CreatedAt, &chat.CreatorUsername)
 	return chat, err
 }
 
@@ -842,6 +865,7 @@ func (db *DB) GetUserChats(username string) ([]struct {
 	CreatedAt       time.Time
 	UnreadCount     int
 	LastMessageTime time.Time
+	Creator         string
 }, error) {
 	query := `
 		SELECT c.id, c.name, c.type, c.participants, c.created_at,
@@ -849,7 +873,8 @@ func (db *DB) GetUserChats(username string) ([]struct {
 		 WHERE m.room_id = c.id
 		 AND m.is_read = FALSE
 		 AND m.username != $1) as unread_count,
-		(SELECT MAX(m.created_at) FROM messages m WHERE m.room_id = c.id) as last_message_time
+		(SELECT MAX(m.created_at) FROM messages m WHERE m.room_id = c.id) as last_message_time,
+		COALESCE(c.creator_username, '')
 		FROM chats c
 		WHERE c.participants LIKE $2 OR (c.type = 'group' AND c.participants LIKE $2)`
 
@@ -872,6 +897,7 @@ func (db *DB) GetUserChats(username string) ([]struct {
 		CreatedAt       time.Time
 		UnreadCount     int
 		LastMessageTime time.Time
+		Creator         string
 	}
 
 	for rows.Next() {
@@ -883,8 +909,9 @@ func (db *DB) GetUserChats(username string) ([]struct {
 			CreatedAt       time.Time
 			UnreadCount     int
 			LastMessageTime sql.NullTime
+			Creator         string
 		}
-		if err := rows.Scan(&c.ID, &c.Name, &c.Type, &c.Participants, &c.CreatedAt, &c.UnreadCount, &c.LastMessageTime); err != nil {
+		if err := rows.Scan(&c.ID, &c.Name, &c.Type, &c.Participants, &c.CreatedAt, &c.UnreadCount, &c.LastMessageTime, &c.Creator); err != nil {
 			log.Printf("Error scanning chat row: %v", err)
 			return nil, err
 		}
@@ -900,6 +927,7 @@ func (db *DB) GetUserChats(username string) ([]struct {
 			CreatedAt       time.Time
 			UnreadCount     int
 			LastMessageTime time.Time
+			Creator         string
 		}{
 			ID:              c.ID,
 			Name:            c.Name,
@@ -908,6 +936,7 @@ func (db *DB) GetUserChats(username string) ([]struct {
 			CreatedAt:       c.CreatedAt,
 			UnreadCount:     c.UnreadCount,
 			LastMessageTime: lastMessageTime,
+			Creator:         c.Creator,
 		})
 	}
 	return results, nil
@@ -949,7 +978,7 @@ func (db *DB) GetDirectChatBetweenUsers(user1, user2 string) (string, error) {
 	// Create new direct chat
 	newChatID := user1 + "_" + user2 + "_direct"
 	participants := `["` + user1 + `", "` + user2 + `"]`
-	err = db.CreateChat(newChatID, user1+" & "+user2, "direct", participants)
+	err = db.CreateChat(newChatID, user1+" & "+user2, "direct", participants, user1)
 	if err != nil {
 		return "", err
 	}
