@@ -2,6 +2,13 @@
 
 **Author:** Pavel Davydov (ferz)
 
+## [1.0.1.46] - 2026-04-25
+- **Server: Online Status Reliability Fix**
+  - Fixed a race condition where users would appear as "Anonymous" in the online list during connection.
+  - Ensured `UpdateName` is called before the first `broadcastOnlineUsers` signal.
+  - Users now correctly see each other online immediately after authentication.
+  - Server version: 1.0.1.46
+
 ## [1.0.1.45] - 2026-04-25
 - **Server: Real-time Presence and Admin Permissions**
   - Implemented real-time online status broadcasting to all connected clients.

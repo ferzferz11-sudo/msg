@@ -123,8 +123,12 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 				}
 			}
 
-			// Mark stream as authenticated
+			// IMPORTANT: Update name in hub BEFORE broadcasting online status
+			// so the list contains the actual username instead of "Anonymous"
+			s.hub.UpdateName(stream, msg.User)
 			s.hub.SetAuthenticated(stream, true)
+			connectedUser = msg.User
+
 			log.Printf("User authenticated: %s", msg.User)
 			s.broadcastOnlineUsers()
 
