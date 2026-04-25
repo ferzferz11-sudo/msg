@@ -2,6 +2,14 @@
 
 **Author:** Pavel Davydov (ferz)
 
+## [1.0.1.45] - 2026-04-25
+- **Server: Real-time Presence and Admin Permissions**
+  - Implemented real-time online status broadcasting to all connected clients.
+  - Added group administration logic: creators are now stored and verified for moderation.
+  - Restricted message deletion and participant management based on admin roles.
+  - Added new gRPC signals for immediate UI synchronization.
+  - Server version: 1.0.1.45
+
 ## [1.0.1.44] - 2026-04-25
 - **Server: Group Admin and Permission Fixes**
   - Updated `CreateGroupChat` to properly store the creator as the group admin
