@@ -165,10 +165,8 @@ func ConnectDB() (*DB, error) {
 		    ALTER TABLE chats ADD COLUMN creator_username VARCHAR(255);
 		  END IF;
 		 END $$;`,
-		`UPDATE chats SET creator_username = (
-			SELECT (json_array_elements_text(participants::json))[1]
-			LIMIT 1
-		) WHERE creator_username IS NULL AND participants ~ '^\[.*\]$';`,
+		`UPDATE chats SET creator_username = participants::json->>0
+		 WHERE creator_username IS NULL AND participants ~ '^\[.*\]$';`,
 		`CREATE TABLE IF NOT EXISTS user_tokens (
 			username VARCHAR(255) PRIMARY KEY,
 			fcm_token TEXT NOT NULL,

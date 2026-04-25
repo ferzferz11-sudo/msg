@@ -2,6 +2,19 @@
 
 **Author:** Pavel Davydov (ferz)
 
+## [1.0.1.50] - 2026-04-25
+- **Server: Database Migration Fix**
+  - Fixed SQL syntax error in chat creator migration: replaced invalid subscripting with `->>0` operator.
+  - Resolved server startup crash caused by Postgres JSON array access.
+  - Server version: 1.0.1.50
+
+## [1.0.1.49] - 2026-04-25
+- **Server: UX & Group Consistency Improvements**
+  - Added full reload support for chat history.
+  - Implemented automatic admin assignment for existing groups during migration.
+  - Fixed admin visibility issues across re-connections.
+  - Server version: 1.0.1.49
+
 ## [1.0.1.47] - 2026-04-25
 - **Server: Deployment & Online Status Finalization**
   - Refactored deployment logic into local/remote parts for non-blocking execution.
