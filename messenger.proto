@@ -324,6 +324,16 @@ message DeleteThemeResponse {
   bool success = 1;
 }
 
+message UpdateChatNameRequest {
+  string chat_id = 1;
+  string new_name = 2;
+}
+
+message UpdateChatNameResponse {
+  bool success = 1;
+  string message = 2;
+}
+
 service ChatService {
   rpc Chat(stream Message) returns (stream Message);
   rpc GetClients(ClientListRequest) returns (ClientListResponse);
@@ -346,6 +356,7 @@ service ChatService {
   rpc AddParticipant(AddParticipantRequest) returns (AddParticipantResponse);
   rpc RemoveParticipant(RemoveParticipantRequest) returns (RemoveParticipantResponse);
   rpc EditMessage(EditMessageRequest) returns (EditMessageResponse);
+  rpc UpdateChatName(UpdateChatNameRequest) returns (UpdateChatNameResponse);
   rpc DeleteChat(DeleteChatRequest) returns (DeleteChatResponse);
   rpc DeleteProfile(DeleteProfileRequest) returns (DeleteProfileResponse);
   rpc AddContact(AddContactRequest) returns (AddContactResponse);

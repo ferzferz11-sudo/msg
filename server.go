@@ -888,6 +888,26 @@ func (s *server) EditMessage(_ context.Context, req *gen.EditMessageRequest) (*g
 	return &gen.EditMessageResponse{Success: true, Message: "Message edited successfully"}, nil
 }
 
+func (s *server) UpdateChatName(_ context.Context, req *gen.UpdateChatNameRequest) (*gen.UpdateChatNameResponse, error) {
+	if req.ChatId == "" || req.NewName == "" {
+		return &gen.UpdateChatNameResponse{Success: false, Message: "Chat ID and New Name are required"}, nil
+	}
+
+	log.Printf("UpdateChatName: Updating chat %s to '%s'", req.ChatId, req.NewName)
+
+	err := s.db.UpdateChatName(req.ChatId, req.NewName)
+	if err != nil {
+		log.Printf("UpdateChatName error: %v", err)
+		return &gen.UpdateChatNameResponse{Success: false, Message: err.Error()}, nil
+	}
+
+	// Increment version for all participants so their lists refresh
+	_ = s.db.IncrementParticipantsChatListVersion(req.ChatId)
+	s.broadcastOnlineUsers()
+
+	return &gen.UpdateChatNameResponse{Success: true, Message: "Chat name updated successfully"}, nil
+}
+
 func (s *server) AddContact(_ context.Context, req *gen.AddContactRequest) (*gen.AddContactResponse, error) {
 	err := s.db.AddContact(req.Username, req.ContactUsername)
 	if err != nil {

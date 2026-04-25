@@ -1166,6 +1166,13 @@ func (db *DB) UpdateChatParticipants(chatID, participants string) error {
 	return err
 }
 
+// UpdateChatName updates the name of a chat
+func (db *DB) UpdateChatName(chatID, newName string) error {
+	query := `UPDATE chats SET name = $1 WHERE id = $2`
+	_, err := db.Exec(query, newName, chatID)
+	return err
+}
+
 // AddContact adds a contact for a user
 func (db *DB) AddContact(username, contactUsername string) error {
 	query := `INSERT INTO contacts (user_id, contact_id, username, contact_username)
