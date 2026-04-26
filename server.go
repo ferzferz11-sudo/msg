@@ -180,9 +180,6 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 			return fmt.Errorf("not authenticated")
 		}*/
 
-		// Обновляем имя пользователя в хабе, чтобы GetClients работал корректно
-		s.hub.UpdateName(stream, msg.User)
-
 		// Генерируем уникальный ID для сообщения
 		msg.Id = uuid.New().String()
 
@@ -258,6 +255,10 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 
 		// Send push notification to all users in the room (except sender)
 		// This ensures users in background receive notifications
+
+		// CRITICAL: Check if sender wants to notify others
+		senderNotifiesOthers := s.db.GetUserPushStatus(msg.User)
+
 		allUsers, err := s.db.GetAllUsers()
 		if err != nil {
 			log.Printf("Failed to get all users for push notifications: %v", err)
@@ -266,6 +267,11 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 				// Skip the sender
 				if user == msg.User {
 					continue
+				}
+
+				if !senderNotifiesOthers {
+					log.Printf("Push skip: %s has disabled outgoing notifications", msg.User)
+					break // No need to check other participants if sender disabled it
 				}
 
 				// Check if user is a participant in the room
@@ -438,7 +444,7 @@ func (s *server) SetReaction(_ context.Context, req *gen.ReactionRequest) (*gen.
 
 // RegisterToken сохраняет FCM токен для пользователя
 func (s *server) RegisterToken(_ context.Context, req *gen.TokenRequest) (*gen.TokenResponse, error) {
-	err := s.db.SaveUserToken(req.User, req.Token)
+	err := s.db.SaveUserToken(req.User, req.Token, req.PushEnabled)
 	if err != nil {
 		log.Printf("Failed to save token for %s: %v", req.User, err)
 		return &gen.TokenResponse{Success: false}, err
@@ -448,7 +454,7 @@ func (s *server) RegisterToken(_ context.Context, req *gen.TokenRequest) (*gen.T
 	if len(displayToken) > 10 {
 		displayToken = displayToken[:10] + "..."
 	}
-	log.Printf("FCM registered: %s [%s]", req.User, displayToken)
+	log.Printf("FCM registered: %s [%s] (Push Enabled: %v)", req.User, displayToken, req.PushEnabled)
 	return &gen.TokenResponse{Success: true}, nil
 }
 

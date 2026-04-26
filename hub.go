@@ -49,9 +49,12 @@ func (h *Hub) Register(stream gen.ChatService_ChatServer) {
 // UpdateName updates the username associated with a stream
 func (h *Hub) UpdateName(stream gen.ChatService_ChatServer, name string) {
 	h.mu.Lock()
+	oldName := h.clients[stream]
 	h.clients[stream] = name
 	h.mu.Unlock()
-	if h.onStatusChange != nil {
+
+	// Only trigger status change if the name actually changed from Anonymous
+	if oldName != name && h.onStatusChange != nil {
 		h.onStatusChange()
 	}
 }

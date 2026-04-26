@@ -170,8 +170,16 @@ func ConnectDB() (*DB, error) {
 		`CREATE TABLE IF NOT EXISTS user_tokens (
 			username VARCHAR(255) PRIMARY KEY,
 			fcm_token TEXT NOT NULL,
-			updated_at TIMESTAMP NOT NULL
+			updated_at TIMESTAMP NOT NULL,
+			push_enabled BOOLEAN DEFAULT TRUE
 		);`,
+		// Migration: Add push_enabled to user_tokens
+		`DO $$
+		 BEGIN
+		  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='user_tokens' AND column_name='push_enabled') THEN
+		    ALTER TABLE user_tokens ADD COLUMN push_enabled BOOLEAN DEFAULT TRUE;
+		  END IF;
+		 END $$;`,
 		`CREATE TABLE IF NOT EXISTS users (
 			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 			username VARCHAR(255) UNIQUE NOT NULL,
@@ -616,13 +624,24 @@ func (db *DB) DeleteChat(chatID string) error {
 	return tx.Commit()
 }
 
-// SaveUserToken сохраняет или обновляет FCM токен пользователя
-func (db *DB) SaveUserToken(username, token string) error {
-	query := `INSERT INTO user_tokens (username, user_id, fcm_token, updated_at)
-	          VALUES ($1::text, (SELECT id FROM users WHERE username = $1::text), $2, $3)
-              ON CONFLICT (username) DO UPDATE SET fcm_token = $2, updated_at = $3`
-	_, err := db.Exec(query, username, token, time.Now())
+// SaveUserToken сохраняет или обновляет FCM токен пользователя и статус пушей
+func (db *DB) SaveUserToken(username, token string, pushEnabled bool) error {
+	query := `INSERT INTO user_tokens (username, user_id, fcm_token, updated_at, push_enabled)
+	          VALUES ($1::text, (SELECT id FROM users WHERE username = $1::text), $2, $3, $4)
+              ON CONFLICT (username) DO UPDATE SET fcm_token = $2, updated_at = $3, push_enabled = $4`
+	_, err := db.Exec(query, username, token, time.Now(), pushEnabled)
 	return err
+}
+
+// GetUserPushStatus checks if notifications FROM this user should be sent
+func (db *DB) GetUserPushStatus(username string) bool {
+	var enabled bool
+	query := `SELECT push_enabled FROM user_tokens WHERE username = $1`
+	err := db.QueryRow(query, username).Scan(&enabled)
+	if err != nil {
+		return true // Default to enabled
+	}
+	return enabled
 }
 
 // GetUserToken получает токен пользователя для отправки пуша

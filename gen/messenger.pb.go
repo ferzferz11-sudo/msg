@@ -814,6 +814,7 @@ type TokenRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	User          string                 `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
 	Token         string                 `protobuf:"bytes,2,opt,name=token,proto3" json:"token,omitempty"`
+	PushEnabled   bool                   `protobuf:"varint,3,opt,name=push_enabled,json=pushEnabled,proto3" json:"push_enabled,omitempty"` // Whether to send notifications to others FROM this user
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -860,6 +861,13 @@ func (x *TokenRequest) GetToken() string {
 		return x.Token
 	}
 	return ""
+}
+
+func (x *TokenRequest) GetPushEnabled() bool {
+	if x != nil {
+		return x.PushEnabled
+	}
+	return false
 }
 
 type TokenResponse struct {
@@ -3600,10 +3608,11 @@ const file_messenger_proto_rawDesc = "" +
 	"\bmessages\x18\x01 \x03(\v2\x12.messenger.MessageR\bmessages\x12-\n" +
 	"\x12requester_username\x18\x02 \x01(\tR\x11requesterUsername\"2\n" +
 	"\x16DeleteMessagesResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess\"8\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\"[\n" +
 	"\fTokenRequest\x12\x12\n" +
 	"\x04user\x18\x01 \x01(\tR\x04user\x12\x14\n" +
-	"\x05token\x18\x02 \x01(\tR\x05token\")\n" +
+	"\x05token\x18\x02 \x01(\tR\x05token\x12!\n" +
+	"\fpush_enabled\x18\x03 \x01(\bR\vpushEnabled\")\n" +
 	"\rTokenResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\"\xa6\x02\n" +
 	"\bChatInfo\x12\x0e\n" +

@@ -110,8 +110,8 @@ func main() {
 			MaxConnectionIdle:     15 * time.Minute,
 			MaxConnectionAge:      30 * time.Minute,
 			MaxConnectionAgeGrace: 5 * time.Second,
-			Time:                  10 * time.Second, // Ping clients every 10s to keep connection alive
-			Timeout:               5 * time.Second,  // Wait 5s for ping response
+			Time:                  20 * time.Second, // Ping clients every 20s
+			Timeout:               10 * time.Second, // Allow 10s for response (better for mobile)
 		}),
 	)
 

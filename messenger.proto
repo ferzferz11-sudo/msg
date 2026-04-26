@@ -80,6 +80,7 @@ message DeleteMessagesResponse {
 message TokenRequest {
   string user = 1;
   string token = 2;
+  bool push_enabled = 3; // Whether to send notifications to others FROM this user
 }
 
 message TokenResponse {
