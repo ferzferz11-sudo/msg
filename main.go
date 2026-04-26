@@ -25,11 +25,6 @@ import (
 	"google.golang.org/api/option"
 )
 
-const (
-	// serverVersion indicates the current version of the Lavender messaging server
-	serverVersion = "1.0.1.60"
-)
-
 var firebaseApp *firebase.App
 
 // main is the entry point of the Lavender messaging server application
@@ -37,7 +32,7 @@ var firebaseApp *firebase.App
 // gRPC server, and starts listening for client connections
 func main() {
 	// Print version at startup for visibility
-	fmt.Printf("Lavender server version: %s\n", serverVersion)
+	fmt.Printf("Lavender server version: %s\n", ServerVersion)
 
 	// Load environment variables from .env file for local development
 	// If .env file doesn't exist, fall back to system environment variables

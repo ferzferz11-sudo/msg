@@ -1108,6 +1108,22 @@ func (db *DB) DeleteProfile(username string) error {
 		_ = DeleteImageFile(avatarURL.String)
 	}
 
+	// 3.1 Get all theme background URLs and delete them
+	rows, err = tx.Query(`SELECT background_image_url FROM user_themes WHERE username = $1 AND background_image_url IS NOT NULL AND background_image_url != ''`, username)
+	if err == nil {
+		var themeBgUrls []string
+		for rows.Next() {
+			var url string
+			if err := rows.Scan(&url); err == nil {
+				themeBgUrls = append(themeBgUrls, url)
+			}
+		}
+		rows.Close()
+		for _, url := range themeBgUrls {
+			_ = DeleteImageFile(url)
+		}
+	}
+
 	// 4. Delete user's messages
 	_, err = tx.Exec(`DELETE FROM messages WHERE username = $1`, username)
 	if err != nil {
@@ -1408,8 +1424,22 @@ func (db *DB) SetCurrentTheme(username, themeID string) error {
 	return err
 }
 
-// DeleteUserTheme removes a custom theme
+// DeleteUserTheme removes a custom theme and its associated background image
 func (db *DB) DeleteUserTheme(username, themeID string) error {
+	// 1. Get background image URL before deleting
+	var bgURL sql.NullString
+	_ = db.QueryRow(`SELECT background_image_url FROM user_themes WHERE username = $1 AND theme_id = $2`, username, themeID).Scan(&bgURL)
+
+	// 2. Delete from database
 	_, err := db.Exec(`DELETE FROM user_themes WHERE username = $1 AND theme_id = $2`, username, themeID)
-	return err
+	if err != nil {
+		return err
+	}
+
+	// 3. Delete background image file if it exists
+	if bgURL.Valid && bgURL.String != "" {
+		_ = DeleteImageFile(bgURL.String)
+	}
+
+	return nil
 }

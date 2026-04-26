@@ -20,6 +20,7 @@ const (
 	avatarsPath     = "./uploads/avatars"
 	imagesPath      = "./uploads/images"
 	filesPath       = "./uploads/files"
+	backgroundsPath = "./uploads/background"
 	defaultHTTPPort = "8082"
 )
 
@@ -34,10 +35,12 @@ func StartHTTPServer(port string) {
 	os.MkdirAll(avatarsPath, 0755)
 	os.MkdirAll(imagesPath, 0755)
 	os.MkdirAll(filesPath, 0755)
+	os.MkdirAll(backgroundsPath, 0755)
 
 	http.HandleFunc("/upload-avatar", uploadAvatarHandler)
 	http.HandleFunc("/upload-image", uploadImageHandler)
 	http.HandleFunc("/upload-file", uploadFileHandler)
+	http.HandleFunc("/upload-background", uploadBackgroundHandler)
 
 	http.HandleFunc("/avatars/", func(w http.ResponseWriter, r *http.Request) {
 		serveFileHandler(w, r, "/avatars/", avatarsPath)
@@ -47,6 +50,9 @@ func StartHTTPServer(port string) {
 	})
 	http.HandleFunc("/files/", func(w http.ResponseWriter, r *http.Request) {
 		serveFileHandler(w, r, "/files/", filesPath)
+	})
+	http.HandleFunc("/background/", func(w http.ResponseWriter, r *http.Request) {
+		serveFileHandler(w, r, "/background/", backgroundsPath)
 	})
 
 	log.Printf("HTTP server started on port %s", port)
@@ -81,6 +87,10 @@ func uploadImageHandler(w http.ResponseWriter, r *http.Request) {
 
 func uploadFileHandler(w http.ResponseWriter, r *http.Request) {
 	handleUpload(w, r, "file", filesPath, "/files/")
+}
+
+func uploadBackgroundHandler(w http.ResponseWriter, r *http.Request) {
+	handleUpload(w, r, "background", backgroundsPath, "/background/")
 }
 
 func handleUpload(w http.ResponseWriter, r *http.Request, formKey, saveDir, urlPrefix string) {
@@ -180,6 +190,8 @@ func DeleteImageFile(imageURL string) error {
 		saveDir = imagesPath
 	case "files":
 		saveDir = filesPath
+	case "background":
+		saveDir = backgroundsPath
 	default:
 		return fmt.Errorf("unknown file prefix: %s", prefix)
 	}

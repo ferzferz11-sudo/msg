@@ -24,6 +24,8 @@ import (
 	"firebase.google.com/go/v4/messaging"
 )
 
+const ServerVersion = "1.0.2.0"
+
 // server implements the gRPC ChatService interface
 type server struct {
 	gen.UnimplementedChatServiceServer
@@ -42,7 +44,7 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 	defer func() {
 		// Unregister the client when the connection ends
 		s.hub.Unregister(stream)
-		log.Printf("Client disconnected: %s", connectedUser)
+		log.Printf("%s disconnected", connectedUser)
 	}()
 
 	for {
@@ -62,7 +64,7 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 			msg.User = trimmedUser
 			connectedUser = msg.User
 
-			log.Printf("Auth attempt: %s (Client Version: %s)", connectedUser, msg.ClientVersion)
+			log.Printf("Auth attempt: %s (%s)", connectedUser, msg.ClientVersion)
 
 			// Check if user exists first
 			userExists, err := s.db.UserExists(msg.User)
@@ -80,7 +82,7 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 				}
 
 				if !CheckPassword(msg.Password, storedHash) {
-					log.Printf("Authentication failed for user: %s", msg.User)
+					log.Printf("Auth failed: %s", msg.User)
 
 					// Send authentication failure message to the client
 					authFailMsg := &gen.Message{
@@ -108,7 +110,7 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 					log.Printf("Failed to save user: %v", err)
 					return err
 				}
-				log.Printf("Created new user: %s", msg.User)
+				log.Printf("Registered new user: %s", msg.User)
 
 				// Send registration success message to the client
 				regMsg := &gen.Message{
@@ -128,7 +130,16 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 			s.hub.SetAuthenticated(stream, true)
 			connectedUser = msg.User
 
-			log.Printf("User authenticated: %s (Client Version: %s)", msg.User, msg.ClientVersion)
+			log.Printf("%s (%s) authenticated successfully", msg.User, msg.ClientVersion)
+
+			// Send server info
+			serverInfoMsg := &gen.Message{
+				User:      "SYSTEM",
+				Text:      "SERVER_INFO:" + ServerVersion,
+				Id:        uuid.New().String(),
+				CreatedAt: timestamppb.Now(),
+			}
+			_ = stream.Send(serverInfoMsg)
 
 			// Inform the user about their admin status
 			if s.db.IsSuperAdmin(msg.User) {
@@ -155,7 +166,7 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 			now := time.Now()
 			if lastTime, ok := s.recentMsgs.Load(msgHash); ok {
 				if now.Sub(lastTime.(time.Time)) < 2*time.Second {
-					log.Printf("Deduplicated identical message from %s in %s", msg.User, msg.RoomId)
+					log.Printf("Msg deduplicated: %s in %s", msg.User, msg.RoomId)
 					continue
 				}
 			}
@@ -188,9 +199,9 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 		// Skip empty messages (unless they have an image)
 		if strings.TrimSpace(msg.Text) == "" && msg.ImageUrl == "" {
 			if roomID != "" {
-				log.Printf("Auth signal from %s (Session room: %s)", msg.User, roomID)
+				log.Printf("Auth signal: %s (%s)", msg.User, roomID)
 			} else {
-				log.Printf("Global Auth signal from %s", msg.User)
+				log.Printf("Auth signal: %s (Global)", msg.User)
 			}
 			continue
 		}
@@ -222,9 +233,9 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 			imageURL := msg.ImageUrl
 			err = s.db.SaveMessage(msg.Id, msg.User, encryptedText, msg.CreatedAt.AsTime(), msg.RepliedToMessageId, msg.RepliedToUser, msg.RepliedToText, roomID, imageURL)
 			if err != nil {
-				log.Printf("Failed to save message to DB: %v", err)
+				log.Printf("Failed to save msg: %v", err)
 			} else {
-				log.Printf("Message saved to DB successfully: %s in room %s", msg.Id, roomID)
+				log.Printf("Msg saved: %s (%s)", msg.Id, roomID)
 			}
 		}
 
@@ -277,7 +288,7 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 
 				// Send push notification to all users in the room
 				// Online users will receive via gRPC, background users via push
-				log.Printf("Sending push notification to user: %s", user)
+				log.Printf("Push sent: %s", user)
 				s.sendPushNotification(user, msg.User, msg.Text, roomID)
 			}
 		}
@@ -434,10 +445,10 @@ func (s *server) RegisterToken(_ context.Context, req *gen.TokenRequest) (*gen.T
 	}
 
 	displayToken := req.Token
-	if len(displayToken) > 20 {
-		displayToken = displayToken[:20] + "..."
+	if len(displayToken) > 10 {
+		displayToken = displayToken[:10] + "..."
 	}
-	log.Printf("Registered FCM token for user %s: [%s]", req.User, displayToken)
+	log.Printf("FCM registered: %s [%s]", req.User, displayToken)
 	return &gen.TokenResponse{Success: true}, nil
 }
 
