@@ -24,7 +24,7 @@ import (
 	"firebase.google.com/go/v4/messaging"
 )
 
-const ServerVersion = "1.0.2.0"
+const ServerVersion = "1.0.2.1"
 
 // server implements the gRPC ChatService interface
 type server struct {
@@ -33,6 +33,25 @@ type server struct {
 	db          *DB           // Database for message persistence
 	firebaseApp *firebase.App // Firebase Admin SDK instance
 	recentMsgs  sync.Map      // Cache for deduplicating identical rapid messages
+	fcmLogs     []*gen.FCMLogEntry
+	fcmLogsMu   sync.Mutex
+}
+
+func (s *server) logFCM(level, format string, v ...interface{}) {
+	s.fcmLogsMu.Lock()
+	defer s.fcmLogsMu.Unlock()
+
+	msg := fmt.Sprintf(format, v...)
+	entry := &gen.FCMLogEntry{
+		Timestamp: time.Now().Format("15:04:05"),
+		Level:     level,
+		Message:   msg,
+	}
+	s.fcmLogs = append(s.fcmLogs, entry)
+	if len(s.fcmLogs) > 100 {
+		s.fcmLogs = s.fcmLogs[1:]
+	}
+	log.Printf("[FCM %s] %s", level, msg)
 }
 
 // Chat handles bidirectional streaming for real-time messaging
@@ -454,7 +473,14 @@ func (s *server) RegisterToken(_ context.Context, req *gen.TokenRequest) (*gen.T
 	if len(displayToken) > 10 {
 		displayToken = displayToken[:10] + "..."
 	}
-	log.Printf("FCM registered: %s [%s] (Push Enabled: %v)", req.User, displayToken, req.PushEnabled)
+
+	receiveStatus := "ENABLED"
+	if req.Token == "DISABLED" {
+		receiveStatus = "DISABLED"
+	}
+
+	s.logFCM("INFO", "Register: %s [%s] (Push for me: %s, Push from me: %v)",
+		req.User, displayToken, receiveStatus, req.PushEnabled)
 	return &gen.TokenResponse{Success: true}, nil
 }
 
@@ -817,20 +843,25 @@ func (s *server) DeleteProfile(ctx context.Context, req *gen.DeleteProfileReques
 // sendPushNotification отправляет уведомление через FCM
 func (s *server) sendPushNotification(user, title, body, roomID string) {
 	if s.firebaseApp == nil {
-		log.Printf("Firebase not initialized, skipping push notification to %s", user)
+		s.logFCM("WARN", "Skip %s: Firebase not init", user)
 		return
 	}
 
 	token, err := s.db.GetUserToken(user)
 	if err != nil || token == "" {
-		log.Printf("No FCM token found for user %s", user)
+		s.logFCM("WARN", "Skip %s: No token", user)
+		return
+	}
+
+	if token == "DISABLED" {
+		s.logFCM("INFO", "Skip %s: User disabled push", user)
 		return
 	}
 
 	ctx := context.Background()
 	client, err := s.firebaseApp.Messaging(ctx)
 	if err != nil {
-		log.Printf("Failed to get Firebase messaging client: %v", err)
+		s.logFCM("ERROR", "Client err: %v", err)
 		return
 	}
 
@@ -844,16 +875,17 @@ func (s *server) sendPushNotification(user, title, body, roomID string) {
 			"title":   title,
 			"body":    body,
 			"room_id": roomID,
+			"sender":  title,
 		},
 	}
 
 	_, err = client.Send(ctx, message)
 	if err != nil {
-		log.Printf("Failed to send push notification to %s: %v", user, err)
+		s.logFCM("ERROR", "Send to %s failed: %v", user, err)
 		return
 	}
 
-	log.Printf("Push notification sent successfully to %s", user)
+	s.logFCM("SUCCESS", "Sent to %s", user)
 }
 
 func (s *server) broadcastOnlineUsers() {
@@ -1046,6 +1078,9 @@ func (s *server) GetThemes(_ context.Context, req *gen.GetThemesRequest) (*gen.G
 			TextSecondaryColor: t.TextSecondaryColor,
 			IsDark:             t.IsDark,
 			BackgroundImageUrl: t.BackgroundImageUrl,
+			ChatListBackgroundImageUrl: t.ChatListBackgroundImageUrl,
+			BottomPanelColor:   t.BottomPanelColor,
+			OnBottomPanelColor: t.OnBottomPanelColor,
 		})
 	}
 
@@ -1087,4 +1122,20 @@ func (s *server) DeleteTheme(_ context.Context, req *gen.DeleteThemeRequest) (*g
 	}
 	log.Printf("Theme %s deleted successfully for %s", req.ThemeId, req.Username)
 	return &gen.DeleteThemeResponse{Success: true}, nil
+}
+
+func (s *server) GetFCMLogs(_ context.Context, _ *gen.GetFCMLogsRequest) (*gen.GetFCMLogsResponse, error) {
+	s.fcmLogsMu.Lock()
+	defer s.fcmLogsMu.Unlock()
+
+	// Return a copy to avoid concurrent issues
+	logs := make([]*gen.FCMLogEntry, len(s.fcmLogs))
+	for i, l := range s.fcmLogs {
+		logs[i] = &gen.FCMLogEntry{
+			Timestamp: l.Timestamp,
+			Level:     l.Level,
+			Message:   l.Message,
+		}
+	}
+	return &gen.GetFCMLogsResponse{Logs: logs}, nil
 }

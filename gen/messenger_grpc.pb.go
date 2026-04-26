@@ -51,6 +51,7 @@ const (
 	ChatService_SaveTheme_FullMethodName          = "/messenger.ChatService/SaveTheme"
 	ChatService_SetCurrentTheme_FullMethodName    = "/messenger.ChatService/SetCurrentTheme"
 	ChatService_DeleteTheme_FullMethodName        = "/messenger.ChatService/DeleteTheme"
+	ChatService_GetFCMLogs_FullMethodName         = "/messenger.ChatService/GetFCMLogs"
 )
 
 // ChatServiceClient is the client API for ChatService service.
@@ -89,6 +90,7 @@ type ChatServiceClient interface {
 	SaveTheme(ctx context.Context, in *SaveThemeRequest, opts ...grpc.CallOption) (*SaveThemeResponse, error)
 	SetCurrentTheme(ctx context.Context, in *SetCurrentThemeRequest, opts ...grpc.CallOption) (*SetCurrentThemeResponse, error)
 	DeleteTheme(ctx context.Context, in *DeleteThemeRequest, opts ...grpc.CallOption) (*DeleteThemeResponse, error)
+	GetFCMLogs(ctx context.Context, in *GetFCMLogsRequest, opts ...grpc.CallOption) (*GetFCMLogsResponse, error)
 }
 
 type chatServiceClient struct {
@@ -422,6 +424,16 @@ func (c *chatServiceClient) DeleteTheme(ctx context.Context, in *DeleteThemeRequ
 	return out, nil
 }
 
+func (c *chatServiceClient) GetFCMLogs(ctx context.Context, in *GetFCMLogsRequest, opts ...grpc.CallOption) (*GetFCMLogsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetFCMLogsResponse)
+	err := c.cc.Invoke(ctx, ChatService_GetFCMLogs_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ChatServiceServer is the server API for ChatService service.
 // All implementations must embed UnimplementedChatServiceServer
 // for forward compatibility.
@@ -458,6 +470,7 @@ type ChatServiceServer interface {
 	SaveTheme(context.Context, *SaveThemeRequest) (*SaveThemeResponse, error)
 	SetCurrentTheme(context.Context, *SetCurrentThemeRequest) (*SetCurrentThemeResponse, error)
 	DeleteTheme(context.Context, *DeleteThemeRequest) (*DeleteThemeResponse, error)
+	GetFCMLogs(context.Context, *GetFCMLogsRequest) (*GetFCMLogsResponse, error)
 	mustEmbedUnimplementedChatServiceServer()
 }
 
@@ -563,6 +576,9 @@ func (UnimplementedChatServiceServer) SetCurrentTheme(context.Context, *SetCurre
 }
 func (UnimplementedChatServiceServer) DeleteTheme(context.Context, *DeleteThemeRequest) (*DeleteThemeResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteTheme not implemented")
+}
+func (UnimplementedChatServiceServer) GetFCMLogs(context.Context, *GetFCMLogsRequest) (*GetFCMLogsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetFCMLogs not implemented")
 }
 func (UnimplementedChatServiceServer) mustEmbedUnimplementedChatServiceServer() {}
 func (UnimplementedChatServiceServer) testEmbeddedByValue()                     {}
@@ -1150,6 +1166,24 @@ func _ChatService_DeleteTheme_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ChatService_GetFCMLogs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetFCMLogsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).GetFCMLogs(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_GetFCMLogs_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).GetFCMLogs(ctx, req.(*GetFCMLogsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ChatService_ServiceDesc is the grpc.ServiceDesc for ChatService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1280,6 +1314,10 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteTheme",
 			Handler:    _ChatService_DeleteTheme_Handler,
+		},
+		{
+			MethodName: "GetFCMLogs",
+			Handler:    _ChatService_GetFCMLogs_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

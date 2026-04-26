@@ -293,6 +293,9 @@ message CustomTheme {
   string text_secondary_color = 9;
   bool is_dark = 10;
   string background_image_url = 11;
+  string chat_list_background_image_url = 12;
+  string bottom_panel_color = 13;
+  string on_bottom_panel_color = 14;
 }
 
 message GetThemesRequest {
@@ -342,6 +345,18 @@ message UpdateChatNameResponse {
   string message = 2;
 }
 
+message GetFCMLogsRequest {}
+
+message FCMLogEntry {
+  string timestamp = 1;
+  string level = 2;
+  string message = 3;
+}
+
+message GetFCMLogsResponse {
+  repeated FCMLogEntry logs = 1;
+}
+
 service ChatService {
   rpc Chat(stream Message) returns (stream Message);
   rpc GetClients(ClientListRequest) returns (ClientListResponse);
@@ -375,4 +390,5 @@ service ChatService {
   rpc SaveTheme(SaveThemeRequest) returns (SaveThemeResponse);
   rpc SetCurrentTheme(SetCurrentThemeRequest) returns (SetCurrentThemeResponse);
   rpc DeleteTheme(DeleteThemeRequest) returns (DeleteThemeResponse);
+  rpc GetFCMLogs(GetFCMLogsRequest) returns (GetFCMLogsResponse);
 }

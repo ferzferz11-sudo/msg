@@ -221,6 +221,9 @@ func ConnectDB() (*DB, error) {
 			text_secondary_color VARCHAR(10),
 			is_dark BOOLEAN DEFAULT FALSE,
 			background_image_url VARCHAR(512),
+			chat_list_background_image_url VARCHAR(512),
+			bottom_panel_color VARCHAR(10),
+			on_bottom_panel_color VARCHAR(10),
 			UNIQUE(username, theme_id)
 		);`,
 		// Migration: Add background_image_url to user_themes
@@ -228,6 +231,21 @@ func ConnectDB() (*DB, error) {
 		 BEGIN
 		  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='user_themes' AND column_name='background_image_url') THEN
 		    ALTER TABLE user_themes ADD COLUMN background_image_url VARCHAR(512);
+		  END IF;
+		 END $$;`,
+		// Migration: Add chat_list_background_image_url to user_themes
+		`DO $$
+		 BEGIN
+		  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='user_themes' AND column_name='chat_list_background_image_url') THEN
+		    ALTER TABLE user_themes ADD COLUMN chat_list_background_image_url VARCHAR(512);
+		  END IF;
+		 END $$;`,
+		// Migration: Add bottom_panel fields
+		`DO $$
+		 BEGIN
+		  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='user_themes' AND column_name='bottom_panel_color') THEN
+		    ALTER TABLE user_themes ADD COLUMN bottom_panel_color VARCHAR(10);
+		    ALTER TABLE user_themes ADD COLUMN on_bottom_panel_color VARCHAR(10);
 		  END IF;
 		 END $$;`,
 		// Migration: Add chat_list_version to users if it doesn't exist
@@ -1388,17 +1406,20 @@ func (db *DB) IncrementParticipantsChatListVersion(chatID string) error {
 
 // UserTheme represents a custom theme in the database
 type UserTheme struct {
-	ThemeID            string
-	Name               string
-	PrimaryColor       string
-	OnPrimaryColor     string
-	SurfaceColor       string
-	OnSurfaceColor     string
-	BackgroundColor    string
-	TextPrimaryColor   string
-	TextSecondaryColor string
-	IsDark             bool
-	BackgroundImageUrl string
+	ThemeID                    string
+	Name                       string
+	PrimaryColor               string
+	OnPrimaryColor             string
+	SurfaceColor               string
+	OnSurfaceColor             string
+	BackgroundColor            string
+	TextPrimaryColor           string
+	TextSecondaryColor         string
+	IsDark                     bool
+	BackgroundImageUrl         string
+	ChatListBackgroundImageUrl string
+	BottomPanelColor           string
+	OnBottomPanelColor         string
 }
 
 // GetUserThemes retrieves current theme ID and all custom themes for a user
@@ -1409,7 +1430,7 @@ func (db *DB) GetUserThemes(username string) (string, []UserTheme, error) {
 		return "dark", nil, err
 	}
 
-	rows, err := db.Query(`SELECT theme_id, name, primary_color, on_primary_color, surface_color, on_surface_color, background_color, text_primary_color, text_secondary_color, is_dark, COALESCE(background_image_url, '')
+	rows, err := db.Query(`SELECT theme_id, name, primary_color, on_primary_color, surface_color, on_surface_color, background_color, text_primary_color, text_secondary_color, is_dark, COALESCE(background_image_url, ''), COALESCE(chat_list_background_image_url, ''), COALESCE(bottom_panel_color, ''), COALESCE(on_bottom_panel_color, '')
 	                       FROM user_themes WHERE username = $1`, username)
 	if err != nil {
 		return currentID, nil, err
@@ -1419,7 +1440,7 @@ func (db *DB) GetUserThemes(username string) (string, []UserTheme, error) {
 	var themes []UserTheme
 	for rows.Next() {
 		var t UserTheme
-		err := rows.Scan(&t.ThemeID, &t.Name, &t.PrimaryColor, &t.OnPrimaryColor, &t.SurfaceColor, &t.OnSurfaceColor, &t.BackgroundColor, &t.TextPrimaryColor, &t.TextSecondaryColor, &t.IsDark, &t.BackgroundImageUrl)
+		err := rows.Scan(&t.ThemeID, &t.Name, &t.PrimaryColor, &t.OnPrimaryColor, &t.SurfaceColor, &t.OnSurfaceColor, &t.BackgroundColor, &t.TextPrimaryColor, &t.TextSecondaryColor, &t.IsDark, &t.BackgroundImageUrl, &t.ChatListBackgroundImageUrl, &t.BottomPanelColor, &t.OnBottomPanelColor)
 		if err == nil {
 			themes = append(themes, t)
 		}
@@ -1429,11 +1450,11 @@ func (db *DB) GetUserThemes(username string) (string, []UserTheme, error) {
 
 // SaveUserTheme saves or updates a custom theme
 func (db *DB) SaveUserTheme(username string, theme *gen.CustomTheme) error {
-	query := `INSERT INTO user_themes (username, theme_id, name, primary_color, on_primary_color, surface_color, on_surface_color, background_color, text_primary_color, text_secondary_color, is_dark, background_image_url)
-	          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+	query := `INSERT INTO user_themes (username, theme_id, name, primary_color, on_primary_color, surface_color, on_surface_color, background_color, text_primary_color, text_secondary_color, is_dark, background_image_url, chat_list_background_image_url, bottom_panel_color, on_bottom_panel_color)
+	          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
 	          ON CONFLICT (username, theme_id) DO UPDATE SET
-	          name = $3, primary_color = $4, on_primary_color = $5, surface_color = $6, on_surface_color = $7, background_color = $8, text_primary_color = $9, text_secondary_color = $10, is_dark = $11, background_image_url = $12`
-	_, err := db.Exec(query, username, theme.Id, theme.Name, theme.PrimaryColor, theme.OnPrimaryColor, theme.SurfaceColor, theme.OnSurfaceColor, theme.BackgroundColor, theme.TextPrimaryColor, theme.TextSecondaryColor, theme.IsDark, theme.BackgroundImageUrl)
+	          name = $3, primary_color = $4, on_primary_color = $5, surface_color = $6, on_surface_color = $7, background_color = $8, text_primary_color = $9, text_secondary_color = $10, is_dark = $11, background_image_url = $12, chat_list_background_image_url = $13, bottom_panel_color = $14, on_bottom_panel_color = $15`
+	_, err := db.Exec(query, username, theme.Id, theme.Name, theme.PrimaryColor, theme.OnPrimaryColor, theme.SurfaceColor, theme.OnSurfaceColor, theme.BackgroundColor, theme.TextPrimaryColor, theme.TextSecondaryColor, theme.IsDark, theme.BackgroundImageUrl, theme.ChatListBackgroundImageUrl, theme.BottomPanelColor, theme.OnBottomPanelColor)
 	return err
 }
 
@@ -1445,9 +1466,9 @@ func (db *DB) SetCurrentTheme(username, themeID string) error {
 
 // DeleteUserTheme removes a custom theme and its associated background image
 func (db *DB) DeleteUserTheme(username, themeID string) error {
-	// 1. Get background image URL before deleting
-	var bgURL sql.NullString
-	_ = db.QueryRow(`SELECT background_image_url FROM user_themes WHERE username = $1 AND theme_id = $2`, username, themeID).Scan(&bgURL)
+	// 1. Get background image URLs before deleting
+	var bgURL, chatListBgURL sql.NullString
+	_ = db.QueryRow(`SELECT background_image_url, chat_list_background_image_url FROM user_themes WHERE username = $1 AND theme_id = $2`, username, themeID).Scan(&bgURL, &chatListBgURL)
 
 	// 2. Delete from database
 	_, err := db.Exec(`DELETE FROM user_themes WHERE username = $1 AND theme_id = $2`, username, themeID)
@@ -1455,9 +1476,12 @@ func (db *DB) DeleteUserTheme(username, themeID string) error {
 		return err
 	}
 
-	// 3. Delete background image file if it exists
+	// 3. Delete background image files if they exist
 	if bgURL.Valid && bgURL.String != "" {
 		_ = DeleteImageFile(bgURL.String)
+	}
+	if chatListBgURL.Valid && chatListBgURL.String != "" {
+		_ = DeleteImageFile(chatListBgURL.String)
 	}
 
 	return nil

@@ -5,9 +5,16 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="ef919cf0-dee0-4e94-b631-d2fd26a26aae" name="Changes" comment="1.0.1.40">
+      <change afterPath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/FCMLogsActivity.kt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/client/android/app/src/main/res/layout/activity_fcm_logs.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/client/android/app/src/main/res/layout/item_fcm_log.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/db.go" beforeDir="false" afterPath="$PROJECT_DIR$/db.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/NotificationActivity.kt" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/NotificationActivity.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/data/grpc/GrpcClient.kt" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/data/grpc/GrpcClient.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/data/grpc/RealGrpcClient.kt" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/data/grpc/RealGrpcClient.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/data/proto/MessengerProto.kt" beforeDir="false" afterPath="$PROJECT_DIR$/client/android/app/src/main/java/lavender/client/android/data/proto/MessengerProto.kt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/gen/messenger.pb.go" beforeDir="false" afterPath="$PROJECT_DIR$/gen/messenger.pb.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gen/messenger_grpc.pb.go" beforeDir="false" afterPath="$PROJECT_DIR$/gen/messenger_grpc.pb.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/messenger.proto" beforeDir="false" afterPath="$PROJECT_DIR$/messenger.proto" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/server.go" beforeDir="false" afterPath="$PROJECT_DIR$/server.go" afterDir="false" />
     </list>

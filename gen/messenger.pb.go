@@ -2935,20 +2935,23 @@ func (x *GetChatListVersionResponse) GetVersion() int64 {
 }
 
 type CustomTheme struct {
-	state              protoimpl.MessageState `protogen:"open.v1"`
-	Id                 string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Name               string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	PrimaryColor       string                 `protobuf:"bytes,3,opt,name=primary_color,json=primaryColor,proto3" json:"primary_color,omitempty"`
-	OnPrimaryColor     string                 `protobuf:"bytes,4,opt,name=on_primary_color,json=onPrimaryColor,proto3" json:"on_primary_color,omitempty"`
-	SurfaceColor       string                 `protobuf:"bytes,5,opt,name=surface_color,json=surfaceColor,proto3" json:"surface_color,omitempty"`
-	OnSurfaceColor     string                 `protobuf:"bytes,6,opt,name=on_surface_color,json=onSurfaceColor,proto3" json:"on_surface_color,omitempty"`
-	BackgroundColor    string                 `protobuf:"bytes,7,opt,name=background_color,json=backgroundColor,proto3" json:"background_color,omitempty"`
-	TextPrimaryColor   string                 `protobuf:"bytes,8,opt,name=text_primary_color,json=textPrimaryColor,proto3" json:"text_primary_color,omitempty"`
-	TextSecondaryColor string                 `protobuf:"bytes,9,opt,name=text_secondary_color,json=textSecondaryColor,proto3" json:"text_secondary_color,omitempty"`
-	IsDark             bool                   `protobuf:"varint,10,opt,name=is_dark,json=isDark,proto3" json:"is_dark,omitempty"`
-	BackgroundImageUrl string                 `protobuf:"bytes,11,opt,name=background_image_url,json=backgroundImageUrl,proto3" json:"background_image_url,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	state                      protoimpl.MessageState `protogen:"open.v1"`
+	Id                         string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name                       string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	PrimaryColor               string                 `protobuf:"bytes,3,opt,name=primary_color,json=primaryColor,proto3" json:"primary_color,omitempty"`
+	OnPrimaryColor             string                 `protobuf:"bytes,4,opt,name=on_primary_color,json=onPrimaryColor,proto3" json:"on_primary_color,omitempty"`
+	SurfaceColor               string                 `protobuf:"bytes,5,opt,name=surface_color,json=surfaceColor,proto3" json:"surface_color,omitempty"`
+	OnSurfaceColor             string                 `protobuf:"bytes,6,opt,name=on_surface_color,json=onSurfaceColor,proto3" json:"on_surface_color,omitempty"`
+	BackgroundColor            string                 `protobuf:"bytes,7,opt,name=background_color,json=backgroundColor,proto3" json:"background_color,omitempty"`
+	TextPrimaryColor           string                 `protobuf:"bytes,8,opt,name=text_primary_color,json=textPrimaryColor,proto3" json:"text_primary_color,omitempty"`
+	TextSecondaryColor         string                 `protobuf:"bytes,9,opt,name=text_secondary_color,json=textSecondaryColor,proto3" json:"text_secondary_color,omitempty"`
+	IsDark                     bool                   `protobuf:"varint,10,opt,name=is_dark,json=isDark,proto3" json:"is_dark,omitempty"`
+	BackgroundImageUrl         string                 `protobuf:"bytes,11,opt,name=background_image_url,json=backgroundImageUrl,proto3" json:"background_image_url,omitempty"`
+	ChatListBackgroundImageUrl string                 `protobuf:"bytes,12,opt,name=chat_list_background_image_url,json=chatListBackgroundImageUrl,proto3" json:"chat_list_background_image_url,omitempty"`
+	BottomPanelColor           string                 `protobuf:"bytes,13,opt,name=bottom_panel_color,json=bottomPanelColor,proto3" json:"bottom_panel_color,omitempty"`
+	OnBottomPanelColor         string                 `protobuf:"bytes,14,opt,name=on_bottom_panel_color,json=onBottomPanelColor,proto3" json:"on_bottom_panel_color,omitempty"`
+	unknownFields              protoimpl.UnknownFields
+	sizeCache                  protoimpl.SizeCache
 }
 
 func (x *CustomTheme) Reset() {
@@ -3054,6 +3057,27 @@ func (x *CustomTheme) GetIsDark() bool {
 func (x *CustomTheme) GetBackgroundImageUrl() string {
 	if x != nil {
 		return x.BackgroundImageUrl
+	}
+	return ""
+}
+
+func (x *CustomTheme) GetChatListBackgroundImageUrl() string {
+	if x != nil {
+		return x.ChatListBackgroundImageUrl
+	}
+	return ""
+}
+
+func (x *CustomTheme) GetBottomPanelColor() string {
+	if x != nil {
+		return x.BottomPanelColor
+	}
+	return ""
+}
+
+func (x *CustomTheme) GetOnBottomPanelColor() string {
+	if x != nil {
+		return x.OnBottomPanelColor
 	}
 	return ""
 }
@@ -3554,6 +3578,146 @@ func (x *UpdateChatNameResponse) GetMessage() string {
 	return ""
 }
 
+type GetFCMLogsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetFCMLogsRequest) Reset() {
+	*x = GetFCMLogsRequest{}
+	mi := &file_messenger_proto_msgTypes[67]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetFCMLogsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetFCMLogsRequest) ProtoMessage() {}
+
+func (x *GetFCMLogsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_messenger_proto_msgTypes[67]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetFCMLogsRequest.ProtoReflect.Descriptor instead.
+func (*GetFCMLogsRequest) Descriptor() ([]byte, []int) {
+	return file_messenger_proto_rawDescGZIP(), []int{67}
+}
+
+type FCMLogEntry struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Timestamp     string                 `protobuf:"bytes,1,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	Level         string                 `protobuf:"bytes,2,opt,name=level,proto3" json:"level,omitempty"`
+	Message       string                 `protobuf:"bytes,3,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *FCMLogEntry) Reset() {
+	*x = FCMLogEntry{}
+	mi := &file_messenger_proto_msgTypes[68]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FCMLogEntry) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FCMLogEntry) ProtoMessage() {}
+
+func (x *FCMLogEntry) ProtoReflect() protoreflect.Message {
+	mi := &file_messenger_proto_msgTypes[68]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FCMLogEntry.ProtoReflect.Descriptor instead.
+func (*FCMLogEntry) Descriptor() ([]byte, []int) {
+	return file_messenger_proto_rawDescGZIP(), []int{68}
+}
+
+func (x *FCMLogEntry) GetTimestamp() string {
+	if x != nil {
+		return x.Timestamp
+	}
+	return ""
+}
+
+func (x *FCMLogEntry) GetLevel() string {
+	if x != nil {
+		return x.Level
+	}
+	return ""
+}
+
+func (x *FCMLogEntry) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+type GetFCMLogsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Logs          []*FCMLogEntry         `protobuf:"bytes,1,rep,name=logs,proto3" json:"logs,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetFCMLogsResponse) Reset() {
+	*x = GetFCMLogsResponse{}
+	mi := &file_messenger_proto_msgTypes[69]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetFCMLogsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetFCMLogsResponse) ProtoMessage() {}
+
+func (x *GetFCMLogsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_messenger_proto_msgTypes[69]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetFCMLogsResponse.ProtoReflect.Descriptor instead.
+func (*GetFCMLogsResponse) Descriptor() ([]byte, []int) {
+	return file_messenger_proto_rawDescGZIP(), []int{69}
+}
+
+func (x *GetFCMLogsResponse) GetLogs() []*FCMLogEntry {
+	if x != nil {
+		return x.Logs
+	}
+	return nil
+}
+
 var File_messenger_proto protoreflect.FileDescriptor
 
 const file_messenger_proto_rawDesc = "" +
@@ -3735,7 +3899,7 @@ const file_messenger_proto_rawDesc = "" +
 	"\x19GetChatListVersionRequest\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\"6\n" +
 	"\x1aGetChatListVersionResponse\x12\x18\n" +
-	"\aversion\x18\x01 \x01(\x03R\aversion\"\xa5\x03\n" +
+	"\aversion\x18\x01 \x01(\x03R\aversion\"\xca\x04\n" +
 	"\vCustomTheme\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12#\n" +
@@ -3748,7 +3912,10 @@ const file_messenger_proto_rawDesc = "" +
 	"\x14text_secondary_color\x18\t \x01(\tR\x12textSecondaryColor\x12\x17\n" +
 	"\ais_dark\x18\n" +
 	" \x01(\bR\x06isDark\x120\n" +
-	"\x14background_image_url\x18\v \x01(\tR\x12backgroundImageUrl\".\n" +
+	"\x14background_image_url\x18\v \x01(\tR\x12backgroundImageUrl\x12B\n" +
+	"\x1echat_list_background_image_url\x18\f \x01(\tR\x1achatListBackgroundImageUrl\x12,\n" +
+	"\x12bottom_panel_color\x18\r \x01(\tR\x10bottomPanelColor\x121\n" +
+	"\x15on_bottom_panel_color\x18\x0e \x01(\tR\x12onBottomPanelColor\".\n" +
 	"\x10GetThemesRequest\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\"z\n" +
 	"\x11GetThemesResponse\x12(\n" +
@@ -3775,7 +3942,14 @@ const file_messenger_proto_rawDesc = "" +
 	"\bnew_name\x18\x02 \x01(\tR\anewName\"L\n" +
 	"\x16UpdateChatNameResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage2\x98\x14\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"\x13\n" +
+	"\x11GetFCMLogsRequest\"[\n" +
+	"\vFCMLogEntry\x12\x1c\n" +
+	"\ttimestamp\x18\x01 \x01(\tR\ttimestamp\x12\x14\n" +
+	"\x05level\x18\x02 \x01(\tR\x05level\x12\x18\n" +
+	"\amessage\x18\x03 \x01(\tR\amessage\"@\n" +
+	"\x12GetFCMLogsResponse\x12*\n" +
+	"\x04logs\x18\x01 \x03(\v2\x16.messenger.FCMLogEntryR\x04logs2\xe3\x14\n" +
 	"\vChatService\x122\n" +
 	"\x04Chat\x12\x12.messenger.Message\x1a\x12.messenger.Message(\x010\x01\x12I\n" +
 	"\n" +
@@ -3812,7 +3986,9 @@ const file_messenger_proto_rawDesc = "" +
 	"\tGetThemes\x12\x1b.messenger.GetThemesRequest\x1a\x1c.messenger.GetThemesResponse\x12F\n" +
 	"\tSaveTheme\x12\x1b.messenger.SaveThemeRequest\x1a\x1c.messenger.SaveThemeResponse\x12X\n" +
 	"\x0fSetCurrentTheme\x12!.messenger.SetCurrentThemeRequest\x1a\".messenger.SetCurrentThemeResponse\x12L\n" +
-	"\vDeleteTheme\x12\x1d.messenger.DeleteThemeRequest\x1a\x1e.messenger.DeleteThemeResponseB\aZ\x05./genb\x06proto3"
+	"\vDeleteTheme\x12\x1d.messenger.DeleteThemeRequest\x1a\x1e.messenger.DeleteThemeResponse\x12I\n" +
+	"\n" +
+	"GetFCMLogs\x12\x1c.messenger.GetFCMLogsRequest\x1a\x1d.messenger.GetFCMLogsResponseB\aZ\x05./genb\x06proto3"
 
 var (
 	file_messenger_proto_rawDescOnce sync.Once
@@ -3826,7 +4002,7 @@ func file_messenger_proto_rawDescGZIP() []byte {
 	return file_messenger_proto_rawDescData
 }
 
-var file_messenger_proto_msgTypes = make([]protoimpl.MessageInfo, 67)
+var file_messenger_proto_msgTypes = make([]protoimpl.MessageInfo, 70)
 var file_messenger_proto_goTypes = []any{
 	(*Message)(nil),                    // 0: messenger.Message
 	(*Reaction)(nil),                   // 1: messenger.Reaction
@@ -3895,89 +4071,95 @@ var file_messenger_proto_goTypes = []any{
 	(*DeleteThemeResponse)(nil),        // 64: messenger.DeleteThemeResponse
 	(*UpdateChatNameRequest)(nil),      // 65: messenger.UpdateChatNameRequest
 	(*UpdateChatNameResponse)(nil),     // 66: messenger.UpdateChatNameResponse
-	(*timestamppb.Timestamp)(nil),      // 67: google.protobuf.Timestamp
+	(*GetFCMLogsRequest)(nil),          // 67: messenger.GetFCMLogsRequest
+	(*FCMLogEntry)(nil),                // 68: messenger.FCMLogEntry
+	(*GetFCMLogsResponse)(nil),         // 69: messenger.GetFCMLogsResponse
+	(*timestamppb.Timestamp)(nil),      // 70: google.protobuf.Timestamp
 }
 var file_messenger_proto_depIdxs = []int32{
-	67, // 0: messenger.Message.created_at:type_name -> google.protobuf.Timestamp
+	70, // 0: messenger.Message.created_at:type_name -> google.protobuf.Timestamp
 	1,  // 1: messenger.Message.reactions:type_name -> messenger.Reaction
 	1,  // 2: messenger.ReactionRequest.reaction:type_name -> messenger.Reaction
 	17, // 3: messenger.GetAllChatsResponse.chats:type_name -> messenger.ChatInfo
 	0,  // 4: messenger.GetHistoryResponse.messages:type_name -> messenger.Message
 	0,  // 5: messenger.DeleteMessagesRequest.messages:type_name -> messenger.Message
-	67, // 6: messenger.ChatInfo.created_at:type_name -> google.protobuf.Timestamp
-	67, // 7: messenger.ChatInfo.last_message_time:type_name -> google.protobuf.Timestamp
+	70, // 6: messenger.ChatInfo.created_at:type_name -> google.protobuf.Timestamp
+	70, // 7: messenger.ChatInfo.last_message_time:type_name -> google.protobuf.Timestamp
 	17, // 8: messenger.GetChatsResponse.chats:type_name -> messenger.ChatInfo
 	56, // 9: messenger.GetThemesResponse.custom_themes:type_name -> messenger.CustomTheme
 	56, // 10: messenger.SaveThemeRequest.theme:type_name -> messenger.CustomTheme
-	0,  // 11: messenger.ChatService.Chat:input_type -> messenger.Message
-	4,  // 12: messenger.ChatService.GetClients:input_type -> messenger.ClientListRequest
-	6,  // 13: messenger.ChatService.GetAllUsers:input_type -> messenger.GetAllUsersRequest
-	8,  // 14: messenger.ChatService.GetAllChats:input_type -> messenger.GetAllChatsRequest
-	11, // 15: messenger.ChatService.GetHistory:input_type -> messenger.GetHistoryRequest
-	2,  // 16: messenger.ChatService.SetReaction:input_type -> messenger.ReactionRequest
-	13, // 17: messenger.ChatService.DeleteMessages:input_type -> messenger.DeleteMessagesRequest
-	15, // 18: messenger.ChatService.RegisterToken:input_type -> messenger.TokenRequest
-	18, // 19: messenger.ChatService.GetChats:input_type -> messenger.GetChatsRequest
-	54, // 20: messenger.ChatService.GetChatListVersion:input_type -> messenger.GetChatListVersionRequest
-	20, // 21: messenger.ChatService.CreateDirectChat:input_type -> messenger.CreateDirectChatRequest
-	22, // 22: messenger.ChatService.CreateGroupChat:input_type -> messenger.CreateGroupChatRequest
-	24, // 23: messenger.ChatService.UpdateUsername:input_type -> messenger.UpdateUsernameRequest
-	26, // 24: messenger.ChatService.UpdatePassword:input_type -> messenger.UpdatePasswordRequest
-	28, // 25: messenger.ChatService.MarkRead:input_type -> messenger.MarkReadRequest
-	30, // 26: messenger.ChatService.UpdateAvatar:input_type -> messenger.UpdateAvatarRequest
-	32, // 27: messenger.ChatService.UpdateProfile:input_type -> messenger.UpdateProfileRequest
-	34, // 28: messenger.ChatService.GetUserProfile:input_type -> messenger.GetUserProfileRequest
-	36, // 29: messenger.ChatService.GetUserAvatar:input_type -> messenger.GetUserAvatarRequest
-	38, // 30: messenger.ChatService.AddParticipant:input_type -> messenger.AddParticipantRequest
-	40, // 31: messenger.ChatService.RemoveParticipant:input_type -> messenger.RemoveParticipantRequest
-	42, // 32: messenger.ChatService.EditMessage:input_type -> messenger.EditMessageRequest
-	65, // 33: messenger.ChatService.UpdateChatName:input_type -> messenger.UpdateChatNameRequest
-	44, // 34: messenger.ChatService.DeleteChat:input_type -> messenger.DeleteChatRequest
-	46, // 35: messenger.ChatService.DeleteProfile:input_type -> messenger.DeleteProfileRequest
-	48, // 36: messenger.ChatService.AddContact:input_type -> messenger.AddContactRequest
-	50, // 37: messenger.ChatService.RemoveContact:input_type -> messenger.RemoveContactRequest
-	52, // 38: messenger.ChatService.GetContacts:input_type -> messenger.GetContactsRequest
-	57, // 39: messenger.ChatService.GetThemes:input_type -> messenger.GetThemesRequest
-	59, // 40: messenger.ChatService.SaveTheme:input_type -> messenger.SaveThemeRequest
-	61, // 41: messenger.ChatService.SetCurrentTheme:input_type -> messenger.SetCurrentThemeRequest
-	63, // 42: messenger.ChatService.DeleteTheme:input_type -> messenger.DeleteThemeRequest
-	0,  // 43: messenger.ChatService.Chat:output_type -> messenger.Message
-	5,  // 44: messenger.ChatService.GetClients:output_type -> messenger.ClientListResponse
-	7,  // 45: messenger.ChatService.GetAllUsers:output_type -> messenger.GetAllUsersResponse
-	9,  // 46: messenger.ChatService.GetAllChats:output_type -> messenger.GetAllChatsResponse
-	12, // 47: messenger.ChatService.GetHistory:output_type -> messenger.GetHistoryResponse
-	3,  // 48: messenger.ChatService.SetReaction:output_type -> messenger.ReactionResponse
-	14, // 49: messenger.ChatService.DeleteMessages:output_type -> messenger.DeleteMessagesResponse
-	16, // 50: messenger.ChatService.RegisterToken:output_type -> messenger.TokenResponse
-	19, // 51: messenger.ChatService.GetChats:output_type -> messenger.GetChatsResponse
-	55, // 52: messenger.ChatService.GetChatListVersion:output_type -> messenger.GetChatListVersionResponse
-	21, // 53: messenger.ChatService.CreateDirectChat:output_type -> messenger.CreateDirectChatResponse
-	23, // 54: messenger.ChatService.CreateGroupChat:output_type -> messenger.CreateGroupChatResponse
-	25, // 55: messenger.ChatService.UpdateUsername:output_type -> messenger.UpdateUsernameResponse
-	27, // 56: messenger.ChatService.UpdatePassword:output_type -> messenger.UpdatePasswordResponse
-	29, // 57: messenger.ChatService.MarkRead:output_type -> messenger.MarkReadResponse
-	31, // 58: messenger.ChatService.UpdateAvatar:output_type -> messenger.UpdateAvatarResponse
-	33, // 59: messenger.ChatService.UpdateProfile:output_type -> messenger.UpdateProfileResponse
-	35, // 60: messenger.ChatService.GetUserProfile:output_type -> messenger.GetUserProfileResponse
-	37, // 61: messenger.ChatService.GetUserAvatar:output_type -> messenger.GetUserAvatarResponse
-	39, // 62: messenger.ChatService.AddParticipant:output_type -> messenger.AddParticipantResponse
-	41, // 63: messenger.ChatService.RemoveParticipant:output_type -> messenger.RemoveParticipantResponse
-	43, // 64: messenger.ChatService.EditMessage:output_type -> messenger.EditMessageResponse
-	66, // 65: messenger.ChatService.UpdateChatName:output_type -> messenger.UpdateChatNameResponse
-	45, // 66: messenger.ChatService.DeleteChat:output_type -> messenger.DeleteChatResponse
-	47, // 67: messenger.ChatService.DeleteProfile:output_type -> messenger.DeleteProfileResponse
-	49, // 68: messenger.ChatService.AddContact:output_type -> messenger.AddContactResponse
-	51, // 69: messenger.ChatService.RemoveContact:output_type -> messenger.RemoveContactResponse
-	53, // 70: messenger.ChatService.GetContacts:output_type -> messenger.GetContactsResponse
-	58, // 71: messenger.ChatService.GetThemes:output_type -> messenger.GetThemesResponse
-	60, // 72: messenger.ChatService.SaveTheme:output_type -> messenger.SaveThemeResponse
-	62, // 73: messenger.ChatService.SetCurrentTheme:output_type -> messenger.SetCurrentThemeResponse
-	64, // 74: messenger.ChatService.DeleteTheme:output_type -> messenger.DeleteThemeResponse
-	43, // [43:75] is the sub-list for method output_type
-	11, // [11:43] is the sub-list for method input_type
-	11, // [11:11] is the sub-list for extension type_name
-	11, // [11:11] is the sub-list for extension extendee
-	0,  // [0:11] is the sub-list for field type_name
+	68, // 11: messenger.GetFCMLogsResponse.logs:type_name -> messenger.FCMLogEntry
+	0,  // 12: messenger.ChatService.Chat:input_type -> messenger.Message
+	4,  // 13: messenger.ChatService.GetClients:input_type -> messenger.ClientListRequest
+	6,  // 14: messenger.ChatService.GetAllUsers:input_type -> messenger.GetAllUsersRequest
+	8,  // 15: messenger.ChatService.GetAllChats:input_type -> messenger.GetAllChatsRequest
+	11, // 16: messenger.ChatService.GetHistory:input_type -> messenger.GetHistoryRequest
+	2,  // 17: messenger.ChatService.SetReaction:input_type -> messenger.ReactionRequest
+	13, // 18: messenger.ChatService.DeleteMessages:input_type -> messenger.DeleteMessagesRequest
+	15, // 19: messenger.ChatService.RegisterToken:input_type -> messenger.TokenRequest
+	18, // 20: messenger.ChatService.GetChats:input_type -> messenger.GetChatsRequest
+	54, // 21: messenger.ChatService.GetChatListVersion:input_type -> messenger.GetChatListVersionRequest
+	20, // 22: messenger.ChatService.CreateDirectChat:input_type -> messenger.CreateDirectChatRequest
+	22, // 23: messenger.ChatService.CreateGroupChat:input_type -> messenger.CreateGroupChatRequest
+	24, // 24: messenger.ChatService.UpdateUsername:input_type -> messenger.UpdateUsernameRequest
+	26, // 25: messenger.ChatService.UpdatePassword:input_type -> messenger.UpdatePasswordRequest
+	28, // 26: messenger.ChatService.MarkRead:input_type -> messenger.MarkReadRequest
+	30, // 27: messenger.ChatService.UpdateAvatar:input_type -> messenger.UpdateAvatarRequest
+	32, // 28: messenger.ChatService.UpdateProfile:input_type -> messenger.UpdateProfileRequest
+	34, // 29: messenger.ChatService.GetUserProfile:input_type -> messenger.GetUserProfileRequest
+	36, // 30: messenger.ChatService.GetUserAvatar:input_type -> messenger.GetUserAvatarRequest
+	38, // 31: messenger.ChatService.AddParticipant:input_type -> messenger.AddParticipantRequest
+	40, // 32: messenger.ChatService.RemoveParticipant:input_type -> messenger.RemoveParticipantRequest
+	42, // 33: messenger.ChatService.EditMessage:input_type -> messenger.EditMessageRequest
+	65, // 34: messenger.ChatService.UpdateChatName:input_type -> messenger.UpdateChatNameRequest
+	44, // 35: messenger.ChatService.DeleteChat:input_type -> messenger.DeleteChatRequest
+	46, // 36: messenger.ChatService.DeleteProfile:input_type -> messenger.DeleteProfileRequest
+	48, // 37: messenger.ChatService.AddContact:input_type -> messenger.AddContactRequest
+	50, // 38: messenger.ChatService.RemoveContact:input_type -> messenger.RemoveContactRequest
+	52, // 39: messenger.ChatService.GetContacts:input_type -> messenger.GetContactsRequest
+	57, // 40: messenger.ChatService.GetThemes:input_type -> messenger.GetThemesRequest
+	59, // 41: messenger.ChatService.SaveTheme:input_type -> messenger.SaveThemeRequest
+	61, // 42: messenger.ChatService.SetCurrentTheme:input_type -> messenger.SetCurrentThemeRequest
+	63, // 43: messenger.ChatService.DeleteTheme:input_type -> messenger.DeleteThemeRequest
+	67, // 44: messenger.ChatService.GetFCMLogs:input_type -> messenger.GetFCMLogsRequest
+	0,  // 45: messenger.ChatService.Chat:output_type -> messenger.Message
+	5,  // 46: messenger.ChatService.GetClients:output_type -> messenger.ClientListResponse
+	7,  // 47: messenger.ChatService.GetAllUsers:output_type -> messenger.GetAllUsersResponse
+	9,  // 48: messenger.ChatService.GetAllChats:output_type -> messenger.GetAllChatsResponse
+	12, // 49: messenger.ChatService.GetHistory:output_type -> messenger.GetHistoryResponse
+	3,  // 50: messenger.ChatService.SetReaction:output_type -> messenger.ReactionResponse
+	14, // 51: messenger.ChatService.DeleteMessages:output_type -> messenger.DeleteMessagesResponse
+	16, // 52: messenger.ChatService.RegisterToken:output_type -> messenger.TokenResponse
+	19, // 53: messenger.ChatService.GetChats:output_type -> messenger.GetChatsResponse
+	55, // 54: messenger.ChatService.GetChatListVersion:output_type -> messenger.GetChatListVersionResponse
+	21, // 55: messenger.ChatService.CreateDirectChat:output_type -> messenger.CreateDirectChatResponse
+	23, // 56: messenger.ChatService.CreateGroupChat:output_type -> messenger.CreateGroupChatResponse
+	25, // 57: messenger.ChatService.UpdateUsername:output_type -> messenger.UpdateUsernameResponse
+	27, // 58: messenger.ChatService.UpdatePassword:output_type -> messenger.UpdatePasswordResponse
+	29, // 59: messenger.ChatService.MarkRead:output_type -> messenger.MarkReadResponse
+	31, // 60: messenger.ChatService.UpdateAvatar:output_type -> messenger.UpdateAvatarResponse
+	33, // 61: messenger.ChatService.UpdateProfile:output_type -> messenger.UpdateProfileResponse
+	35, // 62: messenger.ChatService.GetUserProfile:output_type -> messenger.GetUserProfileResponse
+	37, // 63: messenger.ChatService.GetUserAvatar:output_type -> messenger.GetUserAvatarResponse
+	39, // 64: messenger.ChatService.AddParticipant:output_type -> messenger.AddParticipantResponse
+	41, // 65: messenger.ChatService.RemoveParticipant:output_type -> messenger.RemoveParticipantResponse
+	43, // 66: messenger.ChatService.EditMessage:output_type -> messenger.EditMessageResponse
+	66, // 67: messenger.ChatService.UpdateChatName:output_type -> messenger.UpdateChatNameResponse
+	45, // 68: messenger.ChatService.DeleteChat:output_type -> messenger.DeleteChatResponse
+	47, // 69: messenger.ChatService.DeleteProfile:output_type -> messenger.DeleteProfileResponse
+	49, // 70: messenger.ChatService.AddContact:output_type -> messenger.AddContactResponse
+	51, // 71: messenger.ChatService.RemoveContact:output_type -> messenger.RemoveContactResponse
+	53, // 72: messenger.ChatService.GetContacts:output_type -> messenger.GetContactsResponse
+	58, // 73: messenger.ChatService.GetThemes:output_type -> messenger.GetThemesResponse
+	60, // 74: messenger.ChatService.SaveTheme:output_type -> messenger.SaveThemeResponse
+	62, // 75: messenger.ChatService.SetCurrentTheme:output_type -> messenger.SetCurrentThemeResponse
+	64, // 76: messenger.ChatService.DeleteTheme:output_type -> messenger.DeleteThemeResponse
+	69, // 77: messenger.ChatService.GetFCMLogs:output_type -> messenger.GetFCMLogsResponse
+	45, // [45:78] is the sub-list for method output_type
+	12, // [12:45] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_messenger_proto_init() }
@@ -3991,7 +4173,7 @@ func file_messenger_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_messenger_proto_rawDesc), len(file_messenger_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   67,
+			NumMessages:   70,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
