@@ -19,14 +19,18 @@ type Hub struct {
 	clients       map[gen.ChatService_ChatServer]string // maps stream to username
 	authenticated map[gen.ChatService_ChatServer]bool   // tracks if stream is authenticated
 	rooms         map[gen.ChatService_ChatServer]string // maps stream to current room ID
+
+	// onStatusChange is a callback triggered when user list changes
+	onStatusChange func()
 }
 
 // NewHub creates a new Hub instance
-func NewHub() *Hub {
+func NewHub(onStatusChange func()) *Hub {
 	return &Hub{
-		clients:       make(map[gen.ChatService_ChatServer]string),
-		authenticated: make(map[gen.ChatService_ChatServer]bool),
-		rooms:         make(map[gen.ChatService_ChatServer]string),
+		clients:        make(map[gen.ChatService_ChatServer]string),
+		authenticated:  make(map[gen.ChatService_ChatServer]bool),
+		rooms:          make(map[gen.ChatService_ChatServer]string),
+		onStatusChange: onStatusChange,
 	}
 }
 
@@ -37,6 +41,9 @@ func (h *Hub) Register(stream gen.ChatService_ChatServer) {
 	h.authenticated[stream] = false
 	h.rooms[stream] = ""
 	h.mu.Unlock()
+	if h.onStatusChange != nil {
+		h.onStatusChange()
+	}
 }
 
 // UpdateName updates the username associated with a stream
@@ -44,6 +51,9 @@ func (h *Hub) UpdateName(stream gen.ChatService_ChatServer, name string) {
 	h.mu.Lock()
 	h.clients[stream] = name
 	h.mu.Unlock()
+	if h.onStatusChange != nil {
+		h.onStatusChange()
+	}
 }
 
 // SetAuthenticated marks a stream as authenticated
@@ -81,6 +91,9 @@ func (h *Hub) Unregister(stream gen.ChatService_ChatServer) {
 	delete(h.authenticated, stream)
 	delete(h.rooms, stream)
 	h.mu.Unlock()
+	if h.onStatusChange != nil {
+		h.onStatusChange()
+	}
 }
 
 // GetOnlineUsers returns a list of unique usernames currently connected

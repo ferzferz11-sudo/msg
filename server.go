@@ -43,7 +43,6 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 		// Unregister the client when the connection ends
 		s.hub.Unregister(stream)
 		log.Printf("Client disconnected: %s", connectedUser)
-		s.broadcastOnlineUsers()
 	}()
 
 	for {
@@ -130,7 +129,6 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 			connectedUser = msg.User
 
 			log.Printf("User authenticated: %s (Client Version: %s)", msg.User, msg.ClientVersion)
-			s.broadcastOnlineUsers()
 
 			// Inform the user about their admin status
 			if s.db.IsSuperAdmin(msg.User) {

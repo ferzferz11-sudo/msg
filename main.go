@@ -123,10 +123,10 @@ func main() {
 	// Create our chat service instance with Hub for connection management
 	// and database for message persistence
 	srv := &server{
-		hub:         NewHub(),    // Hub manages all active client connections
 		db:          db,          // Database connection for storing messages
 		firebaseApp: firebaseApp, // Firebase Admin SDK instance
 	}
+	srv.hub = NewHub(srv.broadcastOnlineUsers) // Hub manages all active client connections
 
 	// Register our chat service with the gRPC server
 	// This makes the service available to clients
@@ -135,10 +135,10 @@ func main() {
 	// Log server startup information
 	log.Printf("Listening clients at %v", lis.Addr())
 
-	// Periodic online users broadcast (every 10 seconds for high reliability)
+	// Periodic online users broadcast (every 60 seconds as a heartbeat)
 	go func() {
 		for {
-			time.Sleep(10 * time.Second)
+			time.Sleep(60 * time.Second)
 			srv.broadcastOnlineUsers()
 		}
 	}()
