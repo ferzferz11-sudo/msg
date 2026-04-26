@@ -21,6 +21,7 @@ const (
 	imagesPath      = "./uploads/images"
 	filesPath       = "./uploads/files"
 	backgroundsPath = "./uploads/background"
+	audioPath       = "./uploads/audio"
 	defaultHTTPPort = "8082"
 )
 
@@ -36,11 +37,13 @@ func StartHTTPServer(port string) {
 	os.MkdirAll(imagesPath, 0755)
 	os.MkdirAll(filesPath, 0755)
 	os.MkdirAll(backgroundsPath, 0755)
+	os.MkdirAll(audioPath, 0755)
 
 	http.HandleFunc("/upload-avatar", uploadAvatarHandler)
 	http.HandleFunc("/upload-image", uploadImageHandler)
 	http.HandleFunc("/upload-file", uploadFileHandler)
 	http.HandleFunc("/upload-background", uploadBackgroundHandler)
+	http.HandleFunc("/upload-audio", uploadAudioHandler)
 
 	http.HandleFunc("/avatars/", func(w http.ResponseWriter, r *http.Request) {
 		serveFileHandler(w, r, "/avatars/", avatarsPath)
@@ -53,6 +56,9 @@ func StartHTTPServer(port string) {
 	})
 	http.HandleFunc("/background/", func(w http.ResponseWriter, r *http.Request) {
 		serveFileHandler(w, r, "/background/", backgroundsPath)
+	})
+	http.HandleFunc("/audio/", func(w http.ResponseWriter, r *http.Request) {
+		serveFileHandler(w, r, "/audio/", audioPath)
 	})
 
 	log.Printf("HTTP server started on port %s", port)
@@ -91,6 +97,82 @@ func uploadFileHandler(w http.ResponseWriter, r *http.Request) {
 
 func uploadBackgroundHandler(w http.ResponseWriter, r *http.Request) {
 	handleUpload(w, r, "background", backgroundsPath, "/background/")
+}
+
+func uploadAudioHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	log.Printf("Received audio upload request")
+
+	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
+	if err := r.ParseMultipartForm(maxUploadSize); err != nil {
+		log.Printf("Upload error: file too large: %v", err)
+		http.Error(w, "File too large", http.StatusBadRequest)
+		return
+	}
+
+	// Get duration from form
+	durationStr := r.FormValue("duration")
+	duration := 0
+	if durationStr != "" {
+		_, err := fmt.Sscanf(durationStr, "%d", &duration)
+		if err != nil {
+			log.Printf("Upload error: invalid duration format: %v", err)
+			http.Error(w, "Invalid duration format", http.StatusBadRequest)
+			return
+		}
+	}
+
+	file, handler, err := r.FormFile("audio")
+	if err != nil {
+		log.Printf("Upload error: retrieving audio file: %v", err)
+		http.Error(w, "Error retrieving file", http.StatusBadRequest)
+		return
+	}
+	defer closeFile(file)
+
+	log.Printf("Uploading audio file: %s (size: %d bytes, duration: %d seconds)", handler.Filename, handler.Size, duration)
+
+	fileBytes, err := io.ReadAll(file)
+	if err != nil {
+		log.Printf("Upload error: reading file: %v", err)
+		http.Error(w, "Error reading file", http.StatusInternalServerError)
+		return
+	}
+
+	// Validate audio file extension
+	ext := strings.ToLower(filepath.Ext(handler.Filename))
+	validExts := map[string]bool{".m4a": true, ".aac": true, ".ogg": true, ".mp3": true, ".wav": true}
+	if !validExts[ext] {
+		log.Printf("Upload error: invalid audio format: %s", ext)
+		http.Error(w, "Invalid audio format. Supported: m4a, aac, ogg, mp3, wav", http.StatusBadRequest)
+		return
+	}
+
+	// Generate unique filename
+	hash := md5.Sum(fileBytes)
+	filename := hex.EncodeToString(hash[:]) + ext
+
+	filePath := filepath.Join(audioPath, filename)
+	if err := os.WriteFile(filePath, fileBytes, 0644); err != nil {
+		log.Printf("Upload error: saving file to %s: %v", filePath, err)
+		http.Error(w, "Error saving file", http.StatusInternalServerError)
+		return
+	}
+
+	publicIP := "159.195.38.145"
+	httpPort := os.Getenv("HTTP_PORT")
+	if httpPort == "" {
+		httpPort = defaultHTTPPort
+	}
+
+	fileURL := fmt.Sprintf("http://%s:%s/audio/%s", publicIP, httpPort, filename)
+	log.Printf("Audio file uploaded successfully! URL: %s, Duration: %d seconds", fileURL, duration)
+	w.Header().Set("Content-Type", "application/json")
+	fmt.Fprintf(w, `{"url": "%s", "duration": %d}`, fileURL, duration)
 }
 
 func handleUpload(w http.ResponseWriter, r *http.Request, formKey, saveDir, urlPrefix string) {
@@ -167,7 +249,7 @@ func serveFileHandler(w http.ResponseWriter, r *http.Request, prefix, dir string
 	http.ServeFile(w, r, filePath)
 }
 
-// DeleteImageFile deletes an image or file from the server
+// DeleteImageFile deletes an image, file, or audio from the server
 func DeleteImageFile(imageURL string) error {
 	if imageURL == "" {
 		return nil
@@ -192,6 +274,8 @@ func DeleteImageFile(imageURL string) error {
 		saveDir = filesPath
 	case "background":
 		saveDir = backgroundsPath
+	case "audio":
+		saveDir = audioPath
 	default:
 		return fmt.Errorf("unknown file prefix: %s", prefix)
 	}

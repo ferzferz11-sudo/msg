@@ -40,6 +40,8 @@ type Message struct {
 	Edited             bool                   `protobuf:"varint,14,opt,name=edited,proto3" json:"edited,omitempty"`                                   // Whether the message has been edited
 	ClientVersion      string                 `protobuf:"bytes,15,opt,name=client_version,json=clientVersion,proto3" json:"client_version,omitempty"` // Client application version
 	IsSuperAdmin       bool                   `protobuf:"varint,16,opt,name=is_super_admin,json=isSuperAdmin,proto3" json:"is_super_admin,omitempty"` // Whether the user is a super admin
+	VoiceUrl           string                 `protobuf:"bytes,17,opt,name=voice_url,json=voiceUrl,proto3" json:"voice_url,omitempty"`                // URL of the voice message audio file
+	Duration           int32                  `protobuf:"varint,18,opt,name=duration,proto3" json:"duration,omitempty"`                               // Duration of voice message in seconds
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -184,6 +186,20 @@ func (x *Message) GetIsSuperAdmin() bool {
 		return x.IsSuperAdmin
 	}
 	return false
+}
+
+func (x *Message) GetVoiceUrl() string {
+	if x != nil {
+		return x.VoiceUrl
+	}
+	return ""
+}
+
+func (x *Message) GetDuration() int32 {
+	if x != nil {
+		return x.Duration
+	}
+	return 0
 }
 
 type Reaction struct {
@@ -924,6 +940,7 @@ type ChatInfo struct {
 	UnreadCount     int32                  `protobuf:"varint,6,opt,name=unread_count,json=unreadCount,proto3" json:"unread_count,omitempty"`
 	LastMessageTime *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=last_message_time,json=lastMessageTime,proto3" json:"last_message_time,omitempty"`
 	Creator         string                 `protobuf:"bytes,8,opt,name=creator,proto3" json:"creator,omitempty"`
+	LastMessageText string                 `protobuf:"bytes,9,opt,name=last_message_text,json=lastMessageText,proto3" json:"last_message_text,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -1010,6 +1027,13 @@ func (x *ChatInfo) GetLastMessageTime() *timestamppb.Timestamp {
 func (x *ChatInfo) GetCreator() string {
 	if x != nil {
 		return x.Creator
+	}
+	return ""
+}
+
+func (x *ChatInfo) GetLastMessageText() string {
+	if x != nil {
+		return x.LastMessageText
 	}
 	return ""
 }
@@ -3722,7 +3746,7 @@ var File_messenger_proto protoreflect.FileDescriptor
 
 const file_messenger_proto_rawDesc = "" +
 	"\n" +
-	"\x0fmessenger.proto\x12\tmessenger\x1a\x1fgoogle/protobuf/timestamp.proto\"\xa1\x04\n" +
+	"\x0fmessenger.proto\x12\tmessenger\x1a\x1fgoogle/protobuf/timestamp.proto\"\xda\x04\n" +
 	"\aMessage\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04user\x18\x02 \x01(\tR\x04user\x12\x12\n" +
@@ -3742,7 +3766,9 @@ const file_messenger_proto_rawDesc = "" +
 	"\timage_url\x18\r \x01(\tR\bimageUrl\x12\x16\n" +
 	"\x06edited\x18\x0e \x01(\bR\x06edited\x12%\n" +
 	"\x0eclient_version\x18\x0f \x01(\tR\rclientVersion\x12$\n" +
-	"\x0eis_super_admin\x18\x10 \x01(\bR\fisSuperAdmin\"4\n" +
+	"\x0eis_super_admin\x18\x10 \x01(\bR\fisSuperAdmin\x12\x1b\n" +
+	"\tvoice_url\x18\x11 \x01(\tR\bvoiceUrl\x12\x1a\n" +
+	"\bduration\x18\x12 \x01(\x05R\bduration\"4\n" +
 	"\bReaction\x12\x12\n" +
 	"\x04user\x18\x01 \x01(\tR\x04user\x12\x14\n" +
 	"\x05emoji\x18\x02 \x01(\tR\x05emoji\"a\n" +
@@ -3778,7 +3804,7 @@ const file_messenger_proto_rawDesc = "" +
 	"\x05token\x18\x02 \x01(\tR\x05token\x12!\n" +
 	"\fpush_enabled\x18\x03 \x01(\bR\vpushEnabled\")\n" +
 	"\rTokenResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess\"\xa6\x02\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\"\xd2\x02\n" +
 	"\bChatInfo\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
@@ -3788,7 +3814,8 @@ const file_messenger_proto_rawDesc = "" +
 	"created_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12!\n" +
 	"\funread_count\x18\x06 \x01(\x05R\vunreadCount\x12F\n" +
 	"\x11last_message_time\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\x0flastMessageTime\x12\x18\n" +
-	"\acreator\x18\b \x01(\tR\acreator\"-\n" +
+	"\acreator\x18\b \x01(\tR\acreator\x12*\n" +
+	"\x11last_message_text\x18\t \x01(\tR\x0flastMessageText\"-\n" +
 	"\x0fGetChatsRequest\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\"=\n" +
 	"\x10GetChatsResponse\x12)\n" +

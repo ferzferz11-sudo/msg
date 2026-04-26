@@ -24,7 +24,7 @@ import (
 	"firebase.google.com/go/v4/messaging"
 )
 
-const ServerVersion = "1.0.2.1"
+const ServerVersion = "1.0.2.5"
 
 // server implements the gRPC ChatService interface
 type server struct {
@@ -212,8 +212,8 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 		// Determine room ID
 		roomID := msg.RoomId
 
-		// Skip empty messages (unless they have an image)
-		if strings.TrimSpace(msg.Text) == "" && msg.ImageUrl == "" {
+		// Skip empty messages (unless they have an image or voice)
+		if strings.TrimSpace(msg.Text) == "" && msg.ImageUrl == "" && msg.VoiceUrl == "" {
 			if roomID != "" {
 				log.Printf("Auth signal: %s (%s)", msg.User, roomID)
 			} else {
@@ -224,6 +224,8 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 
 		if msg.ImageUrl != "" {
 			log.Printf("[%s] in %s: %s (ImageURL: %s)", msg.User, roomID, msg.Text, msg.ImageUrl)
+		} else if msg.VoiceUrl != "" {
+			log.Printf("[%s] in %s: Voice message (%d seconds) - %s", msg.User, roomID, msg.Duration, msg.VoiceUrl)
 		} else {
 			log.Printf("[%s] in %s: %s", msg.User, roomID, msg.Text)
 		}
@@ -247,7 +249,9 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 
 			// Save encrypted message to database with UUID
 			imageURL := msg.ImageUrl
-			err = s.db.SaveMessage(msg.Id, msg.User, encryptedText, msg.CreatedAt.AsTime(), msg.RepliedToMessageId, msg.RepliedToUser, msg.RepliedToText, roomID, imageURL)
+			voiceURL := msg.VoiceUrl
+			duration := msg.Duration
+			err = s.db.SaveMessage(msg.Id, msg.User, encryptedText, msg.CreatedAt.AsTime(), msg.RepliedToMessageId, msg.RepliedToUser, msg.RepliedToText, roomID, imageURL, voiceURL, duration)
 			if err != nil {
 				log.Printf("Failed to save msg: %v", err)
 			} else {
@@ -363,6 +367,7 @@ func (s *server) GetAllChats(ctx context.Context, req *gen.GetAllChatsRequest) (
 			UnreadCount:     int32(c.UnreadCount),
 			LastMessageTime: timestamppb.New(c.LastMessageTime),
 			Creator:         c.Creator,
+			LastMessageText: c.LastMessageText,
 		})
 	}
 
@@ -437,6 +442,8 @@ func (s *server) GetHistory(_ context.Context, req *gen.GetHistoryRequest) (*gen
 			AvatarUrl:          m.AvatarURL,
 			ImageUrl:           m.ImageURL,
 			Edited:             m.Edited,
+			VoiceUrl:           m.VoiceURL,
+			Duration:           m.Duration,
 		})
 	}
 
@@ -503,6 +510,7 @@ func (s *server) GetChats(_ context.Context, req *gen.GetChatsRequest) (*gen.Get
 			UnreadCount:     int32(c.UnreadCount),
 			LastMessageTime: timestamppb.New(c.LastMessageTime),
 			Creator:         c.Creator,
+			LastMessageText: c.LastMessageText,
 		})
 	}
 
@@ -511,16 +519,19 @@ func (s *server) GetChats(_ context.Context, req *gen.GetChatsRequest) (*gen.Get
 
 // CreateDirectChat создает или находит личный чат между двумя пользователями
 func (s *server) CreateDirectChat(_ context.Context, req *gen.CreateDirectChatRequest) (*gen.CreateDirectChatResponse, error) {
+	log.Printf("CreateDirectChat: %s <-> %s", req.User1, req.User2)
 	chatID, err := s.db.GetDirectChatBetweenUsers(req.User1, req.User2)
 	if err != nil {
 		log.Printf("Error creating direct chat: %v", err)
 		return &gen.CreateDirectChatResponse{Success: false}, err
 	}
 
+	log.Printf("Direct chat created/found: %s", chatID)
 	return &gen.CreateDirectChatResponse{ChatId: chatID, Success: true}, nil
 }
 
 func (s *server) CreateGroupChat(_ context.Context, req *gen.CreateGroupChatRequest) (*gen.CreateGroupChatResponse, error) {
+	log.Printf("CreateGroupChat: %s (Creator: %s)", req.Name, req.Creator)
 	chatID := uuid.New().String()
 
 	// Convert participants slice to JSON string
@@ -535,9 +546,10 @@ func (s *server) CreateGroupChat(_ context.Context, req *gen.CreateGroupChatRequ
 
 	err := s.db.CreateChat(chatID, req.Name, "group", participants, req.Creator)
 	if err != nil {
-		log.Printf("Failed to create group chat: %v", err)
+		log.Printf("Failed to create group chat in DB: %v", err)
 		return &gen.CreateGroupChatResponse{Success: false}, err
 	}
+	log.Printf("Group chat created: %s (%s)", chatID, req.Name)
 	return &gen.CreateGroupChatResponse{ChatId: chatID, Success: true}, nil
 }
 

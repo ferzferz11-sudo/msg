@@ -331,6 +331,20 @@ func ConnectDB() (*DB, error) {
 		  END IF;
 		 END $$;`,
 		`UPDATE user_chat_metadata m SET user_id = u.id FROM users u WHERE m.username = u.username AND m.user_id IS NULL;`,
+		// Migration: Add voice_url to messages for voice messages
+		`DO $$
+		 BEGIN
+		  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='voice_url') THEN
+		    ALTER TABLE messages ADD COLUMN voice_url VARCHAR(512);
+		  END IF;
+		 END $$;`,
+		// Migration: Add duration to messages for voice messages
+		`DO $$
+		 BEGIN
+		  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='duration') THEN
+		    ALTER TABLE messages ADD COLUMN duration INTEGER DEFAULT 0;
+		  END IF;
+		 END $$;`,
 	}
 
 	for _, query := range queries {
@@ -367,10 +381,10 @@ func (db *DB) Close() error {
 }
 
 // SaveMessage stores an encrypted message in the database
-func (db *DB) SaveMessage(messageID string, username string, encryptedText []byte, createdAt time.Time, repliedToMessageID string, repliedToUser string, repliedToText string, roomID string, imageURL string) error {
-	query := `INSERT INTO messages (message_id, username, user_id, encrypted_text, created_at, replied_to_message_id, replied_to_user, replied_to_text, room_id, is_read, image_url)
-	          VALUES ($1, $2::text, (SELECT id FROM users WHERE username = $2::text), $3, $4, $5, $6, $7, $8, FALSE, $9)`
-	_, err := db.Exec(query, messageID, username, encryptedText, createdAt, repliedToMessageID, repliedToUser, repliedToText, roomID, imageURL)
+func (db *DB) SaveMessage(messageID string, username string, encryptedText []byte, createdAt time.Time, repliedToMessageID string, repliedToUser string, repliedToText string, roomID string, imageURL string, voiceURL string, duration int32) error {
+	query := `INSERT INTO messages (message_id, username, user_id, encrypted_text, created_at, replied_to_message_id, replied_to_user, replied_to_text, room_id, is_read, image_url, voice_url, duration)
+	          VALUES ($1, $2::text, (SELECT id FROM users WHERE username = $2::text), $3, $4, $5, $6, $7, $8, FALSE, $9, $10, $11)`
+	_, err := db.Exec(query, messageID, username, encryptedText, createdAt, repliedToMessageID, repliedToUser, repliedToText, roomID, imageURL, voiceURL, duration)
 
 	if err == nil && roomID != "" {
 		_ = db.IncrementParticipantsChatListVersion(roomID)
@@ -393,8 +407,10 @@ func (db *DB) GetMessages(limit int, roomID string) ([]struct {
 	AvatarURL          string
 	ImageURL           string
 	Edited             bool
+	VoiceURL           string
+	Duration           int32
 }, error) {
-	query := `SELECT COALESCE(m.message_id, ''), m.username, m.encrypted_text, m.created_at, COALESCE(m.replied_to_message_id, ''), COALESCE(m.replied_to_user, ''), COALESCE(m.replied_to_text, ''), COALESCE(m.room_id, ''), m.is_read, u.avatar_url, COALESCE(m.image_url, ''), COALESCE(m.edited, false)
+	query := `SELECT COALESCE(m.message_id, ''), m.username, m.encrypted_text, m.created_at, COALESCE(m.replied_to_message_id, ''), COALESCE(m.replied_to_user, ''), COALESCE(m.replied_to_text, ''), COALESCE(m.room_id, ''), m.is_read, u.avatar_url, COALESCE(m.image_url, ''), COALESCE(m.edited, false), COALESCE(m.voice_url, ''), COALESCE(m.duration, 0)
 	             FROM messages m
 	             LEFT JOIN users u ON m.username = u.username
 	             WHERE m.room_id = $1 ORDER BY m.created_at DESC LIMIT $2`
@@ -421,6 +437,8 @@ func (db *DB) GetMessages(limit int, roomID string) ([]struct {
 		AvatarURL          string
 		ImageURL           string
 		Edited             bool
+		VoiceURL           string
+		Duration           int32
 	}
 
 	for rows.Next() {
@@ -437,8 +455,10 @@ func (db *DB) GetMessages(limit int, roomID string) ([]struct {
 			AvatarURL          sql.NullString
 			ImageURL           string
 			Edited             bool
+			VoiceURL           string
+			Duration           int32
 		}
-		if err := rows.Scan(&r.MessageID, &r.Username, &r.Encrypted, &r.CreatedAt, &r.RepliedToMessageID, &r.RepliedToUser, &r.RepliedToText, &r.RoomID, &r.IsRead, &r.AvatarURL, &r.ImageURL, &r.Edited); err != nil {
+		if err := rows.Scan(&r.MessageID, &r.Username, &r.Encrypted, &r.CreatedAt, &r.RepliedToMessageID, &r.RepliedToUser, &r.RepliedToText, &r.RoomID, &r.IsRead, &r.AvatarURL, &r.ImageURL, &r.Edited, &r.VoiceURL, &r.Duration); err != nil {
 			return nil, err
 		}
 		avatarURL := ""
@@ -458,6 +478,8 @@ func (db *DB) GetMessages(limit int, roomID string) ([]struct {
 			AvatarURL          string
 			ImageURL           string
 			Edited             bool
+			VoiceURL           string
+			Duration           int32
 		}{
 			MessageID:          r.MessageID,
 			Username:           r.Username,
@@ -471,6 +493,8 @@ func (db *DB) GetMessages(limit int, roomID string) ([]struct {
 			IsRead:             r.IsRead,
 			AvatarURL:          avatarURL,
 			ImageURL:           r.ImageURL,
+			VoiceURL:           r.VoiceURL,
+			Duration:           r.Duration,
 		})
 	}
 	return results, nil
@@ -746,12 +770,14 @@ func (db *DB) GetAllChats() ([]struct {
 	UnreadCount     int
 	LastMessageTime time.Time
 	Creator         string
+	LastMessageText string
 }, error) {
 	query := `
 		SELECT c.id, c.name, c.type, c.participants, c.created_at,
 		0 as unread_count,
 		COALESCE((SELECT MAX(m.created_at) FROM messages m WHERE m.room_id = c.id), c.created_at) as last_message_time,
-		COALESCE(c.creator_username, '')
+		COALESCE(c.creator_username, ''),
+		COALESCE((SELECT encrypted_text FROM messages m WHERE m.room_id = c.id ORDER BY m.created_at DESC LIMIT 1), ''::bytea) as last_message_text
 		FROM chats c
 		ORDER BY last_message_time DESC`
 
@@ -770,6 +796,7 @@ func (db *DB) GetAllChats() ([]struct {
 		UnreadCount     int
 		LastMessageTime time.Time
 		Creator         string
+		LastMessageText string
 	}
 
 	for rows.Next() {
@@ -782,11 +809,38 @@ func (db *DB) GetAllChats() ([]struct {
 			UnreadCount     int
 			LastMessageTime time.Time
 			Creator         string
+			LastEncrypted   []byte
 		}
-		if err := rows.Scan(&c.ID, &c.Name, &c.Type, &c.Participants, &c.CreatedAt, &c.UnreadCount, &c.LastMessageTime, &c.Creator); err != nil {
+		if err := rows.Scan(&c.ID, &c.Name, &c.Type, &c.Participants, &c.CreatedAt, &c.UnreadCount, &c.LastMessageTime, &c.Creator, &c.LastEncrypted); err != nil {
 			return nil, err
 		}
-		results = append(results, c)
+
+		lastText := ""
+		if len(c.LastEncrypted) > 0 {
+			lastText, _ = decrypt(c.LastEncrypted)
+		}
+
+		results = append(results, struct {
+			ID              string
+			Name            string
+			Type            string
+			Participants    string
+			CreatedAt       time.Time
+			UnreadCount     int
+			LastMessageTime time.Time
+			Creator         string
+			LastMessageText string
+		}{
+			ID:              c.ID,
+			Name:            c.Name,
+			Type:            c.Type,
+			Participants:    c.Participants,
+			CreatedAt:       c.CreatedAt,
+			UnreadCount:     c.UnreadCount,
+			LastMessageTime: c.LastMessageTime,
+			Creator:         c.Creator,
+			LastMessageText: lastText,
+		})
 	}
 	return results, nil
 }
@@ -949,15 +1003,20 @@ func (db *DB) GetUserAvatar(username string) (string, error) {
 
 // CreateChat creates a new chat room
 func (db *DB) CreateChat(id, name, chatType, participants, creator string) error {
+	log.Printf("DB: Creating chat %s (type: %s, creator: %s)", id, chatType, creator)
 	query := `INSERT INTO chats (id, name, type, participants, creator_username, created_at) VALUES ($1, $2, $3, $4, $5, NOW())`
 	_, err := db.Exec(query, id, name, chatType, participants, creator)
 
-	if err == nil {
-		// Increment version for all participants when a new chat is created
-		_ = db.IncrementParticipantsChatListVersion(id)
+	if err != nil {
+		log.Printf("DB Error in CreateChat: %v", err)
+		return err
 	}
 
-	return err
+	log.Printf("DB: Chat created successfully, incrementing versions...")
+	// Increment version for all participants when a new chat is created
+	_ = db.IncrementParticipantsChatListVersion(id)
+
+	return nil
 }
 
 // GetChat retrieves a chat by ID
@@ -992,6 +1051,7 @@ func (db *DB) GetUserChats(username string) ([]struct {
 	UnreadCount     int
 	LastMessageTime time.Time
 	Creator         string
+	LastMessageText string
 }, error) {
 	query := `
 		SELECT c.id, c.name, c.type, c.participants, c.created_at,
@@ -1000,7 +1060,8 @@ func (db *DB) GetUserChats(username string) ([]struct {
 		 AND m.is_read = FALSE
 		 AND m.username != $1) as unread_count,
 		(SELECT MAX(m.created_at) FROM messages m WHERE m.room_id = c.id) as last_message_time,
-		COALESCE(c.creator_username, '')
+		COALESCE(c.creator_username, ''),
+		COALESCE((SELECT encrypted_text FROM messages m WHERE m.room_id = c.id ORDER BY m.created_at DESC LIMIT 1), ''::bytea) as last_message_text
 		FROM chats c
 		WHERE c.participants LIKE $2 OR (c.type = 'group' AND c.participants LIKE $2)`
 
@@ -1024,6 +1085,7 @@ func (db *DB) GetUserChats(username string) ([]struct {
 		UnreadCount     int
 		LastMessageTime time.Time
 		Creator         string
+		LastMessageText string
 	}
 
 	for rows.Next() {
@@ -1036,8 +1098,9 @@ func (db *DB) GetUserChats(username string) ([]struct {
 			UnreadCount     int
 			LastMessageTime sql.NullTime
 			Creator         string
+			LastEncrypted   []byte
 		}
-		if err := rows.Scan(&c.ID, &c.Name, &c.Type, &c.Participants, &c.CreatedAt, &c.UnreadCount, &c.LastMessageTime, &c.Creator); err != nil {
+		if err := rows.Scan(&c.ID, &c.Name, &c.Type, &c.Participants, &c.CreatedAt, &c.UnreadCount, &c.LastMessageTime, &c.Creator, &c.LastEncrypted); err != nil {
 			log.Printf("Error scanning chat row: %v", err)
 			return nil, err
 		}
@@ -1045,6 +1108,12 @@ func (db *DB) GetUserChats(username string) ([]struct {
 		if c.LastMessageTime.Valid {
 			lastMessageTime = c.LastMessageTime.Time
 		}
+
+		lastText := ""
+		if len(c.LastEncrypted) > 0 {
+			lastText, _ = decrypt(c.LastEncrypted)
+		}
+
 		results = append(results, struct {
 			ID              string
 			Name            string
@@ -1054,6 +1123,7 @@ func (db *DB) GetUserChats(username string) ([]struct {
 			UnreadCount     int
 			LastMessageTime time.Time
 			Creator         string
+			LastMessageText string
 		}{
 			ID:              c.ID,
 			Name:            c.Name,
@@ -1063,6 +1133,7 @@ func (db *DB) GetUserChats(username string) ([]struct {
 			UnreadCount:     c.UnreadCount,
 			LastMessageTime: lastMessageTime,
 			Creator:         c.Creator,
+			LastMessageText: lastText,
 		})
 	}
 	return results, nil
@@ -1090,24 +1161,30 @@ func (db *DB) MarkRead(roomID, username string) error {
 
 // GetDirectChatBetweenUsers finds or creates a direct chat between two users
 func (db *DB) GetDirectChatBetweenUsers(user1, user2 string) (string, error) {
+	log.Printf("DB: Looking for direct chat between %s and %s", user1, user2)
 	// Try to find existing direct chat
 	query := `SELECT id FROM chats WHERE type = 'direct' AND participants LIKE $1 AND participants LIKE $2`
 	var chatID string
 	err := db.QueryRow(query, "%"+user1+"%", "%"+user2+"%").Scan(&chatID)
 	if err == nil {
+		log.Printf("DB: Found existing direct chat: %s", chatID)
 		return chatID, nil
 	}
 	if err != sql.ErrNoRows {
+		log.Printf("DB Error looking for direct chat: %v", err)
 		return "", err
 	}
 
+	log.Printf("DB: No existing direct chat found, creating new one...")
 	// Create new direct chat
 	newChatID := user1 + "_" + user2 + "_direct"
 	participants := `["` + user1 + `", "` + user2 + `"]`
 	err = db.CreateChat(newChatID, user1+" & "+user2, "direct", participants, user1)
 	if err != nil {
+		log.Printf("DB Error creating direct chat: %v", err)
 		return "", err
 	}
+	log.Printf("DB: Created new direct chat: %s", newChatID)
 	return newChatID, nil
 }
 

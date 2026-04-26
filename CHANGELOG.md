@@ -2,7 +2,113 @@
 
 **Author:** Pavel Davydov (ferz)
 
-## [1.0.1.58] - 2026-04-26
+## [1.0.2.5] - 2026-04-26
+- **Consolidated User Identity & Enhanced Chat List**
+  - **Android: Navigation Overhaul**
+    - Replaced generic "Exit" icon with User Avatar in the main toolbar.
+    - Added a modern Bottom Sheet User Menu for all profile actions, themes, notifications, and logout.
+    - Integrated user's "Bio" into the new User Menu.
+    - Updated Chat List to display the last message text instead of the chat type.
+  - **Server: Data Enrichment**
+    - Added `last_message_text` to the `ChatInfo` response for real-time list previews.
+  - Server version: 1.0.2.5
+
+## [1.0.2.4] - 2026-04-26
+- **Final UI Cleanup & Performance Optimization**
+  - **Android: Interface Refinement**
+    - Removed redundant Contacts icon from the toolbar (all features unified in the FAB menu).
+    - Simplified theme previews to reflect the cleaner toolbar state.
+    - Verified push navigation and search stability.
+  - Server version: 1.0.2.4
+
+## [1.0.2.3] - 2026-04-26
+- **Voice Messages & Stability Update**
+  - **Android: Voice & UI Implementation**
+    - Added full support for recording and uploading voice messages.
+    - Implemented real-time playback synchronization with live waveform visualization.
+    - Improved chat list sorting based on last message activity.
+    - Fixed gRPC marshalling for voice fields ensuring history persistence.
+    - Optimized message display to handle legacy voice messages with empty text.
+    - Introduced **SplashActivity** as the new entry point for instant login redirect.
+    - Redesigned the FAB menu into a modern **Bottom Sheet** with three actions: Start Chat, Add Contact, Add Group.
+    - Fixed push notification navigation to correctly open specific chat rooms.
+    - Improved background stability with "silent" gRPC reconnections.
+    - Enhanced chat toolbar UI with adaptive background for status indicators.
+  - **Server: Maintenance & Log Optimization**
+    - Created `db_maintenance.sh` for automated remote database cleanup.
+    - Fixed server decryption warnings for voice messages using placeholder text.
+    - Optimized database with vacuuming and orphan record removal.
+    - Enhanced server-side diagnostics with detailed chat creation logs.
+  - Server version: 1.0.2.3
+
+## [1.0.2.2] - 2026-04-26
+- **UI/UX Polish & Theme Engine**
+  - Perfected theme edit icon sizing and color accuracy across all UI components.
+  - Advanced notification styles and support for dual (chat/list) backgrounds.
+  - Refined theme engine with robust state management and live previews.
+  - Added "About" dialog with version information and developer credits.
+  - Server version: 1.0.2.2
+
+## [1.0.2.1] - 2026-04-26
+- **Advanced Notifications & Robust Themes**
+  - Choice between multiple system notification styles (Standard, Messaging, Expanded).
+  - Real-time notification style preview with localized examples.
+  - Separated notification settings and logs into dedicated screens.
+  - Real-time FCM server log viewer for Super Admins.
+  - Personalized theme previews using the user's real name and avatar.
+  - Fixed "white circle" avatar bug and perfected toolbar icon tinting.
+  - Server version: 1.0.2.1
+
+## [1.0.2.0] - 2026-04-26
+- **Major Feature Update: Theme Editor & Notification Center**
+  - Implemented a comprehensive Theme Editor with real-time preview and server-side storage.
+  - Added a Notification Center for tracking system alerts and message history.
+  - Redesigned profile and group settings with Material 3 cards.
+  - Server version: 1.0.2.0
+
+## [1.0.1.60] - 2026-04-26
+- **Super Admin & Group Management**
+  - Implemented Super Admin permissions system, fully controlled by the server.
+  - Added a dedicated Super Admin menu for user management (locks/unlocks).
+  - Enhanced group management: group name editing and bulk participant selection.
+  - Fixed infinite FAB rotation and loading spinner bugs in ChatListActivity.
+  - Server version: 1.0.1.60
+
+## [1.0.1.59] - 2026-04-26
+- **Custom Themes & Swipe Gestures**
+  - Integrated custom theme support with live application across all activities.
+  - Added swipe-to-reply and swipe-to-refresh gestures for better UX.
+  - Fixed toolbar title overlap and optimized chat list update checks.
+  - Server version: 1.0.1.59
+
+## [1.0.1.58] - 2026-04-25
+- **Protocol Optimization & Version Tracking**
+  - Added client version tracking in server logs for easier debugging.
+  - Implemented faster room switching without full session resets.
+  - Improved auto-reconnect stability when switching networks.
+  - Server version: 1.0.1.58
+
+## [1.0.1.56] - 2026-04-25
+- **Advanced Search & Batch Management**
+  - Added toolbar search toggle for both Chats and Contacts.
+  - Implemented bulk participant selection for group management.
+  - Optimized online status detection for near-instant updates.
+  - Server version: 1.0.1.56
+
+## [1.0.1.55] - 2026-04-25
+- **UX Stability & Instant Presence**
+  - Reduced gRPC keep-alive interval to 10s for more reliable online status.
+  - Integrated search bar directly into the main chat list.
+  - Server version: 1.0.1.55
+
+## [1.0.1.53] - 2026-04-25
+- **Real-time Status & UX Polish**
+  - Added real-time Online/Offline indicators (green/gray dots) in all lists.
+  - Major UX improvements for chat loading and navigation.
+  - Full group administration features completed.
+  - Server version: 1.0.1.53
+
+## [1.0.1.51] - 2026-04-25
 - **Full Custom Themes & Chat Backgrounds**
   - **Android: Enhanced Theme Management**
     - Fixed infinite loading spinner in `ChatListActivity` by clearing menu animations on state reset.
