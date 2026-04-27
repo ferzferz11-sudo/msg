@@ -2,6 +2,32 @@
 
 **Author:** Pavel Davydov (ferz)
 
+## [1.0.2.7] - 2026-04-26
+- **Edge-to-Edge Design & Final Navigation Consolidation**
+  - **Android: Navigation & Localization**
+    - Moved the language toggle to the User Avatar menu, completing the consolidation of all account actions.
+    - Implemented edge-to-edge toolbar designs for Chat List, Themes, and Notifications, blending them seamlessly with the system status bar.
+  - **Android: Theme Editor Previews**
+    - Synchronized the Chat Room preview with real bottom panel icons and theming logic.
+    - Updated avatar proportions across all previews to match the new 42dp standard.
+  - **Android: Bug Fixes**
+    - Suppressed background "Connecting..." status messages on newer Android versions.
+  - Server version: 1.0.2.7
+
+## [1.0.2.6] - 2026-04-26
+- **UI/UX Polishing & Enhanced Customization**
+  - **Android: Theme Editor Improvements**
+    - Added "Default Light" and "Default Dark" templates for quick customization.
+    - Reduced theme deletion icon size for better visual balance.
+    - Synchronized live previews with the latest Chat List design (large avatar, search icon).
+  - **Android: Chat List & Search**
+    - Increased toolbar avatar size (+30%) for better visibility.
+    - Enhanced global search to filter by message content, not just names.
+    - Finalized menu consolidation: account settings are now exclusively behind the avatar.
+  - **Android: Notifications**
+    - Personalized style preview using the current user's name.
+  - Server version: 1.0.2.6
+
 ## [1.0.2.5] - 2026-04-26
 - **Consolidated User Identity & Enhanced Chat List**
   - **Android: Navigation Overhaul**

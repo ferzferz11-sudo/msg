@@ -24,7 +24,7 @@ import (
 	"firebase.google.com/go/v4/messaging"
 )
 
-const ServerVersion = "1.0.2.5"
+const ServerVersion = "1.0.2.7"
 
 // server implements the gRPC ChatService interface
 type server struct {
@@ -368,6 +368,7 @@ func (s *server) GetAllChats(ctx context.Context, req *gen.GetAllChatsRequest) (
 			LastMessageTime: timestamppb.New(c.LastMessageTime),
 			Creator:         c.Creator,
 			LastMessageText: c.LastMessageText,
+			AvatarUrl:       c.AvatarURL,
 		})
 	}
 
@@ -511,6 +512,7 @@ func (s *server) GetChats(_ context.Context, req *gen.GetChatsRequest) (*gen.Get
 			LastMessageTime: timestamppb.New(c.LastMessageTime),
 			Creator:         c.Creator,
 			LastMessageText: c.LastMessageText,
+			AvatarUrl:       c.AvatarURL,
 		})
 	}
 
@@ -1079,20 +1081,20 @@ func (s *server) GetThemes(_ context.Context, req *gen.GetThemesRequest) (*gen.G
 	var customThemes []*gen.CustomTheme
 	for _, t := range themes {
 		customThemes = append(customThemes, &gen.CustomTheme{
-			Id:                 t.ThemeID,
-			Name:               t.Name,
-			PrimaryColor:       t.PrimaryColor,
-			OnPrimaryColor:     t.OnPrimaryColor,
-			SurfaceColor:       t.SurfaceColor,
-			OnSurfaceColor:     t.OnSurfaceColor,
-			BackgroundColor:    t.BackgroundColor,
-			TextPrimaryColor:   t.TextPrimaryColor,
-			TextSecondaryColor: t.TextSecondaryColor,
-			IsDark:             t.IsDark,
-			BackgroundImageUrl: t.BackgroundImageUrl,
+			Id:                         t.ThemeID,
+			Name:                       t.Name,
+			PrimaryColor:               t.PrimaryColor,
+			OnPrimaryColor:             t.OnPrimaryColor,
+			SurfaceColor:               t.SurfaceColor,
+			OnSurfaceColor:             t.OnSurfaceColor,
+			BackgroundColor:            t.BackgroundColor,
+			TextPrimaryColor:           t.TextPrimaryColor,
+			TextSecondaryColor:         t.TextSecondaryColor,
+			IsDark:                     t.IsDark,
+			BackgroundImageUrl:         t.BackgroundImageUrl,
 			ChatListBackgroundImageUrl: t.ChatListBackgroundImageUrl,
-			BottomPanelColor:   t.BottomPanelColor,
-			OnBottomPanelColor: t.OnBottomPanelColor,
+			BottomPanelColor:           t.BottomPanelColor,
+			OnBottomPanelColor:         t.OnBottomPanelColor,
 		})
 	}
 

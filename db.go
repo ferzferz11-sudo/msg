@@ -164,6 +164,9 @@ func ConnectDB() (*DB, error) {
 		  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='chats' AND column_name='creator_username') THEN
 		    ALTER TABLE chats ADD COLUMN creator_username VARCHAR(255);
 		  END IF;
+		  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='chats' AND column_name='avatar_url') THEN
+		    ALTER TABLE chats ADD COLUMN avatar_url TEXT DEFAULT '';
+		  END IF;
 		 END $$;`,
 		`UPDATE chats SET creator_username = participants::json->>0
 		 WHERE creator_username IS NULL AND participants ~ '^\[.*\]$';`,
@@ -762,22 +765,26 @@ func (db *DB) GetAllUsers() ([]string, error) {
 
 // GetAllChats returns all chats on the server
 func (db *DB) GetAllChats() ([]struct {
-	ID              string
-	Name            string
-	Type            string
-	Participants    string
-	CreatedAt       time.Time
-	UnreadCount     int
-	LastMessageTime time.Time
-	Creator         string
-	LastMessageText string
+	ID                  string
+	Name                string
+	Type                string
+	Participants        string
+	CreatedAt           time.Time
+	UnreadCount         int
+	LastMessageTime     time.Time
+	Creator             string
+	LastMessageText     string
+	AvatarURL           string
+	LastMessageUsername string
 }, error) {
 	query := `
 		SELECT c.id, c.name, c.type, c.participants, c.created_at,
 		0 as unread_count,
 		COALESCE((SELECT MAX(m.created_at) FROM messages m WHERE m.room_id = c.id), c.created_at) as last_message_time,
 		COALESCE(c.creator_username, ''),
-		COALESCE((SELECT encrypted_text FROM messages m WHERE m.room_id = c.id ORDER BY m.created_at DESC LIMIT 1), ''::bytea) as last_message_text
+		COALESCE((SELECT encrypted_text FROM messages m WHERE m.room_id = c.id ORDER BY m.created_at DESC LIMIT 1), ''::bytea) as last_message_text,
+		COALESCE(c.avatar_url, ''),
+		COALESCE((SELECT username FROM messages m WHERE m.room_id = c.id ORDER BY m.created_at DESC LIMIT 1), '') as last_message_username
 		FROM chats c
 		ORDER BY last_message_time DESC`
 
@@ -788,31 +795,39 @@ func (db *DB) GetAllChats() ([]struct {
 	defer rows.Close()
 
 	var results []struct {
-		ID              string
-		Name            string
-		Type            string
-		Participants    string
-		CreatedAt       time.Time
-		UnreadCount     int
-		LastMessageTime time.Time
-		Creator         string
-		LastMessageText string
+		ID                  string
+		Name                string
+		Type                string
+		Participants        string
+		CreatedAt           time.Time
+		UnreadCount         int
+		LastMessageTime     time.Time
+		Creator             string
+		LastMessageText     string
+		AvatarURL           string
+		LastMessageUsername string
 	}
 
 	for rows.Next() {
 		var c struct {
-			ID              string
-			Name            string
-			Type            string
-			Participants    string
-			CreatedAt       time.Time
-			UnreadCount     int
-			LastMessageTime time.Time
-			Creator         string
-			LastEncrypted   []byte
+			ID                  string
+			Name                string
+			Type                string
+			Participants        string
+			CreatedAt           time.Time
+			UnreadCount         int
+			LastMessageTime     sql.NullTime
+			Creator             string
+			LastEncrypted       []byte
+			AvatarURL           sql.NullString
+			LastMessageUsername sql.NullString
 		}
-		if err := rows.Scan(&c.ID, &c.Name, &c.Type, &c.Participants, &c.CreatedAt, &c.UnreadCount, &c.LastMessageTime, &c.Creator, &c.LastEncrypted); err != nil {
+		if err := rows.Scan(&c.ID, &c.Name, &c.Type, &c.Participants, &c.CreatedAt, &c.UnreadCount, &c.LastMessageTime, &c.Creator, &c.LastEncrypted, &c.AvatarURL, &c.LastMessageUsername); err != nil {
 			return nil, err
+		}
+		lastMessageTime := time.Time{}
+		if c.LastMessageTime.Valid {
+			lastMessageTime = c.LastMessageTime.Time
 		}
 
 		lastText := ""
@@ -821,25 +836,29 @@ func (db *DB) GetAllChats() ([]struct {
 		}
 
 		results = append(results, struct {
-			ID              string
-			Name            string
-			Type            string
-			Participants    string
-			CreatedAt       time.Time
-			UnreadCount     int
-			LastMessageTime time.Time
-			Creator         string
-			LastMessageText string
+			ID                  string
+			Name                string
+			Type                string
+			Participants        string
+			CreatedAt           time.Time
+			UnreadCount         int
+			LastMessageTime     time.Time
+			Creator             string
+			LastMessageText     string
+			AvatarURL           string
+			LastMessageUsername string
 		}{
-			ID:              c.ID,
-			Name:            c.Name,
-			Type:            c.Type,
-			Participants:    c.Participants,
-			CreatedAt:       c.CreatedAt,
-			UnreadCount:     c.UnreadCount,
-			LastMessageTime: c.LastMessageTime,
-			Creator:         c.Creator,
-			LastMessageText: lastText,
+			ID:                  c.ID,
+			Name:                c.Name,
+			Type:                c.Type,
+			Participants:        c.Participants,
+			CreatedAt:           c.CreatedAt,
+			UnreadCount:         c.UnreadCount,
+			LastMessageTime:     lastMessageTime,
+			Creator:             c.Creator,
+			LastMessageText:     lastText,
+			AvatarURL:           c.AvatarURL.String,
+			LastMessageUsername: c.LastMessageUsername.String,
 		})
 	}
 	return results, nil
@@ -1043,15 +1062,17 @@ func (db *DB) GetChat(id string) (struct {
 
 // GetUserChats retrieves all chats for a specific user with unread count and last message time
 func (db *DB) GetUserChats(username string) ([]struct {
-	ID              string
-	Name            string
-	Type            string
-	Participants    string
-	CreatedAt       time.Time
-	UnreadCount     int
-	LastMessageTime time.Time
-	Creator         string
-	LastMessageText string
+	ID                  string
+	Name                string
+	Type                string
+	Participants        string
+	CreatedAt           time.Time
+	UnreadCount         int
+	LastMessageTime     time.Time
+	Creator             string
+	LastMessageText     string
+	AvatarURL           string
+	LastMessageUsername string
 }, error) {
 	query := `
 		SELECT c.id, c.name, c.type, c.participants, c.created_at,
@@ -1061,7 +1082,9 @@ func (db *DB) GetUserChats(username string) ([]struct {
 		 AND m.username != $1) as unread_count,
 		(SELECT MAX(m.created_at) FROM messages m WHERE m.room_id = c.id) as last_message_time,
 		COALESCE(c.creator_username, ''),
-		COALESCE((SELECT encrypted_text FROM messages m WHERE m.room_id = c.id ORDER BY m.created_at DESC LIMIT 1), ''::bytea) as last_message_text
+		COALESCE((SELECT encrypted_text FROM messages m WHERE m.room_id = c.id ORDER BY m.created_at DESC LIMIT 1), ''::bytea) as last_message_text,
+		COALESCE(c.avatar_url, ''),
+		COALESCE((SELECT username FROM messages m WHERE m.room_id = c.id ORDER BY m.created_at DESC LIMIT 1), '') as last_message_username
 		FROM chats c
 		WHERE c.participants LIKE $2 OR (c.type = 'group' AND c.participants LIKE $2)`
 
@@ -1077,30 +1100,34 @@ func (db *DB) GetUserChats(username string) ([]struct {
 	}()
 
 	var results []struct {
-		ID              string
-		Name            string
-		Type            string
-		Participants    string
-		CreatedAt       time.Time
-		UnreadCount     int
-		LastMessageTime time.Time
-		Creator         string
-		LastMessageText string
+		ID                  string
+		Name                string
+		Type                string
+		Participants        string
+		CreatedAt           time.Time
+		UnreadCount         int
+		LastMessageTime     time.Time
+		Creator             string
+		LastMessageText     string
+		AvatarURL           string
+		LastMessageUsername string
 	}
 
 	for rows.Next() {
 		var c struct {
-			ID              string
-			Name            string
-			Type            string
-			Participants    string
-			CreatedAt       time.Time
-			UnreadCount     int
-			LastMessageTime sql.NullTime
-			Creator         string
-			LastEncrypted   []byte
+			ID                  string
+			Name                string
+			Type                string
+			Participants        string
+			CreatedAt           time.Time
+			UnreadCount         int
+			LastMessageTime     sql.NullTime
+			Creator             string
+			LastEncrypted       []byte
+			AvatarURL           sql.NullString
+			LastMessageUsername sql.NullString
 		}
-		if err := rows.Scan(&c.ID, &c.Name, &c.Type, &c.Participants, &c.CreatedAt, &c.UnreadCount, &c.LastMessageTime, &c.Creator, &c.LastEncrypted); err != nil {
+		if err := rows.Scan(&c.ID, &c.Name, &c.Type, &c.Participants, &c.CreatedAt, &c.UnreadCount, &c.LastMessageTime, &c.Creator, &c.LastEncrypted, &c.AvatarURL, &c.LastMessageUsername); err != nil {
 			log.Printf("Error scanning chat row: %v", err)
 			return nil, err
 		}
@@ -1115,25 +1142,29 @@ func (db *DB) GetUserChats(username string) ([]struct {
 		}
 
 		results = append(results, struct {
-			ID              string
-			Name            string
-			Type            string
-			Participants    string
-			CreatedAt       time.Time
-			UnreadCount     int
-			LastMessageTime time.Time
-			Creator         string
-			LastMessageText string
+			ID                  string
+			Name                string
+			Type                string
+			Participants        string
+			CreatedAt           time.Time
+			UnreadCount         int
+			LastMessageTime     time.Time
+			Creator             string
+			LastMessageText     string
+			AvatarURL           string
+			LastMessageUsername string
 		}{
-			ID:              c.ID,
-			Name:            c.Name,
-			Type:            c.Type,
-			Participants:    c.Participants,
-			CreatedAt:       c.CreatedAt,
-			UnreadCount:     c.UnreadCount,
-			LastMessageTime: lastMessageTime,
-			Creator:         c.Creator,
-			LastMessageText: lastText,
+			ID:                  c.ID,
+			Name:                c.Name,
+			Type:                c.Type,
+			Participants:        c.Participants,
+			CreatedAt:           c.CreatedAt,
+			UnreadCount:         c.UnreadCount,
+			LastMessageTime:     lastMessageTime,
+			Creator:             c.Creator,
+			LastMessageText:     lastText,
+			AvatarURL:           c.AvatarURL.String,
+			LastMessageUsername: c.LastMessageUsername.String,
 		})
 	}
 	return results, nil
@@ -1375,6 +1406,12 @@ func (db *DB) UpdateChatParticipants(chatID, participants string) error {
 func (db *DB) UpdateChatName(chatID, newName string) error {
 	query := `UPDATE chats SET name = $1 WHERE id = $2`
 	_, err := db.Exec(query, newName, chatID)
+	return err
+}
+
+func (db *DB) UpdateChatAvatar(chatID, avatarURL string) error {
+	query := `UPDATE chats SET avatar_url = $1 WHERE id = $2`
+	_, err := db.Exec(query, avatarURL, chatID)
 	return err
 }
 

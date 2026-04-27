@@ -931,18 +931,20 @@ func (x *TokenResponse) GetSuccess() bool {
 }
 
 type ChatInfo struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
-	Id              string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Name            string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	Type            string                 `protobuf:"bytes,3,opt,name=type,proto3" json:"type,omitempty"`
-	Participants    string                 `protobuf:"bytes,4,opt,name=participants,proto3" json:"participants,omitempty"`
-	CreatedAt       *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UnreadCount     int32                  `protobuf:"varint,6,opt,name=unread_count,json=unreadCount,proto3" json:"unread_count,omitempty"`
-	LastMessageTime *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=last_message_time,json=lastMessageTime,proto3" json:"last_message_time,omitempty"`
-	Creator         string                 `protobuf:"bytes,8,opt,name=creator,proto3" json:"creator,omitempty"`
-	LastMessageText string                 `protobuf:"bytes,9,opt,name=last_message_text,json=lastMessageText,proto3" json:"last_message_text,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	state               protoimpl.MessageState `protogen:"open.v1"`
+	Id                  string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name                string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Type                string                 `protobuf:"bytes,3,opt,name=type,proto3" json:"type,omitempty"`
+	Participants        string                 `protobuf:"bytes,4,opt,name=participants,proto3" json:"participants,omitempty"`
+	CreatedAt           *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UnreadCount         int32                  `protobuf:"varint,6,opt,name=unread_count,json=unreadCount,proto3" json:"unread_count,omitempty"`
+	LastMessageTime     *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=last_message_time,json=lastMessageTime,proto3" json:"last_message_time,omitempty"`
+	Creator             string                 `protobuf:"bytes,8,opt,name=creator,proto3" json:"creator,omitempty"`
+	LastMessageText     string                 `protobuf:"bytes,9,opt,name=last_message_text,json=lastMessageText,proto3" json:"last_message_text,omitempty"`
+	AvatarUrl           string                 `protobuf:"bytes,10,opt,name=avatar_url,json=avatarUrl,proto3" json:"avatar_url,omitempty"`
+	LastMessageUsername string                 `protobuf:"bytes,11,opt,name=last_message_username,json=lastMessageUsername,proto3" json:"last_message_username,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *ChatInfo) Reset() {
@@ -1034,6 +1036,20 @@ func (x *ChatInfo) GetCreator() string {
 func (x *ChatInfo) GetLastMessageText() string {
 	if x != nil {
 		return x.LastMessageText
+	}
+	return ""
+}
+
+func (x *ChatInfo) GetAvatarUrl() string {
+	if x != nil {
+		return x.AvatarUrl
+	}
+	return ""
+}
+
+func (x *ChatInfo) GetLastMessageUsername() string {
+	if x != nil {
+		return x.LastMessageUsername
 	}
 	return ""
 }
@@ -3804,7 +3820,7 @@ const file_messenger_proto_rawDesc = "" +
 	"\x05token\x18\x02 \x01(\tR\x05token\x12!\n" +
 	"\fpush_enabled\x18\x03 \x01(\bR\vpushEnabled\")\n" +
 	"\rTokenResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess\"\xd2\x02\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\"\xa5\x03\n" +
 	"\bChatInfo\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
@@ -3815,7 +3831,11 @@ const file_messenger_proto_rawDesc = "" +
 	"\funread_count\x18\x06 \x01(\x05R\vunreadCount\x12F\n" +
 	"\x11last_message_time\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\x0flastMessageTime\x12\x18\n" +
 	"\acreator\x18\b \x01(\tR\acreator\x12*\n" +
-	"\x11last_message_text\x18\t \x01(\tR\x0flastMessageText\"-\n" +
+	"\x11last_message_text\x18\t \x01(\tR\x0flastMessageText\x12\x1d\n" +
+	"\n" +
+	"avatar_url\x18\n" +
+	" \x01(\tR\tavatarUrl\x122\n" +
+	"\x15last_message_username\x18\v \x01(\tR\x13lastMessageUsername\"-\n" +
 	"\x0fGetChatsRequest\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\"=\n" +
 	"\x10GetChatsResponse\x12)\n" +
