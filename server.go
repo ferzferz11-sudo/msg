@@ -24,7 +24,7 @@ import (
 	"firebase.google.com/go/v4/messaging"
 )
 
-const ServerVersion = "1.0.2.7"
+const ServerVersion = "1.0.2.8"
 
 // server implements the gRPC ChatService interface
 type server struct {
@@ -359,16 +359,17 @@ func (s *server) GetAllChats(ctx context.Context, req *gen.GetAllChatsRequest) (
 	var chatInfos []*gen.ChatInfo
 	for _, c := range chats {
 		chatInfos = append(chatInfos, &gen.ChatInfo{
-			Id:              c.ID,
-			Name:            c.Name,
-			Type:            c.Type,
-			Participants:    c.Participants,
-			CreatedAt:       timestamppb.New(c.CreatedAt),
-			UnreadCount:     int32(c.UnreadCount),
-			LastMessageTime: timestamppb.New(c.LastMessageTime),
-			Creator:         c.Creator,
-			LastMessageText: c.LastMessageText,
-			AvatarUrl:       c.AvatarURL,
+			Id:                  c.ID,
+			Name:                c.Name,
+			Type:                c.Type,
+			Participants:        c.Participants,
+			CreatedAt:           timestamppb.New(c.CreatedAt),
+			UnreadCount:         int32(c.UnreadCount),
+			LastMessageTime:     timestamppb.New(c.LastMessageTime),
+			Creator:             c.Creator,
+			LastMessageText:     c.LastMessageText,
+			AvatarUrl:           c.AvatarURL,
+			LastMessageUsername: c.LastMessageUsername,
 		})
 	}
 
@@ -503,16 +504,17 @@ func (s *server) GetChats(_ context.Context, req *gen.GetChatsRequest) (*gen.Get
 	var chatInfos []*gen.ChatInfo
 	for _, c := range chats {
 		chatInfos = append(chatInfos, &gen.ChatInfo{
-			Id:              c.ID,
-			Name:            c.Name,
-			Type:            c.Type,
-			Participants:    c.Participants,
-			CreatedAt:       timestamppb.New(c.CreatedAt),
-			UnreadCount:     int32(c.UnreadCount),
-			LastMessageTime: timestamppb.New(c.LastMessageTime),
-			Creator:         c.Creator,
-			LastMessageText: c.LastMessageText,
-			AvatarUrl:       c.AvatarURL,
+			Id:                  c.ID,
+			Name:                c.Name,
+			Type:                c.Type,
+			Participants:        c.Participants,
+			CreatedAt:           timestamppb.New(c.CreatedAt),
+			UnreadCount:         int32(c.UnreadCount),
+			LastMessageTime:     timestamppb.New(c.LastMessageTime),
+			Creator:             c.Creator,
+			LastMessageText:     c.LastMessageText,
+			AvatarUrl:           c.AvatarURL,
+			LastMessageUsername: c.LastMessageUsername,
 		})
 	}
 
