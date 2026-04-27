@@ -2,6 +2,16 @@
 
 **Author:** Pavel Davydov (ferz)
 
+## [1.0.2.8] - 2026-04-27
+- **Group Chat Message Previews & Update Dialog**
+  - **Android: Chat List Enhancement**
+    - Added `lastMessageUsername` support for group chats, showing sender name before message preview.
+    - Updated gRPC client and proto definitions to handle new `ChatInfo` field.
+  - **Android: Update Confirmation**
+    - Added confirmation dialog before downloading updates, showing current and available versions.
+    - New localized strings for update flow (EN/RU).
+  - Server version: 1.0.2.8
+
 ## [1.0.2.7] - 2026-04-26
 - **Edge-to-Edge Design & Final Navigation Consolidation**
   - **Android: Navigation & Localization**
