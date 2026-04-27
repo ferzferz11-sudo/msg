@@ -350,6 +350,17 @@ message UpdateChatNameResponse {
   string message = 2;
 }
 
+message UpdateChatAvatarRequest {
+  string chat_id = 1;
+  string avatar_url = 2;
+  string username = 3; // For admin verification
+}
+
+message UpdateChatAvatarResponse {
+  bool success = 1;
+  string message = 2;
+}
+
 message GetFCMLogsRequest {}
 
 message FCMLogEntry {
@@ -386,6 +397,7 @@ service ChatService {
   rpc RemoveParticipant(RemoveParticipantRequest) returns (RemoveParticipantResponse);
   rpc EditMessage(EditMessageRequest) returns (EditMessageResponse);
   rpc UpdateChatName(UpdateChatNameRequest) returns (UpdateChatNameResponse);
+  rpc UpdateChatAvatar(UpdateChatAvatarRequest) returns (UpdateChatAvatarResponse);
   rpc DeleteChat(DeleteChatRequest) returns (DeleteChatResponse);
   rpc DeleteProfile(DeleteProfileRequest) returns (DeleteProfileResponse);
   rpc AddContact(AddContactRequest) returns (AddContactResponse);

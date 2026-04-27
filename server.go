@@ -24,7 +24,7 @@ import (
 	"firebase.google.com/go/v4/messaging"
 )
 
-const ServerVersion = "1.0.2.8"
+const ServerVersion = "1.0.2.9"
 
 // server implements the gRPC ChatService interface
 type server struct {
@@ -1034,6 +1034,42 @@ func (s *server) UpdateChatName(_ context.Context, req *gen.UpdateChatNameReques
 	s.broadcastOnlineUsers()
 
 	return &gen.UpdateChatNameResponse{Success: true, Message: "Chat name updated successfully"}, nil
+}
+
+func (s *server) UpdateChatAvatar(_ context.Context, req *gen.UpdateChatAvatarRequest) (*gen.UpdateChatAvatarResponse, error) {
+	if req.ChatId == "" || req.AvatarUrl == "" {
+		return &gen.UpdateChatAvatarResponse{Success: false, Message: "Chat ID and Avatar URL are required"}, nil
+	}
+
+	log.Printf("UpdateChatAvatar: Checking admin status for chat %s, user %s", req.ChatId, req.Username)
+
+	// Get chat to verify admin status
+	chat, err := s.db.GetChat(req.ChatId)
+	if err != nil {
+		log.Printf("UpdateChatAvatar error: Chat not found: %v", err)
+		return &gen.UpdateChatAvatarResponse{Success: false, Message: "Chat not found"}, nil
+	}
+
+	// Verify user is the creator/admin
+	if chat.CreatorUsername != req.Username {
+		log.Printf("UpdateChatAvatar error: User %s is not admin (creator: %s)", req.Username, chat.CreatorUsername)
+		return &gen.UpdateChatAvatarResponse{Success: false, Message: "Only chat admin can change group photo"}, nil
+	}
+
+	// Update avatar
+	err = s.db.UpdateChatAvatar(req.ChatId, req.AvatarUrl)
+	if err != nil {
+		log.Printf("UpdateChatAvatar error: %v", err)
+		return &gen.UpdateChatAvatarResponse{Success: false, Message: err.Error()}, nil
+	}
+
+	log.Printf("UpdateChatAvatar: Updated avatar for chat %s by admin %s", req.ChatId, req.Username)
+
+	// Increment version for all participants so their lists refresh
+	_ = s.db.IncrementParticipantsChatListVersion(req.ChatId)
+	s.broadcastOnlineUsers()
+
+	return &gen.UpdateChatAvatarResponse{Success: true, Message: "Chat avatar updated successfully"}, nil
 }
 
 func (s *server) AddContact(_ context.Context, req *gen.AddContactRequest) (*gen.AddContactResponse, error) {
