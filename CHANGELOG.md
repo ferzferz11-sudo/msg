@@ -2,6 +2,16 @@
 
 **Author:** Pavel Davydov (ferz)
 
+## [1.0.2.9] - 2026-04-27
+- **Server: Group Avatar Management**
+  - Added `UpdateChatAvatar` RPC endpoint for changing group chat avatars.
+  - Admin verification: only chat creator can update group avatar.
+  - New proto messages: `UpdateChatAvatarRequest` and `UpdateChatAvatarResponse`.
+  - Chat list version increment for all participants on avatar update.
+- **Server: Message Enhancements**
+  - Added `lastMessageUsername` field to `ChatInfo` for group chat message previews.
+- Server version: 1.0.2.9
+
 ## [1.0.2.8] - 2026-04-27
 - **Group Chat Message Previews & Update Dialog**
   - **Android: Chat List Enhancement**
