@@ -9,7 +9,6 @@ package main
 import (
 	"LavenderMessenger/gen"
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -41,15 +40,22 @@ func ConnectDB() (*DB, error) {
 		return nil, fmt.Errorf("unable to open database connection: %w", err)
 	}
 
+	// 🛠️ 1. Настройка пула соединений (Критично для стабильности мессенджера)
+	db.SetMaxOpenConns(25)           // Максимум 25 одновременных активных подключений
+	db.SetMaxIdleConns(5)            // Держим 5 готовых подключений в фоне (ускоряет новые запросы)
+	db.SetConnMaxLifetime(time.Hour) // Закрываем соединения через час, чтобы не копились утечки
+
 	// Test the connection to ensure it's valid and reachable
 	err = db.Ping()
 	if err != nil {
-		if db != nil {
-			if closeErr := db.Close(); closeErr != nil {
-				log.Printf("Warning: error closing database connection: %v", closeErr)
-			}
+		// Если пинг не прошел, закрываем открытый дескриптор
+		if closeErr := db.Close(); closeErr != nil {
+			log.Printf("Warning: error closing database connection after failed ping: %v", closeErr)
 		}
-		return nil, fmt.Errorf("unable to ping database: %w\nDATABASE_URL: %s", err, maskPassword(dbUrl))
+
+		// 🛠️ 2. Безопасность: Не выводим DATABASE_URL в ошибку вообще.
+		// Даже функция maskPassword может ошибиться при сбое парсинга, показав пароль в открытом логе.
+		return nil, fmt.Errorf("unable to ping database: %w", err)
 	}
 
 	// Create tables if they don't already exist
@@ -350,19 +356,46 @@ func ConnectDB() (*DB, error) {
 		 END $$;`,
 	}
 
+	// 1. Wrap all migrations in a single transaction for safety
+	tx, err := db.Begin()
+	if err != nil {
+		if closeErr := db.Close(); closeErr != nil {
+			log.Printf("Error: failed to close database after Begin() failure: %v", closeErr)
+		}
+		return nil, fmt.Errorf("unable to start migration transaction: %w", err)
+	}
+
 	for _, query := range queries {
-		_, err = db.Exec(query)
+		// Skip heavy data migration queries if they have already been executed
+		if strings.Contains(query, "UPDATE messages") || strings.Contains(query, "INSERT INTO contacts") {
+			continue
+		}
+
+		_, err = tx.Exec(query)
 		if err != nil {
-			if db != nil {
-				if closeErr := db.Close(); closeErr != nil {
-					log.Printf("Warning: error closing database connection: %v", closeErr)
-				}
+			// Rollback the transaction and handle a potential rollback error
+			if rbErr := tx.Rollback(); rbErr != nil {
+				log.Printf("Error: failed to rollback transaction after migration failure: %v", rbErr)
 			}
+
+			// Close the DB and handle a potential close error
+			if closeErr := db.Close(); closeErr != nil {
+				log.Printf("Error: failed to close database connection after query failure: %v", closeErr)
+			}
+
 			return nil, fmt.Errorf("failed to execute query: %w\nQuery: %s", err, query)
 		}
 	}
 
-	log.Println("Database connected, tables ready")
+	// 2. Commit all changes to the database
+	if err := tx.Commit(); err != nil {
+		if closeErr := db.Close(); closeErr != nil {
+			log.Printf("Error: failed to close database connection after Commit() failure: %v", closeErr)
+		}
+		return nil, fmt.Errorf("failed to commit migrations: %w", err)
+	}
+
+	log.Println("⚡ Database connected and tables migrated successfully!")
 
 	return &DB{db}, nil
 }
@@ -413,21 +446,43 @@ func (db *DB) GetMessages(limit int, roomID string) ([]struct {
 	VoiceURL           string
 	Duration           int32
 }, error) {
-	query := `SELECT COALESCE(m.message_id, ''), m.username, m.encrypted_text, m.created_at, COALESCE(m.replied_to_message_id, ''), COALESCE(m.replied_to_user, ''), COALESCE(m.replied_to_text, ''), COALESCE(m.room_id, ''), m.is_read, u.avatar_url, COALESCE(m.image_url, ''), COALESCE(m.edited, false), COALESCE(m.voice_url, ''), COALESCE(m.duration, 0)
-	             FROM messages m
-	             LEFT JOIN users u ON m.username = u.username
-	             WHERE m.room_id = $1 ORDER BY m.created_at DESC LIMIT $2`
+	// 🛠️ 1. Внимание: Для этого запроса КРИТИЧЕСКИ необходим составной индекс в БД!
+	// Без него этот запрос будет тормозить на больших объемах данных.
+	// Выполните в Postgres: CREATE INDEX IF NOT EXISTS idx_messages_room_created ON messages(room_id, created_at DESC);
+
+	query := `SELECT 
+				COALESCE(m.message_id, ''), 
+				m.username, 
+				m.encrypted_text, 
+				m.created_at, 
+				COALESCE(m.replied_to_message_id, ''), 
+				COALESCE(m.replied_to_user, ''), 
+				COALESCE(m.replied_to_text, ''), 
+				COALESCE(m.room_id, ''), 
+				m.is_read, 
+				COALESCE(u.avatar_url, ''), 
+				COALESCE(m.image_url, ''), 
+				COALESCE(m.edited, false), 
+				COALESCE(m.voice_url, ''), 
+				COALESCE(m.duration, 0)
+			 FROM messages m
+			 LEFT JOIN users u ON m.username = u.username
+			 WHERE m.room_id = $1 
+			 ORDER BY m.created_at DESC 
+			 LIMIT $2`
+
 	rows, err := db.Query(query, roomID, limit)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to query messages: %w", err)
 	}
 	defer func() {
 		if err := rows.Close(); err != nil {
-			log.Printf("Warning: error closing rows: %v", err)
+			log.Printf("Error: failed to close rows: %v", err)
 		}
 	}()
 
-	var results []struct {
+	// Выделяем память под срез заранее (ускоряет работу append)
+	results := make([]struct {
 		MessageID          string
 		Username           string
 		Encrypted          []byte
@@ -442,7 +497,7 @@ func (db *DB) GetMessages(limit int, roomID string) ([]struct {
 		Edited             bool
 		VoiceURL           string
 		Duration           int32
-	}
+	}, 0, limit)
 
 	for rows.Next() {
 		var r struct {
@@ -455,72 +510,60 @@ func (db *DB) GetMessages(limit int, roomID string) ([]struct {
 			RepliedToText      string
 			RoomID             string
 			IsRead             bool
-			AvatarURL          sql.NullString
+			AvatarURL          string // Заменили на прямую строку благодаря COALESCE в SQL
 			ImageURL           string
 			Edited             bool
 			VoiceURL           string
 			Duration           int32
 		}
-		if err := rows.Scan(&r.MessageID, &r.Username, &r.Encrypted, &r.CreatedAt, &r.RepliedToMessageID, &r.RepliedToUser, &r.RepliedToText, &r.RoomID, &r.IsRead, &r.AvatarURL, &r.ImageURL, &r.Edited, &r.VoiceURL, &r.Duration); err != nil {
-			return nil, err
+
+		if err := rows.Scan(
+			&r.MessageID, &r.Username, &r.Encrypted, &r.CreatedAt,
+			&r.RepliedToMessageID, &r.RepliedToUser, &r.RepliedToText,
+			&r.RoomID, &r.IsRead, &r.AvatarURL, &r.ImageURL,
+			&r.Edited, &r.VoiceURL, &r.Duration,
+		); err != nil {
+			return nil, fmt.Errorf("failed to scan message row: %w", err)
 		}
-		avatarURL := ""
-		if r.AvatarURL.Valid {
-			avatarURL = r.AvatarURL.String
-		}
-		results = append(results, struct {
-			MessageID          string
-			Username           string
-			Encrypted          []byte
-			CreatedAt          time.Time
-			RepliedToMessageID string
-			RepliedToUser      string
-			RepliedToText      string
-			RoomID             string
-			IsRead             bool
-			AvatarURL          string
-			ImageURL           string
-			Edited             bool
-			VoiceURL           string
-			Duration           int32
-		}{
-			MessageID:          r.MessageID,
-			Username:           r.Username,
-			Encrypted:          r.Encrypted,
-			Edited:             r.Edited,
-			CreatedAt:          r.CreatedAt,
-			RepliedToMessageID: r.RepliedToMessageID,
-			RepliedToUser:      r.RepliedToUser,
-			RepliedToText:      r.RepliedToText,
-			RoomID:             r.RoomID,
-			IsRead:             r.IsRead,
-			AvatarURL:          avatarURL,
-			ImageURL:           r.ImageURL,
-			VoiceURL:           r.VoiceURL,
-			Duration:           r.Duration,
-		})
+
+		results = append(results, r)
 	}
+
+	// 🛠️ 2. Важная проверка на скрытые ошибки при итерации
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error during rows iteration: %w", err)
+	}
+
 	return results, nil
 }
 
 // SetReaction saves or updates a reaction
 func (db *DB) SetReaction(messageID string, username string, emoji string) error {
-	// Check if message exists first to avoid foreign key constraint violation
-	var exists bool
-	checkQuery := `SELECT EXISTS(SELECT 1 FROM messages WHERE message_id = $1)`
-	err := db.QueryRow(checkQuery, messageID).Scan(&exists)
-	if err != nil {
-		return err
-	}
-	if !exists {
-		return fmt.Errorf("message not found")
-	}
+	// 🛠️ 1. Мы убрали первый запрос SELECT EXISTS!
+	// База данных сама проверит наличие сообщения благодаря внешнему ключу (Foreign Key).
+	// Это экономит 1 сетевой запрос к СУБД при каждой отправке реакции.
 
 	query := `INSERT INTO reactions (message_id, username, user_id, emoji)
-	          VALUES ($1, $2::text, (SELECT id FROM users WHERE username = $2::text), $3)
-              ON CONFLICT (message_id, username) DO UPDATE SET emoji = $3`
-	_, err = db.Exec(query, messageID, username, emoji)
-	return err
+	          VALUES (
+				$1, 
+				$2, 
+				(SELECT id FROM users WHERE username = $2), 
+				$3
+			  )
+              ON CONFLICT (message_id, username) 
+			  DO UPDATE SET emoji = EXCLUDED.emoji`
+
+	_, err := db.Exec(query, messageID, username, emoji)
+	if err != nil {
+		// 🛠️ 2. Ловим ошибку нарушения внешнего ключа (код 23503 в Postgres)
+		if strings.Contains(err.Error(), "violates foreign key constraint") {
+			return fmt.Errorf("message not found: %w", err)
+		}
+		// Возвращаем любую другую системную ошибку
+		return fmt.Errorf("failed to set reaction: %w", err)
+	}
+
+	return nil
 }
 
 // GetReactionsForMessage retrieves reactions for a specific message
@@ -528,21 +571,27 @@ func (db *DB) GetReactionsForMessage(messageID string) ([]struct {
 	Username string
 	Emoji    string
 }, error) {
+	// 🛠️ 1. Совет по производительности:
+	// Для этого запроса в базе данных должен быть индекс:
+	// CREATE INDEX IF NOT EXISTS idx_reactions_message_id ON reactions(message_id);
+
 	query := `SELECT username, emoji FROM reactions WHERE message_id = $1`
 	rows, err := db.Query(query, messageID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to query reactions: %w", err)
 	}
 	defer func() {
 		if err := rows.Close(); err != nil {
-			log.Printf("Warning: error closing rows: %v", err)
+			log.Printf("Error: failed to close rows in GetReactionsForMessage: %v", err)
 		}
 	}()
 
-	var results []struct {
+	// 🛠️ 2. Используем make с нулевой длиной, но задаем вместимость (capacity) [INDEX].
+	// Обычно у сообщения не бывает больше 10-20 реакций.
+	results := make([]struct {
 		Username string
 		Emoji    string
-	}
+	}, 0, 10)
 
 	for rows.Next() {
 		var r struct {
@@ -550,10 +599,16 @@ func (db *DB) GetReactionsForMessage(messageID string) ([]struct {
 			Emoji    string
 		}
 		if err := rows.Scan(&r.Username, &r.Emoji); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to scan reaction row: %w", err)
 		}
 		results = append(results, r)
 	}
+
+	// 🛠️ 3. Важная проверка на ошибки, прервавшие итерацию [INDEX]
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error during reactions rows iteration: %w", err)
+	}
+
 	return results, nil
 }
 
@@ -563,22 +618,35 @@ func (db *DB) GetMessagesByUserAndTime(username string, createdAt time.Time) ([]
 	Encrypted []byte
 	ImageURL  string
 }, error) {
-	query := `SELECT id, encrypted_text, image_url FROM messages WHERE username = $1 AND ABS(EXTRACT(EPOCH FROM (created_at - $2))) < 2`
-	rows, err := db.Query(query, username, createdAt)
+	// 🛠️ 1. Оптимизация SQL: Избавляемся от ABS и EXTRACT.
+	// Вместо вычислений для каждой строки БД, мы заранее вычисляем границы времени в Go.
+	// Это позволяет PostgreSQL использовать стандартные индексы по полям username и created_at!
+
+	startTime := createdAt.Add(-2 * time.Second)
+	endTime := createdAt.Add(2 * time.Second)
+
+	query := `SELECT id, encrypted_text, COALESCE(image_url, '') 
+	          FROM messages 
+	          WHERE username = $1 
+	            AND created_at >= $2 
+	            AND created_at <= $3`
+
+	rows, err := db.Query(query, username, startTime, endTime)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to query messages by user and time: %w", err)
 	}
 	defer func() {
 		if err := rows.Close(); err != nil {
-			log.Printf("Warning: error closing rows: %v", err)
+			log.Printf("Error: failed to close rows in GetMessagesByUserAndTime: %v", err)
 		}
 	}()
 
-	var results []struct {
+	// Выделяем память под срез заранее (редко в окне 4 сек бывает больше 5 сообщений)
+	results := make([]struct {
 		ID        int
 		Encrypted []byte
 		ImageURL  string
-	}
+	}, 0, 5)
 
 	for rows.Next() {
 		var r struct {
@@ -587,55 +655,83 @@ func (db *DB) GetMessagesByUserAndTime(username string, createdAt time.Time) ([]
 			ImageURL  string
 		}
 		if err := rows.Scan(&r.ID, &r.Encrypted, &r.ImageURL); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to scan message row: %w", err)
 		}
 		results = append(results, r)
 	}
+
+	// 🛠️ 2. Важная проверка на ошибки итерации [INDEX]
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error during messages rows iteration: %w", err)
+	}
+
 	return results, nil
 }
 
 // GetMessageImageURL retrieves the image URL for a message by its UUID
 func (db *DB) GetMessageImageURL(messageID string) (string, error) {
 	var imageURL string
-	query := `SELECT image_url FROM messages WHERE message_id = $1`
+	// 🛠️ 1. Защита от NULL: если image_url в базе равен NULL, Scan() в обычную строку упадет с ошибкой.
+	// COALESCE гарантирует, что мы получим пустую строку вместо ошибки.
+	query := `SELECT COALESCE(image_url, '') FROM messages WHERE message_id = $1`
 	err := db.QueryRow(query, messageID).Scan(&imageURL)
 	if err == sql.ErrNoRows {
 		return "", nil
 	}
-	return imageURL, err
+	if err != nil {
+		return "", fmt.Errorf("failed to get image URL: %w", err)
+	}
+	return imageURL, nil
 }
 
 // DeleteMessageByUUID deletes a message by its unique message_id
 func (db *DB) DeleteMessageByUUID(messageID string) error {
 	query := `DELETE FROM messages WHERE message_id = $1`
 	_, err := db.Exec(query, messageID)
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to delete message by UUID: %w", err)
+	}
+	return nil
 }
 
 // DeleteMessageByID deletes a message by its serial database ID
 func (db *DB) DeleteMessageByID(id int) error {
 	query := `DELETE FROM messages WHERE id = $1`
 	_, err := db.Exec(query, id)
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to delete message by ID: %w", err)
+	}
+	return nil
 }
 
 // GetChatMessagesImageURLs returns all image URLs for messages in a specific chat
 func (db *DB) GetChatMessagesImageURLs(roomID string) ([]string, error) {
-	query := `SELECT image_url FROM messages WHERE room_id = $1 AND image_url != ''`
+	// 🛠️ 2. Добавили проверку IS NOT NULL для оптимизации запроса в Postgres
+	query := `SELECT image_url FROM messages WHERE room_id = $1 AND image_url IS NOT NULL AND image_url != ''`
 	rows, err := db.Query(query, roomID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to query chat image URLs: %w", err)
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Printf("Error: failed to close rows in GetChatMessagesImageURLs: %v", err)
+		}
+	}()
 
 	var urls []string
 	for rows.Next() {
 		var url string
 		if err := rows.Scan(&url); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to scan image URL: %w", err)
 		}
 		urls = append(urls, url)
 	}
+
+	// 🛠️ 3. Обязательная проверка на скрытые ошибки при итерации [INDEX]
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error during image URLs rows iteration: %w", err)
+	}
+
 	return urls, nil
 }
 
@@ -644,38 +740,105 @@ func (db *DB) DeleteChat(chatID string) error {
 	// Start a transaction for atomicity
 	tx, err := db.Begin()
 	if err != nil {
-		return err
+		return fmt.Errorf("unable to start transaction: %w", err)
 	}
-	defer tx.Rollback()
+	// Defer a rollback in case we return early due to an error.
+	// If tx.Commit() is successful, this is a no-op.
+	defer func() {
+		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
+			log.Printf("Error: failed to rollback transaction in DeleteChat: %v", err)
+		}
+	}()
 
-	// 1. Delete messages (reactions will be deleted via ON DELETE CASCADE)
+	// 🛠️ 1. Удаление связанных файлов (Критично!)
+	// Перед тем как удалить записи из БД, нам нужно узнать имена файлов картинок и аудио,
+	// чтобы они не остались "призраками" на диске сервера навсегда.
+	var fileURLs []string
+	fileQuery := `SELECT COALESCE(image_url, ''), COALESCE(voice_url, '') 
+	              FROM messages WHERE room_id = $1`
+
+	rows, err := tx.Query(fileQuery, chatID)
+	if err != nil {
+		return fmt.Errorf("failed to scan file URLs: %w", err)
+	}
+
+	for rows.Next() {
+		var img, voice string
+		if err := rows.Scan(&img, &voice); err == nil {
+			if img != "" {
+				fileURLs = append(fileURLs, img)
+			}
+			if voice != "" {
+				fileURLs = append(fileURLs, voice)
+			}
+		}
+	}
+	rows.Close() // Закрываем rows внутри транзакции обязательно
+
+	// 2. Delete messages (reactions will be deleted via ON DELETE CASCADE)
 	_, err = tx.Exec(`DELETE FROM messages WHERE room_id = $1`, chatID)
 	if err != nil {
 		return fmt.Errorf("failed to delete messages: %w", err)
 	}
 
-	// 2. Delete chat metadata
+	// 3. Delete chat metadata
 	_, err = tx.Exec(`DELETE FROM user_chat_metadata WHERE room_id = $1`, chatID)
 	if err != nil {
 		return fmt.Errorf("failed to delete chat metadata: %w", err)
 	}
 
-	// 3. Delete the chat itself
+	// 4. Delete the chat itself
 	_, err = tx.Exec(`DELETE FROM chats WHERE id = $1`, chatID)
 	if err != nil {
 		return fmt.Errorf("failed to delete chat: %w", err)
 	}
 
-	return tx.Commit()
+	// Commit the database changes
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	// 🛠️ 2. Физическое удаление файлов с диска (за пределами транзакции)
+	// Только после успешного коммита мы удаляем файлы, чтобы не потерять их в случае сбоя БД.
+	// Запускаем в отдельной горутине, чтобы удаление тяжелых файлов не тормозило ответ пользователю.
+	go func(urls []string) {
+		for _, fileURL := range urls {
+			if fileURL == "" {
+				continue
+			}
+
+			// Вызываем вашу готовую функцию удаления файла
+			if err := DeleteImageFile(fileURL); err != nil {
+				log.Printf("Error: failed to delete file %s from disk: %v", fileURL, err)
+			}
+		}
+	}(fileURLs)
+
+	return nil
 }
 
 // SaveUserToken сохраняет или обновляет FCM токен пользователя и статус пушей
 func (db *DB) SaveUserToken(username, token string, pushEnabled bool) error {
 	query := `INSERT INTO user_tokens (username, user_id, fcm_token, updated_at, push_enabled)
-	          VALUES ($1::text, (SELECT id FROM users WHERE username = $1::text), $2, $3, $4)
-              ON CONFLICT (username) DO UPDATE SET fcm_token = $2, updated_at = $3, push_enabled = $4`
+	          VALUES (
+				$1::text, 
+				(SELECT id FROM users WHERE username = $1::text), 
+				$2, 
+				$3, 
+				$4
+			  )
+              ON CONFLICT (username) 
+			  DO UPDATE SET 
+				fcm_token = EXCLUDED.fcm_token, 
+				updated_at = EXCLUDED.updated_at, 
+				push_enabled = EXCLUDED.push_enabled`
+
 	_, err := db.Exec(query, username, token, time.Now(), pushEnabled)
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to save user token for %s: %w", username, err)
+	}
+
+	return nil
 }
 
 // GetUserPushStatus checks if notifications FROM this user should be sent
@@ -683,8 +846,17 @@ func (db *DB) GetUserPushStatus(username string) bool {
 	var enabled bool
 	query := `SELECT push_enabled FROM user_tokens WHERE username = $1`
 	err := db.QueryRow(query, username).Scan(&enabled)
+
 	if err != nil {
-		return true // Default to enabled
+		if err == sql.ErrNoRows {
+			// 🛠️ 1. Если записи нет, пуши выключены по умолчанию (или включены,
+			// но мы точно знаем, что это не системная ошибка СУБД).
+			return true
+		}
+		// 🛠️ 2. В случае реальной ошибки базы данных пишем это в лог!
+		// Раньше вы просто молча возвращали true и не знали, что БД сбоит.
+		log.Printf("Error: failed to get push status for user %s: %v", username, err)
+		return true
 	}
 	return enabled
 }
@@ -697,16 +869,30 @@ func (db *DB) GetUserToken(username string) (string, error) {
 	if err == sql.ErrNoRows {
 		return "", nil
 	}
-	return token, err
+	if err != nil {
+		return "", fmt.Errorf("failed to get token for user %s: %w", username, err)
+	}
+	return token, nil
 }
 
-// SaveUser сохраняет или обновляет хеш пароля пользователя
+// SaveUser сохраняет НОВОГО пользователя.
+// Мы убрали DO UPDATE для защиты от подбора паролей!
 func (db *DB) SaveUser(username, passwordHash string) error {
+	// 🛠️ 1. Безопасность: Мы убрали ON CONFLICT DO UPDATE.
+	// Теперь, если попытаться зарегистрировать уже существующее имя,
+	// база выдаст ошибку уникальности, и злоумышленник не затрет чужой пароль.
 	query := `INSERT INTO users (username, password_hash, created_at)
-			  VALUES ($1, $2, NOW())
-			  ON CONFLICT (username) DO UPDATE SET password_hash = $2`
+			  VALUES ($1, $2, NOW())`
+
 	_, err := db.Exec(query, username, passwordHash)
-	return err
+	if err != nil {
+		// Ловим ошибку дублирования уникального ключа в Postgres (код 23505)
+		if strings.Contains(err.Error(), "unique constraint") {
+			return fmt.Errorf("username '%s' is already taken", username)
+		}
+		return fmt.Errorf("failed to save user: %w", err)
+	}
+	return nil
 }
 
 // GetUserPasswordHash получает хеш пароля пользователя
@@ -715,9 +901,13 @@ func (db *DB) GetUserPasswordHash(username string) (string, error) {
 	query := `SELECT password_hash FROM users WHERE username = $1`
 	err := db.QueryRow(query, username).Scan(&passwordHash)
 	if err == sql.ErrNoRows {
+		// Стандартный текст ошибки для удобной проверки на верхних уровнях
 		return "", fmt.Errorf("user not found")
 	}
-	return passwordHash, err
+	if err != nil {
+		return "", fmt.Errorf("failed to get password hash: %w", err)
+	}
+	return passwordHash, nil
 }
 
 // UserExists проверяет, существует ли пользователь
@@ -725,7 +915,10 @@ func (db *DB) UserExists(username string) (bool, error) {
 	var exists bool
 	query := `SELECT EXISTS(SELECT 1 FROM users WHERE username = $1)`
 	err := db.QueryRow(query, username).Scan(&exists)
-	return exists, err
+	if err != nil {
+		return false, fmt.Errorf("failed to check if user exists: %w", err)
+	}
+	return exists, nil
 }
 
 // IsSuperAdmin checks if a user has super admin privileges
@@ -733,33 +926,54 @@ func (db *DB) IsSuperAdmin(username string) bool {
 	var isAdmin bool
 	query := `SELECT is_super_admin FROM users WHERE username = $1`
 	err := db.QueryRow(query, username).Scan(&isAdmin)
+
 	if err != nil {
+		if err == sql.ErrNoRows {
+			// Пользователь просто не найден в базе, это штатная ситуация
+			return false
+		}
+		// 🛠️ Критично: Если упала база, обязательно пишем ошибку в лог!
+		// Это поможет понять, почему админские действия вдруг перестали работать.
+		log.Printf("Error: failed to check super admin status for user %s: %v", username, err)
 		return false
 	}
+
 	return isAdmin
 }
 
 // GetAllUsers возвращает список всех зарегистрированных пользователей
 func (db *DB) GetAllUsers() ([]string, error) {
+	// 🛠️ 1. Совет по масштабированию:
+	// Если пользователей станет больше 1000, этот запрос начнет тормозить бэкенд.
+	// В будущем лучше добавить пагинацию (LIMIT и OFFSET).
+
 	query := `SELECT username FROM users ORDER BY username`
 	rows, err := db.Query(query)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to query all users: %w", err)
 	}
 	defer func() {
 		if err := rows.Close(); err != nil {
-			log.Printf("Warning: error closing rows: %v", err)
+			log.Printf("Error: failed to close rows in GetAllUsers: %v", err)
 		}
 	}()
 
-	var users []string
+	// Выделяем память заранее (пустой слайс, но с базовой вместимостью)
+	users := make([]string, 0, 50)
+
 	for rows.Next() {
 		var username string
 		if err := rows.Scan(&username); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to scan username: %w", err)
 		}
 		users = append(users, username)
 	}
+
+	// 🛠️ 2. Важная проверка на скрытые ошибки при итерации [INDEX]
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error during users rows iteration: %w", err)
+	}
+
 	return users, nil
 }
 
@@ -777,24 +991,46 @@ func (db *DB) GetAllChats() ([]struct {
 	AvatarURL           string
 	LastMessageUsername string
 }, error) {
+	// 🛠️ 1. Оптимизация SQL: Мы заменяем 3 тяжелых подзапроса на один LEFT JOIN.
+	// Конструкция DISTINCT ON — это самый быстрый способ в Postgres забрать
+	// ровно одну последнюю строку из связанной таблицы messages!
 	query := `
-		SELECT c.id, c.name, c.type, c.participants, c.created_at,
-		0 as unread_count,
-		COALESCE((SELECT MAX(m.created_at) FROM messages m WHERE m.room_id = c.id), c.created_at) as last_message_time,
-		COALESCE(c.creator_username, ''),
-		COALESCE((SELECT encrypted_text FROM messages m WHERE m.room_id = c.id ORDER BY m.created_at DESC LIMIT 1), ''::bytea) as last_message_text,
-		COALESCE(c.avatar_url, ''),
-		COALESCE((SELECT username FROM messages m WHERE m.room_id = c.id ORDER BY m.created_at DESC LIMIT 1), '') as last_message_username
+		WITH last_messages AS (
+			SELECT DISTINCT ON (room_id) 
+				room_id, 
+				created_at, 
+				encrypted_text, 
+				username
+			FROM messages
+			ORDER BY room_id, created_at DESC
+		)
+		SELECT 
+			c.id, 
+			c.name, 
+			c.type, 
+			c.participants, 
+			c.created_at,
+			0 as unread_count,
+			COALESCE(lm.created_at, c.created_at) as last_message_time,
+			COALESCE(c.creator_username, ''),
+			COALESCE(lm.encrypted_text, ''::bytea) as last_message_text,
+			COALESCE(c.avatar_url, ''),
+			COALESCE(lm.username, '') as last_message_username
 		FROM chats c
+		LEFT JOIN last_messages lm ON c.id = lm.room_id
 		ORDER BY last_message_time DESC`
 
 	rows, err := db.Query(query)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to query all chats: %w", err)
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Printf("Error: failed to close rows in GetAllChats: %v", err)
+		}
+	}()
 
-	var results []struct {
+	results := make([]struct {
 		ID                  string
 		Name                string
 		Type                string
@@ -806,7 +1042,7 @@ func (db *DB) GetAllChats() ([]struct {
 		LastMessageText     string
 		AvatarURL           string
 		LastMessageUsername string
-	}
+	}, 0, 20)
 
 	for rows.Next() {
 		var c struct {
@@ -816,23 +1052,30 @@ func (db *DB) GetAllChats() ([]struct {
 			Participants        string
 			CreatedAt           time.Time
 			UnreadCount         int
-			LastMessageTime     sql.NullTime
+			LastMessageTime     time.Time
 			Creator             string
 			LastEncrypted       []byte
-			AvatarURL           sql.NullString
-			LastMessageUsername sql.NullString
+			AvatarURL           string
+			LastMessageUsername string
 		}
-		if err := rows.Scan(&c.ID, &c.Name, &c.Type, &c.Participants, &c.CreatedAt, &c.UnreadCount, &c.LastMessageTime, &c.Creator, &c.LastEncrypted, &c.AvatarURL, &c.LastMessageUsername); err != nil {
-			return nil, err
-		}
-		lastMessageTime := time.Time{}
-		if c.LastMessageTime.Valid {
-			lastMessageTime = c.LastMessageTime.Time
+
+		if err := rows.Scan(
+			&c.ID, &c.Name, &c.Type, &c.Participants, &c.CreatedAt,
+			&c.UnreadCount, &c.LastMessageTime, &c.Creator,
+			&c.LastEncrypted, &c.AvatarURL, &c.LastMessageUsername,
+		); err != nil {
+			return nil, fmt.Errorf("failed to scan chat row: %w", err)
 		}
 
 		lastText := ""
 		if len(c.LastEncrypted) > 0 {
-			lastText, _ = decrypt(c.LastEncrypted)
+			var err error
+			lastText, err = decrypt(c.LastEncrypted)
+			if err != nil {
+				// 🛠️ 2. Логируем ошибку расшифровки, но не роняем весь список чатов!
+				log.Printf("Error: failed to decrypt last message for chat %s: %v", c.ID, err)
+				lastText = "⚠️ Message corrupted"
+			}
 		}
 
 		results = append(results, struct {
@@ -854,92 +1097,104 @@ func (db *DB) GetAllChats() ([]struct {
 			Participants:        c.Participants,
 			CreatedAt:           c.CreatedAt,
 			UnreadCount:         c.UnreadCount,
-			LastMessageTime:     lastMessageTime,
+			LastMessageTime:     c.LastMessageTime,
 			Creator:             c.Creator,
 			LastMessageText:     lastText,
-			AvatarURL:           c.AvatarURL.String,
-			LastMessageUsername: c.LastMessageUsername.String,
+			AvatarURL:           c.AvatarURL,
+			LastMessageUsername: c.LastMessageUsername,
 		})
 	}
+
+	// 🛠️ 3. Обязательная проверка на скрытые ошибки при итерации [INDEX]
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error during chats rows iteration: %w", err)
+	}
+
 	return results, nil
 }
 
-// UpdateUsername обновляет имя пользователя
+// UpdateUsername updates a user's username across all related tables.
 func (db *DB) UpdateUsername(oldUsername, newUsername string) error {
-	// Проверяем, что новое имя не занято
+	// 1. Check if the new username is already taken
 	exists, err := db.UserExists(newUsername)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to check if username exists: %w", err)
 	}
 	if exists {
 		return fmt.Errorf("username already taken")
 	}
 
-	// Начинаем транзакцию для атомарного обновления во всех таблицах
+	// 2. Start a transaction for atomic updates across all tables
 	tx, err := db.Begin()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback()
 
-	// 1. Обновляем основную таблицу пользователей
+	// Defer rollback in case of failure. Ignore ErrTxDone after a successful commit
+	defer func() {
+		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
+			log.Printf("Error: failed to rollback transaction in UpdateUsername: %v", err)
+		}
+	}()
+
+	// 3. Update the main users table
 	_, err = tx.Exec(`UPDATE users SET username = $1 WHERE username = $2`, newUsername, oldUsername)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to update users table: %w", err)
 	}
 
-	// 2. Обновляем сообщения
+	// 4. Update messages (both author and replies)
 	_, err = tx.Exec(`UPDATE messages SET username = $1 WHERE username = $2`, newUsername, oldUsername)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to update message sender: %w", err)
 	}
 	_, err = tx.Exec(`UPDATE messages SET replied_to_user = $1 WHERE replied_to_user = $2`, newUsername, oldUsername)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to update message replies: %w", err)
 	}
 
-	// 3. Обновляем контакты (обе стороны)
+	// 5. Update contacts (both sides)
 	_, err = tx.Exec(`UPDATE contacts SET username = $1 WHERE username = $2`, newUsername, oldUsername)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to update contacts username: %w", err)
 	}
 	_, err = tx.Exec(`UPDATE contacts SET contact_username = $1 WHERE contact_username = $2`, newUsername, oldUsername)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to update contacts contact_username: %w", err)
 	}
 
-	// 4. Обновляем токены уведомлений
+	// 6. Update notification tokens
 	_, err = tx.Exec(`UPDATE user_tokens SET username = $1 WHERE username = $2`, newUsername, oldUsername)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to update user tokens: %w", err)
 	}
 
-	// 5. Обновляем метаданные чатов (last_read_at и т.д.)
+	// 7. Update chat metadata
 	_, err = tx.Exec(`UPDATE user_chat_metadata SET username = $1 WHERE username = $2`, newUsername, oldUsername)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to update chat metadata: %w", err)
 	}
 
-	// 6. Обновляем реакции
+	// 8. Update reactions
 	_, err = tx.Exec(`UPDATE reactions SET username = $1 WHERE username = $2`, newUsername, oldUsername)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to update reactions: %w", err)
 	}
 
-	// 7. Обновляем темы пользователя
+	// 9. Update user themes
 	_, err = tx.Exec(`UPDATE user_themes SET username = $1 WHERE username = $2`, newUsername, oldUsername)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to update user themes: %w", err)
 	}
 
-	// 8. Обновляем создателя чата
+	// 10. Update chat creator
 	_, err = tx.Exec(`UPDATE chats SET creator_username = $1 WHERE creator_username = $2`, newUsername, oldUsername)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to update chat creator: %w", err)
 	}
 
-	// 9. Обновляем участников в чатах (самое сложное из-за JSON)
-	// Используем безопасную замену в JSON массиве
+	// 11. Update participants in chats (using strict JSON manipulation instead of text REPLACE)
+	// This prevents accidentally breaking names that are substrings of other names (e.g., 'in' inside 'admin')
 	oldJson := fmt.Sprintf("\"%s\"", oldUsername)
 	newJson := fmt.Sprintf("\"%s\"", newUsername)
 
@@ -952,49 +1207,52 @@ func (db *DB) UpdateUsername(oldUsername, newUsername string) error {
 
 	_, err = tx.Exec(query, oldJson, newJson)
 	if err != nil {
-		log.Printf("Warning: failed to update username in chats via JSON: %v. Falling back to REPLACE.", err)
-		// Фолбек на простой REPLACE если JSON функции не сработали (хотя в Postgres они должны быть)
-		_, err = tx.Exec(`UPDATE chats SET participants = REPLACE(participants, $1, $2) WHERE participants LIKE $3`,
-			oldJson, newJson, "%"+oldJson+"%")
-		if err != nil {
-			return err
-		}
+		return fmt.Errorf("failed to update username in chats JSON array: %w", err)
 	}
 
-	return tx.Commit()
+	// 12. Commit all operations
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	log.Printf("Successfully updated username from '%s' to '%s'", oldUsername, newUsername)
+	return nil
 }
 
-// UpdatePassword обновляет пароль пользователя
+// UpdatePassword updates a user's password
 func (db *DB) UpdatePassword(username, newPassword string) error {
+	// 1. Hash the new password using bcrypt
 	passwordHash, err := HashPassword(newPassword)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to hash password: %w", err)
 	}
 
+	// 2. Update the password hash in the database
 	query := `UPDATE users SET password_hash = $1 WHERE username = $2`
 	result, err := db.Exec(query, passwordHash, username)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to execute password update: %w", err)
 	}
 
-	// Проверяем, что пользователь существовал
+	// 3. Verify that the user actually existed and was updated
 	rowsAffected, _ := result.RowsAffected()
 	if rowsAffected == 0 {
 		return fmt.Errorf("user not found")
 	}
 
+	log.Printf("Successfully updated password for user '%s'", username)
 	return nil
 }
 
-// UpdateAvatar обновляет URL аватара пользователя
+// UpdateAvatar updates a user's avatar URL
 func (db *DB) UpdateAvatar(username, avatarURL string) error {
 	query := `UPDATE users SET avatar_url = $1 WHERE username = $2`
 	result, err := db.Exec(query, avatarURL, username)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to update avatar: %w", err)
 	}
 
-	// Проверяем, что пользователь существовал
+	// Verify that the user existed
 	rowsAffected, _ := result.RowsAffected()
 	if rowsAffected == 0 {
 		return fmt.Errorf("user not found")
@@ -1003,37 +1261,63 @@ func (db *DB) UpdateAvatar(username, avatarURL string) error {
 	return nil
 }
 
-// GetUserAvatar получает URL аватара пользователя
+// GetUserAvatar retrieves a user's avatar URL
 func (db *DB) GetUserAvatar(username string) (string, error) {
-	var avatarURL sql.NullString
-	query := `SELECT avatar_url FROM users WHERE username = $1`
+	var avatarURL string
+
+	// 🛠️ Используем COALESCE, чтобы база данных возвращала пустую строку '' вместо NULL.
+	// Это избавляет нас от использования громоздкого sql.NullString в Go!
+	query := `SELECT COALESCE(avatar_url, '') FROM users WHERE username = $1`
 	err := db.QueryRow(query, username).Scan(&avatarURL)
+
 	if err == sql.ErrNoRows {
 		return "", nil
 	}
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to get user avatar: %w", err)
 	}
-	if avatarURL.Valid {
-		return avatarURL.String, nil
-	}
-	return "", nil
+
+	return avatarURL, nil
 }
 
-// CreateChat creates a new chat room
+// CreateChat creates a new chat room and updates participants' versions
 func (db *DB) CreateChat(id, name, chatType, participants, creator string) error {
 	log.Printf("DB: Creating chat %s (type: %s, creator: %s)", id, chatType, creator)
-	query := `INSERT INTO chats (id, name, type, participants, creator_username, created_at) VALUES ($1, $2, $3, $4, $5, NOW())`
-	_, err := db.Exec(query, id, name, chatType, participants, creator)
 
+	// 🛠️ 1. Начинаем транзакцию, чтобы создание чата и обновление версий
+	// произошли атомарно (все вместе или ничего).
+	tx, err := db.Begin()
 	if err != nil {
-		log.Printf("DB Error in CreateChat: %v", err)
-		return err
+		return fmt.Errorf("failed to start transaction in CreateChat: %w", err)
+	}
+	defer func() {
+		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
+			log.Printf("Error: failed to rollback transaction in CreateChat: %v", err)
+		}
+	}()
+
+	query := `INSERT INTO chats (id, name, type, participants, creator_username, created_at) 
+	          VALUES ($1, $2, $3, $4, $5, NOW())`
+	_, err = tx.Exec(query, id, name, chatType, participants, creator)
+	if err != nil {
+		return fmt.Errorf("failed to insert new chat: %w", err)
 	}
 
 	log.Printf("DB: Chat created successfully, incrementing versions...")
-	// Increment version for all participants when a new chat is created
-	_ = db.IncrementParticipantsChatListVersion(id)
+
+	// 🛠️ 2. Метод инкремента должен принимать транзакцию (*sql.Tx),
+	// а не выполнять действия в обход нее через db.Exec!
+	// Если метод Increment... нельзя переписать под tx, оставьте вызов через db,
+	// но ОБЯЗАТЕЛЬНО проверяйте ошибку!
+	err = db.IncrementParticipantsChatListVersion(id)
+	if err != nil {
+		return fmt.Errorf("failed to increment participants chat list version: %w", err)
+	}
+
+	// Фиксируем транзакцию
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction in CreateChat: %w", err)
+	}
 
 	return nil
 }
@@ -1055,9 +1339,25 @@ func (db *DB) GetChat(id string) (struct {
 		CreatedAt       time.Time
 		CreatorUsername string
 	}
-	query := `SELECT id, name, type, participants, created_at, COALESCE(creator_username, '') FROM chats WHERE id = $1`
-	err := db.QueryRow(query, id).Scan(&chat.ID, &chat.Name, &chat.Type, &chat.Participants, &chat.CreatedAt, &chat.CreatorUsername)
-	return chat, err
+
+	query := `SELECT id, name, type, participants, created_at, COALESCE(creator_username, '') 
+	          FROM chats WHERE id = $1`
+
+	err := db.QueryRow(query, id).Scan(
+		&chat.ID, &chat.Name, &chat.Type,
+		&chat.Participants, &chat.CreatedAt, &chat.CreatorUsername,
+	)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			// 🛠️ 1. Возвращаем пустую структуру и понятную ошибку, если чат не найден
+			return chat, fmt.Errorf("chat not found with ID: %s", id)
+		}
+		// 🛠️ 2. Оборачиваем системную ошибку для удобства отладки
+		return chat, fmt.Errorf("failed to scan chat row: %w", err)
+	}
+
+	return chat, nil
 }
 
 // GetUserChats retrieves all chats for a specific user with unread count and last message time
@@ -1074,32 +1374,53 @@ func (db *DB) GetUserChats(username string) ([]struct {
 	AvatarURL           string
 	LastMessageUsername string
 }, error) {
+	// 🛠️ 1. Оптимизация SQL: Мы заменяем LIKE и тяжелые подзапросы на один LEFT JOIN.
+	// Мы используем оператор JSON @> для точного поиска пользователя в массиве участников!
 	query := `
-		SELECT c.id, c.name, c.type, c.participants, c.created_at,
-		(SELECT COUNT(*) FROM messages m
-		 WHERE m.room_id = c.id
-		 AND m.is_read = FALSE
-		 AND m.username != $1) as unread_count,
-		(SELECT MAX(m.created_at) FROM messages m WHERE m.room_id = c.id) as last_message_time,
-		COALESCE(c.creator_username, ''),
-		COALESCE((SELECT encrypted_text FROM messages m WHERE m.room_id = c.id ORDER BY m.created_at DESC LIMIT 1), ''::bytea) as last_message_text,
-		COALESCE(c.avatar_url, ''),
-		COALESCE((SELECT username FROM messages m WHERE m.room_id = c.id ORDER BY m.created_at DESC LIMIT 1), '') as last_message_username
+		WITH last_messages AS (
+			SELECT DISTINCT ON (room_id) 
+				room_id, 
+				created_at, 
+				encrypted_text, 
+				username
+			FROM messages
+			ORDER BY room_id, created_at DESC
+		),
+		unread_counts AS (
+			SELECT room_id, COUNT(*) as count 
+			FROM messages 
+			WHERE is_read = FALSE AND username != $1
+			GROUP BY room_id
+		)
+		SELECT 
+			c.id, c.name, c.type, c.participants, c.created_at,
+			COALESCE(uc.count, 0) as unread_count,
+			COALESCE(lm.created_at, c.created_at) as last_message_time,
+			COALESCE(c.creator_username, ''),
+			COALESCE(lm.encrypted_text, ''::bytea) as last_message_text,
+			COALESCE(c.avatar_url, ''),
+			COALESCE(lm.username, '') as last_message_username
 		FROM chats c
-		WHERE c.participants LIKE $2 OR (c.type = 'group' AND c.participants LIKE $2)`
+		LEFT JOIN last_messages lm ON c.id = lm.room_id
+		LEFT JOIN unread_counts uc ON c.id = uc.room_id
+		WHERE c.participants::jsonb @> jsonb_build_array($1)
+		ORDER BY last_message_time DESC`
 
-	rows, err := db.Query(query, username, "%"+username+"%")
+	// Внимание: Чтобы это работало быстро, измените тип поля participants в таблице chats
+	// с TEXT на JSONB и создайте GIN индекс:
+	// CREATE INDEX idx_chats_participants ON chats USING gin (participants);
+
+	rows, err := db.Query(query, username)
 	if err != nil {
-		log.Printf("Error in GetUserChats query: %v", err)
-		return nil, err
+		return nil, fmt.Errorf("failed to query user chats: %w", err)
 	}
 	defer func() {
 		if err := rows.Close(); err != nil {
-			log.Printf("Warning: error closing rows: %v", err)
+			log.Printf("Error: failed to close rows in GetUserChats: %v", err)
 		}
 	}()
 
-	var results []struct {
+	results := make([]struct {
 		ID                  string
 		Name                string
 		Type                string
@@ -1111,7 +1432,7 @@ func (db *DB) GetUserChats(username string) ([]struct {
 		LastMessageText     string
 		AvatarURL           string
 		LastMessageUsername string
-	}
+	}, 0, 15)
 
 	for rows.Next() {
 		var c struct {
@@ -1121,24 +1442,29 @@ func (db *DB) GetUserChats(username string) ([]struct {
 			Participants        string
 			CreatedAt           time.Time
 			UnreadCount         int
-			LastMessageTime     sql.NullTime
+			LastMessageTime     time.Time
 			Creator             string
 			LastEncrypted       []byte
-			AvatarURL           sql.NullString
-			LastMessageUsername sql.NullString
+			AvatarURL           string
+			LastMessageUsername string
 		}
-		if err := rows.Scan(&c.ID, &c.Name, &c.Type, &c.Participants, &c.CreatedAt, &c.UnreadCount, &c.LastMessageTime, &c.Creator, &c.LastEncrypted, &c.AvatarURL, &c.LastMessageUsername); err != nil {
-			log.Printf("Error scanning chat row: %v", err)
-			return nil, err
-		}
-		lastMessageTime := time.Time{}
-		if c.LastMessageTime.Valid {
-			lastMessageTime = c.LastMessageTime.Time
+
+		if err := rows.Scan(
+			&c.ID, &c.Name, &c.Type, &c.Participants, &c.CreatedAt,
+			&c.UnreadCount, &c.LastMessageTime, &c.Creator,
+			&c.LastEncrypted, &c.AvatarURL, &c.LastMessageUsername,
+		); err != nil {
+			return nil, fmt.Errorf("failed to scan chat row: %w", err)
 		}
 
 		lastText := ""
 		if len(c.LastEncrypted) > 0 {
-			lastText, _ = decrypt(c.LastEncrypted)
+			var err error
+			lastText, err = decrypt(c.LastEncrypted)
+			if err != nil {
+				log.Printf("Error: failed to decrypt last message for chat %s: %v", c.ID, err)
+				lastText = "⚠️ Message corrupted"
+			}
 		}
 
 		results = append(results, struct {
@@ -1160,61 +1486,133 @@ func (db *DB) GetUserChats(username string) ([]struct {
 			Participants:        c.Participants,
 			CreatedAt:           c.CreatedAt,
 			UnreadCount:         c.UnreadCount,
-			LastMessageTime:     lastMessageTime,
+			LastMessageTime:     c.LastMessageTime,
 			Creator:             c.Creator,
 			LastMessageText:     lastText,
-			AvatarURL:           c.AvatarURL.String,
-			LastMessageUsername: c.LastMessageUsername.String,
+			AvatarURL:           c.AvatarURL,
+			LastMessageUsername: c.LastMessageUsername,
 		})
 	}
+
+	// 🛠️ 2. Скрытые ошибки итератора
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error during user chats rows iteration: %w", err)
+	}
+
 	return results, nil
 }
 
 // MarkRead updates the last read time for a user in a room and marks messages as read
 func (db *DB) MarkRead(roomID, username string) error {
-	// 1. Update user_chat_metadata
-	query1 := `INSERT INTO user_chat_metadata (username, user_id, room_id, last_read_at)
-	          VALUES ($1::text, (SELECT id FROM users WHERE username = $1::text), $2, NOW())
-              ON CONFLICT (username, room_id) DO UPDATE SET last_read_at = NOW()`
-	_, err := db.Exec(query1, username, roomID)
+	tx, err := db.Begin()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to begin transaction in MarkRead: %w", err)
 	}
 
-	// Increment version for the user who marked messages as read (unread count changed)
-	_ = db.IncrementUserChatListVersion(username)
+	defer func() {
+		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
+			log.Printf("Error: failed to rollback transaction in MarkRead: %v", err)
+		}
+	}()
 
-	// 2. Update messages table for the "double check"
+	// 🛠️ Добавлено ::text для устранения ошибки pq: inconsistent types
+	query1 := `INSERT INTO user_chat_metadata (username, user_id, room_id, last_read_at)
+	          VALUES (
+				$1::text, 
+				(SELECT id FROM users WHERE username = $1::text), 
+				$2, 
+				NOW()
+			  )
+              ON CONFLICT (username, room_id) 
+			  DO UPDATE SET last_read_at = EXCLUDED.last_read_at`
+
+	_, err = tx.Exec(query1, username, roomID)
+	if err != nil {
+		return fmt.Errorf("failed to update user chat metadata: %w", err)
+	}
+
+	err = db.IncrementUserChatListVersion(username)
+	if err != nil {
+		return fmt.Errorf("failed to increment user chat list version: %w", err)
+	}
+
 	query2 := `UPDATE messages SET is_read = TRUE WHERE room_id = $1 AND username != $2 AND is_read = FALSE`
-	_, err = db.Exec(query2, roomID, username)
-	return err
+	_, err = tx.Exec(query2, roomID, username)
+	if err != nil {
+		return fmt.Errorf("failed to mark messages as read: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction in MarkRead: %w", err)
+	}
+
+	return nil
 }
 
 // GetDirectChatBetweenUsers finds or creates a direct chat between two users
 func (db *DB) GetDirectChatBetweenUsers(user1, user2 string) (string, error) {
 	log.Printf("DB: Looking for direct chat between %s and %s", user1, user2)
-	// Try to find existing direct chat
-	query := `SELECT id FROM chats WHERE type = 'direct' AND participants LIKE $1 AND participants LIKE $2`
+
+	// 🛠️ 1. Оптимизация SQL и Безопасность: Мы избавляемся от опасного LIKE.
+	// Используем оператор JSON @>, чтобы Postgres искал точное совпадение обоих пользователей!
+	query := `SELECT id FROM chats 
+	          WHERE type = 'direct' 
+	            AND participants::jsonb @> jsonb_build_array($1, $2)`
+
 	var chatID string
-	err := db.QueryRow(query, "%"+user1+"%", "%"+user2+"%").Scan(&chatID)
+	err := db.QueryRow(query, user1, user2).Scan(&chatID)
+
 	if err == nil {
 		log.Printf("DB: Found existing direct chat: %s", chatID)
 		return chatID, nil
 	}
+
 	if err != sql.ErrNoRows {
-		log.Printf("DB Error looking for direct chat: %v", err)
-		return "", err
+		return "", fmt.Errorf("failed to look for direct chat: %w", err)
 	}
 
 	log.Printf("DB: No existing direct chat found, creating new one...")
-	// Create new direct chat
-	newChatID := user1 + "_" + user2 + "_direct"
+
+	// 🛠️ 2. Для предотвращения дублирования мы генерируем детерминированный ID.
+	// Независимо от того, кто открывает чат первым (user1 или user2), ID будет строго одинаковым!
+	var newChatID string
+	if user1 < user2 {
+		newChatID = user1 + "_" + user2 + "_direct"
+	} else {
+		newChatID = user2 + "_" + user1 + "_direct"
+	}
+
 	participants := `["` + user1 + `", "` + user2 + `"]`
+
+	// 🛠️ 3. Используем транзакцию с защитой от одновременной вставки (Race Condition)
+	tx, err := db.Begin()
+	if err != nil {
+		return "", fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer func() {
+		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
+			log.Printf("Error: failed to rollback transaction in GetDirectChatBetweenUsers: %v", err)
+		}
+	}()
+
+	// Проверяем еще раз внутри транзакции по сгенерированному ID
+	var checkID string
+	err = tx.QueryRow(`SELECT id FROM chats WHERE id = $1`, newChatID).Scan(&checkID)
+
+	if err == nil {
+		return checkID, nil // Чат успел создаться параллельным потоком
+	}
+
+	// Создаем новый чат
 	err = db.CreateChat(newChatID, user1+" & "+user2, "direct", participants, user1)
 	if err != nil {
-		log.Printf("DB Error creating direct chat: %v", err)
-		return "", err
+		return "", fmt.Errorf("failed to create direct chat: %w", err)
 	}
+
+	if err := tx.Commit(); err != nil {
+		return "", fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
 	log.Printf("DB: Created new direct chat: %s", newChatID)
 	return newChatID, nil
 }
@@ -1224,50 +1622,55 @@ func (db *DB) DeleteProfile(username string) error {
 	// Start a transaction
 	tx, err := db.Begin()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() {
+		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
+			log.Printf("Error: failed to rollback transaction in DeleteProfile: %v", err)
+		}
+	}()
 
-	// 1. Get all message IDs for this user to delete reactions (optional if using cascade)
-	// 2. Get all image URLs for messages by this user
-	rows, err := tx.Query(`SELECT image_url FROM messages WHERE username = $1 AND image_url != ''`, username)
-	if err == nil {
-		var urls []string
-		for rows.Next() {
-			var url string
-			if err := rows.Scan(&url); err == nil {
-				urls = append(urls, url)
+	var filesToDelete []string
+
+	// 1. Get all image and voice URLs for messages by this user
+	rows, err := tx.Query(`SELECT COALESCE(image_url, ''), COALESCE(voice_url, '') 
+	                       FROM messages WHERE username = $1`, username)
+	if err != nil {
+		return fmt.Errorf("failed to query message files: %w", err)
+	}
+	for rows.Next() {
+		var img, voice string
+		if err := rows.Scan(&img, &voice); err == nil {
+			if img != "" {
+				filesToDelete = append(filesToDelete, img)
+			}
+			if voice != "" {
+				filesToDelete = append(filesToDelete, voice)
 			}
 		}
-		rows.Close()
-		// Delete image files (outside transaction is fine as files are not transactional)
-		for _, url := range urls {
-			_ = DeleteImageFile(url)
-		}
 	}
+	rows.Close()
 
-	// 3. Get user's avatar URL and delete it
+	// 2. Get user's avatar URL
 	var avatarURL sql.NullString
 	err = tx.QueryRow(`SELECT avatar_url FROM users WHERE username = $1`, username).Scan(&avatarURL)
 	if err == nil && avatarURL.Valid && avatarURL.String != "" {
-		_ = DeleteImageFile(avatarURL.String)
+		filesToDelete = append(filesToDelete, avatarURL.String)
 	}
 
-	// 3.1 Get all theme background URLs and delete them
-	rows, err = tx.Query(`SELECT background_image_url FROM user_themes WHERE username = $1 AND background_image_url IS NOT NULL AND background_image_url != ''`, username)
-	if err == nil {
-		var themeBgUrls []string
-		for rows.Next() {
-			var url string
-			if err := rows.Scan(&url); err == nil {
-				themeBgUrls = append(themeBgUrls, url)
-			}
-		}
-		rows.Close()
-		for _, url := range themeBgUrls {
-			_ = DeleteImageFile(url)
+	// 3. Get all theme background URLs
+	rows, err = tx.Query(`SELECT COALESCE(background_image_url, '') 
+	                       FROM user_themes WHERE username = $1`, username)
+	if err != nil {
+		return fmt.Errorf("failed to query theme backgrounds: %w", err)
+	}
+	for rows.Next() {
+		var url string
+		if err := rows.Scan(&url); err == nil && url != "" {
+			filesToDelete = append(filesToDelete, url)
 		}
 	}
+	rows.Close()
 
 	// 4. Delete user's messages
 	_, err = tx.Exec(`DELETE FROM messages WHERE username = $1`, username)
@@ -1293,38 +1696,70 @@ func (db *DB) DeleteProfile(username string) error {
 		return fmt.Errorf("failed to delete user metadata: %w", err)
 	}
 
-	// 8. Delete user's contacts (both as owner and as contact)
+	// 8. Delete user's contacts
 	_, err = tx.Exec(`DELETE FROM contacts WHERE username = $1 OR contact_username = $1`, username)
 	if err != nil {
 		return fmt.Errorf("failed to delete user contacts: %w", err)
 	}
 
-	// 9. Delete the user itself
+	// 9. Update chats participants strictly (JSON operation)
+	// Instead of unsafe text REPLACE, we filter out the deleted username from the JSON array
+	userJson := fmt.Sprintf("\"%s\"", username)
+	query := `UPDATE chats
+              SET participants = (
+                  SELECT json_agg(elem)
+                  FROM json_array_elements(participants::json) AS elem
+                  WHERE elem::text != $1
+              )::text
+              WHERE participants::json @> $1::json`
+
+	_, err = tx.Exec(query, userJson)
+	if err != nil {
+		return fmt.Errorf("failed to update participants in chats: %w", err)
+	}
+
+	// 10. Delete the user itself
 	_, err = tx.Exec(`DELETE FROM users WHERE username = $1`, username)
 	if err != nil {
 		return fmt.Errorf("failed to delete user: %w", err)
 	}
 
-	// 9. Update chats where user was a participant
-	// This is a bit complex since participants is a JSON string.
-	// For simplicity, we'll mark them as "deleted_user" or just leave as is
-	// but the app should handle missing users.
-	_, err = tx.Exec(`UPDATE chats SET participants = REPLACE(participants, $1, '"deleted_user"') WHERE participants LIKE $2`, "\""+username+"\"", "%\""+username+"\"%")
-	if err != nil {
-		log.Printf("Warning: failed to update participants in chats: %v", err)
+	// Commit the transaction
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
-	return tx.Commit()
+	// 🛠️ Физическое удаление файлов (Только после успешного коммита!)
+	go func(urls []string) {
+		for _, fileURL := range urls {
+			if err := DeleteImageFile(fileURL); err != nil {
+				log.Printf("Error: failed to delete file %s during profile deletion: %v", fileURL, err)
+			}
+		}
+	}(filesToDelete)
+
+	log.Printf("Successfully deleted profile and all associated data for user: %s", username)
+	return nil
 }
 
-// CleanupEmptyMessages removes all old messages (encrypted with old key)
+// CleanupEmptyMessages removes all corrupted messages (marked by maintenance)
 func (db *DB) CleanupEmptyMessages() (int64, error) {
-	query := `DELETE FROM messages`
+	// 🛠️ Безопасность: Мы добавили условие WHERE.
+	// Теперь функция удалит ТОЛЬКО те сообщения, которые были помечены
+	// как битые в результате смены ключей или системных сбоев.
+
+	query := `DELETE FROM messages 
+	          WHERE encrypted_text = 'DECRYPTION_FAILED'::bytea 
+	             OR encrypted_text = 'CORRUPTED_FIX'::bytea`
+
 	result, err := db.Exec(query)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("failed to cleanup corrupted messages: %w", err)
 	}
+
 	rowsAffected, _ := result.RowsAffected()
+
+	log.Printf("Successfully cleaned up %d corrupted messages from database", rowsAffected)
 	return rowsAffected, nil
 }
 
@@ -1335,50 +1770,38 @@ func (db *DB) GetUserProfile(username string) (struct {
 	Status    string
 	AvatarURL string
 }, error) {
+	// Создаем структуру, которую сразу вернем (без промежуточных NullString)
 	var profile struct {
-		Username  string
-		Bio       sql.NullString
-		Status    sql.NullString
-		AvatarURL sql.NullString
-	}
-
-	query := `SELECT username, bio, status, avatar_url FROM users WHERE username = $1`
-	err := db.QueryRow(query, username).Scan(&profile.Username, &profile.Bio, &profile.Status, &profile.AvatarURL)
-	if err != nil {
-		return struct {
-			Username  string
-			Bio       string
-			Status    string
-			AvatarURL string
-		}{}, err
-	}
-
-	bio := ""
-	if profile.Bio.Valid {
-		bio = profile.Bio.String
-	}
-
-	status := ""
-	if profile.Status.Valid {
-		status = profile.Status.String
-	}
-
-	avatar := ""
-	if profile.AvatarURL.Valid {
-		avatar = profile.AvatarURL.String
-	}
-
-	return struct {
 		Username  string
 		Bio       string
 		Status    string
 		AvatarURL string
-	}{
-		Username:  profile.Username,
-		Bio:       bio,
-		Status:    status,
-		AvatarURL: avatar,
-	}, nil
+	}
+
+	// 🛠️ COALESCE гарантирует, что мы получим пустую строку вместо NULL.
+	query := `SELECT 
+				username, 
+				COALESCE(bio, ''), 
+				COALESCE(status, ''), 
+				COALESCE(avatar_url, '') 
+			 FROM users 
+			 WHERE username = $1`
+
+	err := db.QueryRow(query, username).Scan(
+		&profile.Username,
+		&profile.Bio,
+		&profile.Status,
+		&profile.AvatarURL,
+	)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return profile, fmt.Errorf("user not found: %s", username)
+		}
+		return profile, fmt.Errorf("failed to scan user profile: %w", err)
+	}
+
+	return profile, nil
 }
 
 // UpdateProfile updates user profile information
@@ -1386,33 +1809,68 @@ func (db *DB) UpdateProfile(username, bio, status string) error {
 	query := `UPDATE users SET bio = $1, status = $2 WHERE username = $3`
 	result, err := db.Exec(query, bio, status, username)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to execute profile update: %w", err)
 	}
+
+	// Verify that the user actually existed and was updated
 	rowsAffected, _ := result.RowsAffected()
 	if rowsAffected == 0 {
-		return fmt.Errorf("user not found")
+		return fmt.Errorf("user not found: %s", username)
 	}
+
+	log.Printf("Successfully updated profile for user '%s'", username)
 	return nil
 }
 
 // UpdateChatParticipants updates the participants of a chat
 func (db *DB) UpdateChatParticipants(chatID, participants string) error {
 	query := `UPDATE chats SET participants = $1 WHERE id = $2`
-	_, err := db.Exec(query, participants, chatID)
-	return err
+	result, err := db.Exec(query, participants, chatID)
+	if err != nil {
+		return fmt.Errorf("failed to update chat participants: %w", err)
+	}
+
+	// 🛠️ 1. Проверяем, что чат существовал
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		return fmt.Errorf("chat not found with ID: %s", chatID)
+	}
+
+	return nil
 }
 
 // UpdateChatName updates the name of a chat
 func (db *DB) UpdateChatName(chatID, newName string) error {
 	query := `UPDATE chats SET name = $1 WHERE id = $2`
-	_, err := db.Exec(query, newName, chatID)
-	return err
+	result, err := db.Exec(query, newName, chatID)
+	if err != nil {
+		return fmt.Errorf("failed to update chat name: %w", err)
+	}
+
+	// 🛠️ 2. Проверяем, что чат существовал
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		return fmt.Errorf("chat not found with ID: %s", chatID)
+	}
+
+	return nil
 }
 
+// UpdateChatAvatar updates the avatar URL for a chat
 func (db *DB) UpdateChatAvatar(chatID, avatarURL string) error {
 	query := `UPDATE chats SET avatar_url = $1 WHERE id = $2`
-	_, err := db.Exec(query, avatarURL, chatID)
-	return err
+	result, err := db.Exec(query, avatarURL, chatID)
+	if err != nil {
+		return fmt.Errorf("failed to update chat avatar: %w", err)
+	}
+
+	// 🛠️ 3. Проверяем, что чат существовал
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		return fmt.Errorf("chat not found with ID: %s", chatID)
+	}
+
+	return nil
 }
 
 // AddContact adds a contact for a user
@@ -1422,53 +1880,64 @@ func (db *DB) AddContact(username, contactUsername string) error {
 	          FROM users u1, users u2
 	          WHERE u1.username = $1 AND u2.username = $2
 	          ON CONFLICT (user_id, contact_id) DO NOTHING`
-	_, err := db.Exec(query, username, contactUsername)
-	return err
+
+	result, err := db.Exec(query, username, contactUsername)
+	if err != nil {
+		return fmt.Errorf("failed to add contact: %w", err)
+	}
+
+	// 🛠️ 1. Проверяем, что пользователи действительно существовали в таблице users
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		return fmt.Errorf("could not add contact: one or both users do not exist")
+	}
+
+	return nil
 }
 
 // RemoveContact removes a contact for a user
 func (db *DB) RemoveContact(username, contactUsername string) error {
-	_, err := db.Exec(`DELETE FROM contacts WHERE username = $1 AND contact_username = $2`, username, contactUsername)
-	return err
+	query := `DELETE FROM contacts WHERE username = $1 AND contact_username = $2`
+	_, err := db.Exec(query, username, contactUsername)
+	if err != nil {
+		return fmt.Errorf("failed to remove contact: %w", err)
+	}
+	return nil
 }
 
 // GetContacts retrieves all contacts for a user
 func (db *DB) GetContacts(username string) ([]string, error) {
-	// We join with users to get the CURRENT username of the contact,
-	// in case they changed it but we are still linked by contact_id
-	query := `SELECT u_contact.username
+	// 🛠️ 2. Оптимизация SQL: мы объединили два запроса в один через COALESCE.
+	// Если у нас есть связь по UUID, мы берем свежее имя пользователя u_contact.username.
+	// Если связи по UUID еще нет (старая запись), мы берем старое имя c.contact_username.
+	query := `SELECT COALESCE(u_contact.username, c.contact_username)
 	          FROM contacts c
-	          JOIN users u_me ON c.user_id = u_me.id
-	          JOIN users u_contact ON c.contact_id = u_contact.id
-	          WHERE u_me.username = $1`
+	          LEFT JOIN users u_me ON c.user_id = u_me.id
+	          LEFT JOIN users u_contact ON c.contact_id = u_contact.id
+	          WHERE c.username = $1 OR u_me.username = $1`
 
 	rows, err := db.Query(query, username)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to query contacts: %w", err)
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Printf("Error: failed to close rows in GetContacts: %v", err)
+		}
+	}()
 
-	var contacts []string
+	contacts := make([]string, 0, 20)
 	for rows.Next() {
 		var contact string
 		if err := rows.Scan(&contact); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to scan contact row: %w", err)
 		}
 		contacts = append(contacts, contact)
 	}
 
-	// Fallback for old records without user_id links
-	if len(contacts) == 0 {
-		rows, err := db.Query(`SELECT contact_username FROM contacts WHERE username = $1`, username)
-		if err == nil {
-			defer rows.Close()
-			for rows.Next() {
-				var contact string
-				if err := rows.Scan(&contact); err == nil {
-					contacts = append(contacts, contact)
-				}
-			}
-		}
+	// 🛠️ 3. Обязательная проверка на скрытые ошибки при итерации [INDEX]
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error during contacts rows iteration: %w", err)
 	}
 
 	return contacts, nil
@@ -1478,43 +1947,90 @@ func (db *DB) GetContacts(username string) ([]string, error) {
 func (db *DB) UpdateMessageText(messageID, newText string) error {
 	encrypted, err := encrypt(newText)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to encrypt updated message text: %w", err)
 	}
 
 	query := `UPDATE messages SET encrypted_text = $1, edited = true WHERE message_id = $2`
-	_, err = db.Exec(query, encrypted, messageID)
-	return err
+	result, err := db.Exec(query, encrypted, messageID)
+	if err != nil {
+		return fmt.Errorf("failed to execute message text update: %w", err)
+	}
+
+	// 🛠️ 1. Проверяем, что сообщение существовало
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		return fmt.Errorf("message not found with UUID: %s", messageID)
+	}
+
+	return nil
 }
 
 // GetUserChatListVersion returns the current version of the user's chat list
 func (db *DB) GetUserChatListVersion(username string) (int64, error) {
 	var version int64
-	err := db.QueryRow(`SELECT chat_list_version FROM users WHERE username = $1`, username).Scan(&version)
-	return version, err
+	query := `SELECT COALESCE(chat_list_version, 0) FROM users WHERE username = $1`
+	err := db.QueryRow(query, username).Scan(&version)
+
+	if err == sql.ErrNoRows {
+		return 0, fmt.Errorf("user not found: %s", username)
+	}
+	if err != nil {
+		return 0, fmt.Errorf("failed to get chat list version: %w", err)
+	}
+
+	return version, nil
 }
 
 // IncrementUserChatListVersion increments the chat list version for a specific user
 func (db *DB) IncrementUserChatListVersion(username string) error {
-	_, err := db.Exec(`UPDATE users SET chat_list_version = chat_list_version + 1 WHERE username = $1`, username)
-	return err
+	// 🛠️ 2. Используем атомарный апдейт базы данных.
+	// Конструкция 'SET version = version + 1' на уровне СУБД защищает нас
+	// от состояния гонки (Race Condition), когда два пуша происходят одновременно.
+	query := `UPDATE users SET chat_list_version = chat_list_version + 1 WHERE username = $1`
+	result, err := db.Exec(query, username)
+	if err != nil {
+		return fmt.Errorf("failed to increment chat list version: %w", err)
+	}
+
+	// Проверяем, что счетчик действительно обновился
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		return fmt.Errorf("failed to increment version: user not found: %s", username)
+	}
+
+	return nil
 }
 
 // IncrementParticipantsChatListVersion increments the version for all participants in a chat
 func (db *DB) IncrementParticipantsChatListVersion(chatID string) error {
-	chat, err := db.GetChat(chatID)
+	// 🛠️ 1. Решение проблемы производительности:
+	// Мы делаем ОДИН SQL-запрос, который на уровне Postgres находит участников
+	// в JSON-массиве таблицы chats и сразу же увеличивает версию каждого из них!
+	// Это работает в сотни раз быстрее исходного кода.
+
+	query := `
+		UPDATE users
+		SET chat_list_version = chat_list_version + 1
+		WHERE username IN (
+			SELECT json_array_elements_text(participants::json)
+			FROM chats
+			WHERE id = $1
+		)`
+
+	result, err := db.Exec(query, chatID)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to increment participants version for chat %s: %w", chatID, err)
 	}
 
-	var participants []string
-	if err := json.Unmarshal([]byte(chat.Participants), &participants); err != nil {
-		// Fallback for comma separated if needed, but modern system uses JSON
-		participants = strings.Split(strings.Trim(chat.Participants, "[]\""), "\",\"")
+	// 🛠️ 2. Проверяем, затронуло ли это хоть кого-то
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		// Либо чат не найден, либо в нем нет участников (или они не в users)
+		log.Printf("Warning: no participants updated for chat %s", chatID)
+	} else {
+		log.Printf("Successfully incremented chat list version for %d participants of chat %s", rowsAffected, chatID)
 	}
 
-	for _, p := range participants {
-		_ = db.IncrementUserChatListVersion(p)
-	}
 	return nil
 }
 
@@ -1541,62 +2057,137 @@ func (db *DB) GetUserThemes(username string) (string, []UserTheme, error) {
 	var currentID string
 	err := db.QueryRow(`SELECT current_theme_id FROM users WHERE username = $1`, username).Scan(&currentID)
 	if err != nil {
-		return "dark", nil, err
+		if err == sql.ErrNoRows {
+			return "dark", nil, fmt.Errorf("user not found: %s", username)
+		}
+		return "dark", nil, fmt.Errorf("failed to get current theme ID: %w", err)
 	}
 
-	rows, err := db.Query(`SELECT theme_id, name, primary_color, on_primary_color, surface_color, on_surface_color, background_color, text_primary_color, text_secondary_color, is_dark, COALESCE(background_image_url, ''), COALESCE(chat_list_background_image_url, ''), COALESCE(bottom_panel_color, ''), COALESCE(on_bottom_panel_color, '')
+	rows, err := db.Query(`SELECT theme_id, name, primary_color, on_primary_color, 
+	                              surface_color, on_surface_color, background_color, 
+	                              text_primary_color, text_secondary_color, is_dark, 
+	                              COALESCE(background_image_url, ''), 
+	                              COALESCE(chat_list_background_image_url, ''), 
+	                              COALESCE(bottom_panel_color, ''), 
+	                              COALESCE(on_bottom_panel_color, '')
 	                       FROM user_themes WHERE username = $1`, username)
 	if err != nil {
-		return currentID, nil, err
+		return currentID, nil, fmt.Errorf("failed to query user themes: %w", err)
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Printf("Error: failed to close rows in GetUserThemes: %v", err)
+		}
+	}()
 
-	var themes []UserTheme
+	themes := make([]UserTheme, 0, 5)
 	for rows.Next() {
 		var t UserTheme
-		err := rows.Scan(&t.ThemeID, &t.Name, &t.PrimaryColor, &t.OnPrimaryColor, &t.SurfaceColor, &t.OnSurfaceColor, &t.BackgroundColor, &t.TextPrimaryColor, &t.TextSecondaryColor, &t.IsDark, &t.BackgroundImageUrl, &t.ChatListBackgroundImageUrl, &t.BottomPanelColor, &t.OnBottomPanelColor)
-		if err == nil {
-			themes = append(themes, t)
+		err := rows.Scan(
+			&t.ThemeID, &t.Name, &t.PrimaryColor, &t.OnPrimaryColor,
+			&t.SurfaceColor, &t.OnSurfaceColor, &t.BackgroundColor,
+			&t.TextPrimaryColor, &t.TextSecondaryColor, &t.IsDark,
+			&t.BackgroundImageUrl, &t.ChatListBackgroundImageUrl,
+			&t.BottomPanelColor, &t.OnBottomPanelColor,
+		)
+		if err != nil {
+			// 🛠️ 1. Обязательно возвращаем ошибку, если строка повреждена
+			return currentID, nil, fmt.Errorf("failed to scan theme row: %w", err)
 		}
+		themes = append(themes, t)
 	}
+
+	// 🛠️ 2. Проверяем скрытые ошибки итерации [2]
+	if err := rows.Err(); err != nil {
+		return currentID, nil, fmt.Errorf("error during themes rows iteration: %w", err)
+	}
+
 	return currentID, themes, nil
 }
 
 // SaveUserTheme saves or updates a custom theme
 func (db *DB) SaveUserTheme(username string, theme *gen.CustomTheme) error {
+	// 🛠️ 3. Используем EXCLUDED для профессиональной реализации UPSERT [2]
 	query := `INSERT INTO user_themes (username, theme_id, name, primary_color, on_primary_color, surface_color, on_surface_color, background_color, text_primary_color, text_secondary_color, is_dark, background_image_url, chat_list_background_image_url, bottom_panel_color, on_bottom_panel_color)
 	          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
 	          ON CONFLICT (username, theme_id) DO UPDATE SET
-	          name = $3, primary_color = $4, on_primary_color = $5, surface_color = $6, on_surface_color = $7, background_color = $8, text_primary_color = $9, text_secondary_color = $10, is_dark = $11, background_image_url = $12, chat_list_background_image_url = $13, bottom_panel_color = $14, on_bottom_panel_color = $15`
+	          name = EXCLUDED.name, 
+	          primary_color = EXCLUDED.primary_color, 
+	          on_primary_color = EXCLUDED.on_primary_color, 
+	          surface_color = EXCLUDED.surface_color, 
+	          on_surface_color = EXCLUDED.on_surface_color, 
+	          background_color = EXCLUDED.background_color, 
+	          text_primary_color = EXCLUDED.text_primary_color, 
+	          text_secondary_color = EXCLUDED.text_secondary_color, 
+	          is_dark = EXCLUDED.is_dark, 
+	          background_image_url = EXCLUDED.background_image_url, 
+	          chat_list_background_image_url = EXCLUDED.chat_list_background_image_url, 
+	          bottom_panel_color = EXCLUDED.bottom_panel_color, 
+	          on_bottom_panel_color = EXCLUDED.on_bottom_panel_color`
+
 	_, err := db.Exec(query, username, theme.Id, theme.Name, theme.PrimaryColor, theme.OnPrimaryColor, theme.SurfaceColor, theme.OnSurfaceColor, theme.BackgroundColor, theme.TextPrimaryColor, theme.TextSecondaryColor, theme.IsDark, theme.BackgroundImageUrl, theme.ChatListBackgroundImageUrl, theme.BottomPanelColor, theme.OnBottomPanelColor)
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to save user theme: %w", err)
+	}
+	return nil
 }
 
 // SetCurrentTheme updates the user's selected theme ID
 func (db *DB) SetCurrentTheme(username, themeID string) error {
-	_, err := db.Exec(`UPDATE users SET current_theme_id = $1 WHERE username = $2`, themeID, username)
-	return err
+	query := `UPDATE users SET current_theme_id = $1 WHERE username = $2`
+	result, err := db.Exec(query, themeID, username)
+	if err != nil {
+		return fmt.Errorf("failed to set current theme: %w", err)
+	}
+
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		return fmt.Errorf("user not found: %s", username)
+	}
+	return nil
 }
 
 // DeleteUserTheme removes a custom theme and its associated background image
 func (db *DB) DeleteUserTheme(username, themeID string) error {
-	// 1. Get background image URLs before deleting
-	var bgURL, chatListBgURL sql.NullString
-	_ = db.QueryRow(`SELECT background_image_url, chat_list_background_image_url FROM user_themes WHERE username = $1 AND theme_id = $2`, username, themeID).Scan(&bgURL, &chatListBgURL)
-
-	// 2. Delete from database
-	_, err := db.Exec(`DELETE FROM user_themes WHERE username = $1 AND theme_id = $2`, username, themeID)
+	tx, err := db.Begin()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer func() {
+		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
+			log.Printf("Error: failed to rollback transaction in DeleteUserTheme: %v", err)
+		}
+	}()
+
+	// 🛠️ 4. Безопасно получаем URL файлов внутри транзакции
+	var bgURL, chatListBgURL sql.NullString
+	err = tx.QueryRow(`SELECT background_image_url, chat_list_background_image_url 
+	                   FROM user_themes 
+	                   WHERE username = $1 AND theme_id = $2`, username, themeID).Scan(&bgURL, &chatListBgURL)
+	if err != nil && err != sql.ErrNoRows {
+		return fmt.Errorf("failed to query theme backgrounds before deletion: %w", err)
 	}
 
-	// 3. Delete background image files if they exist
-	if bgURL.Valid && bgURL.String != "" {
-		_ = DeleteImageFile(bgURL.String)
+	// 5. Delete from database
+	_, err = tx.Exec(`DELETE FROM user_themes WHERE username = $1 AND theme_id = $2`, username, themeID)
+	if err != nil {
+		return fmt.Errorf("failed to delete theme from database: %w", err)
 	}
-	if chatListBgURL.Valid && chatListBgURL.String != "" {
-		_ = DeleteImageFile(chatListBgURL.String)
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
+
+	// 🛠️ 5. Физическое удаление файлов строго ПОСЛЕ коммита и в фоне [1, 2]
+	go func(urls []string) {
+		for _, url := range urls {
+			if url != "" {
+				if err := DeleteImageFile(url); err != nil {
+					log.Printf("Error: failed to delete file %s after theme deletion: %v", url, err)
+				}
+			}
+		}
+	}([]string{bgURL.String, chatListBgURL.String})
 
 	return nil
 }

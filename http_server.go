@@ -255,13 +255,14 @@ func DeleteImageFile(imageURL string) error {
 		return nil
 	}
 
-	// URL format: http://159.195.38.145:8082/[prefix]/filename
+	// URL format: [prefix]/filename
 	parts := strings.Split(imageURL, "/")
 	if len(parts) < 2 {
 		return fmt.Errorf("invalid file URL format")
 	}
 
-	filename := parts[len(parts)-1]
+	// Безопасно забираем имя файла (избегаем инъекций путей)
+	filename := filepath.Base(parts[len(parts)-1]) // filepath.Base гарантирует извлечение ТОЛЬКО имени файла
 	prefix := parts[len(parts)-2]
 
 	var saveDir string
@@ -281,9 +282,22 @@ func DeleteImageFile(imageURL string) error {
 	}
 
 	filePath := filepath.Join(saveDir, filename)
-	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		return nil // Already deleted
+
+	// Безопасность: Проверяем, что итоговый путь действительно лежит внутри целевой папки
+	if !strings.HasPrefix(filePath, saveDir) {
+		return fmt.Errorf("security alert: attempt to delete file outside of the allowed directory")
 	}
 
-	return os.Remove(filePath)
+	// Проверяем существование файла
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		return nil // Файл уже удален
+	}
+
+	err := os.Remove(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to remove file from disk: %w", err)
+	}
+
+	log.Printf("🗑️ Successfully deleted file from disk: %s", filePath)
+	return nil
 }

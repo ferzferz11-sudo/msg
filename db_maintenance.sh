@@ -25,42 +25,31 @@ if [ -z "$DATABASE_URL" ]; then
     exit 1
 fi
 
-# Suppress locale warnings for the current session
 export LC_ALL=C
 export LANG=C
 
-echo "🔍 Analyzing and fixing database records..."
+echo "🔍 Running database maintenance tasks..."
 
 # Use psql to run maintenance queries
 psql "$DATABASE_URL" << 'SQL'
 \set ON_ERROR_STOP on
 
--- 1. Identify and fix "Encrypted Empty Strings" (length 28 in AES-GCM)
--- These cause "decrypted to empty string" warnings on the server.
--- We change them to a dummy value to trigger a decryption error instead of empty result.
--- Decryption error leads to "[Decryption Error]" text which prevents server skipping the message.
--- Client side handles this by hiding text if voice_url is present.
+-- 1. Удаление сообщений со сбитой расшифровкой (DECRYPTION_FAILED).
+-- Сюда мы вручную или пакетным апдейтом помещаем битые ID.
+\echo 'Удаление сообщений со сбитой расшифровкой (DECRYPTION_FAILED)...'
+DELETE FROM messages
+WHERE encrypted_text = 'DECRYPTION_FAILED'::bytea;
 
-UPDATE messages
-SET encrypted_text = 'FIXED_BY_MAINTENANCE'::bytea
-WHERE length(encrypted_text) = 28 AND (voice_url IS NOT NULL AND voice_url != '');
+-- 2. Очистка остаточных сильно поврежденных записей (меньше 4 байт или NULL).
+-- Помогает держать базу в консистентном состоянии, если бэкенд запишет пустую строку.
+\echo 'Очистка пустых и поврежденных записей...'
+DELETE FROM messages
+WHERE (octet_length(encrypted_text) < 4 OR encrypted_text IS NULL);
 
--- 2. General cleanup for any other potentially corrupted/empty messages
-UPDATE messages
-SET encrypted_text = 'EMPTY_FIX'::bytea
-WHERE (length(encrypted_text) < 4 OR encrypted_text IS NULL);
-
--- 3. Cleanup orphan reactions
-DELETE FROM reactions WHERE message_id NOT IN (SELECT message_id FROM messages);
-
--- 4. Cleanup orphan contacts
-DELETE FROM contacts WHERE user_id NOT IN (SELECT id FROM users) OR contact_id NOT IN (SELECT id FROM users);
-
--- 5. Targeted Vacuum
-VACUUM ANALYZE messages;
-VACUUM ANALYZE reactions;
-VACUUM ANALYZE contacts;
-VACUUM ANALYZE users;
+-- 3. Быстрый анализ базы (НЕ блокирует таблицу)
+-- Мы убрали тяжелый VACUUM, оставив только актуализацию статистики для планировщика БД.
+\echo 'Актуализация статистики базы данных...'
+ANALYZE messages;
 SQL
 
 if [ $? -eq 0 ]; then

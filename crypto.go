@@ -18,17 +18,22 @@ import (
 )
 
 // getSecretKey подгружает ключ из переменной окружения
-func getSecretKey() []byte {
+func getSecretKey() ([]byte, error) {
 	key := os.Getenv("CHAT_SECRET_KEY")
 	if len(key) != 32 {
-		// Для AES-256 ключ должен быть строго 32 байта
-		panic("Критическая ошибка: CHAT_SECRET_KEY должен быть длиной 32 символа!")
+		// Вместо паники возвращаем понятную ошибку
+		return nil, fmt.Errorf("CHAT_SECRET_KEY должен быть длиной 32 символа, получено: %d", len(key))
 	}
-	return []byte(key)
+	return []byte(key), nil
 }
 
 func encrypt(text string) ([]byte, error) {
-	key := getSecretKey()
+	// 1. Получаем ключ и проверяем, нет ли ошибки его длины
+	key, err := getSecretKey()
+	if err != nil {
+		return nil, err
+	}
+
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err
@@ -49,7 +54,25 @@ func encrypt(text string) ([]byte, error) {
 }
 
 func decrypt(ciphertext []byte) (string, error) {
-	key := getSecretKey()
+	// 1. Быстрая проверка на сервисные маркеры
+	if len(ciphertext) > 0 {
+		cipherStr := string(ciphertext)
+		switch cipherStr {
+		case "SERVICE_VOICE_MSG":
+			return "Voice message", nil
+		case "SERVICE_MEDIA_MSG":
+			return "Image", nil
+		case "FIXED_BY_MAINTENANCE", "CORRUPTED_FIX", "EMPTY_FIX":
+			return "Message", nil
+		}
+	}
+
+	// 2. Получаем ключ и проверяем ошибку
+	key, err := getSecretKey()
+	if err != nil {
+		return "", err
+	}
+
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return "", err
@@ -77,7 +100,10 @@ func decrypt(ciphertext []byte) (string, error) {
 // HashPassword хеширует пароль с использованием bcrypt
 func HashPassword(password string) (string, error) {
 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	return string(bytes), err
+	if err != nil {
+		return "", err
+	}
+	return string(bytes), nil
 }
 
 // CheckPassword проверяет пароль против хеша

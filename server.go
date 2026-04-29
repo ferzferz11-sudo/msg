@@ -24,7 +24,7 @@ import (
 	"firebase.google.com/go/v4/messaging"
 )
 
-const ServerVersion = "1.0.2.9"
+const ServerVersion = "1.0.2.10"
 
 // server implements the gRPC ChatService interface
 type server struct {
@@ -410,14 +410,22 @@ func (s *server) GetHistory(_ context.Context, req *gen.GetHistoryRequest) (*gen
 		// Расшифровываем текст из базы
 		decryptedText, err := decrypt(m.Encrypted)
 		if err != nil {
-			log.Printf("Failed to decrypt history message %s: %v", m.MessageID, err)
-			decryptedText = "[Decryption Error]"
+			msgType := "text"
+			if m.VoiceURL != "" {
+				msgType = "voice"
+			} else if m.ImageURL != "" {
+				msgType = "image"
+			}
+			log.Printf("Failed to decrypt %s message %s (User: %s, Room: %s): %v", msgType, m.MessageID, m.Username, m.RoomID, err)
+
+			// Show user-friendly error in the chat
+			decryptedText = "не удалось расшифровать"
 		}
 
-		// Check if decrypted text is empty (skip only if no image)
-		if decryptedText == "" && m.ImageURL == "" {
-			log.Printf("Warning: message %s decrypted to empty string", m.MessageID)
-			continue // Skip empty messages without images
+		// Check if decrypted text is empty (skip ONLY if NO media at all)
+		if decryptedText == "" && m.ImageURL == "" && m.VoiceURL == "" {
+			log.Printf("Warning: message %s decrypted to empty string, skipping", m.MessageID)
+			continue
 		}
 
 		// Получаем реакции для сообщения
