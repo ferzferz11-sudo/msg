@@ -4,15 +4,8 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="ef919cf0-dee0-4e94-b631-d2fd26a26aae" name="Changes" comment="1.0.2.9">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+    <list default="true" id="ef919cf0-dee0-4e94-b631-d2fd26a26aae" name="Changes" comment="1.0.2.10">
       <change beforePath="$PROJECT_DIR$/.nano.swp" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/crypto.go" beforeDir="false" afterPath="$PROJECT_DIR$/crypto.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/db.go" beforeDir="false" afterPath="$PROJECT_DIR$/db.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/db_maintenance.sh" beforeDir="false" afterPath="$PROJECT_DIR$/db_maintenance.sh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/deploy.sh" beforeDir="false" afterPath="$PROJECT_DIR$/deploy.sh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/http_server.go" beforeDir="false" afterPath="$PROJECT_DIR$/http_server.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server.go" beforeDir="false" afterPath="$PROJECT_DIR$/server.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -30,6 +23,9 @@
     &quot;assignee&quot;: &quot;ferzferz11-sudo&quot;
   }
 }</component>
+  <component name="GithubDefaultAccount">
+    <option name="defaultAccountId" value="6a3ed19c-18f1-41dd-b60d-758c25b03630" />
+  </component>
   <component name="GithubPullRequestsUISettings">{
   &quot;selectedUrlAndAccountId&quot;: {
     &quot;url&quot;: &quot;https://github.com/ferzferz11-sudo/msg&quot;,
@@ -75,7 +71,7 @@
     "node.js.detected.package.eslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
-    "settings.editor.selected.configurable": "preferences.pluginManager",
+    "settings.editor.selected.configurable": "org.jetbrains.plugins.github.ui.GithubSettingsConfigurable",
     "to.speed.mode.migration.done": "true",
     "vue.rearranger.settings.migration": "true"
   }
@@ -130,7 +126,8 @@
     <MESSAGE value="1.0.2.8 server side changes - not completed" />
     <MESSAGE value="1.0.2.8" />
     <MESSAGE value="1.0.2.9" />
-    <option name="LAST_COMMIT_MESSAGE" value="1.0.2.9" />
+    <MESSAGE value="1.0.2.10" />
+    <option name="LAST_COMMIT_MESSAGE" value="1.0.2.10" />
   </component>
   <component name="VgoModernizerVersionTracker">
     <upgrades>
