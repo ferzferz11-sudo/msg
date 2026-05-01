@@ -546,8 +546,8 @@ func (db *DB) SetReaction(messageID string, username string, emoji string) error
 	query := `INSERT INTO reactions (message_id, username, user_id, emoji)
 	          VALUES (
 				$1, 
-				$2, 
-				(SELECT id FROM users WHERE username = $2), 
+				$2::text, 
+				(SELECT id FROM users WHERE username = $2::text),
 				$3
 			  )
               ON CONFLICT (message_id, username) 

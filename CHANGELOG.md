@@ -1,6 +1,33 @@
 # Lavender Messenger - Changelog
 
 **Author:** Pavel Davydov (ferz)
+## [1.0.2.12] - 2026-10-14
+- **Server: Chat Management**
+  - fixed reactions after server optimizations 
+  - Server version: 1.0.2.12
+## [1.0.2.11] - 2026-10-14
+- **Server: Chat Management & Performance**
+  - Optimized `GetChats` RPC to use a single SQL query for chat data and last message, significantly reducing database load.
+  - Refactored `GetChats` to use `json_build_object` for efficient data aggregation, eliminating N+1 query issues.
+  - Improved `GetChats` to return `last_message_text` and `last_message_timestamp` directly from the main query.
+- **Server: Database Performance & Safety**
+  - Refactored `GetUserChats` and `GetDirectChatBetweenUsers` to use JSONB operators (`@>`) for significantly faster participant lookups.
+  - Optimized `IncrementParticipantsChatListVersion` to perform a single batch update instead of individual queries.
+  - Improved data integrity in `UpdateUsername` and `DeleteProfile` using strict JSON array manipulation.
+  - Added safe file cleanup logic (images/voice) in background goroutines after successful DB transactions.
+  - Standardized NULL handling using `COALESCE` across all profile and message queries.
+- **Android: UI & Theme Integration**
+  - Implemented custom theme support for all system dialogs (Emoji picker, Delete confirmation, Reactions).
+  - Added dynamic theming to the Chat Search bar and Mention list.
+  - Improved multi-image selection and upload flow with horizontal previews.
+- Server version: 1.0.2.11
+
+## [1.0.2.10] - 2026-10-13
+- **Server: FCM Token Management**
+  - Added `SaveUserToken` RPC endpoint for saving FCM tokens and push notification status.
+  - Added `DeleteUserToken` RPC endpoint for removing FCM tokens.
+  - New proto messages: `SaveUserTokenRequest`, `SaveUserTokenResponse`, `DeleteUserTokenRequest`, `DeleteUserTokenResponse`.
+  - Server version: 1.0.2.10
 
 ## [1.0.2.9] - 2026-04-27
 - **Server: Group Avatar Management**
