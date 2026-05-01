@@ -1,6 +1,9 @@
 # Lavender Messenger - Changelog
 
 **Author:** Pavel Davydov (ferz)
+## [1.0.2.13]
+ошибка про создании чата исправлена
+
 ## [1.0.2.12] - 2026-10-14
 - **Server: Chat Management**
   - fixed reactions after server optimizations 

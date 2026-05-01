@@ -1555,9 +1555,10 @@ func (db *DB) GetDirectChatBetweenUsers(user1, user2 string) (string, error) {
 
 	// 🛠️ 1. Оптимизация SQL и Безопасность: Мы избавляемся от опасного LIKE.
 	// Используем оператор JSON @>, чтобы Postgres искал точное совпадение обоих пользователей!
+	// 🛠️ Добавляем ::text к параметрам, чтобы Postgres точно знал тип данных для JSON-массива
 	query := `SELECT id FROM chats 
-	          WHERE type = 'direct' 
-	            AND participants::jsonb @> jsonb_build_array($1, $2)`
+          WHERE type = 'direct' 
+            AND participants::jsonb @> jsonb_build_array($1::text, $2::text)`
 
 	var chatID string
 	err := db.QueryRow(query, user1, user2).Scan(&chatID)
