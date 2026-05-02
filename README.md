@@ -212,6 +212,27 @@ LavenderMessenger/
   - Go version matrix testing
   - Continuous integration setup
 
+### Deployment & Monitoring
+
+- **`deploy.sh`** - Automated deployment script (local Mac → remote Linux server)
+  - Cross-compilation for Linux (GOOS=linux GOARCH=amd64)
+  - Safe deployment with health checks and automatic rollback
+  - Log rotation: keeps only last 100 lines of logs.txt
+  - Automatic cron setup for server monitoring
+  - rsync file synchronization with proper excludes
+
+- **`monitor.sh`** - Server health monitoring script
+  - Runs every 30 minutes via cron job to check server status
+  - Verifies server is listening on port 50051
+  - Automatically restarts server if it's down
+  - All checks logged to `logs.txt` with `[MONITOR]` prefix
+  - Integrated into `deploy.sh` for automatic setup
+
+- **`start.sh`** - Server startup script (generated during deployment)
+  - Health check before declaring deployment successful
+  - Graceful process termination and startup
+  - Automatic rollback to previous version on failure
+
 ## Getting Started
 
 ### Server Setup

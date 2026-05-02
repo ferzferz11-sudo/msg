@@ -19,7 +19,13 @@
     - Full reply context preservation (message ID, user, text).
     - Added `SaveDraftRequestProto`, `GetDraftResponseProto` data classes.
     - Implemented marshallers for all draft-related messages.
-    - Server version: 1.0.3.0
+- **Server Health Monitor**
+  - Added `monitor.sh` script for automated server health checks and auto-restart.
+  - Runs every 30 minutes via cron job to verify server is listening on port 50051.
+  - Automatically restarts server if it's down, with full logging to `logs.txt`.
+  - All checks are logged with `[MONITOR]` prefix for easy filtering.
+  - Integrated into `deploy.sh` with automatic cron setup.
+  - Server version: 1.0.3.0
 
 ## [1.0.2.13]
 ошибка про создании чата исправлена

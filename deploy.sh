@@ -86,7 +86,24 @@ rsync -avz -e "ssh -p $REMOTE_PORT -i $REMOTE_KEY" \
     --exclude 'client' \
     ./ $REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/
 
-# 4. Удаленный запуск
+# 4. Настройка мониторинга (cron job для автоматического перезапуска)
+echo "🔍 Setting up server monitor..."
+ssh -p $REMOTE_PORT -i $REMOTE_KEY $REMOTE_USER@$REMOTE_HOST << 'SSH_EOF'
+    REMOTE_DIR="/home/ferz/LavenderMessenger"
+
+    # Даем права на выполнение скрипту мониторинга
+    chmod +x "$REMOTE_DIR/monitor.sh"
+
+    # Удаляем старый cron job с другим расписанием (если был)
+    (crontab -l 2>/dev/null | grep -v "monitor.sh") | crontab - 2>/dev/null || true
+
+    # Добавляем новый cron job: проверка каждые 30 минут
+    echo "➕ Adding cron job for server monitoring (every 30 min)..."
+    (crontab -l 2>/dev/null; echo "*/30 * * * * $REMOTE_DIR/monitor.sh >/dev/null 2>&1") | crontab -
+    echo "✅ Cron job added: server will be monitored every 30 minutes"
+SSH_EOF
+
+# 5. Удаленный запуск
 echo "🔄 Triggering remote restart..."
 ssh -p $REMOTE_PORT -i $REMOTE_KEY $REMOTE_USER@$REMOTE_HOST \
     "bash $REMOTE_DIR/start.sh"
