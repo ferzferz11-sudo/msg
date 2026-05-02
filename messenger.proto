@@ -373,6 +373,42 @@ message GetFCMLogsResponse {
   repeated FCMLogEntry logs = 1;
 }
 
+message SaveDraftRequest {
+  string username = 1;
+  string room_id = 2;
+  string draft_text = 3;
+  string replied_to_message_id = 4;
+  string replied_to_user = 5;
+  string replied_to_text = 6;
+}
+
+message SaveDraftResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message GetDraftRequest {
+  string username = 1;
+  string room_id = 2;
+}
+
+message GetDraftResponse {
+  string draft_text = 1;
+  string replied_to_message_id = 2;
+  string replied_to_user = 3;
+  string replied_to_text = 4;
+  bool has_draft = 5;
+}
+
+message DeleteDraftRequest {
+  string username = 1;
+  string room_id = 2;
+}
+
+message DeleteDraftResponse {
+  bool success = 1;
+}
+
 service ChatService {
   rpc Chat(stream Message) returns (stream Message);
   rpc GetClients(ClientListRequest) returns (ClientListResponse);
@@ -408,4 +444,7 @@ service ChatService {
   rpc SetCurrentTheme(SetCurrentThemeRequest) returns (SetCurrentThemeResponse);
   rpc DeleteTheme(DeleteThemeRequest) returns (DeleteThemeResponse);
   rpc GetFCMLogs(GetFCMLogsRequest) returns (GetFCMLogsResponse);
+  rpc SaveDraft(SaveDraftRequest) returns (SaveDraftResponse);
+  rpc GetDraft(GetDraftRequest) returns (GetDraftResponse);
+  rpc DeleteDraft(DeleteDraftRequest) returns (DeleteDraftResponse);
 }

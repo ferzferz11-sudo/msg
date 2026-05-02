@@ -1,6 +1,26 @@
 # Lavender Messenger - Changelog
 
 **Author:** Pavel Davydov (ferz)
+
+## [1.0.3.0] - 2026-05-03
+- **Message Drafts (Unsent Message Persistence)**
+  - **Server: Draft Storage**
+    - New `draft_messages` table for persistent draft storage (username + room_id composite key).
+    - `SaveDraft()` - saves or updates draft with text and reply context.
+    - `GetDraft()` - retrieves draft for specific user and room.
+    - `DeleteDraft()` - removes draft after successful message send.
+  - **gRPC Protocol:**
+    - New proto messages: `SaveDraftRequest/Response`, `GetDraftRequest/Response`, `DeleteDraftRequest/Response`.
+    - New RPC methods: `SaveDraft`, `GetDraft`, `DeleteDraft`.
+  - **Android Client:**
+    - Draft automatically saved when leaving chat (onPause).
+    - Draft automatically loaded when entering chat.
+    - Draft deleted after successful message send.
+    - Full reply context preservation (message ID, user, text).
+    - Added `SaveDraftRequestProto`, `GetDraftResponseProto` data classes.
+    - Implemented marshallers for all draft-related messages.
+    - Server version: 1.0.3.0
+
 ## [1.0.2.13]
 ошибка про создании чата исправлена
 

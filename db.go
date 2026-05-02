@@ -354,6 +354,17 @@ func ConnectDB() (*DB, error) {
 		    ALTER TABLE messages ADD COLUMN duration INTEGER DEFAULT 0;
 		  END IF;
 		 END $$;`,
+		// Create draft_messages table for unsent message drafts
+		`CREATE TABLE IF NOT EXISTS draft_messages (
+			username VARCHAR(255) NOT NULL,
+			room_id VARCHAR(255) NOT NULL,
+			draft_text TEXT NOT NULL DEFAULT '',
+			replied_to_message_id VARCHAR(255),
+			replied_to_user VARCHAR(255),
+			replied_to_text TEXT,
+			updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+			PRIMARY KEY (username, room_id)
+		);`,
 	}
 
 	// 1. Wrap all migrations in a single transaction for safety
@@ -2190,5 +2201,77 @@ func (db *DB) DeleteUserTheme(username, themeID string) error {
 		}
 	}([]string{bgURL.String, chatListBgURL.String})
 
+	return nil
+}
+
+// SaveDraft saves or updates a draft message for a user in a specific room
+func (db *DB) SaveDraft(username, roomID, draftText, repliedToMessageID, repliedToUser, repliedToText string) error {
+	query := `INSERT INTO draft_messages (username, room_id, draft_text, replied_to_message_id, replied_to_user, replied_to_text, updated_at)
+	          VALUES ($1, $2, $3, $4, $5, $6, NOW())
+	          ON CONFLICT (username, room_id) 
+	          DO UPDATE SET 
+	            draft_text = EXCLUDED.draft_text,
+	            replied_to_message_id = EXCLUDED.replied_to_message_id,
+	            replied_to_user = EXCLUDED.replied_to_user,
+	            replied_to_text = EXCLUDED.replied_to_text,
+	            updated_at = NOW()`
+
+	_, err := db.Exec(query, username, roomID, draftText, repliedToMessageID, repliedToUser, repliedToText)
+	if err != nil {
+		return fmt.Errorf("failed to save draft: %w", err)
+	}
+	return nil
+}
+
+// GetDraft retrieves a draft message for a user in a specific room
+func (db *DB) GetDraft(username, roomID string) (struct {
+	DraftText          string
+	RepliedToMessageID string
+	RepliedToUser      string
+	RepliedToText      string
+	UpdatedAt          time.Time
+}, error) {
+	var result struct {
+		DraftText          string
+		RepliedToMessageID string
+		RepliedToUser      string
+		RepliedToText      string
+		UpdatedAt          time.Time
+	}
+
+	query := `SELECT COALESCE(draft_text, ''), 
+	                 COALESCE(replied_to_message_id, ''), 
+	                 COALESCE(replied_to_user, ''), 
+	                 COALESCE(replied_to_text, ''), 
+	                 updated_at 
+	          FROM draft_messages 
+	          WHERE username = $1 AND room_id = $2`
+
+	err := db.QueryRow(query, username, roomID).Scan(
+		&result.DraftText,
+		&result.RepliedToMessageID,
+		&result.RepliedToUser,
+		&result.RepliedToText,
+		&result.UpdatedAt,
+	)
+
+	if err == sql.ErrNoRows {
+		// No draft found, return empty result
+		return result, nil
+	}
+	if err != nil {
+		return result, fmt.Errorf("failed to get draft: %w", err)
+	}
+
+	return result, nil
+}
+
+// DeleteDraft removes a draft message for a user in a specific room
+func (db *DB) DeleteDraft(username, roomID string) error {
+	query := `DELETE FROM draft_messages WHERE username = $1 AND room_id = $2`
+	_, err := db.Exec(query, username, roomID)
+	if err != nil {
+		return fmt.Errorf("failed to delete draft: %w", err)
+	}
 	return nil
 }

@@ -1212,3 +1212,44 @@ func (s *server) GetFCMLogs(_ context.Context, _ *gen.GetFCMLogsRequest) (*gen.G
 	}
 	return &gen.GetFCMLogsResponse{Logs: logs}, nil
 }
+
+// SaveDraft saves a draft message for a user in a specific room
+func (s *server) SaveDraft(_ context.Context, req *gen.SaveDraftRequest) (*gen.SaveDraftResponse, error) {
+	err := s.db.SaveDraft(req.Username, req.RoomId, req.DraftText, req.RepliedToMessageId, req.RepliedToUser, req.RepliedToText)
+	if err != nil {
+		log.Printf("Failed to save draft for %s in room %s: %v", req.Username, req.RoomId, err)
+		return &gen.SaveDraftResponse{Success: false, Message: err.Error()}, nil
+	}
+	log.Printf("Draft saved for %s in room %s (length: %d)", req.Username, req.RoomId, len(req.DraftText))
+	return &gen.SaveDraftResponse{Success: true, Message: "Draft saved successfully"}, nil
+}
+
+// GetDraft retrieves a draft message for a user in a specific room
+func (s *server) GetDraft(_ context.Context, req *gen.GetDraftRequest) (*gen.GetDraftResponse, error) {
+	draft, err := s.db.GetDraft(req.Username, req.RoomId)
+	if err != nil {
+		log.Printf("Failed to get draft for %s in room %s: %v", req.Username, req.RoomId, err)
+		return &gen.GetDraftResponse{HasDraft: false}, nil
+	}
+
+	hasDraft := draft.DraftText != "" || draft.RepliedToMessageID != ""
+
+	return &gen.GetDraftResponse{
+		DraftText:          draft.DraftText,
+		RepliedToMessageId: draft.RepliedToMessageID,
+		RepliedToUser:      draft.RepliedToUser,
+		RepliedToText:      draft.RepliedToText,
+		HasDraft:           hasDraft,
+	}, nil
+}
+
+// DeleteDraft removes a draft message for a user in a specific room
+func (s *server) DeleteDraft(_ context.Context, req *gen.DeleteDraftRequest) (*gen.DeleteDraftResponse, error) {
+	err := s.db.DeleteDraft(req.Username, req.RoomId)
+	if err != nil {
+		log.Printf("Failed to delete draft for %s in room %s: %v", req.Username, req.RoomId, err)
+		return &gen.DeleteDraftResponse{Success: false}, nil
+	}
+	log.Printf("Draft deleted for %s in room %s", req.Username, req.RoomId)
+	return &gen.DeleteDraftResponse{Success: true}, nil
+}

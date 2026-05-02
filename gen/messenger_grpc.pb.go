@@ -53,6 +53,9 @@ const (
 	ChatService_SetCurrentTheme_FullMethodName    = "/messenger.ChatService/SetCurrentTheme"
 	ChatService_DeleteTheme_FullMethodName        = "/messenger.ChatService/DeleteTheme"
 	ChatService_GetFCMLogs_FullMethodName         = "/messenger.ChatService/GetFCMLogs"
+	ChatService_SaveDraft_FullMethodName          = "/messenger.ChatService/SaveDraft"
+	ChatService_GetDraft_FullMethodName           = "/messenger.ChatService/GetDraft"
+	ChatService_DeleteDraft_FullMethodName        = "/messenger.ChatService/DeleteDraft"
 )
 
 // ChatServiceClient is the client API for ChatService service.
@@ -93,6 +96,9 @@ type ChatServiceClient interface {
 	SetCurrentTheme(ctx context.Context, in *SetCurrentThemeRequest, opts ...grpc.CallOption) (*SetCurrentThemeResponse, error)
 	DeleteTheme(ctx context.Context, in *DeleteThemeRequest, opts ...grpc.CallOption) (*DeleteThemeResponse, error)
 	GetFCMLogs(ctx context.Context, in *GetFCMLogsRequest, opts ...grpc.CallOption) (*GetFCMLogsResponse, error)
+	SaveDraft(ctx context.Context, in *SaveDraftRequest, opts ...grpc.CallOption) (*SaveDraftResponse, error)
+	GetDraft(ctx context.Context, in *GetDraftRequest, opts ...grpc.CallOption) (*GetDraftResponse, error)
+	DeleteDraft(ctx context.Context, in *DeleteDraftRequest, opts ...grpc.CallOption) (*DeleteDraftResponse, error)
 }
 
 type chatServiceClient struct {
@@ -446,6 +452,36 @@ func (c *chatServiceClient) GetFCMLogs(ctx context.Context, in *GetFCMLogsReques
 	return out, nil
 }
 
+func (c *chatServiceClient) SaveDraft(ctx context.Context, in *SaveDraftRequest, opts ...grpc.CallOption) (*SaveDraftResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SaveDraftResponse)
+	err := c.cc.Invoke(ctx, ChatService_SaveDraft_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) GetDraft(ctx context.Context, in *GetDraftRequest, opts ...grpc.CallOption) (*GetDraftResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetDraftResponse)
+	err := c.cc.Invoke(ctx, ChatService_GetDraft_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) DeleteDraft(ctx context.Context, in *DeleteDraftRequest, opts ...grpc.CallOption) (*DeleteDraftResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteDraftResponse)
+	err := c.cc.Invoke(ctx, ChatService_DeleteDraft_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ChatServiceServer is the server API for ChatService service.
 // All implementations must embed UnimplementedChatServiceServer
 // for forward compatibility.
@@ -484,6 +520,9 @@ type ChatServiceServer interface {
 	SetCurrentTheme(context.Context, *SetCurrentThemeRequest) (*SetCurrentThemeResponse, error)
 	DeleteTheme(context.Context, *DeleteThemeRequest) (*DeleteThemeResponse, error)
 	GetFCMLogs(context.Context, *GetFCMLogsRequest) (*GetFCMLogsResponse, error)
+	SaveDraft(context.Context, *SaveDraftRequest) (*SaveDraftResponse, error)
+	GetDraft(context.Context, *GetDraftRequest) (*GetDraftResponse, error)
+	DeleteDraft(context.Context, *DeleteDraftRequest) (*DeleteDraftResponse, error)
 	mustEmbedUnimplementedChatServiceServer()
 }
 
@@ -595,6 +634,15 @@ func (UnimplementedChatServiceServer) DeleteTheme(context.Context, *DeleteThemeR
 }
 func (UnimplementedChatServiceServer) GetFCMLogs(context.Context, *GetFCMLogsRequest) (*GetFCMLogsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetFCMLogs not implemented")
+}
+func (UnimplementedChatServiceServer) SaveDraft(context.Context, *SaveDraftRequest) (*SaveDraftResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SaveDraft not implemented")
+}
+func (UnimplementedChatServiceServer) GetDraft(context.Context, *GetDraftRequest) (*GetDraftResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetDraft not implemented")
+}
+func (UnimplementedChatServiceServer) DeleteDraft(context.Context, *DeleteDraftRequest) (*DeleteDraftResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteDraft not implemented")
 }
 func (UnimplementedChatServiceServer) mustEmbedUnimplementedChatServiceServer() {}
 func (UnimplementedChatServiceServer) testEmbeddedByValue()                     {}
@@ -1218,6 +1266,60 @@ func _ChatService_GetFCMLogs_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ChatService_SaveDraft_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SaveDraftRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).SaveDraft(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_SaveDraft_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).SaveDraft(ctx, req.(*SaveDraftRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_GetDraft_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetDraftRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).GetDraft(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_GetDraft_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).GetDraft(ctx, req.(*GetDraftRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_DeleteDraft_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteDraftRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).DeleteDraft(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_DeleteDraft_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).DeleteDraft(ctx, req.(*DeleteDraftRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ChatService_ServiceDesc is the grpc.ServiceDesc for ChatService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1356,6 +1458,18 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetFCMLogs",
 			Handler:    _ChatService_GetFCMLogs_Handler,
+		},
+		{
+			MethodName: "SaveDraft",
+			Handler:    _ChatService_SaveDraft_Handler,
+		},
+		{
+			MethodName: "GetDraft",
+			Handler:    _ChatService_GetDraft_Handler,
+		},
+		{
+			MethodName: "DeleteDraft",
+			Handler:    _ChatService_DeleteDraft_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

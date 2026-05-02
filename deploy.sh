@@ -46,6 +46,11 @@ if ps -p $NEW_PID > /dev/null; then
     # Ротируем логи
     cat logs_new.txt >> logs.txt
 
+    # Очищаем старые логи, оставляем только последние 100 строк
+    if [ -f logs.txt ]; then
+        tail -n 10000 logs.txt > logs.txt.tmp && mv logs.txt.tmp logs.txt
+    fi
+
     # Подменяем рабочий бинарник
     mv lavender-server-new lavender-server
 
