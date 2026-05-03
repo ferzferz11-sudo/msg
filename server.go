@@ -884,6 +884,17 @@ func (s *server) sendPushNotification(user, title, body, roomID string) {
 		return
 	}
 
+	// Проверяем, не замьючен ли чат для этого пользователя
+	mutedChats, err := s.db.GetMutedChats(user)
+	if err == nil {
+		for _, mutedRoomID := range mutedChats {
+			if mutedRoomID == roomID {
+				s.logFCM("INFO", "Skip %s: Chat %s is muted", user, roomID)
+				return
+			}
+		}
+	}
+
 	token, err := s.db.GetUserToken(user)
 	if err != nil || token == "" {
 		s.logFCM("WARN", "Skip %s: No token", user)
@@ -1252,4 +1263,30 @@ func (s *server) DeleteDraft(_ context.Context, req *gen.DeleteDraftRequest) (*g
 	}
 	log.Printf("Draft deleted for %s in room %s", req.Username, req.RoomId)
 	return &gen.DeleteDraftResponse{Success: true}, nil
+}
+
+// GetMutedChats returns the list of chat rooms where the user has disabled push notifications
+func (s *server) GetMutedChats(_ context.Context, req *gen.GetMutedChatsRequest) (*gen.GetMutedChatsResponse, error) {
+	mutedChats, err := s.db.GetMutedChats(req.Username)
+	if err != nil {
+		log.Printf("Failed to get muted chats for %s: %v", req.Username, err)
+		return &gen.GetMutedChatsResponse{RoomIds: []string{}}, nil
+	}
+	return &gen.GetMutedChatsResponse{RoomIds: mutedChats}, nil
+}
+
+// SetMutedChat sets or unsets the mute status for a chat room
+// When muted=true, the user will not receive push notifications from this chat
+func (s *server) SetMutedChat(_ context.Context, req *gen.SetMutedChatRequest) (*gen.SetMutedChatResponse, error) {
+	err := s.db.SetMutedChat(req.Username, req.RoomId, req.Muted)
+	if err != nil {
+		log.Printf("Failed to set muted status for %s in room %s (muted=%v): %v", req.Username, req.RoomId, req.Muted, err)
+		return &gen.SetMutedChatResponse{Success: false}, nil
+	}
+	action := "muted"
+	if !req.Muted {
+		action = "unmuted"
+	}
+	log.Printf("Chat %s for %s in room %s", action, req.Username, req.RoomId)
+	return &gen.SetMutedChatResponse{Success: true}, nil
 }

@@ -409,6 +409,24 @@ message DeleteDraftResponse {
   bool success = 1;
 }
 
+message GetMutedChatsRequest {
+  string username = 1;
+}
+
+message GetMutedChatsResponse {
+  repeated string room_ids = 1;
+}
+
+message SetMutedChatRequest {
+  string username = 1;
+  string room_id = 2;
+  bool muted = 3;
+}
+
+message SetMutedChatResponse {
+  bool success = 1;
+}
+
 service ChatService {
   rpc Chat(stream Message) returns (stream Message);
   rpc GetClients(ClientListRequest) returns (ClientListResponse);
@@ -447,4 +465,6 @@ service ChatService {
   rpc SaveDraft(SaveDraftRequest) returns (SaveDraftResponse);
   rpc GetDraft(GetDraftRequest) returns (GetDraftResponse);
   rpc DeleteDraft(DeleteDraftRequest) returns (DeleteDraftResponse);
+  rpc GetMutedChats(GetMutedChatsRequest) returns (GetMutedChatsResponse);
+  rpc SetMutedChat(SetMutedChatRequest) returns (SetMutedChatResponse);
 }

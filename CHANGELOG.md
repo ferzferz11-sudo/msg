@@ -25,6 +25,11 @@
   - Automatically restarts server if it's down, with full logging to `logs.txt`.
   - All checks are logged with `[MONITOR]` prefix for easy filtering.
   - Integrated into `deploy.sh` with automatic cron setup.
+- **Muted Chats (Push Notification Control)**
+  - New `muted_chats` table for storing per-user chat notification preferences.
+  - `GetMutedChats()` - retrieves list of muted chats for a user.
+  - `SetMutedChat()` - mutes or unmutes a specific chat for push notifications.
+  - Server checks muted status before sending push notifications.
   - Server version: 1.0.3.0
 
 ## [1.0.2.13]

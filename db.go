@@ -365,6 +365,14 @@ func ConnectDB() (*DB, error) {
 			updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
 			PRIMARY KEY (username, room_id)
 		);`,
+		// Create muted_chats table for per-user chat notification preferences
+		`CREATE TABLE IF NOT EXISTS muted_chats (
+			username VARCHAR(255) NOT NULL,
+			room_id VARCHAR(255) NOT NULL,
+			muted BOOLEAN NOT NULL DEFAULT TRUE,
+			updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+			PRIMARY KEY (username, room_id)
+		);`,
 	}
 
 	// 1. Wrap all migrations in a single transaction for safety
@@ -2272,6 +2280,57 @@ func (db *DB) DeleteDraft(username, roomID string) error {
 	_, err := db.Exec(query, username, roomID)
 	if err != nil {
 		return fmt.Errorf("failed to delete draft: %w", err)
+	}
+	return nil
+}
+
+// GetMutedChats returns a list of room IDs that the user has muted (no push notifications)
+func (db *DB) GetMutedChats(username string) ([]string, error) {
+	query := `SELECT room_id FROM muted_chats WHERE username = $1 AND muted = TRUE`
+	rows, err := db.Query(query, username)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get muted chats: %w", err)
+	}
+	defer rows.Close()
+
+	var mutedChats []string
+	for rows.Next() {
+		var roomID string
+		if err := rows.Scan(&roomID); err != nil {
+			return nil, fmt.Errorf("failed to scan muted chat room_id: %w", err)
+		}
+		mutedChats = append(mutedChats, roomID)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating muted chats rows: %w", err)
+	}
+
+	return mutedChats, nil
+}
+
+// SetMutedChat sets the mute status for a specific chat room for a user
+// If muted=true, user will not receive push notifications from this chat
+// If muted=false, removes the mute entry (user receives notifications normally)
+func (db *DB) SetMutedChat(username, roomID string, muted bool) error {
+	if muted {
+		// Upsert: insert or update to muted=true
+		query := `
+			INSERT INTO muted_chats (username, room_id, muted, updated_at)
+			VALUES ($1, $2, TRUE, NOW())
+			ON CONFLICT (username, room_id)
+			DO UPDATE SET muted = TRUE, updated_at = NOW()`
+		_, err := db.Exec(query, username, roomID)
+		if err != nil {
+			return fmt.Errorf("failed to set muted chat: %w", err)
+		}
+	} else {
+		// Remove mute entry - delete the row
+		query := `DELETE FROM muted_chats WHERE username = $1 AND room_id = $2`
+		_, err := db.Exec(query, username, roomID)
+		if err != nil {
+			return fmt.Errorf("failed to unmute chat: %w", err)
+		}
 	}
 	return nil
 }

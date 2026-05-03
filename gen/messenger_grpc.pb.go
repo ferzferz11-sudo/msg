@@ -56,6 +56,8 @@ const (
 	ChatService_SaveDraft_FullMethodName          = "/messenger.ChatService/SaveDraft"
 	ChatService_GetDraft_FullMethodName           = "/messenger.ChatService/GetDraft"
 	ChatService_DeleteDraft_FullMethodName        = "/messenger.ChatService/DeleteDraft"
+	ChatService_GetMutedChats_FullMethodName      = "/messenger.ChatService/GetMutedChats"
+	ChatService_SetMutedChat_FullMethodName       = "/messenger.ChatService/SetMutedChat"
 )
 
 // ChatServiceClient is the client API for ChatService service.
@@ -99,6 +101,8 @@ type ChatServiceClient interface {
 	SaveDraft(ctx context.Context, in *SaveDraftRequest, opts ...grpc.CallOption) (*SaveDraftResponse, error)
 	GetDraft(ctx context.Context, in *GetDraftRequest, opts ...grpc.CallOption) (*GetDraftResponse, error)
 	DeleteDraft(ctx context.Context, in *DeleteDraftRequest, opts ...grpc.CallOption) (*DeleteDraftResponse, error)
+	GetMutedChats(ctx context.Context, in *GetMutedChatsRequest, opts ...grpc.CallOption) (*GetMutedChatsResponse, error)
+	SetMutedChat(ctx context.Context, in *SetMutedChatRequest, opts ...grpc.CallOption) (*SetMutedChatResponse, error)
 }
 
 type chatServiceClient struct {
@@ -482,6 +486,26 @@ func (c *chatServiceClient) DeleteDraft(ctx context.Context, in *DeleteDraftRequ
 	return out, nil
 }
 
+func (c *chatServiceClient) GetMutedChats(ctx context.Context, in *GetMutedChatsRequest, opts ...grpc.CallOption) (*GetMutedChatsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetMutedChatsResponse)
+	err := c.cc.Invoke(ctx, ChatService_GetMutedChats_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) SetMutedChat(ctx context.Context, in *SetMutedChatRequest, opts ...grpc.CallOption) (*SetMutedChatResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SetMutedChatResponse)
+	err := c.cc.Invoke(ctx, ChatService_SetMutedChat_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ChatServiceServer is the server API for ChatService service.
 // All implementations must embed UnimplementedChatServiceServer
 // for forward compatibility.
@@ -523,6 +547,8 @@ type ChatServiceServer interface {
 	SaveDraft(context.Context, *SaveDraftRequest) (*SaveDraftResponse, error)
 	GetDraft(context.Context, *GetDraftRequest) (*GetDraftResponse, error)
 	DeleteDraft(context.Context, *DeleteDraftRequest) (*DeleteDraftResponse, error)
+	GetMutedChats(context.Context, *GetMutedChatsRequest) (*GetMutedChatsResponse, error)
+	SetMutedChat(context.Context, *SetMutedChatRequest) (*SetMutedChatResponse, error)
 	mustEmbedUnimplementedChatServiceServer()
 }
 
@@ -643,6 +669,12 @@ func (UnimplementedChatServiceServer) GetDraft(context.Context, *GetDraftRequest
 }
 func (UnimplementedChatServiceServer) DeleteDraft(context.Context, *DeleteDraftRequest) (*DeleteDraftResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteDraft not implemented")
+}
+func (UnimplementedChatServiceServer) GetMutedChats(context.Context, *GetMutedChatsRequest) (*GetMutedChatsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetMutedChats not implemented")
+}
+func (UnimplementedChatServiceServer) SetMutedChat(context.Context, *SetMutedChatRequest) (*SetMutedChatResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetMutedChat not implemented")
 }
 func (UnimplementedChatServiceServer) mustEmbedUnimplementedChatServiceServer() {}
 func (UnimplementedChatServiceServer) testEmbeddedByValue()                     {}
@@ -1320,6 +1352,42 @@ func _ChatService_DeleteDraft_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ChatService_GetMutedChats_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetMutedChatsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).GetMutedChats(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_GetMutedChats_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).GetMutedChats(ctx, req.(*GetMutedChatsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_SetMutedChat_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetMutedChatRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).SetMutedChat(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_SetMutedChat_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).SetMutedChat(ctx, req.(*SetMutedChatRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ChatService_ServiceDesc is the grpc.ServiceDesc for ChatService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1470,6 +1538,14 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteDraft",
 			Handler:    _ChatService_DeleteDraft_Handler,
+		},
+		{
+			MethodName: "GetMutedChats",
+			Handler:    _ChatService_GetMutedChats_Handler,
+		},
+		{
+			MethodName: "SetMutedChat",
+			Handler:    _ChatService_SetMutedChat_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
