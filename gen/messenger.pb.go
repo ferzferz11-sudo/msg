@@ -1674,6 +1674,7 @@ type UpdateAvatarRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Username      string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
 	AvatarUrl     string                 `protobuf:"bytes,2,opt,name=avatar_url,json=avatarUrl,proto3" json:"avatar_url,omitempty"`
+	FullAvatarUrl string                 `protobuf:"bytes,3,opt,name=full_avatar_url,json=fullAvatarUrl,proto3" json:"full_avatar_url,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1718,6 +1719,13 @@ func (x *UpdateAvatarRequest) GetUsername() string {
 func (x *UpdateAvatarRequest) GetAvatarUrl() string {
 	if x != nil {
 		return x.AvatarUrl
+	}
+	return ""
+}
+
+func (x *UpdateAvatarRequest) GetFullAvatarUrl() string {
+	if x != nil {
+		return x.FullAvatarUrl
 	}
 	return ""
 }
@@ -2045,6 +2053,7 @@ func (x *GetUserAvatarRequest) GetUsername() string {
 type GetUserAvatarResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	AvatarUrl     string                 `protobuf:"bytes,1,opt,name=avatar_url,json=avatarUrl,proto3" json:"avatar_url,omitempty"`
+	FullAvatarUrl string                 `protobuf:"bytes,2,opt,name=full_avatar_url,json=fullAvatarUrl,proto3" json:"full_avatar_url,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2082,6 +2091,13 @@ func (*GetUserAvatarResponse) Descriptor() ([]byte, []int) {
 func (x *GetUserAvatarResponse) GetAvatarUrl() string {
 	if x != nil {
 		return x.AvatarUrl
+	}
+	return ""
+}
+
+func (x *GetUserAvatarResponse) GetFullAvatarUrl() string {
+	if x != nil {
+		return x.FullAvatarUrl
 	}
 	return ""
 }
@@ -4534,11 +4550,12 @@ const file_messenger_proto_rawDesc = "" +
 	"\aroom_id\x18\x01 \x01(\tR\x06roomId\x12\x1a\n" +
 	"\busername\x18\x02 \x01(\tR\busername\",\n" +
 	"\x10MarkReadResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess\"P\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\"x\n" +
 	"\x13UpdateAvatarRequest\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12\x1d\n" +
 	"\n" +
-	"avatar_url\x18\x02 \x01(\tR\tavatarUrl\"J\n" +
+	"avatar_url\x18\x02 \x01(\tR\tavatarUrl\x12&\n" +
+	"\x0ffull_avatar_url\x18\x03 \x01(\tR\rfullAvatarUrl\"J\n" +
 	"\x14UpdateAvatarResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
 	"\amessage\x18\x02 \x01(\tR\amessage\"\\\n" +
@@ -4558,10 +4575,11 @@ const file_messenger_proto_rawDesc = "" +
 	"\n" +
 	"avatar_url\x18\x04 \x01(\tR\tavatarUrl\"2\n" +
 	"\x14GetUserAvatarRequest\x12\x1a\n" +
-	"\busername\x18\x01 \x01(\tR\busername\"6\n" +
+	"\busername\x18\x01 \x01(\tR\busername\"^\n" +
 	"\x15GetUserAvatarResponse\x12\x1d\n" +
 	"\n" +
-	"avatar_url\x18\x01 \x01(\tR\tavatarUrl\"L\n" +
+	"avatar_url\x18\x01 \x01(\tR\tavatarUrl\x12&\n" +
+	"\x0ffull_avatar_url\x18\x02 \x01(\tR\rfullAvatarUrl\"L\n" +
 	"\x15AddParticipantRequest\x12\x17\n" +
 	"\achat_id\x18\x01 \x01(\tR\x06chatId\x12\x1a\n" +
 	"\busername\x18\x02 \x01(\tR\busername\"L\n" +

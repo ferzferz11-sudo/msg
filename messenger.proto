@@ -165,6 +165,7 @@ message MarkReadResponse {
 message UpdateAvatarRequest {
   string username = 1;
   string avatar_url = 2;
+  string full_avatar_url = 3;
 }
 
 message UpdateAvatarResponse {
@@ -200,6 +201,7 @@ message GetUserAvatarRequest {
 
 message GetUserAvatarResponse {
   string avatar_url = 1;
+  string full_avatar_url = 2;
 }
 
 message AddParticipantRequest {

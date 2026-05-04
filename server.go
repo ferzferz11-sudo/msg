@@ -647,13 +647,14 @@ func (s *server) MarkRead(_ context.Context, req *gen.MarkReadRequest) (*gen.Mar
 
 // UpdateAvatar updates the avatar URL for a user
 func (s *server) UpdateAvatar(_ context.Context, req *gen.UpdateAvatarRequest) (*gen.UpdateAvatarResponse, error) {
-	err := s.db.UpdateAvatar(req.Username, req.AvatarUrl)
+	// Save both thumbnail and full avatar URLs
+	err := s.db.UpdateAvatarWithFull(req.Username, req.AvatarUrl, req.FullAvatarUrl)
 	if err != nil {
 		log.Printf("Failed to update avatar for %s: %v", req.Username, err)
 		return &gen.UpdateAvatarResponse{Success: false, Message: err.Error()}, nil
 	}
 
-	log.Printf("Updated avatar for %s", req.Username)
+	log.Printf("Updated avatar for %s (thumb: %s, full: %s)", req.Username, req.AvatarUrl, req.FullAvatarUrl)
 	return &gen.UpdateAvatarResponse{Success: true, Message: "Avatar updated successfully"}, nil
 }
 
@@ -685,15 +686,15 @@ func (s *server) GetUserProfile(_ context.Context, req *gen.GetUserProfileReques
 	}, nil
 }
 
-// GetUserAvatar retrieves the avatar URL for a user
+// GetUserAvatar retrieves the avatar URL for a user (both thumbnail and full)
 func (s *server) GetUserAvatar(_ context.Context, req *gen.GetUserAvatarRequest) (*gen.GetUserAvatarResponse, error) {
-	avatarURL, err := s.db.GetUserAvatar(req.Username)
+	avatarURL, fullAvatarURL, err := s.db.GetUserAvatarWithFull(req.Username)
 	if err != nil {
 		log.Printf("Failed to get avatar for %s: %v", req.Username, err)
-		return &gen.GetUserAvatarResponse{AvatarUrl: ""}, nil
+		return &gen.GetUserAvatarResponse{AvatarUrl: "", FullAvatarUrl: ""}, nil
 	}
 
-	return &gen.GetUserAvatarResponse{AvatarUrl: avatarURL}, nil
+	return &gen.GetUserAvatarResponse{AvatarUrl: avatarURL, FullAvatarUrl: fullAvatarURL}, nil
 }
 
 // AddParticipant adds a user to a group chat

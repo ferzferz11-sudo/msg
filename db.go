@@ -195,11 +195,19 @@ func ConnectDB() (*DB, error) {
 			password_hash VARCHAR(255) NOT NULL,
 			created_at TIMESTAMP NOT NULL DEFAULT NOW(),
 			avatar_url VARCHAR(512),
+			full_avatar_url VARCHAR(512),
 			bio TEXT,
 			status VARCHAR(255),
 			chat_list_version BIGINT DEFAULT 0,
 			current_theme_id VARCHAR(255) DEFAULT 'dark'
 		);`,
+		// Migration: Add full_avatar_url to users
+		`DO $$
+		 BEGIN
+		  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='full_avatar_url') THEN
+		    ALTER TABLE users ADD COLUMN full_avatar_url VARCHAR(512);
+		  END IF;
+		 END $$;`,
 		// Migration: Add current_theme_id to users
 		`DO $$
 		 BEGIN
@@ -1297,6 +1305,40 @@ func (db *DB) GetUserAvatar(username string) (string, error) {
 	}
 
 	return avatarURL, nil
+}
+
+// UpdateAvatarWithFull updates both thumbnail and full avatar URLs for a user
+func (db *DB) UpdateAvatarWithFull(username, avatarURL, fullAvatarURL string) error {
+	query := `UPDATE users SET avatar_url = $1, full_avatar_url = $2 WHERE username = $3`
+	result, err := db.Exec(query, avatarURL, fullAvatarURL, username)
+	if err != nil {
+		return fmt.Errorf("failed to update avatar with full: %w", err)
+	}
+
+	// Verify that the user existed
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		return fmt.Errorf("user not found")
+	}
+
+	return nil
+}
+
+// GetUserAvatarWithFull retrieves both thumbnail and full avatar URLs for a user
+func (db *DB) GetUserAvatarWithFull(username string) (string, string, error) {
+	var avatarURL, fullAvatarURL string
+
+	query := `SELECT COALESCE(avatar_url, ''), COALESCE(full_avatar_url, '') FROM users WHERE username = $1`
+	err := db.QueryRow(query, username).Scan(&avatarURL, &fullAvatarURL)
+
+	if err == sql.ErrNoRows {
+		return "", "", nil
+	}
+	if err != nil {
+		return "", "", fmt.Errorf("failed to get user avatar with full: %w", err)
+	}
+
+	return avatarURL, fullAvatarURL, nil
 }
 
 // CreateChat creates a new chat room and updates participants' versions

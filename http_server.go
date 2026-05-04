@@ -84,7 +84,101 @@ func StartAPKServer(port string) {
 }
 
 func uploadAvatarHandler(w http.ResponseWriter, r *http.Request) {
-	handleUpload(w, r, "avatar", avatarsPath, "/avatars/")
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	log.Printf("Received avatar upload request")
+
+	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
+	if err := r.ParseMultipartForm(maxUploadSize); err != nil {
+		log.Printf("Upload error: file too large: %v", err)
+		http.Error(w, "File too large", http.StatusBadRequest)
+		return
+	}
+
+	// Process thumbnail (required)
+	thumbFile, thumbHandler, err := r.FormFile("avatar")
+	if err != nil {
+		log.Printf("Upload error: retrieving thumbnail file: %v", err)
+		http.Error(w, "Error retrieving thumbnail file", http.StatusBadRequest)
+		return
+	}
+	defer closeFile(thumbFile)
+
+	log.Printf("Uploading thumbnail: %s (size: %d bytes)", thumbHandler.Filename, thumbHandler.Size)
+
+	thumbBytes, err := io.ReadAll(thumbFile)
+	if err != nil {
+		log.Printf("Upload error: reading thumbnail file: %v", err)
+		http.Error(w, "Error reading thumbnail file", http.StatusInternalServerError)
+		return
+	}
+
+	// Generate filename for thumbnail
+	hash := md5.Sum(thumbBytes)
+	ext := filepath.Ext(thumbHandler.Filename)
+	if ext == "" {
+		ext = ".jpg"
+	}
+	thumbFilename := hex.EncodeToString(hash[:]) + ext
+
+	thumbPath := filepath.Join(avatarsPath, thumbFilename)
+	if err := os.WriteFile(thumbPath, thumbBytes, 0644); err != nil {
+		log.Printf("Upload error: saving thumbnail to %s: %v", thumbPath, err)
+		http.Error(w, "Error saving thumbnail file", http.StatusInternalServerError)
+		return
+	}
+
+	publicIP := "159.195.38.145"
+	httpPort := os.Getenv("HTTP_PORT")
+	if httpPort == "" {
+		httpPort = defaultHTTPPort
+	}
+
+	thumbURL := fmt.Sprintf("http://%s:%s/avatars/%s", publicIP, httpPort, thumbFilename)
+	log.Printf("Thumbnail uploaded successfully! URL: %s", thumbURL)
+
+	// Process full image (optional)
+	var fullURL string
+	fullFile, fullHandler, err := r.FormFile("avatar_full")
+	if err == nil {
+		defer closeFile(fullFile)
+		log.Printf("Uploading full image: %s (size: %d bytes)", fullHandler.Filename, fullHandler.Size)
+
+		fullBytes, err := io.ReadAll(fullFile)
+		if err != nil {
+			log.Printf("Upload error: reading full file: %v", err)
+			// Continue with just thumbnail
+		} else {
+			// Generate filename for full image
+			fullHash := md5.Sum(fullBytes)
+			fullExt := filepath.Ext(fullHandler.Filename)
+			if fullExt == "" {
+				fullExt = ".jpg"
+			}
+			fullFilename := hex.EncodeToString(fullHash[:]) + "_full" + fullExt
+
+			fullPath := filepath.Join(avatarsPath, fullFilename)
+			if err := os.WriteFile(fullPath, fullBytes, 0644); err != nil {
+				log.Printf("Upload error: saving full file to %s: %v", fullPath, err)
+				// Continue with just thumbnail
+			} else {
+				fullURL = fmt.Sprintf("http://%s:%s/avatars/%s", publicIP, httpPort, fullFilename)
+				log.Printf("Full image uploaded successfully! URL: %s", fullURL)
+			}
+		}
+	} else {
+		log.Printf("No full image provided, using thumbnail only")
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if fullURL != "" {
+		fmt.Fprintf(w, `{"url": "%s", "full_url": "%s"}`, thumbURL, fullURL)
+	} else {
+		fmt.Fprintf(w, `{"url": "%s"}`, thumbURL)
+	}
 }
 
 func uploadImageHandler(w http.ResponseWriter, r *http.Request) {
