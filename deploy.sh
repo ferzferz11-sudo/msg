@@ -46,7 +46,7 @@ if ps -p $NEW_PID > /dev/null; then
     # Ротируем логи
     cat logs_new.txt >> logs.txt
 
-    # Очищаем старые логи, оставляем только последние 100 строк
+    # Очищаем старые логи, оставляем только последние 30 строк
     if [ -f logs.txt ]; then
         tail -n 10000 logs.txt > logs.txt.tmp && mv logs.txt.tmp logs.txt
     fi

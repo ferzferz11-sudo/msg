@@ -3639,6 +3639,7 @@ type UpdateChatAvatarRequest struct {
 	ChatId        string                 `protobuf:"bytes,1,opt,name=chat_id,json=chatId,proto3" json:"chat_id,omitempty"`
 	AvatarUrl     string                 `protobuf:"bytes,2,opt,name=avatar_url,json=avatarUrl,proto3" json:"avatar_url,omitempty"`
 	Username      string                 `protobuf:"bytes,3,opt,name=username,proto3" json:"username,omitempty"` // For admin verification
+	FullAvatarUrl string                 `protobuf:"bytes,4,opt,name=full_avatar_url,json=fullAvatarUrl,proto3" json:"full_avatar_url,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3690,6 +3691,13 @@ func (x *UpdateChatAvatarRequest) GetAvatarUrl() string {
 func (x *UpdateChatAvatarRequest) GetUsername() string {
 	if x != nil {
 		return x.Username
+	}
+	return ""
+}
+
+func (x *UpdateChatAvatarRequest) GetFullAvatarUrl() string {
+	if x != nil {
+		return x.FullAvatarUrl
 	}
 	return ""
 }
@@ -4671,12 +4679,13 @@ const file_messenger_proto_rawDesc = "" +
 	"\bnew_name\x18\x02 \x01(\tR\anewName\"L\n" +
 	"\x16UpdateChatNameResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage\"m\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"\x95\x01\n" +
 	"\x17UpdateChatAvatarRequest\x12\x17\n" +
 	"\achat_id\x18\x01 \x01(\tR\x06chatId\x12\x1d\n" +
 	"\n" +
 	"avatar_url\x18\x02 \x01(\tR\tavatarUrl\x12\x1a\n" +
-	"\busername\x18\x03 \x01(\tR\busername\"N\n" +
+	"\busername\x18\x03 \x01(\tR\busername\x12&\n" +
+	"\x0ffull_avatar_url\x18\x04 \x01(\tR\rfullAvatarUrl\"N\n" +
 	"\x18UpdateChatAvatarResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
 	"\amessage\x18\x02 \x01(\tR\amessage\"\x13\n" +

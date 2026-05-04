@@ -1089,14 +1089,14 @@ func (s *server) UpdateChatAvatar(_ context.Context, req *gen.UpdateChatAvatarRe
 		return &gen.UpdateChatAvatarResponse{Success: false, Message: "Only chat admin can change group photo"}, nil
 	}
 
-	// Update avatar
-	err = s.db.UpdateChatAvatar(req.ChatId, req.AvatarUrl)
+	// Update avatar (both thumbnail and full version)
+	err = s.db.UpdateChatAvatarWithFull(req.ChatId, req.AvatarUrl, req.FullAvatarUrl)
 	if err != nil {
 		log.Printf("UpdateChatAvatar error: %v", err)
 		return &gen.UpdateChatAvatarResponse{Success: false, Message: err.Error()}, nil
 	}
 
-	log.Printf("UpdateChatAvatar: Updated avatar for chat %s by admin %s", req.ChatId, req.Username)
+	log.Printf("UpdateChatAvatar: Updated avatar for chat %s by admin %s (thumb: %s, full: %s)", req.ChatId, req.Username, req.AvatarUrl, req.FullAvatarUrl)
 
 	// Increment version for all participants so their lists refresh
 	_ = s.db.IncrementParticipantsChatListVersion(req.ChatId)

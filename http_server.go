@@ -89,8 +89,6 @@ func uploadAvatarHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("Received avatar upload request")
-
 	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
 	if err := r.ParseMultipartForm(maxUploadSize); err != nil {
 		log.Printf("Upload error: file too large: %v", err)
@@ -106,8 +104,6 @@ func uploadAvatarHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer closeFile(thumbFile)
-
-	log.Printf("Uploading thumbnail: %s (size: %d bytes)", thumbHandler.Filename, thumbHandler.Size)
 
 	thumbBytes, err := io.ReadAll(thumbFile)
 	if err != nil {
@@ -131,52 +127,45 @@ func uploadAvatarHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	publicIP := "159.195.38.145"
+	publicIP := os.Getenv("PUBLIC_IP")
+	if publicIP == "" {
+		publicIP = "localhost"
+	}
 	httpPort := os.Getenv("HTTP_PORT")
 	if httpPort == "" {
 		httpPort = defaultHTTPPort
 	}
 
 	thumbURL := fmt.Sprintf("http://%s:%s/avatars/%s", publicIP, httpPort, thumbFilename)
-	log.Printf("Thumbnail uploaded successfully! URL: %s", thumbURL)
 
 	// Process full image (optional)
 	var fullURL string
-	fullFile, fullHandler, err := r.FormFile("avatar_full")
+	fullFile, _, err := r.FormFile("avatar_full")
 	if err == nil {
 		defer closeFile(fullFile)
-		log.Printf("Uploading full image: %s (size: %d bytes)", fullHandler.Filename, fullHandler.Size)
 
 		fullBytes, err := io.ReadAll(fullFile)
-		if err != nil {
-			log.Printf("Upload error: reading full file: %v", err)
-			// Continue with just thumbnail
-		} else {
+		if err == nil {
 			// Generate filename for full image
 			fullHash := md5.Sum(fullBytes)
-			fullExt := filepath.Ext(fullHandler.Filename)
+			fullExt := filepath.Ext(thumbHandler.Filename)
 			if fullExt == "" {
 				fullExt = ".jpg"
 			}
 			fullFilename := hex.EncodeToString(fullHash[:]) + "_full" + fullExt
 
 			fullPath := filepath.Join(avatarsPath, fullFilename)
-			if err := os.WriteFile(fullPath, fullBytes, 0644); err != nil {
-				log.Printf("Upload error: saving full file to %s: %v", fullPath, err)
-				// Continue with just thumbnail
-			} else {
+			if err := os.WriteFile(fullPath, fullBytes, 0644); err == nil {
 				fullURL = fmt.Sprintf("http://%s:%s/avatars/%s", publicIP, httpPort, fullFilename)
-				log.Printf("Full image uploaded successfully! URL: %s", fullURL)
 			}
 		}
-	} else {
-		log.Printf("No full image provided, using thumbnail only")
 	}
 
-	w.Header().Set("Content-Type", "application/json")
 	if fullURL != "" {
+		log.Printf("Avatar uploaded: thumb=%s, full=%s", thumbFilename, filepath.Base(fullURL))
 		fmt.Fprintf(w, `{"url": "%s", "full_url": "%s"}`, thumbURL, fullURL)
 	} else {
+		log.Printf("Avatar uploaded: %s", thumbFilename)
 		fmt.Fprintf(w, `{"url": "%s"}`, thumbURL)
 	}
 }
@@ -257,7 +246,10 @@ func uploadAudioHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	publicIP := "159.195.38.145"
+	publicIP := os.Getenv("PUBLIC_IP")
+	if publicIP == "" {
+		publicIP = "localhost"
+	}
 	httpPort := os.Getenv("HTTP_PORT")
 	if httpPort == "" {
 		httpPort = defaultHTTPPort
@@ -321,7 +313,10 @@ func handleUpload(w http.ResponseWriter, r *http.Request, formKey, saveDir, urlP
 		return
 	}
 
-	publicIP := "159.195.38.145"
+	publicIP := os.Getenv("PUBLIC_IP")
+	if publicIP == "" {
+		publicIP = "localhost"
+	}
 	httpPort := os.Getenv("HTTP_PORT")
 	if httpPort == "" {
 		httpPort = defaultHTTPPort

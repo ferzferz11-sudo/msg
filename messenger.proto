@@ -356,6 +356,7 @@ message UpdateChatAvatarRequest {
   string chat_id = 1;
   string avatar_url = 2;
   string username = 3; // For admin verification
+  string full_avatar_url = 4;
 }
 
 message UpdateChatAvatarResponse {

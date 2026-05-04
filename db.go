@@ -162,9 +162,11 @@ func ConnectDB() (*DB, error) {
 			type VARCHAR(50) NOT NULL, -- 'direct' or 'group'
 			participants TEXT NOT NULL, -- JSON array of usernames
 			creator_username VARCHAR(255),
-			created_at TIMESTAMP NOT NULL DEFAULT NOW()
+			created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+			avatar_url TEXT DEFAULT '',
+			full_avatar_url TEXT DEFAULT ''
 		);`,
-		// Migration: Add creator_username to chats if it doesn't exist
+		// Migration: Add avatar fields to chats if they don't exist
 		`DO $$
 		 BEGIN
 		  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='chats' AND column_name='creator_username') THEN
@@ -172,6 +174,9 @@ func ConnectDB() (*DB, error) {
 		  END IF;
 		  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='chats' AND column_name='avatar_url') THEN
 		    ALTER TABLE chats ADD COLUMN avatar_url TEXT DEFAULT '';
+		  END IF;
+		  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='chats' AND column_name='full_avatar_url') THEN
+		    ALTER TABLE chats ADD COLUMN full_avatar_url TEXT DEFAULT '';
 		  END IF;
 		 END $$;`,
 		`UPDATE chats SET creator_username = participants::json->>0
@@ -1924,6 +1929,22 @@ func (db *DB) UpdateChatAvatar(chatID, avatarURL string) error {
 	result, err := db.Exec(query, avatarURL, chatID)
 	if err != nil {
 		return fmt.Errorf("failed to update chat avatar: %w", err)
+	}
+
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		return fmt.Errorf("chat not found")
+	}
+
+	return nil
+}
+
+// UpdateChatAvatarWithFull updates both thumbnail and full avatar URLs for a chat
+func (db *DB) UpdateChatAvatarWithFull(chatID, avatarURL, fullAvatarURL string) error {
+	query := `UPDATE chats SET avatar_url = $1, full_avatar_url = $2 WHERE id = $3`
+	result, err := db.Exec(query, avatarURL, fullAvatarURL, chatID)
+	if err != nil {
+		return fmt.Errorf("failed to update chat avatar with full: %w", err)
 	}
 
 	// 🛠️ 3. Проверяем, что чат существовал
