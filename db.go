@@ -1459,7 +1459,7 @@ func (db *DB) GetChat(id string) (struct {
 }
 
 // GetUserChats retrieves all chats for a specific user with unread count and last message time
-func (db *DB) GetUserChats(username string) ([]struct {
+func (db *DB) GetUserChats(userId, username string) ([]struct {
 	ID                  string
 	Name                string
 	Type                string
@@ -1487,7 +1487,7 @@ func (db *DB) GetUserChats(username string) ([]struct {
 		unread_counts AS (
 			SELECT room_id, COUNT(*) as count 
 			FROM messages 
-			WHERE is_read = FALSE AND username != $1
+			WHERE is_read = FALSE AND user_id != $1::uuid
 			GROUP BY room_id
 		)
 		SELECT 
@@ -1501,14 +1501,14 @@ func (db *DB) GetUserChats(username string) ([]struct {
 		FROM chats c
 		LEFT JOIN last_messages lm ON c.id = lm.room_id
 		LEFT JOIN unread_counts uc ON c.id = uc.room_id
-		WHERE c.participants::jsonb @> jsonb_build_array($1)
+		WHERE c.participants::jsonb @> jsonb_build_array($2::text)
 		ORDER BY last_message_time DESC`
 
 	// Внимание: Чтобы это работало быстро, измените тип поля participants в таблице chats
 	// с TEXT на JSONB и создайте GIN индекс:
 	// CREATE INDEX idx_chats_participants ON chats USING gin (participants);
 
-	rows, err := db.Query(query, username)
+	rows, err := db.Query(query, userId, username)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query user chats: %w", err)
 	}

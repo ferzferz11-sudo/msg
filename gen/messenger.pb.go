@@ -1057,6 +1057,7 @@ func (x *ChatInfo) GetLastMessageUsername() string {
 type GetChatsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Username      string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
+	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1094,6 +1095,13 @@ func (*GetChatsRequest) Descriptor() ([]byte, []int) {
 func (x *GetChatsRequest) GetUsername() string {
 	if x != nil {
 		return x.Username
+	}
+	return ""
+}
+
+func (x *GetChatsRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
 	}
 	return ""
 }
@@ -4619,9 +4627,10 @@ const file_messenger_proto_rawDesc = "" +
 	"\n" +
 	"avatar_url\x18\n" +
 	" \x01(\tR\tavatarUrl\x122\n" +
-	"\x15last_message_username\x18\v \x01(\tR\x13lastMessageUsername\"-\n" +
+	"\x15last_message_username\x18\v \x01(\tR\x13lastMessageUsername\"F\n" +
 	"\x0fGetChatsRequest\x12\x1a\n" +
-	"\busername\x18\x01 \x01(\tR\busername\"=\n" +
+	"\busername\x18\x01 \x01(\tR\busername\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\"=\n" +
 	"\x10GetChatsResponse\x12)\n" +
 	"\x05chats\x18\x01 \x03(\v2\x13.messenger.ChatInfoR\x05chats\"E\n" +
 	"\x17CreateDirectChatRequest\x12\x14\n" +
