@@ -377,7 +377,7 @@ message GetFCMLogsResponse {
 }
 
 message SaveDraftRequest {
-  string username = 1;
+  string user_id = 1;
   string room_id = 2;
   string draft_text = 3;
   string replied_to_message_id = 4;
@@ -391,7 +391,7 @@ message SaveDraftResponse {
 }
 
 message GetDraftRequest {
-  string username = 1;
+  string user_id = 1;
   string room_id = 2;
 }
 
@@ -404,7 +404,7 @@ message GetDraftResponse {
 }
 
 message DeleteDraftRequest {
-  string username = 1;
+  string user_id = 1;
   string room_id = 2;
 }
 
@@ -413,7 +413,7 @@ message DeleteDraftResponse {
 }
 
 message GetMutedChatsRequest {
-  string username = 1;
+  string user_id = 1;
 }
 
 message GetMutedChatsResponse {
@@ -421,13 +421,22 @@ message GetMutedChatsResponse {
 }
 
 message SetMutedChatRequest {
-  string username = 1;
+  string user_id = 1;
   string room_id = 2;
   bool muted = 3;
 }
 
 message SetMutedChatResponse {
   bool success = 1;
+}
+
+message GetUserIdRequest {
+  string username = 1;
+}
+
+message GetUserIdResponse {
+  string user_id = 1;
+  bool found = 2;
 }
 
 service ChatService {
@@ -470,4 +479,5 @@ service ChatService {
   rpc DeleteDraft(DeleteDraftRequest) returns (DeleteDraftResponse);
   rpc GetMutedChats(GetMutedChatsRequest) returns (GetMutedChatsResponse);
   rpc SetMutedChat(SetMutedChatRequest) returns (SetMutedChatResponse);
+  rpc GetUserId(GetUserIdRequest) returns (GetUserIdResponse);
 }

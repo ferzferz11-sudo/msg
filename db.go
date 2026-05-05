@@ -386,6 +386,38 @@ func ConnectDB() (*DB, error) {
 			updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
 			PRIMARY KEY (username, room_id)
 		);`,
+		// Migration: Add user_id column to draft_messages table
+		`DO $$
+		 BEGIN
+		  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='draft_messages' AND column_name='user_id') THEN
+		    ALTER TABLE draft_messages ADD COLUMN user_id UUID REFERENCES users(id) ON DELETE CASCADE;
+		  END IF;
+		 END $$;`,
+		// Migration: Add user_id column to muted_chats table
+		`DO $$
+		 BEGIN
+		  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='muted_chats' AND column_name='user_id') THEN
+		    ALTER TABLE muted_chats ADD COLUMN user_id UUID REFERENCES users(id) ON DELETE CASCADE;
+		  END IF;
+		 END $$;`,
+		// Migration: Populate user_id from username for draft_messages
+		`UPDATE draft_messages d SET user_id = u.id FROM users u WHERE d.username = u.username AND d.user_id IS NULL;`,
+		// Migration: Populate user_id from username for muted_chats
+		`UPDATE muted_chats m SET user_id = u.id FROM users u WHERE m.username = u.username AND m.user_id IS NULL;`,
+		// Migration: Add unique constraint on (user_id, room_id) for draft_messages
+		`DO $$
+		 BEGIN
+		  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname='idx_draft_messages_user_room') THEN
+		    CREATE UNIQUE INDEX idx_draft_messages_user_room ON draft_messages(user_id, room_id);
+		  END IF;
+		 END $$;`,
+		// Migration: Add unique constraint on (user_id, room_id) for muted_chats
+		`DO $$
+		 BEGIN
+		  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname='idx_muted_chats_user_room') THEN
+		    CREATE UNIQUE INDEX idx_muted_chats_user_room ON muted_chats(user_id, room_id);
+		  END IF;
+		 END $$;`,
 	}
 
 	// 1. Wrap all migrations in a single transaction for safety
@@ -2393,6 +2425,157 @@ func (db *DB) SetMutedChat(username, roomID string, muted bool) error {
 		_, err := db.Exec(query, username, roomID)
 		if err != nil {
 			return fmt.Errorf("failed to unmute chat: %w", err)
+		}
+	}
+	return nil
+}
+
+// SaveDraftByUserID saves or updates a draft message for a user (by UUID) in a specific room
+func (db *DB) SaveDraftByUserID(userID, roomID, draftText, repliedToMessageID, repliedToUser, repliedToText string) error {
+	query := `INSERT INTO draft_messages (user_id, username, room_id, draft_text, replied_to_message_id, replied_to_user, replied_to_text, updated_at)
+	          VALUES ($1::uuid, (SELECT username FROM users WHERE id = $1::uuid), $2, $3, $4, $5, $6, NOW())
+	          ON CONFLICT (user_id, room_id)
+	          DO UPDATE SET
+	            draft_text = EXCLUDED.draft_text,
+	            replied_to_message_id = EXCLUDED.replied_to_message_id,
+	            replied_to_user = EXCLUDED.replied_to_user,
+	            replied_to_text = EXCLUDED.replied_to_text,
+	            updated_at = NOW()`
+
+	_, err := db.Exec(query, userID, roomID, draftText, repliedToMessageID, repliedToUser, repliedToText)
+	if err != nil {
+		return fmt.Errorf("failed to save draft by user_id: %w", err)
+	}
+	return nil
+}
+
+// GetDraftByUserID retrieves a draft message for a user (by UUID) in a specific room
+func (db *DB) GetDraftByUserID(userID, roomID string) (struct {
+	DraftText          string
+	RepliedToMessageID string
+	RepliedToUser      string
+	RepliedToText      string
+	UpdatedAt          time.Time
+}, error) {
+	var result struct {
+		DraftText          string
+		RepliedToMessageID string
+		RepliedToUser      string
+		RepliedToText      string
+		UpdatedAt          time.Time
+	}
+
+	query := `SELECT COALESCE(draft_text, ''),
+	                 COALESCE(replied_to_message_id, ''),
+	                 COALESCE(replied_to_user, ''),
+	                 COALESCE(replied_to_text, ''),
+	                 updated_at
+	          FROM draft_messages
+	          WHERE user_id = $1::uuid AND room_id = $2`
+
+	err := db.QueryRow(query, userID, roomID).Scan(
+		&result.DraftText,
+		&result.RepliedToMessageID,
+		&result.RepliedToUser,
+		&result.RepliedToText,
+		&result.UpdatedAt,
+	)
+
+	if err == sql.ErrNoRows {
+		// No draft found, return empty result
+		return result, nil
+	}
+	if err != nil {
+		return result, fmt.Errorf("failed to get draft by user_id: %w", err)
+	}
+
+	return result, nil
+}
+
+// DeleteDraftByUserID removes a draft message for a user (by UUID) in a specific room
+// Returns true if a draft was actually deleted, false if no draft existed
+func (db *DB) DeleteDraftByUserID(userID, roomID string) (bool, error) {
+	query := `DELETE FROM draft_messages WHERE user_id = $1::uuid AND room_id = $2`
+	result, err := db.Exec(query, userID, roomID)
+	if err != nil {
+		return false, fmt.Errorf("failed to delete draft by user_id: %w", err)
+	}
+	rowsAffected, _ := result.RowsAffected()
+	return rowsAffected > 0, nil
+}
+
+// GetMutedChatsByUserID returns a list of room IDs that the user (by UUID) has muted
+func (db *DB) GetMutedChatsByUserID(userID string) ([]string, error) {
+	query := `SELECT room_id FROM muted_chats WHERE user_id = $1::uuid AND muted = TRUE`
+	rows, err := db.Query(query, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get muted chats by user_id: %w", err)
+	}
+	defer rows.Close()
+
+	var mutedChats []string
+	for rows.Next() {
+		var roomID string
+		if err := rows.Scan(&roomID); err != nil {
+			return nil, fmt.Errorf("failed to scan muted chat room_id: %w", err)
+		}
+		mutedChats = append(mutedChats, roomID)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating muted chats rows: %w", err)
+	}
+
+	return mutedChats, nil
+}
+
+// GetUserIdByUsername retrieves the UUID for a given username
+func (db *DB) GetUserIdByUsername(username string) (string, error) {
+	var userID string
+	query := `SELECT id FROM users WHERE username = $1::text`
+	err := db.QueryRow(query, username).Scan(&userID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return "", fmt.Errorf("user not found: %s", username)
+		}
+		return "", fmt.Errorf("failed to get user id: %w", err)
+	}
+	return userID, nil
+}
+
+// GetUsernameByID retrieves the username for a given user ID (UUID)
+func (db *DB) GetUsernameByID(userID string) (string, error) {
+	var username string
+	query := `SELECT username FROM users WHERE id = $1::uuid`
+	err := db.QueryRow(query, userID).Scan(&username)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return "", fmt.Errorf("user not found: %s", userID)
+		}
+		return "", fmt.Errorf("failed to get username: %w", err)
+	}
+	return username, nil
+}
+
+// SetMutedChatByUserID sets the mute status for a specific chat room for a user (by UUID)
+func (db *DB) SetMutedChatByUserID(userID, roomID string, muted bool) error {
+	if muted {
+		// Upsert: insert or update to muted=true
+		query := `
+			INSERT INTO muted_chats (user_id, username, room_id, muted, updated_at)
+			VALUES ($1::uuid, (SELECT username FROM users WHERE id = $1::uuid), $2, TRUE, NOW())
+			ON CONFLICT (user_id, room_id)
+			DO UPDATE SET muted = TRUE, updated_at = NOW()`
+		_, err := db.Exec(query, userID, roomID)
+		if err != nil {
+			return fmt.Errorf("failed to set muted chat by user_id: %w", err)
+		}
+	} else {
+		// Remove mute entry - delete the row
+		query := `DELETE FROM muted_chats WHERE user_id = $1::uuid AND room_id = $2`
+		_, err := db.Exec(query, userID, roomID)
+		if err != nil {
+			return fmt.Errorf("failed to unmute chat by user_id: %w", err)
 		}
 	}
 	return nil

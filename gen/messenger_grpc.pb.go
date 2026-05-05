@@ -58,6 +58,7 @@ const (
 	ChatService_DeleteDraft_FullMethodName        = "/messenger.ChatService/DeleteDraft"
 	ChatService_GetMutedChats_FullMethodName      = "/messenger.ChatService/GetMutedChats"
 	ChatService_SetMutedChat_FullMethodName       = "/messenger.ChatService/SetMutedChat"
+	ChatService_GetUserId_FullMethodName          = "/messenger.ChatService/GetUserId"
 )
 
 // ChatServiceClient is the client API for ChatService service.
@@ -103,6 +104,7 @@ type ChatServiceClient interface {
 	DeleteDraft(ctx context.Context, in *DeleteDraftRequest, opts ...grpc.CallOption) (*DeleteDraftResponse, error)
 	GetMutedChats(ctx context.Context, in *GetMutedChatsRequest, opts ...grpc.CallOption) (*GetMutedChatsResponse, error)
 	SetMutedChat(ctx context.Context, in *SetMutedChatRequest, opts ...grpc.CallOption) (*SetMutedChatResponse, error)
+	GetUserId(ctx context.Context, in *GetUserIdRequest, opts ...grpc.CallOption) (*GetUserIdResponse, error)
 }
 
 type chatServiceClient struct {
@@ -506,6 +508,16 @@ func (c *chatServiceClient) SetMutedChat(ctx context.Context, in *SetMutedChatRe
 	return out, nil
 }
 
+func (c *chatServiceClient) GetUserId(ctx context.Context, in *GetUserIdRequest, opts ...grpc.CallOption) (*GetUserIdResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetUserIdResponse)
+	err := c.cc.Invoke(ctx, ChatService_GetUserId_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ChatServiceServer is the server API for ChatService service.
 // All implementations must embed UnimplementedChatServiceServer
 // for forward compatibility.
@@ -549,6 +561,7 @@ type ChatServiceServer interface {
 	DeleteDraft(context.Context, *DeleteDraftRequest) (*DeleteDraftResponse, error)
 	GetMutedChats(context.Context, *GetMutedChatsRequest) (*GetMutedChatsResponse, error)
 	SetMutedChat(context.Context, *SetMutedChatRequest) (*SetMutedChatResponse, error)
+	GetUserId(context.Context, *GetUserIdRequest) (*GetUserIdResponse, error)
 	mustEmbedUnimplementedChatServiceServer()
 }
 
@@ -675,6 +688,9 @@ func (UnimplementedChatServiceServer) GetMutedChats(context.Context, *GetMutedCh
 }
 func (UnimplementedChatServiceServer) SetMutedChat(context.Context, *SetMutedChatRequest) (*SetMutedChatResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetMutedChat not implemented")
+}
+func (UnimplementedChatServiceServer) GetUserId(context.Context, *GetUserIdRequest) (*GetUserIdResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetUserId not implemented")
 }
 func (UnimplementedChatServiceServer) mustEmbedUnimplementedChatServiceServer() {}
 func (UnimplementedChatServiceServer) testEmbeddedByValue()                     {}
@@ -1388,6 +1404,24 @@ func _ChatService_SetMutedChat_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ChatService_GetUserId_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetUserIdRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).GetUserId(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_GetUserId_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).GetUserId(ctx, req.(*GetUserIdRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ChatService_ServiceDesc is the grpc.ServiceDesc for ChatService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1546,6 +1580,10 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SetMutedChat",
 			Handler:    _ChatService_SetMutedChat_Handler,
+		},
+		{
+			MethodName: "GetUserId",
+			Handler:    _ChatService_GetUserId_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

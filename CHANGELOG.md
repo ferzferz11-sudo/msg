@@ -2,6 +2,31 @@
 
 **Author:** Pavel Davydov (ferz)
 
+## [1.0.3.5] - 2026-05-05
+- **Drafts & Mutes Migration to User ID**
+  - **Server: Database Schema**
+    - Added `user_id` (UUID) column to `draft_messages` and `muted_chats` tables.
+    - Created migration queries to populate `user_id` from existing `username` data.
+    - Added `GetUsernameByID()` function for resolving usernames from UUIDs.
+    - Updated primary keys from `(username, room_id)` to `(user_id, room_id)`.
+  - **Server: API Changes**
+    - `SaveDraft`, `GetDraft`, `DeleteDraft` - now use `user_id` instead of `username`.
+    - `GetMutedChats`, `SetMutedChat` - now use `user_id` instead of `username`.
+    - Added `GetUserId` RPC method for client to retrieve UUID by username.
+  - **Server: Improved Logging**
+    - Logs now show both `username` and `user_id` for better readability.
+    - Eliminated spam from deleting empty drafts - only actual deletions are logged.
+  - **Android Client:**
+    - Updated proto definitions to use `userId` field.
+    - Added `setUserId()` / `getUserId()` methods to GrpcClient.
+    - Added `fetchUserId()` to retrieve UUID from server.
+    - Activities now ensure `userId` is set before draft/mute operations.
+    - User ID is cached in SharedPreferences after first retrieval.
+  - **Benefits:**
+    - Drafts and muted chats now persist correctly after username changes.
+    - More efficient database queries using indexed UUID columns.
+  - Server version: 1.0.3.5
+
 ## [1.0.3.0] - 2026-05-03
 - **Message Drafts (Unsent Message Persistence)**
   - **Server: Draft Storage**

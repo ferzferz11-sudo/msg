@@ -24,7 +24,7 @@ import (
 	"firebase.google.com/go/v4/messaging"
 )
 
-const ServerVersion = "1.0.3.0"
+const ServerVersion = "1.0.3.5"
 
 // server implements the gRPC ChatService interface
 type server struct {
@@ -1227,20 +1227,23 @@ func (s *server) GetFCMLogs(_ context.Context, _ *gen.GetFCMLogsRequest) (*gen.G
 
 // SaveDraft saves a draft message for a user in a specific room
 func (s *server) SaveDraft(_ context.Context, req *gen.SaveDraftRequest) (*gen.SaveDraftResponse, error) {
-	err := s.db.SaveDraft(req.Username, req.RoomId, req.DraftText, req.RepliedToMessageId, req.RepliedToUser, req.RepliedToText)
+	err := s.db.SaveDraftByUserID(req.UserId, req.RoomId, req.DraftText, req.RepliedToMessageId, req.RepliedToUser, req.RepliedToText)
 	if err != nil {
-		log.Printf("Failed to save draft for %s in room %s: %v", req.Username, req.RoomId, err)
+		username, _ := s.db.GetUsernameByID(req.UserId)
+		log.Printf("Failed to save draft for user %s (%s) in room %s: %v", username, req.UserId, req.RoomId, err)
 		return &gen.SaveDraftResponse{Success: false, Message: err.Error()}, nil
 	}
-	log.Printf("Draft saved for %s in room %s (length: %d)", req.Username, req.RoomId, len(req.DraftText))
+	username, _ := s.db.GetUsernameByID(req.UserId)
+	log.Printf("Draft saved for user %s (%s) in room %s (length: %d)", username, req.UserId, req.RoomId, len(req.DraftText))
 	return &gen.SaveDraftResponse{Success: true, Message: "Draft saved successfully"}, nil
 }
 
 // GetDraft retrieves a draft message for a user in a specific room
 func (s *server) GetDraft(_ context.Context, req *gen.GetDraftRequest) (*gen.GetDraftResponse, error) {
-	draft, err := s.db.GetDraft(req.Username, req.RoomId)
+	draft, err := s.db.GetDraftByUserID(req.UserId, req.RoomId)
 	if err != nil {
-		log.Printf("Failed to get draft for %s in room %s: %v", req.Username, req.RoomId, err)
+		username, _ := s.db.GetUsernameByID(req.UserId)
+		log.Printf("Failed to get draft for user %s (%s) in room %s: %v", username, req.UserId, req.RoomId, err)
 		return &gen.GetDraftResponse{HasDraft: false}, nil
 	}
 
@@ -1256,21 +1259,28 @@ func (s *server) GetDraft(_ context.Context, req *gen.GetDraftRequest) (*gen.Get
 }
 
 // DeleteDraft removes a draft message for a user in a specific room
+// Only logs if a draft was actually deleted (not for empty deletions)
 func (s *server) DeleteDraft(_ context.Context, req *gen.DeleteDraftRequest) (*gen.DeleteDraftResponse, error) {
-	err := s.db.DeleteDraft(req.Username, req.RoomId)
+	deleted, err := s.db.DeleteDraftByUserID(req.UserId, req.RoomId)
 	if err != nil {
-		log.Printf("Failed to delete draft for %s in room %s: %v", req.Username, req.RoomId, err)
+		username, _ := s.db.GetUsernameByID(req.UserId)
+		log.Printf("Failed to delete draft for user %s (%s) in room %s: %v", username, req.UserId, req.RoomId, err)
 		return &gen.DeleteDraftResponse{Success: false}, nil
 	}
-	log.Printf("Draft deleted for %s in room %s", req.Username, req.RoomId)
+	// Only log if we actually deleted something (not for empty/duplicate deletions)
+	if deleted {
+		username, _ := s.db.GetUsernameByID(req.UserId)
+		log.Printf("Draft deleted for user %s (%s) in room %s", username, req.UserId, req.RoomId)
+	}
 	return &gen.DeleteDraftResponse{Success: true}, nil
 }
 
 // GetMutedChats returns the list of chat rooms where the user has disabled push notifications
 func (s *server) GetMutedChats(_ context.Context, req *gen.GetMutedChatsRequest) (*gen.GetMutedChatsResponse, error) {
-	mutedChats, err := s.db.GetMutedChats(req.Username)
+	mutedChats, err := s.db.GetMutedChatsByUserID(req.UserId)
 	if err != nil {
-		log.Printf("Failed to get muted chats for %s: %v", req.Username, err)
+		username, _ := s.db.GetUsernameByID(req.UserId)
+		log.Printf("Failed to get muted chats for user %s (%s): %v", username, req.UserId, err)
 		return &gen.GetMutedChatsResponse{RoomIds: []string{}}, nil
 	}
 	return &gen.GetMutedChatsResponse{RoomIds: mutedChats}, nil
@@ -1279,15 +1289,27 @@ func (s *server) GetMutedChats(_ context.Context, req *gen.GetMutedChatsRequest)
 // SetMutedChat sets or unsets the mute status for a chat room
 // When muted=true, the user will not receive push notifications from this chat
 func (s *server) SetMutedChat(_ context.Context, req *gen.SetMutedChatRequest) (*gen.SetMutedChatResponse, error) {
-	err := s.db.SetMutedChat(req.Username, req.RoomId, req.Muted)
+	err := s.db.SetMutedChatByUserID(req.UserId, req.RoomId, req.Muted)
 	if err != nil {
-		log.Printf("Failed to set muted status for %s in room %s (muted=%v): %v", req.Username, req.RoomId, req.Muted, err)
+		username, _ := s.db.GetUsernameByID(req.UserId)
+		log.Printf("Failed to set muted status for user %s (%s) in room %s (muted=%v): %v", username, req.UserId, req.RoomId, req.Muted, err)
 		return &gen.SetMutedChatResponse{Success: false}, nil
 	}
 	action := "muted"
 	if !req.Muted {
 		action = "unmuted"
 	}
-	log.Printf("Chat %s for %s in room %s", action, req.Username, req.RoomId)
+	username, _ := s.db.GetUsernameByID(req.UserId)
+	log.Printf("Chat %s for user %s (%s) in room %s", action, username, req.UserId, req.RoomId)
 	return &gen.SetMutedChatResponse{Success: true}, nil
+}
+
+// GetUserId retrieves the user ID (UUID) for a given username
+func (s *server) GetUserId(_ context.Context, req *gen.GetUserIdRequest) (*gen.GetUserIdResponse, error) {
+	userID, err := s.db.GetUserIdByUsername(req.Username)
+	if err != nil {
+		log.Printf("Failed to get user ID for %s: %v", req.Username, err)
+		return &gen.GetUserIdResponse{UserId: "", Found: false}, nil
+	}
+	return &gen.GetUserIdResponse{UserId: userID, Found: true}, nil
 }
