@@ -24,17 +24,29 @@ import (
 	"firebase.google.com/go/v4/messaging"
 )
 
-const ServerVersion = "1.0.3.7"
+const ServerVersion = "1.0.3.8"
 
 // server implements the gRPC ChatService interface
 type server struct {
 	gen.UnimplementedChatServiceServer
-	hub         *Hub          // Hub for managing client connections
-	db          *DB           // Database for message persistence
-	firebaseApp *firebase.App // Firebase Admin SDK instance
-	recentMsgs  sync.Map      // Cache for deduplicating identical rapid messages
-	fcmLogs     []*gen.FCMLogEntry
-	fcmLogsMu   sync.Mutex
+	hub          *Hub          // Hub for managing client connections
+	db           *DB           // Database for message persistence
+	firebaseApp  *firebase.App // Firebase Admin SDK instance
+	recentMsgs   sync.Map      // Cache for deduplicating identical rapid messages
+	recentErrors sync.Map      // map[string]time.Time to prevent duplicate error logs
+	fcmLogs      []*gen.FCMLogEntry
+	fcmLogsMu    sync.Mutex
+}
+
+func (s *server) logErrorOnce(key string, format string, v ...interface{}) {
+	now := time.Now()
+	if last, ok := s.recentErrors.Load(key); ok {
+		if now.Sub(last.(time.Time)) < 30*time.Second {
+			return
+		}
+	}
+	s.recentErrors.Store(key, now)
+	log.Printf(format, v...)
 }
 
 func (s *server) logFCM(level, format string, v ...interface{}) {
@@ -1158,10 +1170,27 @@ func (s *server) GetChatListVersion(_ context.Context, req *gen.GetChatListVersi
 	return &gen.GetChatListVersionResponse{Version: version}, nil
 }
 
+// resolveUsername converts a potential user ID to a username if needed
+func (s *server) resolveUsername(identifier string) string {
+	if identifier == "" {
+		return ""
+	}
+	// Check if it's a UUID
+	if _, err := uuid.Parse(identifier); err == nil {
+		// It's a UUID, try to get the username
+		username, err := s.db.GetUsernameByID(identifier)
+		if err == nil {
+			return username
+		}
+	}
+	return identifier
+}
+
 func (s *server) GetThemes(_ context.Context, req *gen.GetThemesRequest) (*gen.GetThemesResponse, error) {
-	currentID, themes, err := s.db.GetUserThemes(req.Username)
+	username := s.resolveUsername(req.Username)
+	currentID, themes, err := s.db.GetUserThemes(username)
 	if err != nil {
-		log.Printf("Failed to get themes for %s: %v", req.Username, err)
+		s.logErrorOnce("GetThemes:"+username, "Failed to get themes for %s: %v", username, err)
 		return &gen.GetThemesResponse{CurrentThemeId: "dark"}, nil
 	}
 
@@ -1185,7 +1214,7 @@ func (s *server) GetThemes(_ context.Context, req *gen.GetThemesRequest) (*gen.G
 		})
 	}
 
-	log.Printf("Retrieved %d custom themes for user %s (Current: %s)", len(customThemes), req.Username, currentID)
+	log.Printf("Retrieved %d custom themes for user %s (Current: %s)", len(customThemes), username, currentID)
 
 	return &gen.GetThemesResponse{
 		CurrentThemeId: currentID,
@@ -1194,34 +1223,37 @@ func (s *server) GetThemes(_ context.Context, req *gen.GetThemesRequest) (*gen.G
 }
 
 func (s *server) SaveTheme(_ context.Context, req *gen.SaveThemeRequest) (*gen.SaveThemeResponse, error) {
-	log.Printf("Saving theme '%s' (ID: %s) for user %s. Background URL: %s", req.Theme.Name, req.Theme.Id, req.Username, req.Theme.BackgroundImageUrl)
-	err := s.db.SaveUserTheme(req.Username, req.Theme)
+	username := s.resolveUsername(req.Username)
+	log.Printf("Saving theme '%s' (ID: %s) for user %s. Background URL: %s", req.Theme.Name, req.Theme.Id, username, req.Theme.BackgroundImageUrl)
+	err := s.db.SaveUserTheme(username, req.Theme)
 	if err != nil {
-		log.Printf("Failed to save theme for %s: %v", req.Username, err)
+		s.logErrorOnce("SaveTheme:"+username, "Failed to save theme for %s: %v", username, err)
 		return &gen.SaveThemeResponse{Success: false, Message: err.Error()}, nil
 	}
-	log.Printf("Theme '%s' saved successfully for %s", req.Theme.Name, req.Username)
+	log.Printf("Theme '%s' saved successfully for %s", req.Theme.Name, username)
 	return &gen.SaveThemeResponse{Success: true, Message: "Theme saved"}, nil
 }
 
 func (s *server) SetCurrentTheme(_ context.Context, req *gen.SetCurrentThemeRequest) (*gen.SetCurrentThemeResponse, error) {
-	log.Printf("Setting current theme to %s for user %s", req.ThemeId, req.Username)
-	err := s.db.SetCurrentTheme(req.Username, req.ThemeId)
+	username := s.resolveUsername(req.Username)
+	log.Printf("Setting current theme to %s for user %s", req.ThemeId, username)
+	err := s.db.SetCurrentTheme(username, req.ThemeId)
 	if err != nil {
-		log.Printf("Failed to set current theme for %s: %v", req.Username, err)
+		s.logErrorOnce("SetCurrentTheme:"+username, "Failed to set current theme for %s: %v", username, err)
 		return &gen.SetCurrentThemeResponse{Success: false}, nil
 	}
 	return &gen.SetCurrentThemeResponse{Success: true}, nil
 }
 
 func (s *server) DeleteTheme(_ context.Context, req *gen.DeleteThemeRequest) (*gen.DeleteThemeResponse, error) {
-	log.Printf("Deleting theme %s for user %s", req.ThemeId, req.Username)
-	err := s.db.DeleteUserTheme(req.Username, req.ThemeId)
+	username := s.resolveUsername(req.Username)
+	log.Printf("Deleting theme %s for user %s", req.ThemeId, username)
+	err := s.db.DeleteUserTheme(username, req.ThemeId)
 	if err != nil {
-		log.Printf("Failed to delete theme for %s: %v", req.Username, err)
+		s.logErrorOnce("DeleteTheme:"+username, "Failed to delete theme for %s: %v", username, err)
 		return &gen.DeleteThemeResponse{Success: false}, nil
 	}
-	log.Printf("Theme %s deleted successfully for %s", req.ThemeId, req.Username)
+	log.Printf("Theme %s deleted successfully for %s", req.ThemeId, username)
 	return &gen.DeleteThemeResponse{Success: true}, nil
 }
 
@@ -1243,23 +1275,48 @@ func (s *server) GetFCMLogs(_ context.Context, _ *gen.GetFCMLogsRequest) (*gen.G
 
 // SaveDraft saves a draft message for a user in a specific room
 func (s *server) SaveDraft(_ context.Context, req *gen.SaveDraftRequest) (*gen.SaveDraftResponse, error) {
-	err := s.db.SaveDraftByUserID(req.UserId, req.RoomId, req.DraftText, req.RepliedToMessageId, req.RepliedToUser, req.RepliedToText)
+	if req.UserId == "" {
+		return &gen.SaveDraftResponse{Success: false, Message: "empty user id"}, nil
+	}
+
+	var err error
+	if _, uuidErr := uuid.Parse(req.UserId); uuidErr == nil {
+		err = s.db.SaveDraftByUserID(req.UserId, req.RoomId, req.DraftText, req.RepliedToMessageId, req.RepliedToUser, req.RepliedToText)
+	} else {
+		err = s.db.SaveDraft(req.UserId, req.RoomId, req.DraftText, req.RepliedToMessageId, req.RepliedToUser, req.RepliedToText)
+	}
+
 	if err != nil {
-		username, _ := s.db.GetUsernameByID(req.UserId)
-		log.Printf("Failed to save draft for user %s (%s) in room %s: %v", username, req.UserId, req.RoomId, err)
+		s.logErrorOnce("SaveDraft:"+req.UserId, "Failed to save draft for user %s in room %s: %v", req.UserId, req.RoomId, err)
 		return &gen.SaveDraftResponse{Success: false, Message: err.Error()}, nil
 	}
-	username, _ := s.db.GetUsernameByID(req.UserId)
-	log.Printf("Draft saved for user %s (%s) in room %s (length: %d)", username, req.UserId, req.RoomId, len(req.DraftText))
+	log.Printf("Draft saved for user %s in room %s (length: %d)", req.UserId, req.RoomId, len(req.DraftText))
 	return &gen.SaveDraftResponse{Success: true, Message: "Draft saved successfully"}, nil
 }
 
 // GetDraft retrieves a draft message for a user in a specific room
 func (s *server) GetDraft(_ context.Context, req *gen.GetDraftRequest) (*gen.GetDraftResponse, error) {
-	draft, err := s.db.GetDraftByUserID(req.UserId, req.RoomId)
+	if req.UserId == "" {
+		return &gen.GetDraftResponse{HasDraft: false}, nil
+	}
+
+	var draft struct {
+		DraftText          string
+		RepliedToMessageID string
+		RepliedToUser      string
+		RepliedToText      string
+		UpdatedAt          time.Time
+	}
+	var err error
+
+	if _, uuidErr := uuid.Parse(req.UserId); uuidErr == nil {
+		draft, err = s.db.GetDraftByUserID(req.UserId, req.RoomId)
+	} else {
+		draft, err = s.db.GetDraft(req.UserId, req.RoomId)
+	}
+
 	if err != nil {
-		username, _ := s.db.GetUsernameByID(req.UserId)
-		log.Printf("Failed to get draft for user %s (%s) in room %s: %v", username, req.UserId, req.RoomId, err)
+		s.logErrorOnce("GetDraft:"+req.UserId, "Failed to get draft for user %s in room %s: %v", req.UserId, req.RoomId, err)
 		return &gen.GetDraftResponse{HasDraft: false}, nil
 	}
 
@@ -1277,26 +1334,48 @@ func (s *server) GetDraft(_ context.Context, req *gen.GetDraftRequest) (*gen.Get
 // DeleteDraft removes a draft message for a user in a specific room
 // Only logs if a draft was actually deleted (not for empty deletions)
 func (s *server) DeleteDraft(_ context.Context, req *gen.DeleteDraftRequest) (*gen.DeleteDraftResponse, error) {
-	deleted, err := s.db.DeleteDraftByUserID(req.UserId, req.RoomId)
+	if req.UserId == "" {
+		return &gen.DeleteDraftResponse{Success: false}, nil
+	}
+
+	var deleted bool
+	var err error
+	if _, uuidErr := uuid.Parse(req.UserId); uuidErr == nil {
+		deleted, err = s.db.DeleteDraftByUserID(req.UserId, req.RoomId)
+	} else {
+		err = s.db.DeleteDraft(req.UserId, req.RoomId)
+		deleted = err == nil
+	}
+
 	if err != nil {
-		username, _ := s.db.GetUsernameByID(req.UserId)
-		log.Printf("Failed to delete draft for user %s (%s) in room %s: %v", username, req.UserId, req.RoomId, err)
+		s.logErrorOnce("DeleteDraft:"+req.UserId, "Failed to delete draft for user %s in room %s: %v", req.UserId, req.RoomId, err)
 		return &gen.DeleteDraftResponse{Success: false}, nil
 	}
 	// Only log if we actually deleted something (not for empty/duplicate deletions)
 	if deleted {
-		username, _ := s.db.GetUsernameByID(req.UserId)
-		log.Printf("Draft deleted for user %s (%s) in room %s", username, req.UserId, req.RoomId)
+		log.Printf("Draft deleted for user %s in room %s", req.UserId, req.RoomId)
 	}
 	return &gen.DeleteDraftResponse{Success: true}, nil
 }
 
 // GetMutedChats returns the list of chat rooms where the user has disabled push notifications
 func (s *server) GetMutedChats(_ context.Context, req *gen.GetMutedChatsRequest) (*gen.GetMutedChatsResponse, error) {
-	mutedChats, err := s.db.GetMutedChatsByUserID(req.UserId)
+	if req.UserId == "" {
+		return &gen.GetMutedChatsResponse{RoomIds: []string{}}, nil
+	}
+
+	var mutedChats []string
+	var err error
+
+	// Check if it's a UUID or username
+	if _, uuidErr := uuid.Parse(req.UserId); uuidErr == nil {
+		mutedChats, err = s.db.GetMutedChatsByUserID(req.UserId)
+	} else {
+		mutedChats, err = s.db.GetMutedChats(req.UserId)
+	}
+
 	if err != nil {
-		username, _ := s.db.GetUsernameByID(req.UserId)
-		log.Printf("Failed to get muted chats for user %s (%s): %v", username, req.UserId, err)
+		s.logErrorOnce("GetMutedChats:"+req.UserId, "Failed to get muted chats for user %s: %v", req.UserId, err)
 		return &gen.GetMutedChatsResponse{RoomIds: []string{}}, nil
 	}
 	return &gen.GetMutedChatsResponse{RoomIds: mutedChats}, nil
@@ -1305,18 +1384,28 @@ func (s *server) GetMutedChats(_ context.Context, req *gen.GetMutedChatsRequest)
 // SetMutedChat sets or unsets the mute status for a chat room
 // When muted=true, the user will not receive push notifications from this chat
 func (s *server) SetMutedChat(_ context.Context, req *gen.SetMutedChatRequest) (*gen.SetMutedChatResponse, error) {
-	err := s.db.SetMutedChatByUserID(req.UserId, req.RoomId, req.Muted)
-	if err != nil {
-		username, _ := s.db.GetUsernameByID(req.UserId)
-		log.Printf("Failed to set muted status for user %s (%s) in room %s (muted=%v): %v", username, req.UserId, req.RoomId, req.Muted, err)
+	if req.UserId == "" {
 		return &gen.SetMutedChatResponse{Success: false}, nil
 	}
+
+	var err error
+	// Check if it's a UUID or username
+	if _, uuidErr := uuid.Parse(req.UserId); uuidErr == nil {
+		err = s.db.SetMutedChatByUserID(req.UserId, req.RoomId, req.Muted)
+	} else {
+		err = s.db.SetMutedChat(req.UserId, req.RoomId, req.Muted)
+	}
+
+	if err != nil {
+		s.logErrorOnce("SetMutedChat:"+req.UserId, "Failed to set muted status for user %s in room %s (muted=%v): %v", req.UserId, req.RoomId, req.Muted, err)
+		return &gen.SetMutedChatResponse{Success: false}, nil
+	}
+
 	action := "muted"
 	if !req.Muted {
 		action = "unmuted"
 	}
-	username, _ := s.db.GetUsernameByID(req.UserId)
-	log.Printf("Chat %s for user %s (%s) in room %s", action, username, req.UserId, req.RoomId)
+	log.Printf("Chat %s for user %s in room %s", action, req.UserId, req.RoomId)
 	return &gen.SetMutedChatResponse{Success: true}, nil
 }
 
