@@ -24,7 +24,7 @@ import (
 	"firebase.google.com/go/v4/messaging"
 )
 
-const ServerVersion = "1.0.3.6"
+const ServerVersion = "1.0.3.7"
 
 // server implements the gRPC ChatService interface
 type server struct {
@@ -520,10 +520,16 @@ func (s *server) GetChats(_ context.Context, req *gen.GetChatsRequest) (*gen.Get
 	// Убираем спам в логах, так как клиент опрашивает этот эндпоинт каждые 3 секунды
 	// log.Printf("GetChats requested by user %s (ID: %s)", req.Username, req.UserId)
 
-	// Если ID передан, используем его, иначе откатываемся к username (для старых клиентов)
+	// Если ID передан, используем его, иначе ищем по username (для старых клиентов)
 	queryIdentifier := req.UserId
 	if queryIdentifier == "" {
-		queryIdentifier = req.Username
+		id, err := s.db.GetUserIdByUsername(req.Username)
+		if err == nil && id != "" {
+			queryIdentifier = id
+		} else {
+			// Если не нашли ID, ставим нулевой UUID, чтобы запрос к БД не падал с ошибкой синтаксиса $1::uuid
+			queryIdentifier = "00000000-0000-0000-0000-000000000000"
+		}
 	}
 
 	chats, err := s.db.GetUserChats(queryIdentifier, req.Username)
