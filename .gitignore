@@ -34,3 +34,5 @@ go.work.sum
 
 # Android client - separate git repository
 client/android/
+
+.idea/
