@@ -1519,5 +1519,8 @@ func (s *server) SaveFavoriteMessage(ctx context.Context, req *gen.Message) (*ge
 		return &gen.AddFavoriteResponse{Success: false, Message: "failed to link favorite"}, nil
 	}
 
+	// 6. Broadcast to favorites room for live update
+	s.hub.Broadcast(req)
+
 	return &gen.AddFavoriteResponse{Success: true}, nil
 }

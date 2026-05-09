@@ -533,11 +533,37 @@ func (db *DB) GetMessages(limit int, roomID string) ([]struct {
 	VoiceURL           string
 	Duration           int32
 }, error) {
-	// 🛠️ 1. Внимание: Для этого запроса КРИТИЧЕСКИ необходим составной индекс в БД!
-	// Без него этот запрос будет тормозить на больших объемах данных.
-	// Выполните в Postgres: CREATE INDEX IF NOT EXISTS idx_messages_room_created ON messages(room_id, created_at DESC);
+	var query string
+	var rows *sql.Rows
+	var err error
 
-	query := `SELECT 
+	if strings.HasPrefix(roomID, "favorites_") {
+		// Special query for favorites room to include both direct messages and linked favorites
+		query = `SELECT
+				COALESCE(m.message_id, ''),
+				m.username,
+				m.encrypted_text,
+				COALESCE(f.created_at, m.created_at),
+				COALESCE(m.replied_to_message_id, ''),
+				COALESCE(m.replied_to_user, ''),
+				COALESCE(m.replied_to_text, ''),
+				COALESCE(m.room_id, ''),
+				m.is_read,
+				COALESCE(u.avatar_url, ''),
+				COALESCE(m.image_url, ''),
+				COALESCE(m.edited, false),
+				COALESCE(m.voice_url, ''),
+				COALESCE(m.duration, 0)
+			 FROM messages m
+			 LEFT JOIN users u ON m.username = u.username
+			 LEFT JOIN favorites f ON f.message_id = m.message_id AND f.user_id = (SELECT id FROM users WHERE username = $1)
+			 WHERE m.room_id = $2 OR f.message_id IS NOT NULL
+			 ORDER BY COALESCE(f.created_at, m.created_at) ASC
+			 LIMIT $3`
+		username := strings.TrimPrefix(roomID, "favorites_")
+		rows, err = db.Query(query, username, roomID, limit)
+	} else {
+		query = `SELECT
 				COALESCE(m.message_id, ''), 
 				m.username, 
 				m.encrypted_text, 
@@ -557,8 +583,9 @@ func (db *DB) GetMessages(limit int, roomID string) ([]struct {
 			 WHERE m.room_id = $1 
 			 ORDER BY m.created_at DESC 
 			 LIMIT $2`
+		rows, err = db.Query(query, roomID, limit)
+	}
 
-	rows, err := db.Query(query, roomID, limit)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query messages: %w", err)
 	}
@@ -816,7 +843,7 @@ func (db *DB) GetFavorites(userID string) ([]struct {
 				COALESCE(m.message_id, ''),
 				m.username,
 				m.encrypted_text,
-				f.created_at,
+				COALESCE(f.created_at, m.created_at),
 				COALESCE(m.replied_to_message_id, ''),
 				COALESCE(m.replied_to_user, ''),
 				COALESCE(m.replied_to_text, ''),
@@ -827,11 +854,12 @@ func (db *DB) GetFavorites(userID string) ([]struct {
 				COALESCE(m.edited, false),
 				COALESCE(m.voice_url, ''),
 				COALESCE(m.duration, 0)
-			 FROM favorites f
-			 JOIN messages m ON f.message_id = m.message_id
+			 FROM messages m
 			 LEFT JOIN users u ON m.username = u.username
-			 WHERE f.user_id = $1::uuid
-			 ORDER BY f.created_at ASC`
+			 LEFT JOIN favorites f ON f.message_id = m.message_id AND f.user_id = $1::uuid
+			 WHERE m.room_id = 'favorites_' || (SELECT username FROM users WHERE id = $1::uuid)
+			    OR f.message_id IS NOT NULL
+			 ORDER BY COALESCE(f.created_at, m.created_at) ASC`
 
 	rows, err := db.Query(query, userID)
 	if err != nil {
