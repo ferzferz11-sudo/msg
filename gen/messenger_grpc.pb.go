@@ -19,49 +19,50 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	ChatService_Chat_FullMethodName               = "/messenger.ChatService/Chat"
-	ChatService_GetClients_FullMethodName         = "/messenger.ChatService/GetClients"
-	ChatService_GetAllUsers_FullMethodName        = "/messenger.ChatService/GetAllUsers"
-	ChatService_GetAllChats_FullMethodName        = "/messenger.ChatService/GetAllChats"
-	ChatService_GetHistory_FullMethodName         = "/messenger.ChatService/GetHistory"
-	ChatService_SetReaction_FullMethodName        = "/messenger.ChatService/SetReaction"
-	ChatService_DeleteMessages_FullMethodName     = "/messenger.ChatService/DeleteMessages"
-	ChatService_RegisterToken_FullMethodName      = "/messenger.ChatService/RegisterToken"
-	ChatService_GetChats_FullMethodName           = "/messenger.ChatService/GetChats"
-	ChatService_GetChatListVersion_FullMethodName = "/messenger.ChatService/GetChatListVersion"
-	ChatService_CreateDirectChat_FullMethodName   = "/messenger.ChatService/CreateDirectChat"
-	ChatService_CreateGroupChat_FullMethodName    = "/messenger.ChatService/CreateGroupChat"
-	ChatService_UpdateUsername_FullMethodName     = "/messenger.ChatService/UpdateUsername"
-	ChatService_UpdatePassword_FullMethodName     = "/messenger.ChatService/UpdatePassword"
-	ChatService_MarkRead_FullMethodName           = "/messenger.ChatService/MarkRead"
-	ChatService_UpdateAvatar_FullMethodName       = "/messenger.ChatService/UpdateAvatar"
-	ChatService_UpdateProfile_FullMethodName      = "/messenger.ChatService/UpdateProfile"
-	ChatService_GetUserProfile_FullMethodName     = "/messenger.ChatService/GetUserProfile"
-	ChatService_GetUserAvatar_FullMethodName      = "/messenger.ChatService/GetUserAvatar"
-	ChatService_AddParticipant_FullMethodName     = "/messenger.ChatService/AddParticipant"
-	ChatService_RemoveParticipant_FullMethodName  = "/messenger.ChatService/RemoveParticipant"
-	ChatService_EditMessage_FullMethodName        = "/messenger.ChatService/EditMessage"
-	ChatService_UpdateChatName_FullMethodName     = "/messenger.ChatService/UpdateChatName"
-	ChatService_UpdateChatAvatar_FullMethodName   = "/messenger.ChatService/UpdateChatAvatar"
-	ChatService_DeleteChat_FullMethodName         = "/messenger.ChatService/DeleteChat"
-	ChatService_DeleteProfile_FullMethodName      = "/messenger.ChatService/DeleteProfile"
-	ChatService_AddContact_FullMethodName         = "/messenger.ChatService/AddContact"
-	ChatService_RemoveContact_FullMethodName      = "/messenger.ChatService/RemoveContact"
-	ChatService_GetContacts_FullMethodName        = "/messenger.ChatService/GetContacts"
-	ChatService_GetThemes_FullMethodName          = "/messenger.ChatService/GetThemes"
-	ChatService_SaveTheme_FullMethodName          = "/messenger.ChatService/SaveTheme"
-	ChatService_SetCurrentTheme_FullMethodName    = "/messenger.ChatService/SetCurrentTheme"
-	ChatService_DeleteTheme_FullMethodName        = "/messenger.ChatService/DeleteTheme"
-	ChatService_GetFCMLogs_FullMethodName         = "/messenger.ChatService/GetFCMLogs"
-	ChatService_SaveDraft_FullMethodName          = "/messenger.ChatService/SaveDraft"
-	ChatService_GetDraft_FullMethodName           = "/messenger.ChatService/GetDraft"
-	ChatService_DeleteDraft_FullMethodName        = "/messenger.ChatService/DeleteDraft"
-	ChatService_GetMutedChats_FullMethodName      = "/messenger.ChatService/GetMutedChats"
-	ChatService_SetMutedChat_FullMethodName       = "/messenger.ChatService/SetMutedChat"
-	ChatService_GetUserId_FullMethodName          = "/messenger.ChatService/GetUserId"
-	ChatService_AddFavorite_FullMethodName        = "/messenger.ChatService/AddFavorite"
-	ChatService_RemoveFavorite_FullMethodName     = "/messenger.ChatService/RemoveFavorite"
-	ChatService_GetFavorites_FullMethodName       = "/messenger.ChatService/GetFavorites"
+	ChatService_Chat_FullMethodName                = "/messenger.ChatService/Chat"
+	ChatService_GetClients_FullMethodName          = "/messenger.ChatService/GetClients"
+	ChatService_GetAllUsers_FullMethodName         = "/messenger.ChatService/GetAllUsers"
+	ChatService_GetAllChats_FullMethodName         = "/messenger.ChatService/GetAllChats"
+	ChatService_GetHistory_FullMethodName          = "/messenger.ChatService/GetHistory"
+	ChatService_SetReaction_FullMethodName         = "/messenger.ChatService/SetReaction"
+	ChatService_DeleteMessages_FullMethodName      = "/messenger.ChatService/DeleteMessages"
+	ChatService_RegisterToken_FullMethodName       = "/messenger.ChatService/RegisterToken"
+	ChatService_GetChats_FullMethodName            = "/messenger.ChatService/GetChats"
+	ChatService_GetChatListVersion_FullMethodName  = "/messenger.ChatService/GetChatListVersion"
+	ChatService_CreateDirectChat_FullMethodName    = "/messenger.ChatService/CreateDirectChat"
+	ChatService_CreateGroupChat_FullMethodName     = "/messenger.ChatService/CreateGroupChat"
+	ChatService_UpdateUsername_FullMethodName      = "/messenger.ChatService/UpdateUsername"
+	ChatService_UpdatePassword_FullMethodName      = "/messenger.ChatService/UpdatePassword"
+	ChatService_MarkRead_FullMethodName            = "/messenger.ChatService/MarkRead"
+	ChatService_UpdateAvatar_FullMethodName        = "/messenger.ChatService/UpdateAvatar"
+	ChatService_UpdateProfile_FullMethodName       = "/messenger.ChatService/UpdateProfile"
+	ChatService_GetUserProfile_FullMethodName      = "/messenger.ChatService/GetUserProfile"
+	ChatService_GetUserAvatar_FullMethodName       = "/messenger.ChatService/GetUserAvatar"
+	ChatService_AddParticipant_FullMethodName      = "/messenger.ChatService/AddParticipant"
+	ChatService_RemoveParticipant_FullMethodName   = "/messenger.ChatService/RemoveParticipant"
+	ChatService_EditMessage_FullMethodName         = "/messenger.ChatService/EditMessage"
+	ChatService_UpdateChatName_FullMethodName      = "/messenger.ChatService/UpdateChatName"
+	ChatService_UpdateChatAvatar_FullMethodName    = "/messenger.ChatService/UpdateChatAvatar"
+	ChatService_DeleteChat_FullMethodName          = "/messenger.ChatService/DeleteChat"
+	ChatService_DeleteProfile_FullMethodName       = "/messenger.ChatService/DeleteProfile"
+	ChatService_AddContact_FullMethodName          = "/messenger.ChatService/AddContact"
+	ChatService_RemoveContact_FullMethodName       = "/messenger.ChatService/RemoveContact"
+	ChatService_GetContacts_FullMethodName         = "/messenger.ChatService/GetContacts"
+	ChatService_GetThemes_FullMethodName           = "/messenger.ChatService/GetThemes"
+	ChatService_SaveTheme_FullMethodName           = "/messenger.ChatService/SaveTheme"
+	ChatService_SetCurrentTheme_FullMethodName     = "/messenger.ChatService/SetCurrentTheme"
+	ChatService_DeleteTheme_FullMethodName         = "/messenger.ChatService/DeleteTheme"
+	ChatService_GetFCMLogs_FullMethodName          = "/messenger.ChatService/GetFCMLogs"
+	ChatService_SaveDraft_FullMethodName           = "/messenger.ChatService/SaveDraft"
+	ChatService_GetDraft_FullMethodName            = "/messenger.ChatService/GetDraft"
+	ChatService_DeleteDraft_FullMethodName         = "/messenger.ChatService/DeleteDraft"
+	ChatService_GetMutedChats_FullMethodName       = "/messenger.ChatService/GetMutedChats"
+	ChatService_SetMutedChat_FullMethodName        = "/messenger.ChatService/SetMutedChat"
+	ChatService_GetUserId_FullMethodName           = "/messenger.ChatService/GetUserId"
+	ChatService_AddFavorite_FullMethodName         = "/messenger.ChatService/AddFavorite"
+	ChatService_RemoveFavorite_FullMethodName      = "/messenger.ChatService/RemoveFavorite"
+	ChatService_GetFavorites_FullMethodName        = "/messenger.ChatService/GetFavorites"
+	ChatService_SaveFavoriteMessage_FullMethodName = "/messenger.ChatService/SaveFavoriteMessage"
 )
 
 // ChatServiceClient is the client API for ChatService service.
@@ -111,6 +112,7 @@ type ChatServiceClient interface {
 	AddFavorite(ctx context.Context, in *AddFavoriteRequest, opts ...grpc.CallOption) (*AddFavoriteResponse, error)
 	RemoveFavorite(ctx context.Context, in *RemoveFavoriteRequest, opts ...grpc.CallOption) (*RemoveFavoriteResponse, error)
 	GetFavorites(ctx context.Context, in *GetFavoritesRequest, opts ...grpc.CallOption) (*GetFavoritesResponse, error)
+	SaveFavoriteMessage(ctx context.Context, in *Message, opts ...grpc.CallOption) (*AddFavoriteResponse, error)
 }
 
 type chatServiceClient struct {
@@ -554,6 +556,16 @@ func (c *chatServiceClient) GetFavorites(ctx context.Context, in *GetFavoritesRe
 	return out, nil
 }
 
+func (c *chatServiceClient) SaveFavoriteMessage(ctx context.Context, in *Message, opts ...grpc.CallOption) (*AddFavoriteResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AddFavoriteResponse)
+	err := c.cc.Invoke(ctx, ChatService_SaveFavoriteMessage_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ChatServiceServer is the server API for ChatService service.
 // All implementations must embed UnimplementedChatServiceServer
 // for forward compatibility.
@@ -601,6 +613,7 @@ type ChatServiceServer interface {
 	AddFavorite(context.Context, *AddFavoriteRequest) (*AddFavoriteResponse, error)
 	RemoveFavorite(context.Context, *RemoveFavoriteRequest) (*RemoveFavoriteResponse, error)
 	GetFavorites(context.Context, *GetFavoritesRequest) (*GetFavoritesResponse, error)
+	SaveFavoriteMessage(context.Context, *Message) (*AddFavoriteResponse, error)
 	mustEmbedUnimplementedChatServiceServer()
 }
 
@@ -739,6 +752,9 @@ func (UnimplementedChatServiceServer) RemoveFavorite(context.Context, *RemoveFav
 }
 func (UnimplementedChatServiceServer) GetFavorites(context.Context, *GetFavoritesRequest) (*GetFavoritesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetFavorites not implemented")
+}
+func (UnimplementedChatServiceServer) SaveFavoriteMessage(context.Context, *Message) (*AddFavoriteResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SaveFavoriteMessage not implemented")
 }
 func (UnimplementedChatServiceServer) mustEmbedUnimplementedChatServiceServer() {}
 func (UnimplementedChatServiceServer) testEmbeddedByValue()                     {}
@@ -1524,6 +1540,24 @@ func _ChatService_GetFavorites_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ChatService_SaveFavoriteMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Message)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).SaveFavoriteMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_SaveFavoriteMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).SaveFavoriteMessage(ctx, req.(*Message))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ChatService_ServiceDesc is the grpc.ServiceDesc for ChatService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1698,6 +1732,10 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetFavorites",
 			Handler:    _ChatService_GetFavorites_Handler,
+		},
+		{
+			MethodName: "SaveFavoriteMessage",
+			Handler:    _ChatService_SaveFavoriteMessage_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

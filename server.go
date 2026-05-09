@@ -1483,3 +1483,41 @@ func (s *server) GetFavorites(ctx context.Context, req *gen.GetFavoritesRequest)
 
 	return &gen.GetFavoritesResponse{Messages: messages}, nil
 }
+
+func (s *server) SaveFavoriteMessage(ctx context.Context, req *gen.Message) (*gen.AddFavoriteResponse, error) {
+	if req.User == "" {
+		return &gen.AddFavoriteResponse{Success: false, Message: "username required"}, nil
+	}
+
+	// 1. Generate ID and Timestamp
+	req.Id = uuid.New().String()
+	req.CreatedAt = timestamppb.Now()
+
+	// 2. Encrypt text
+	encryptedText, err := encrypt(req.Text)
+	if err != nil {
+		return &gen.AddFavoriteResponse{Success: false, Message: "encryption failed"}, nil
+	}
+
+	// 3. Get User UUID
+	userID, err := s.db.GetUserIdByUsername(req.User)
+	if err != nil {
+		return &gen.AddFavoriteResponse{Success: false, Message: "user not found"}, nil
+	}
+
+	// 4. Save message to DB in a special "favorites" room for consistency
+	// Room ID is "favorites_" + username
+	favRoomID := "favorites_" + req.User
+	err = s.db.SaveMessage(req.Id, req.User, encryptedText, req.CreatedAt.AsTime(), req.RepliedToMessageId, req.RepliedToUser, req.RepliedToText, favRoomID, req.ImageUrl, req.VoiceUrl, req.Duration)
+	if err != nil {
+		return &gen.AddFavoriteResponse{Success: false, Message: "failed to save message"}, nil
+	}
+
+	// 5. Add to favorites table
+	err = s.db.AddFavorite(userID, req.Id)
+	if err != nil {
+		return &gen.AddFavoriteResponse{Success: false, Message: "failed to link favorite"}, nil
+	}
+
+	return &gen.AddFavoriteResponse{Success: true}, nil
+}

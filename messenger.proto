@@ -514,4 +514,5 @@ service ChatService {
   rpc AddFavorite(AddFavoriteRequest) returns (AddFavoriteResponse);
   rpc RemoveFavorite(RemoveFavoriteRequest) returns (RemoveFavoriteResponse);
   rpc GetFavorites(GetFavoritesRequest) returns (GetFavoritesResponse);
+  rpc SaveFavoriteMessage(Message) returns (AddFavoriteResponse);
 }
