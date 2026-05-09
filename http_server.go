@@ -344,6 +344,11 @@ func DeleteImageFile(imageURL string) error {
 		return nil
 	}
 
+	// Skip non-HTTP(S) URLs as they are client-side references (e.g. content:// or local paths)
+	if !strings.HasPrefix(imageURL, "http://") && !strings.HasPrefix(imageURL, "https://") {
+		return nil
+	}
+
 	// URL format: [prefix]/filename
 	parts := strings.Split(imageURL, "/")
 	if len(parts) < 2 {

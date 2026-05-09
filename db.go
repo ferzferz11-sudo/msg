@@ -1275,17 +1275,14 @@ func (db *DB) UpdateUsername(oldUsername, newUsername string) error {
 
 	// 11. Update participants in chats (using strict JSON manipulation instead of text REPLACE)
 	// This prevents accidentally breaking names that are substrings of other names (e.g., 'in' inside 'admin')
-	oldJson := fmt.Sprintf("\"%s\"", oldUsername)
-	newJson := fmt.Sprintf("\"%s\"", newUsername)
-
 	query := `UPDATE chats
               SET participants = (
-                  SELECT json_agg(CASE WHEN elem::text = $1 THEN $2::json ELSE elem END)
-                  FROM json_array_elements(participants::json) AS elem
+                  SELECT COALESCE(json_agg(CASE WHEN p = $1 THEN $2 ELSE p END), '[]'::json)
+                  FROM json_array_elements_text(participants::json) AS p
               )::text
-              WHERE participants::json @> $1::json`
+              WHERE participants::jsonb @> jsonb_build_array($1::text)`
 
-	_, err = tx.Exec(query, oldJson, newJson)
+	_, err = tx.Exec(query, oldUsername, newUsername)
 	if err != nil {
 		return fmt.Errorf("failed to update username in chats JSON array: %w", err)
 	}
@@ -1774,15 +1771,20 @@ func (db *DB) DeleteProfile(username string) error {
 	}
 
 	// 3. Get all theme background URLs
-	rows, err = tx.Query(`SELECT COALESCE(background_image_url, '') 
+	rows, err = tx.Query(`SELECT COALESCE(chat_background_image_url, ''), COALESCE(chat_list_background_image_url, '')
 	                       FROM user_themes WHERE username = $1`, username)
 	if err != nil {
 		return fmt.Errorf("failed to query theme backgrounds: %w", err)
 	}
 	for rows.Next() {
-		var url string
-		if err := rows.Scan(&url); err == nil && url != "" {
-			filesToDelete = append(filesToDelete, url)
+		var url1, url2 string
+		if err := rows.Scan(&url1, &url2); err == nil {
+			if url1 != "" {
+				filesToDelete = append(filesToDelete, url1)
+			}
+			if url2 != "" {
+				filesToDelete = append(filesToDelete, url2)
+			}
 		}
 	}
 	rows.Close()
@@ -1819,16 +1821,15 @@ func (db *DB) DeleteProfile(username string) error {
 
 	// 9. Update chats participants strictly (JSON operation)
 	// Instead of unsafe text REPLACE, we filter out the deleted username from the JSON array
-	userJson := fmt.Sprintf("\"%s\"", username)
 	query := `UPDATE chats
               SET participants = (
-                  SELECT json_agg(elem)
-                  FROM json_array_elements(participants::json) AS elem
-                  WHERE elem::text != $1
+                  SELECT COALESCE(json_agg(p), '[]'::json)
+                  FROM json_array_elements_text(participants::json) AS p
+                  WHERE p != $1
               )::text
-              WHERE participants::json @> $1::json`
+              WHERE participants::jsonb @> jsonb_build_array($1::text)`
 
-	_, err = tx.Exec(query, userJson)
+	_, err = tx.Exec(query, username)
 	if err != nil {
 		return fmt.Errorf("failed to update participants in chats: %w", err)
 	}
