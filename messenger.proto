@@ -300,10 +300,13 @@ message CustomTheme {
   string text_primary_color = 8;
   string text_secondary_color = 9;
   bool is_dark = 10;
-  string background_image_url = 11;
+  string chat_background_image_url = 11;
   string chat_list_background_image_url = 12;
   string bottom_panel_color = 13;
   string on_bottom_panel_color = 14;
+  string surface_container = 15;
+  string outgoing_bubble_color = 16;
+  string incoming_bubble_color = 17;
 }
 
 message GetThemesRequest {

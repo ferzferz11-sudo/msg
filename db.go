@@ -242,17 +242,33 @@ func ConnectDB() (*DB, error) {
 			text_primary_color VARCHAR(10),
 			text_secondary_color VARCHAR(10),
 			is_dark BOOLEAN DEFAULT FALSE,
-			background_image_url VARCHAR(512),
+			chat_background_image_url VARCHAR(512),
 			chat_list_background_image_url VARCHAR(512),
 			bottom_panel_color VARCHAR(10),
 			on_bottom_panel_color VARCHAR(10),
+			surface_container VARCHAR(10),
+			outgoing_bubble_color VARCHAR(10),
+			incoming_bubble_color VARCHAR(10),
 			UNIQUE(username, theme_id)
 		);`,
-		// Migration: Add background_image_url to user_themes
+		// Migration: Add new theme fields
 		`DO $$
 		 BEGIN
-		  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='user_themes' AND column_name='background_image_url') THEN
-		    ALTER TABLE user_themes ADD COLUMN background_image_url VARCHAR(512);
+		  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='user_themes' AND column_name='chat_background_image_url') THEN
+		    ALTER TABLE user_themes ADD COLUMN chat_background_image_url VARCHAR(512);
+		  END IF;
+		  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='user_themes' AND column_name='background_image_url') THEN
+		    UPDATE user_themes SET chat_background_image_url = background_image_url WHERE chat_background_image_url IS NULL;
+		    ALTER TABLE user_themes DROP COLUMN background_image_url;
+		  END IF;
+		  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='user_themes' AND column_name='surface_container') THEN
+		    ALTER TABLE user_themes ADD COLUMN surface_container VARCHAR(10);
+		  END IF;
+		  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='user_themes' AND column_name='outgoing_bubble_color') THEN
+		    ALTER TABLE user_themes ADD COLUMN outgoing_bubble_color VARCHAR(10);
+		  END IF;
+		  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='user_themes' AND column_name='incoming_bubble_color') THEN
+		    ALTER TABLE user_themes ADD COLUMN incoming_bubble_color VARCHAR(10);
 		  END IF;
 		 END $$;`,
 		// Migration: Add chat_list_background_image_url to user_themes
@@ -2161,10 +2177,13 @@ type UserTheme struct {
 	TextPrimaryColor           string
 	TextSecondaryColor         string
 	IsDark                     bool
-	BackgroundImageUrl         string
+	ChatBackgroundImageUrl     string
 	ChatListBackgroundImageUrl string
 	BottomPanelColor           string
 	OnBottomPanelColor         string
+	SurfaceContainer           string
+	OutgoingBubbleColor        string
+	IncomingBubbleColor        string
 }
 
 // GetUserThemes retrieves current theme ID and all custom themes for a user
@@ -2181,10 +2200,13 @@ func (db *DB) GetUserThemes(username string) (string, []UserTheme, error) {
 	rows, err := db.Query(`SELECT theme_id, name, primary_color, on_primary_color, 
 	                              surface_color, on_surface_color, background_color, 
 	                              text_primary_color, text_secondary_color, is_dark, 
-	                              COALESCE(background_image_url, ''), 
+	                              COALESCE(chat_background_image_url, ''),
 	                              COALESCE(chat_list_background_image_url, ''), 
 	                              COALESCE(bottom_panel_color, ''), 
-	                              COALESCE(on_bottom_panel_color, '')
+	                              COALESCE(on_bottom_panel_color, ''),
+	                              COALESCE(surface_container, ''),
+	                              COALESCE(outgoing_bubble_color, ''),
+	                              COALESCE(incoming_bubble_color, '')
 	                       FROM user_themes WHERE username = $1`, username)
 	if err != nil {
 		return currentID, nil, fmt.Errorf("failed to query user themes: %w", err)
@@ -2202,8 +2224,9 @@ func (db *DB) GetUserThemes(username string) (string, []UserTheme, error) {
 			&t.ThemeID, &t.Name, &t.PrimaryColor, &t.OnPrimaryColor,
 			&t.SurfaceColor, &t.OnSurfaceColor, &t.BackgroundColor,
 			&t.TextPrimaryColor, &t.TextSecondaryColor, &t.IsDark,
-			&t.BackgroundImageUrl, &t.ChatListBackgroundImageUrl,
+			&t.ChatBackgroundImageUrl, &t.ChatListBackgroundImageUrl,
 			&t.BottomPanelColor, &t.OnBottomPanelColor,
+			&t.SurfaceContainer, &t.OutgoingBubbleColor, &t.IncomingBubbleColor,
 		)
 		if err != nil {
 			// 🛠️ 1. Обязательно возвращаем ошибку, если строка повреждена
@@ -2223,8 +2246,8 @@ func (db *DB) GetUserThemes(username string) (string, []UserTheme, error) {
 // SaveUserTheme saves or updates a custom theme
 func (db *DB) SaveUserTheme(username string, theme *gen.CustomTheme) error {
 	// 🛠️ 3. Используем EXCLUDED для профессиональной реализации UPSERT [2]
-	query := `INSERT INTO user_themes (username, theme_id, name, primary_color, on_primary_color, surface_color, on_surface_color, background_color, text_primary_color, text_secondary_color, is_dark, background_image_url, chat_list_background_image_url, bottom_panel_color, on_bottom_panel_color)
-	          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+	query := `INSERT INTO user_themes (username, theme_id, name, primary_color, on_primary_color, surface_color, on_surface_color, background_color, text_primary_color, text_secondary_color, is_dark, chat_background_image_url, chat_list_background_image_url, bottom_panel_color, on_bottom_panel_color, surface_container, outgoing_bubble_color, incoming_bubble_color)
+	          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
 	          ON CONFLICT (username, theme_id) DO UPDATE SET
 	          name = EXCLUDED.name, 
 	          primary_color = EXCLUDED.primary_color, 
@@ -2235,12 +2258,15 @@ func (db *DB) SaveUserTheme(username string, theme *gen.CustomTheme) error {
 	          text_primary_color = EXCLUDED.text_primary_color, 
 	          text_secondary_color = EXCLUDED.text_secondary_color, 
 	          is_dark = EXCLUDED.is_dark, 
-	          background_image_url = EXCLUDED.background_image_url, 
+	          chat_background_image_url = EXCLUDED.chat_background_image_url,
 	          chat_list_background_image_url = EXCLUDED.chat_list_background_image_url, 
 	          bottom_panel_color = EXCLUDED.bottom_panel_color, 
-	          on_bottom_panel_color = EXCLUDED.on_bottom_panel_color`
+	          on_bottom_panel_color = EXCLUDED.on_bottom_panel_color,
+	          surface_container = EXCLUDED.surface_container,
+	          outgoing_bubble_color = EXCLUDED.outgoing_bubble_color,
+	          incoming_bubble_color = EXCLUDED.incoming_bubble_color`
 
-	_, err := db.Exec(query, username, theme.Id, theme.Name, theme.PrimaryColor, theme.OnPrimaryColor, theme.SurfaceColor, theme.OnSurfaceColor, theme.BackgroundColor, theme.TextPrimaryColor, theme.TextSecondaryColor, theme.IsDark, theme.BackgroundImageUrl, theme.ChatListBackgroundImageUrl, theme.BottomPanelColor, theme.OnBottomPanelColor)
+	_, err := db.Exec(query, username, theme.Id, theme.Name, theme.PrimaryColor, theme.OnPrimaryColor, theme.SurfaceColor, theme.OnSurfaceColor, theme.BackgroundColor, theme.TextPrimaryColor, theme.TextSecondaryColor, theme.IsDark, theme.ChatBackgroundImageUrl, theme.ChatListBackgroundImageUrl, theme.BottomPanelColor, theme.OnBottomPanelColor, theme.SurfaceContainer, theme.OutgoingBubbleColor, theme.IncomingBubbleColor)
 	if err != nil {
 		return fmt.Errorf("failed to save user theme: %w", err)
 	}
@@ -2276,7 +2302,7 @@ func (db *DB) DeleteUserTheme(username, themeID string) error {
 
 	// 🛠️ 4. Безопасно получаем URL файлов внутри транзакции
 	var bgURL, chatListBgURL sql.NullString
-	err = tx.QueryRow(`SELECT background_image_url, chat_list_background_image_url 
+	err = tx.QueryRow(`SELECT chat_background_image_url, chat_list_background_image_url
 	                   FROM user_themes 
 	                   WHERE username = $1 AND theme_id = $2`, username, themeID).Scan(&bgURL, &chatListBgURL)
 	if err != nil && err != sql.ErrNoRows {

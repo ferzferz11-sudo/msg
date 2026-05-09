@@ -3010,10 +3010,13 @@ type CustomTheme struct {
 	TextPrimaryColor           string                 `protobuf:"bytes,8,opt,name=text_primary_color,json=textPrimaryColor,proto3" json:"text_primary_color,omitempty"`
 	TextSecondaryColor         string                 `protobuf:"bytes,9,opt,name=text_secondary_color,json=textSecondaryColor,proto3" json:"text_secondary_color,omitempty"`
 	IsDark                     bool                   `protobuf:"varint,10,opt,name=is_dark,json=isDark,proto3" json:"is_dark,omitempty"`
-	BackgroundImageUrl         string                 `protobuf:"bytes,11,opt,name=background_image_url,json=backgroundImageUrl,proto3" json:"background_image_url,omitempty"`
+	ChatBackgroundImageUrl     string                 `protobuf:"bytes,11,opt,name=chat_background_image_url,json=chatBackgroundImageUrl,proto3" json:"chat_background_image_url,omitempty"`
 	ChatListBackgroundImageUrl string                 `protobuf:"bytes,12,opt,name=chat_list_background_image_url,json=chatListBackgroundImageUrl,proto3" json:"chat_list_background_image_url,omitempty"`
 	BottomPanelColor           string                 `protobuf:"bytes,13,opt,name=bottom_panel_color,json=bottomPanelColor,proto3" json:"bottom_panel_color,omitempty"`
 	OnBottomPanelColor         string                 `protobuf:"bytes,14,opt,name=on_bottom_panel_color,json=onBottomPanelColor,proto3" json:"on_bottom_panel_color,omitempty"`
+	SurfaceContainer           string                 `protobuf:"bytes,15,opt,name=surface_container,json=surfaceContainer,proto3" json:"surface_container,omitempty"`
+	OutgoingBubbleColor        string                 `protobuf:"bytes,16,opt,name=outgoing_bubble_color,json=outgoingBubbleColor,proto3" json:"outgoing_bubble_color,omitempty"`
+	IncomingBubbleColor        string                 `protobuf:"bytes,17,opt,name=incoming_bubble_color,json=incomingBubbleColor,proto3" json:"incoming_bubble_color,omitempty"`
 	unknownFields              protoimpl.UnknownFields
 	sizeCache                  protoimpl.SizeCache
 }
@@ -3118,9 +3121,9 @@ func (x *CustomTheme) GetIsDark() bool {
 	return false
 }
 
-func (x *CustomTheme) GetBackgroundImageUrl() string {
+func (x *CustomTheme) GetChatBackgroundImageUrl() string {
 	if x != nil {
-		return x.BackgroundImageUrl
+		return x.ChatBackgroundImageUrl
 	}
 	return ""
 }
@@ -3142,6 +3145,27 @@ func (x *CustomTheme) GetBottomPanelColor() string {
 func (x *CustomTheme) GetOnBottomPanelColor() string {
 	if x != nil {
 		return x.OnBottomPanelColor
+	}
+	return ""
+}
+
+func (x *CustomTheme) GetSurfaceContainer() string {
+	if x != nil {
+		return x.SurfaceContainer
+	}
+	return ""
+}
+
+func (x *CustomTheme) GetOutgoingBubbleColor() string {
+	if x != nil {
+		return x.OutgoingBubbleColor
+	}
+	return ""
+}
+
+func (x *CustomTheme) GetIncomingBubbleColor() string {
+	if x != nil {
+		return x.IncomingBubbleColor
 	}
 	return ""
 }
@@ -4741,7 +4765,7 @@ const file_messenger_proto_rawDesc = "" +
 	"\x19GetChatListVersionRequest\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\"6\n" +
 	"\x1aGetChatListVersionResponse\x12\x18\n" +
-	"\aversion\x18\x01 \x01(\x03R\aversion\"\xca\x04\n" +
+	"\aversion\x18\x01 \x01(\x03R\aversion\"\xe8\x05\n" +
 	"\vCustomTheme\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12#\n" +
@@ -4753,11 +4777,14 @@ const file_messenger_proto_rawDesc = "" +
 	"\x12text_primary_color\x18\b \x01(\tR\x10textPrimaryColor\x120\n" +
 	"\x14text_secondary_color\x18\t \x01(\tR\x12textSecondaryColor\x12\x17\n" +
 	"\ais_dark\x18\n" +
-	" \x01(\bR\x06isDark\x120\n" +
-	"\x14background_image_url\x18\v \x01(\tR\x12backgroundImageUrl\x12B\n" +
+	" \x01(\bR\x06isDark\x129\n" +
+	"\x19chat_background_image_url\x18\v \x01(\tR\x16chatBackgroundImageUrl\x12B\n" +
 	"\x1echat_list_background_image_url\x18\f \x01(\tR\x1achatListBackgroundImageUrl\x12,\n" +
 	"\x12bottom_panel_color\x18\r \x01(\tR\x10bottomPanelColor\x121\n" +
-	"\x15on_bottom_panel_color\x18\x0e \x01(\tR\x12onBottomPanelColor\".\n" +
+	"\x15on_bottom_panel_color\x18\x0e \x01(\tR\x12onBottomPanelColor\x12+\n" +
+	"\x11surface_container\x18\x0f \x01(\tR\x10surfaceContainer\x122\n" +
+	"\x15outgoing_bubble_color\x18\x10 \x01(\tR\x13outgoingBubbleColor\x122\n" +
+	"\x15incoming_bubble_color\x18\x11 \x01(\tR\x13incomingBubbleColor\".\n" +
 	"\x10GetThemesRequest\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\"z\n" +
 	"\x11GetThemesResponse\x12(\n" +

@@ -24,7 +24,7 @@ import (
 	"firebase.google.com/go/v4/messaging"
 )
 
-const ServerVersion = "1.0.3.8"
+const ServerVersion = "1.0.3.9"
 
 // server implements the gRPC ChatService interface
 type server struct {
@@ -1207,10 +1207,13 @@ func (s *server) GetThemes(_ context.Context, req *gen.GetThemesRequest) (*gen.G
 			TextPrimaryColor:           t.TextPrimaryColor,
 			TextSecondaryColor:         t.TextSecondaryColor,
 			IsDark:                     t.IsDark,
-			BackgroundImageUrl:         t.BackgroundImageUrl,
+			ChatBackgroundImageUrl:     t.ChatBackgroundImageUrl,
 			ChatListBackgroundImageUrl: t.ChatListBackgroundImageUrl,
 			BottomPanelColor:           t.BottomPanelColor,
 			OnBottomPanelColor:         t.OnBottomPanelColor,
+			SurfaceContainer:           t.SurfaceContainer,
+			OutgoingBubbleColor:        t.OutgoingBubbleColor,
+			IncomingBubbleColor:        t.IncomingBubbleColor,
 		})
 	}
 
@@ -1224,7 +1227,7 @@ func (s *server) GetThemes(_ context.Context, req *gen.GetThemesRequest) (*gen.G
 
 func (s *server) SaveTheme(_ context.Context, req *gen.SaveThemeRequest) (*gen.SaveThemeResponse, error) {
 	username := s.resolveUsername(req.Username)
-	log.Printf("Saving theme '%s' (ID: %s) for user %s. Background URL: %s", req.Theme.Name, req.Theme.Id, username, req.Theme.BackgroundImageUrl)
+	log.Printf("Saving theme '%s' (ID: %s) for user %s. Chat Background URL: %s", req.Theme.Name, req.Theme.Id, username, req.Theme.ChatBackgroundImageUrl)
 	err := s.db.SaveUserTheme(username, req.Theme)
 	if err != nil {
 		s.logErrorOnce("SaveTheme:"+username, "Failed to save theme for %s: %v", username, err)
