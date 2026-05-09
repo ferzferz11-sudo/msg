@@ -50,6 +50,19 @@ WHERE (octet_length(encrypted_text) < 4 OR encrypted_text IS NULL);
 -- Мы убрали тяжелый VACUUM, оставив только актуализацию статистики для планировщика БД.
 \echo 'Актуализация статистики базы данных...'
 ANALYZE messages;
+
+-- 4. Исправление поврежденных текущих тем у пользователей.
+-- Если у пользователя пустая или некорректная тема (не builtin и не custom), сбрасываем на dark.
+\echo 'Сброс поврежденных тем пользователей...'
+UPDATE users
+SET current_theme_id = 'dark'
+WHERE current_theme_id IS NULL
+   OR current_theme_id = ''
+   OR (current_theme_id NOT LIKE 'builtin_%'
+       AND current_theme_id NOT LIKE 'custom_%'
+       AND current_theme_id != 'dark'
+       AND current_theme_id != 'light');
+
 SQL
 
 if [ $? -eq 0 ]; then

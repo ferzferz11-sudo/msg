@@ -443,6 +443,33 @@ message GetUserIdResponse {
   bool found = 2;
 }
 
+message AddFavoriteRequest {
+  string user_id = 1;
+  string message_id = 2;
+}
+
+message AddFavoriteResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message RemoveFavoriteRequest {
+  string user_id = 1;
+  string message_id = 2;
+}
+
+message RemoveFavoriteResponse {
+  bool success = 1;
+}
+
+message GetFavoritesRequest {
+  string user_id = 1;
+}
+
+message GetFavoritesResponse {
+  repeated Message messages = 1;
+}
+
 service ChatService {
   rpc Chat(stream Message) returns (stream Message);
   rpc GetClients(ClientListRequest) returns (ClientListResponse);
@@ -484,4 +511,7 @@ service ChatService {
   rpc GetMutedChats(GetMutedChatsRequest) returns (GetMutedChatsResponse);
   rpc SetMutedChat(SetMutedChatRequest) returns (SetMutedChatResponse);
   rpc GetUserId(GetUserIdRequest) returns (GetUserIdResponse);
+  rpc AddFavorite(AddFavoriteRequest) returns (AddFavoriteResponse);
+  rpc RemoveFavorite(RemoveFavoriteRequest) returns (RemoveFavoriteResponse);
+  rpc GetFavorites(GetFavoritesRequest) returns (GetFavoritesResponse);
 }

@@ -24,7 +24,7 @@ import (
 	"firebase.google.com/go/v4/messaging"
 )
 
-const ServerVersion = "1.0.3.10"
+const ServerVersion = "1.0.3.11"
 
 // server implements the gRPC ChatService interface
 type server struct {
@@ -1420,4 +1420,66 @@ func (s *server) GetUserId(_ context.Context, req *gen.GetUserIdRequest) (*gen.G
 		return &gen.GetUserIdResponse{UserId: "", Found: false}, nil
 	}
 	return &gen.GetUserIdResponse{UserId: userID, Found: true}, nil
+}
+
+func (s *server) AddFavorite(ctx context.Context, req *gen.AddFavoriteRequest) (*gen.AddFavoriteResponse, error) {
+	if req.UserId == "" || req.MessageId == "" {
+		return &gen.AddFavoriteResponse{Success: false, Message: "empty user id or message id"}, nil
+	}
+	err := s.db.AddFavorite(req.UserId, req.MessageId)
+	if err != nil {
+		log.Printf("Failed to add favorite: %v", err)
+		return &gen.AddFavoriteResponse{Success: false, Message: err.Error()}, nil
+	}
+	return &gen.AddFavoriteResponse{Success: true}, nil
+}
+
+func (s *server) RemoveFavorite(ctx context.Context, req *gen.RemoveFavoriteRequest) (*gen.RemoveFavoriteResponse, error) {
+	if req.UserId == "" || req.MessageId == "" {
+		return &gen.RemoveFavoriteResponse{Success: false}, nil
+	}
+	err := s.db.RemoveFavorite(req.UserId, req.MessageId)
+	if err != nil {
+		log.Printf("Failed to remove favorite: %v", err)
+		return &gen.RemoveFavoriteResponse{Success: false}, nil
+	}
+	return &gen.RemoveFavoriteResponse{Success: true}, nil
+}
+
+func (s *server) GetFavorites(ctx context.Context, req *gen.GetFavoritesRequest) (*gen.GetFavoritesResponse, error) {
+	if req.UserId == "" {
+		return &gen.GetFavoritesResponse{Messages: nil}, nil
+	}
+	favs, err := s.db.GetFavorites(req.UserId)
+	if err != nil {
+		log.Printf("Failed to get favorites: %v", err)
+		return &gen.GetFavoritesResponse{Messages: nil}, nil
+	}
+
+	var messages []*gen.Message
+	for _, m := range favs {
+		decryptedText, err := decrypt(m.Encrypted)
+		if err != nil {
+			decryptedText = "не удалось расшифровать"
+		}
+
+		messages = append(messages, &gen.Message{
+			Id:                 m.MessageID,
+			User:               m.Username,
+			Text:               decryptedText,
+			CreatedAt:          timestamppb.New(m.CreatedAt),
+			RepliedToMessageId: m.RepliedToMessageID,
+			RepliedToUser:      m.RepliedToUser,
+			RepliedToText:      m.RepliedToText,
+			RoomId:             m.RoomID,
+			IsRead:             m.IsRead,
+			AvatarUrl:          m.AvatarURL,
+			ImageUrl:           m.ImageURL,
+			Edited:             m.Edited,
+			VoiceUrl:           m.VoiceURL,
+			Duration:           m.Duration,
+		})
+	}
+
+	return &gen.GetFavoritesResponse{Messages: messages}, nil
 }

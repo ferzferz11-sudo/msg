@@ -434,6 +434,13 @@ func ConnectDB() (*DB, error) {
 		    CREATE UNIQUE INDEX idx_muted_chats_user_room ON muted_chats(user_id, room_id);
 		  END IF;
 		 END $$;`,
+		// Create favorites table
+		`CREATE TABLE IF NOT EXISTS favorites (
+			user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+			message_id VARCHAR(255) REFERENCES messages(message_id) ON DELETE CASCADE,
+			created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+			PRIMARY KEY (user_id, message_id)
+		);`,
 	}
 
 	// 1. Wrap all migrations in a single transaction for safety
@@ -774,6 +781,113 @@ func (db *DB) DeleteMessageByUUID(messageID string) error {
 	return nil
 }
 
+// AddFavorite adds a message to a user's favorites
+func (db *DB) AddFavorite(userID, messageID string) error {
+	query := `INSERT INTO favorites (user_id, message_id) VALUES ($1::uuid, $2) ON CONFLICT DO NOTHING`
+	_, err := db.Exec(query, userID, messageID)
+	return err
+}
+
+// RemoveFavorite removes a message from a user's favorites
+func (db *DB) RemoveFavorite(userID, messageID string) error {
+	query := `DELETE FROM favorites WHERE user_id = $1::uuid AND message_id = $2`
+	_, err := db.Exec(query, userID, messageID)
+	return err
+}
+
+// GetFavorites retrieves all favorite messages for a user
+func (db *DB) GetFavorites(userID string) ([]struct {
+	MessageID          string
+	Username           string
+	Encrypted          []byte
+	CreatedAt          time.Time
+	RepliedToMessageID string
+	RepliedToUser      string
+	RepliedToText      string
+	RoomID             string
+	IsRead             bool
+	AvatarURL          string
+	ImageURL           string
+	Edited             bool
+	VoiceURL           string
+	Duration           int32
+}, error) {
+	query := `SELECT
+				COALESCE(m.message_id, ''),
+				m.username,
+				m.encrypted_text,
+				m.created_at,
+				COALESCE(m.replied_to_message_id, ''),
+				COALESCE(m.replied_to_user, ''),
+				COALESCE(m.replied_to_text, ''),
+				COALESCE(m.room_id, ''),
+				m.is_read,
+				COALESCE(u.avatar_url, ''),
+				COALESCE(m.image_url, ''),
+				COALESCE(m.edited, false),
+				COALESCE(m.voice_url, ''),
+				COALESCE(m.duration, 0)
+			 FROM favorites f
+			 JOIN messages m ON f.message_id = m.message_id
+			 LEFT JOIN users u ON m.username = u.username
+			 WHERE f.user_id = $1::uuid
+			 ORDER BY f.created_at DESC`
+
+	rows, err := db.Query(query, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query favorites: %w", err)
+	}
+	defer rows.Close()
+
+	var results []struct {
+		MessageID          string
+		Username           string
+		Encrypted          []byte
+		CreatedAt          time.Time
+		RepliedToMessageID string
+		RepliedToUser      string
+		RepliedToText      string
+		RoomID             string
+		IsRead             bool
+		AvatarURL          string
+		ImageURL           string
+		Edited             bool
+		VoiceURL           string
+		Duration           int32
+	}
+
+	for rows.Next() {
+		var r struct {
+			MessageID          string
+			Username           string
+			Encrypted          []byte
+			CreatedAt          time.Time
+			RepliedToMessageID string
+			RepliedToUser      string
+			RepliedToText      string
+			RoomID             string
+			IsRead             bool
+			AvatarURL          string
+			ImageURL           string
+			Edited             bool
+			VoiceURL           string
+			Duration           int32
+		}
+
+		if err := rows.Scan(
+			&r.MessageID, &r.Username, &r.Encrypted, &r.CreatedAt,
+			&r.RepliedToMessageID, &r.RepliedToUser, &r.RepliedToText,
+			&r.RoomID, &r.IsRead, &r.AvatarURL, &r.ImageURL,
+			&r.Edited, &r.VoiceURL, &r.Duration,
+		); err != nil {
+			return nil, fmt.Errorf("failed to scan favorite row: %w", err)
+		}
+		results = append(results, r)
+	}
+
+	return results, rows.Err()
+}
+
 // DeleteMessageByID deletes a message by its serial database ID
 func (db *DB) DeleteMessageByID(id int) error {
 	query := `DELETE FROM messages WHERE id = $1`
@@ -783,6 +897,8 @@ func (db *DB) DeleteMessageByID(id int) error {
 	}
 	return nil
 }
+
+// AddFavorite adds a message to a user's favorites
 
 // GetChatMessagesImageURLs returns all image URLs for messages in a specific chat
 func (db *DB) GetChatMessagesImageURLs(roomID string) ([]string, error) {
@@ -974,6 +1090,8 @@ func (db *DB) SaveUser(username, passwordHash string) error {
 	}
 	return nil
 }
+
+// AddFavorite adds a message to a user's favorites
 
 // GetUserPasswordHash получает хеш пароля пользователя
 func (db *DB) GetUserPasswordHash(username string) (string, error) {
@@ -2037,6 +2155,8 @@ func (db *DB) RemoveContact(username, contactUsername string) error {
 	return nil
 }
 
+// AddFavorite adds a message to a user's favorites
+
 // GetContacts retrieves all contacts for a user
 func (db *DB) GetContacts(username string) ([]string, error) {
 	// 🛠️ 2. Оптимизация SQL: мы объединили два запроса в один через COALESCE.
@@ -2274,6 +2394,8 @@ func (db *DB) SaveUserTheme(username string, theme *gen.CustomTheme) error {
 	return nil
 }
 
+// AddFavorite adds a message to a user's favorites
+
 // SetCurrentTheme updates the user's selected theme ID
 func (db *DB) SetCurrentTheme(username, themeID string) error {
 	query := `UPDATE users SET current_theme_id = $1 WHERE username = $2`
@@ -2288,6 +2410,8 @@ func (db *DB) SetCurrentTheme(username, themeID string) error {
 	}
 	return nil
 }
+
+// AddFavorite adds a message to a user's favorites
 
 // DeleteUserTheme removes a custom theme and its associated background image
 func (db *DB) DeleteUserTheme(username, themeID string) error {
@@ -2353,6 +2477,8 @@ func (db *DB) SaveDraft(username, roomID, draftText, repliedToMessageID, replied
 	return nil
 }
 
+// AddFavorite adds a message to a user's favorites
+
 // GetDraft retrieves a draft message for a user in a specific room
 func (db *DB) GetDraft(username, roomID string) (struct {
 	DraftText          string
@@ -2406,6 +2532,8 @@ func (db *DB) DeleteDraft(username, roomID string) error {
 	return nil
 }
 
+// AddFavorite adds a message to a user's favorites
+
 // GetMutedChats returns a list of room IDs that the user has muted (no push notifications)
 func (db *DB) GetMutedChats(username string) ([]string, error) {
 	query := `SELECT room_id FROM muted_chats WHERE username = $1 AND muted = TRUE`
@@ -2457,6 +2585,8 @@ func (db *DB) SetMutedChat(username, roomID string, muted bool) error {
 	return nil
 }
 
+// AddFavorite adds a message to a user's favorites
+
 // SaveDraftByUserID saves or updates a draft message for a user (by UUID) in a specific room
 func (db *DB) SaveDraftByUserID(userID, roomID, draftText, repliedToMessageID, repliedToUser, repliedToText string) error {
 	query := `INSERT INTO draft_messages (user_id, username, room_id, draft_text, replied_to_message_id, replied_to_user, replied_to_text, updated_at)
@@ -2475,6 +2605,8 @@ func (db *DB) SaveDraftByUserID(userID, roomID, draftText, repliedToMessageID, r
 	}
 	return nil
 }
+
+// AddFavorite adds a message to a user's favorites
 
 // GetDraftByUserID retrieves a draft message for a user (by UUID) in a specific room
 func (db *DB) GetDraftByUserID(userID, roomID string) (struct {

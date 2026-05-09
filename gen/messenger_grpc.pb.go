@@ -59,6 +59,9 @@ const (
 	ChatService_GetMutedChats_FullMethodName      = "/messenger.ChatService/GetMutedChats"
 	ChatService_SetMutedChat_FullMethodName       = "/messenger.ChatService/SetMutedChat"
 	ChatService_GetUserId_FullMethodName          = "/messenger.ChatService/GetUserId"
+	ChatService_AddFavorite_FullMethodName        = "/messenger.ChatService/AddFavorite"
+	ChatService_RemoveFavorite_FullMethodName     = "/messenger.ChatService/RemoveFavorite"
+	ChatService_GetFavorites_FullMethodName       = "/messenger.ChatService/GetFavorites"
 )
 
 // ChatServiceClient is the client API for ChatService service.
@@ -105,6 +108,9 @@ type ChatServiceClient interface {
 	GetMutedChats(ctx context.Context, in *GetMutedChatsRequest, opts ...grpc.CallOption) (*GetMutedChatsResponse, error)
 	SetMutedChat(ctx context.Context, in *SetMutedChatRequest, opts ...grpc.CallOption) (*SetMutedChatResponse, error)
 	GetUserId(ctx context.Context, in *GetUserIdRequest, opts ...grpc.CallOption) (*GetUserIdResponse, error)
+	AddFavorite(ctx context.Context, in *AddFavoriteRequest, opts ...grpc.CallOption) (*AddFavoriteResponse, error)
+	RemoveFavorite(ctx context.Context, in *RemoveFavoriteRequest, opts ...grpc.CallOption) (*RemoveFavoriteResponse, error)
+	GetFavorites(ctx context.Context, in *GetFavoritesRequest, opts ...grpc.CallOption) (*GetFavoritesResponse, error)
 }
 
 type chatServiceClient struct {
@@ -518,6 +524,36 @@ func (c *chatServiceClient) GetUserId(ctx context.Context, in *GetUserIdRequest,
 	return out, nil
 }
 
+func (c *chatServiceClient) AddFavorite(ctx context.Context, in *AddFavoriteRequest, opts ...grpc.CallOption) (*AddFavoriteResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AddFavoriteResponse)
+	err := c.cc.Invoke(ctx, ChatService_AddFavorite_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) RemoveFavorite(ctx context.Context, in *RemoveFavoriteRequest, opts ...grpc.CallOption) (*RemoveFavoriteResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RemoveFavoriteResponse)
+	err := c.cc.Invoke(ctx, ChatService_RemoveFavorite_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) GetFavorites(ctx context.Context, in *GetFavoritesRequest, opts ...grpc.CallOption) (*GetFavoritesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetFavoritesResponse)
+	err := c.cc.Invoke(ctx, ChatService_GetFavorites_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ChatServiceServer is the server API for ChatService service.
 // All implementations must embed UnimplementedChatServiceServer
 // for forward compatibility.
@@ -562,6 +598,9 @@ type ChatServiceServer interface {
 	GetMutedChats(context.Context, *GetMutedChatsRequest) (*GetMutedChatsResponse, error)
 	SetMutedChat(context.Context, *SetMutedChatRequest) (*SetMutedChatResponse, error)
 	GetUserId(context.Context, *GetUserIdRequest) (*GetUserIdResponse, error)
+	AddFavorite(context.Context, *AddFavoriteRequest) (*AddFavoriteResponse, error)
+	RemoveFavorite(context.Context, *RemoveFavoriteRequest) (*RemoveFavoriteResponse, error)
+	GetFavorites(context.Context, *GetFavoritesRequest) (*GetFavoritesResponse, error)
 	mustEmbedUnimplementedChatServiceServer()
 }
 
@@ -691,6 +730,15 @@ func (UnimplementedChatServiceServer) SetMutedChat(context.Context, *SetMutedCha
 }
 func (UnimplementedChatServiceServer) GetUserId(context.Context, *GetUserIdRequest) (*GetUserIdResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetUserId not implemented")
+}
+func (UnimplementedChatServiceServer) AddFavorite(context.Context, *AddFavoriteRequest) (*AddFavoriteResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method AddFavorite not implemented")
+}
+func (UnimplementedChatServiceServer) RemoveFavorite(context.Context, *RemoveFavoriteRequest) (*RemoveFavoriteResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RemoveFavorite not implemented")
+}
+func (UnimplementedChatServiceServer) GetFavorites(context.Context, *GetFavoritesRequest) (*GetFavoritesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetFavorites not implemented")
 }
 func (UnimplementedChatServiceServer) mustEmbedUnimplementedChatServiceServer() {}
 func (UnimplementedChatServiceServer) testEmbeddedByValue()                     {}
@@ -1422,6 +1470,60 @@ func _ChatService_GetUserId_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ChatService_AddFavorite_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AddFavoriteRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).AddFavorite(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_AddFavorite_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).AddFavorite(ctx, req.(*AddFavoriteRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_RemoveFavorite_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveFavoriteRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).RemoveFavorite(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_RemoveFavorite_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).RemoveFavorite(ctx, req.(*RemoveFavoriteRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_GetFavorites_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetFavoritesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).GetFavorites(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_GetFavorites_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).GetFavorites(ctx, req.(*GetFavoritesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ChatService_ServiceDesc is the grpc.ServiceDesc for ChatService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1584,6 +1686,18 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetUserId",
 			Handler:    _ChatService_GetUserId_Handler,
+		},
+		{
+			MethodName: "AddFavorite",
+			Handler:    _ChatService_AddFavorite_Handler,
+		},
+		{
+			MethodName: "RemoveFavorite",
+			Handler:    _ChatService_RemoveFavorite_Handler,
+		},
+		{
+			MethodName: "GetFavorites",
+			Handler:    _ChatService_GetFavorites_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
