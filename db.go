@@ -816,7 +816,7 @@ func (db *DB) GetFavorites(userID string) ([]struct {
 				COALESCE(m.message_id, ''),
 				m.username,
 				m.encrypted_text,
-				m.created_at,
+				f.created_at,
 				COALESCE(m.replied_to_message_id, ''),
 				COALESCE(m.replied_to_user, ''),
 				COALESCE(m.replied_to_text, ''),
@@ -831,7 +831,7 @@ func (db *DB) GetFavorites(userID string) ([]struct {
 			 JOIN messages m ON f.message_id = m.message_id
 			 LEFT JOIN users u ON m.username = u.username
 			 WHERE f.user_id = $1::uuid
-			 ORDER BY f.created_at DESC`
+			 ORDER BY f.created_at ASC`
 
 	rows, err := db.Query(query, userID)
 	if err != nil {
