@@ -24,7 +24,7 @@ import (
 	"firebase.google.com/go/v4/messaging"
 )
 
-const ServerVersion = "1.0.4.1"
+const ServerVersion = "1.0.4.2"
 
 // server implements the gRPC ChatService interface
 type server struct {
@@ -211,8 +211,10 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 			return fmt.Errorf("not authenticated")
 		}*/
 
-		// Генерируем уникальный ID для сообщения
-		msg.Id = uuid.New().String()
+		// Генерируем уникальный ID для сообщения, если его нет
+		if msg.Id == "" {
+			msg.Id = uuid.New().String()
+		}
 
 		// Set server timestamp for message
 		msg.CreatedAt = timestamppb.Now()
