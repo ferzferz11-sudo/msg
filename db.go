@@ -505,9 +505,12 @@ func (db *DB) Close() error {
 
 // SaveMessage stores an encrypted message in the database
 func (db *DB) SaveMessage(messageID string, username string, encryptedText []byte, createdAt time.Time, repliedToMessageID string, repliedToUser string, repliedToText string, roomID string, imageURL string, voiceURL string, duration int32) error {
+	// If it's a favorites room, mark as read immediately
+	isRead := strings.HasPrefix(roomID, "favorites_")
+
 	query := `INSERT INTO messages (message_id, username, user_id, encrypted_text, created_at, replied_to_message_id, replied_to_user, replied_to_text, room_id, is_read, image_url, voice_url, duration)
-	          VALUES ($1, $2::text, (SELECT id FROM users WHERE username = $2::text), $3, $4, $5, $6, $7, $8, FALSE, $9, $10, $11)`
-	_, err := db.Exec(query, messageID, username, encryptedText, createdAt, repliedToMessageID, repliedToUser, repliedToText, roomID, imageURL, voiceURL, duration)
+	          VALUES ($1, $2::text, (SELECT id FROM users WHERE username = $2::text), $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`
+	_, err := db.Exec(query, messageID, username, encryptedText, createdAt, repliedToMessageID, repliedToUser, repliedToText, roomID, isRead, imageURL, voiceURL, duration)
 
 	if err == nil && roomID != "" {
 		_ = db.IncrementParticipantsChatListVersion(roomID)
@@ -539,6 +542,7 @@ func (db *DB) GetMessages(limit int, roomID string) ([]struct {
 
 	if strings.HasPrefix(roomID, "favorites_") {
 		// Special query for favorites room to include both direct messages and linked favorites
+		// Also forcing is_read to true for everything in this view
 		query = `SELECT
 				COALESCE(m.message_id, ''),
 				m.username,
@@ -548,7 +552,7 @@ func (db *DB) GetMessages(limit int, roomID string) ([]struct {
 				COALESCE(m.replied_to_user, ''),
 				COALESCE(m.replied_to_text, ''),
 				COALESCE(m.room_id, ''),
-				m.is_read,
+				TRUE as is_read,
 				COALESCE(u.avatar_url, ''),
 				COALESCE(m.image_url, ''),
 				COALESCE(m.edited, false),
@@ -723,7 +727,7 @@ func (db *DB) GetMessageByUUID(messageID string) (struct {
 				COALESCE(m.replied_to_user, ''),
 				COALESCE(m.replied_to_text, ''),
 				COALESCE(m.room_id, ''),
-				m.is_read,
+				TRUE as is_read,
 				COALESCE(u.avatar_url, ''),
 				COALESCE(m.image_url, ''),
 				COALESCE(m.edited, false),
@@ -917,7 +921,7 @@ func (db *DB) GetFavorites(userID string) ([]struct {
 				COALESCE(m.replied_to_user, ''),
 				COALESCE(m.replied_to_text, ''),
 				COALESCE(m.room_id, ''),
-				m.is_read,
+				TRUE as is_read,
 				COALESCE(u.avatar_url, ''),
 				COALESCE(m.image_url, ''),
 				COALESCE(m.edited, false),

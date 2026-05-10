@@ -24,7 +24,7 @@ import (
 	"firebase.google.com/go/v4/messaging"
 )
 
-const ServerVersion = "1.0.4.3"
+const ServerVersion = "1.0.4.4"
 
 // server implements the gRPC ChatService interface
 type server struct {
@@ -344,8 +344,21 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 }
 
 func (s *server) Typing(stream gen.ChatService_TypingServer) error {
+	var currentTypingUser string
+	var currentRoomID string
+
 	s.hub.RegisterTyping(stream)
-	defer s.hub.UnregisterTyping(stream)
+	defer func() {
+		if currentTypingUser != "" && currentRoomID != "" {
+			// Send "stopped typing" signal on disconnect
+			s.hub.BroadcastTyping(&gen.TypingSignal{
+				RoomId:   currentRoomID,
+				Username: currentTypingUser,
+				IsTyping: false,
+			})
+		}
+		s.hub.UnregisterTyping(stream)
+	}()
 
 	for {
 		req, err := stream.Recv()
@@ -355,6 +368,9 @@ func (s *server) Typing(stream gen.ChatService_TypingServer) error {
 		if err != nil {
 			return err
 		}
+
+		currentTypingUser = req.Username
+		currentRoomID = req.RoomId
 
 		// Broadcast typing signal to others
 		signal := &gen.TypingSignal{
@@ -728,6 +744,10 @@ func (s *server) UpdatePassword(_ context.Context, req *gen.UpdatePasswordReques
 
 // MarkRead marks messages in a room as read for a user
 func (s *server) MarkRead(_ context.Context, req *gen.MarkReadRequest) (*gen.MarkReadResponse, error) {
+	if strings.HasPrefix(req.RoomId, "favorites_") {
+		return &gen.MarkReadResponse{Success: true}, nil
+	}
+
 	err := s.db.MarkRead(req.RoomId, req.Username)
 	if err != nil {
 		log.Printf("Failed to mark read for %s in room %s: %v", req.Username, req.RoomId, err)
