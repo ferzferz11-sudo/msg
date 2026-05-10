@@ -47,8 +47,15 @@ message ClientListResponse {
 
 message GetAllUsersRequest {}
 
+message UserInfo {
+  string username = 1;
+  string avatar_url = 2;
+  string last_client_version = 3;
+  google.protobuf.Timestamp last_seen_at = 4;
+}
+
 message GetAllUsersResponse {
-  repeated string users = 1;
+  repeated UserInfo users = 1;
 }
 
 message GetAllChatsRequest {}

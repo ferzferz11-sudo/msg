@@ -24,7 +24,7 @@ import (
 	"firebase.google.com/go/v4/messaging"
 )
 
-const ServerVersion = "1.0.4.4"
+const ServerVersion = "1.0.4.5"
 
 // server implements the gRPC ChatService interface
 type server struct {
@@ -163,6 +163,14 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 			connectedUser = msg.User
 
 			log.Printf("%s (%s) authenticated successfully", msg.User, msg.ClientVersion)
+
+			// Update last client version and last seen timestamp in DB
+			if msg.ClientVersion != "" {
+				_ = s.db.UpdateClientVersion(msg.User, msg.ClientVersion)
+			} else {
+				// Old client - still update last seen
+				_ = s.db.UpdateLastSeen(msg.User)
+			}
 
 			// Send server info
 			serverInfoMsg := &gen.Message{
@@ -307,7 +315,7 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 		} else {
 			for _, user := range allUsers {
 				// Skip the sender
-				if user == msg.User {
+				if user.Username == msg.User {
 					continue
 				}
 
@@ -323,7 +331,7 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 					var participants []string
 					json.Unmarshal([]byte(chat.Participants), &participants)
 					for _, p := range participants {
-						if p == user {
+						if p == user.Username {
 							userInRoom = true
 							break
 						}
@@ -335,9 +343,8 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 				}
 
 				// Send push notification to all users in the room
-				// Online users will receive via gRPC, background users via push
-				log.Printf("Push sent: %s", user)
-				s.sendPushNotification(user, msg.User, msg.Text, roomID)
+				log.Printf("Push sent: %s", user.Username)
+				s.sendPushNotification(user.Username, msg.User, msg.Text, roomID)
 			}
 		}
 	}
@@ -401,8 +408,24 @@ func (s *server) GetAllUsers(ctx context.Context, req *gen.GetAllUsersRequest) (
 		log.Printf("Error fetching all users: %v", err)
 		return nil, err
 	}
+
+	var userInfos []*gen.UserInfo
+	for _, u := range users {
+		var lastSeen *timestamppb.Timestamp
+		if u.LastSeenAt.Valid {
+			lastSeen = timestamppb.New(u.LastSeenAt.Time)
+		}
+
+		userInfos = append(userInfos, &gen.UserInfo{
+			Username:          u.Username,
+			AvatarUrl:         u.AvatarURL,
+			LastClientVersion: u.LastClientVersion,
+			LastSeenAt:        lastSeen,
+		})
+	}
+
 	return &gen.GetAllUsersResponse{
-		Users: users,
+		Users: userInfos,
 	}, nil
 }
 
