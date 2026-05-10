@@ -755,6 +755,14 @@ func (s *server) MarkRead(_ context.Context, req *gen.MarkReadRequest) (*gen.Mar
 	}
 
 	log.Printf("Marked read for %s in room %s", req.Username, req.RoomId)
+
+	// Broadcast read signal to the room
+	s.hub.Broadcast(&gen.Message{
+		User:   "SYSTEM",
+		Text:   "READ_ALL:" + req.Username,
+		RoomId: req.RoomId,
+	})
+
 	return &gen.MarkReadResponse{Success: true}, nil
 }
 
