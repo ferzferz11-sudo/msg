@@ -680,6 +680,68 @@ func (db *DB) SetReaction(messageID string, username string, emoji string) error
 	return nil
 }
 
+// GetMessageByUUID retrieves a single message by its unique message_id
+func (db *DB) GetMessageByUUID(messageID string) (struct {
+	MessageID          string
+	Username           string
+	Encrypted          []byte
+	CreatedAt          time.Time
+	RepliedToMessageID string
+	RepliedToUser      string
+	RepliedToText      string
+	RoomID             string
+	IsRead             bool
+	AvatarURL          string
+	ImageURL           string
+	Edited             bool
+	VoiceURL           string
+	Duration           int32
+}, error) {
+	var r struct {
+		MessageID          string
+		Username           string
+		Encrypted          []byte
+		CreatedAt          time.Time
+		RepliedToMessageID string
+		RepliedToUser      string
+		RepliedToText      string
+		RoomID             string
+		IsRead             bool
+		AvatarURL          string
+		ImageURL           string
+		Edited             bool
+		VoiceURL           string
+		Duration           int32
+	}
+
+	query := `SELECT
+				COALESCE(m.message_id, ''),
+				m.username,
+				m.encrypted_text,
+				m.created_at,
+				COALESCE(m.replied_to_message_id, ''),
+				COALESCE(m.replied_to_user, ''),
+				COALESCE(m.replied_to_text, ''),
+				COALESCE(m.room_id, ''),
+				m.is_read,
+				COALESCE(u.avatar_url, ''),
+				COALESCE(m.image_url, ''),
+				COALESCE(m.edited, false),
+				COALESCE(m.voice_url, ''),
+				COALESCE(m.duration, 0)
+			 FROM messages m
+			 LEFT JOIN users u ON m.username = u.username
+			 WHERE m.message_id = $1`
+
+	err := db.QueryRow(query, messageID).Scan(
+		&r.MessageID, &r.Username, &r.Encrypted, &r.CreatedAt,
+		&r.RepliedToMessageID, &r.RepliedToUser, &r.RepliedToText,
+		&r.RoomID, &r.IsRead, &r.AvatarURL, &r.ImageURL,
+		&r.Edited, &r.VoiceURL, &r.Duration,
+	)
+	return r, err
+}
+
 // GetReactionsForMessage retrieves reactions for a specific message
 func (db *DB) GetReactionsForMessage(messageID string) ([]struct {
 	Username string
@@ -731,6 +793,8 @@ func (db *DB) GetMessagesByUserAndTime(username string, createdAt time.Time) ([]
 	ID        int
 	Encrypted []byte
 	ImageURL  string
+	MessageID string
+	RoomID    string
 }, error) {
 	// 🛠️ 1. Оптимизация SQL: Избавляемся от ABS и EXTRACT.
 	// Вместо вычислений для каждой строки БД, мы заранее вычисляем границы времени в Go.
@@ -739,7 +803,7 @@ func (db *DB) GetMessagesByUserAndTime(username string, createdAt time.Time) ([]
 	startTime := createdAt.Add(-2 * time.Second)
 	endTime := createdAt.Add(2 * time.Second)
 
-	query := `SELECT id, encrypted_text, COALESCE(image_url, '') 
+	query := `SELECT id, encrypted_text, COALESCE(image_url, ''), message_id, room_id
 	          FROM messages 
 	          WHERE username = $1 
 	            AND created_at >= $2 
@@ -760,6 +824,8 @@ func (db *DB) GetMessagesByUserAndTime(username string, createdAt time.Time) ([]
 		ID        int
 		Encrypted []byte
 		ImageURL  string
+		MessageID string
+		RoomID    string
 	}, 0, 5)
 
 	for rows.Next() {
@@ -767,8 +833,11 @@ func (db *DB) GetMessagesByUserAndTime(username string, createdAt time.Time) ([]
 			ID        int
 			Encrypted []byte
 			ImageURL  string
+			MessageID string
+			RoomID    string
 		}
-		if err := rows.Scan(&r.ID, &r.Encrypted, &r.ImageURL); err != nil {
+
+		if err := rows.Scan(&r.ID, &r.Encrypted, &r.ImageURL, &r.MessageID, &r.RoomID); err != nil {
 			return nil, fmt.Errorf("failed to scan message row: %w", err)
 		}
 		results = append(results, r)

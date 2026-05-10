@@ -470,8 +470,21 @@ message GetFavoritesResponse {
   repeated Message messages = 1;
 }
 
+message TypingRequest {
+  string room_id = 1;
+  string username = 2;
+  bool is_typing = 3;
+}
+
+message TypingSignal {
+  string room_id = 1;
+  string username = 2;
+  bool is_typing = 3;
+}
+
 service ChatService {
   rpc Chat(stream Message) returns (stream Message);
+  rpc Typing(stream TypingRequest) returns (stream TypingSignal);
   rpc GetClients(ClientListRequest) returns (ClientListResponse);
   rpc GetAllUsers(GetAllUsersRequest) returns (GetAllUsersResponse);
   rpc GetAllChats(GetAllChatsRequest) returns (GetAllChatsResponse);

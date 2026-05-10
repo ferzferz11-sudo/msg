@@ -24,7 +24,7 @@ import (
 	"firebase.google.com/go/v4/messaging"
 )
 
-const ServerVersion = "1.0.4.2"
+const ServerVersion = "1.0.4.3"
 
 // server implements the gRPC ChatService interface
 type server struct {
@@ -69,6 +69,7 @@ func (s *server) logFCM(level, format string, v ...interface{}) {
 // Chat handles bidirectional streaming for real-time messaging
 func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 	var connectedUser string = "Anonymous"
+	var currentRoom string = ""
 
 	// Register the new client stream with the hub
 	s.hub.Register(stream)
@@ -225,6 +226,10 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 
 		// Determine room ID
 		roomID := msg.RoomId
+		if roomID != "" && roomID != currentRoom {
+			currentRoom = roomID
+			s.hub.SetRoom(stream, roomID)
+		}
 
 		// Skip empty messages (unless they have an image or voice)
 		if strings.TrimSpace(msg.Text) == "" && msg.ImageUrl == "" && msg.VoiceUrl == "" {
@@ -335,6 +340,29 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 				s.sendPushNotification(user, msg.User, msg.Text, roomID)
 			}
 		}
+	}
+}
+
+func (s *server) Typing(stream gen.ChatService_TypingServer) error {
+	s.hub.RegisterTyping(stream)
+	defer s.hub.UnregisterTyping(stream)
+
+	for {
+		req, err := stream.Recv()
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+
+		// Broadcast typing signal to others
+		signal := &gen.TypingSignal{
+			RoomId:   req.RoomId,
+			Username: req.Username,
+			IsTyping: req.IsTyping,
+		}
+		s.hub.BroadcastTyping(signal)
 	}
 }
 
@@ -497,10 +525,45 @@ func (s *server) SetReaction(_ context.Context, req *gen.ReactionRequest) (*gen.
 		return &gen.ReactionResponse{Success: false}, err
 	}
 
-	// Broadcast the reaction update to all clients
-	// Note: We might want a dedicated broadcast for reactions,
-	// but for now, we'll let clients refresh or we could send a special Message.
-	// For 0.9.6, we'll just ensure it's in the DB for the next history fetch.
+	// Broadcast the updated message to all clients in the room
+	// 1. Get the full message from DB
+	m, err := s.db.GetMessageByUUID(req.MessageId)
+	if err == nil {
+		// 2. Decrypt text
+		decryptedText, _ := decrypt(m.Encrypted)
+
+		// 3. Get all reactions
+		rawReactions, _ := s.db.GetReactionsForMessage(m.MessageID)
+		var reactions []*gen.Reaction
+		for _, r := range rawReactions {
+			reactions = append(reactions, &gen.Reaction{
+				User:  r.Username,
+				Emoji: r.Emoji,
+			})
+		}
+
+		// 4. Create message object for broadcast
+		msg := &gen.Message{
+			Id:                 m.MessageID,
+			User:               m.Username,
+			Text:               decryptedText,
+			CreatedAt:          timestamppb.New(m.CreatedAt),
+			Reactions:          reactions,
+			RepliedToMessageId: m.RepliedToMessageID,
+			RepliedToUser:      m.RepliedToUser,
+			RepliedToText:      m.RepliedToText,
+			RoomId:             m.RoomID,
+			IsRead:             m.IsRead,
+			AvatarUrl:          m.AvatarURL,
+			ImageUrl:           m.ImageURL,
+			Edited:             m.Edited,
+			VoiceUrl:           m.VoiceURL,
+			Duration:           m.Duration,
+		}
+
+		// 5. Broadcast to everyone in the room
+		s.hub.Broadcast(msg)
+	}
 
 	return &gen.ReactionResponse{Success: true}, nil
 }
@@ -1023,6 +1086,13 @@ func (s *server) DeleteMessages(_ context.Context, req *gen.DeleteMessagesReques
 			if err == nil {
 				anyDeleted = true
 				log.Printf("Deleted message by ID: %s", msg.Id)
+
+				// Broadcast deletion to the room
+				s.hub.Broadcast(&gen.Message{
+					User:   "SYSTEM",
+					Text:   "DELETE_MESSAGE:" + msg.Id,
+					RoomId: msg.RoomId,
+				})
 				continue
 			}
 		}
@@ -1054,6 +1124,13 @@ func (s *server) DeleteMessages(_ context.Context, req *gen.DeleteMessagesReques
 				if err == nil {
 					anyDeleted = true
 					log.Printf("Deleted message by content from %s", msg.User)
+
+					// Broadcast deletion to the room
+					s.hub.Broadcast(&gen.Message{
+						User:   "SYSTEM",
+						Text:   "DELETE_MESSAGE:" + candidate.MessageID,
+						RoomId: candidate.RoomID,
+					})
 				}
 				break
 			}
@@ -1073,6 +1150,35 @@ func (s *server) EditMessage(_ context.Context, req *gen.EditMessageRequest) (*g
 	if err != nil {
 		log.Printf("Failed to edit message %s: %v", req.MessageId, err)
 		return &gen.EditMessageResponse{Success: false, Message: err.Error()}, nil
+	}
+
+	// Broadcast the updated message
+	m, err := s.db.GetMessageByUUID(req.MessageId)
+	if err == nil {
+		decryptedText, _ := decrypt(m.Encrypted)
+		rawReactions, _ := s.db.GetReactionsForMessage(m.MessageID)
+		var reactions []*gen.Reaction
+		for _, r := range rawReactions {
+			reactions = append(reactions, &gen.Reaction{User: r.Username, Emoji: r.Emoji})
+		}
+
+		s.hub.Broadcast(&gen.Message{
+			Id:                 m.MessageID,
+			User:               m.Username,
+			Text:               decryptedText,
+			CreatedAt:          timestamppb.New(m.CreatedAt),
+			Reactions:          reactions,
+			RepliedToMessageId: m.RepliedToMessageID,
+			RepliedToUser:      m.RepliedToUser,
+			RepliedToText:      m.RepliedToText,
+			RoomId:             m.RoomID,
+			IsRead:             m.IsRead,
+			AvatarUrl:          m.AvatarURL,
+			ImageUrl:           m.ImageURL,
+			Edited:             m.Edited,
+			VoiceUrl:           m.VoiceURL,
+			Duration:           m.Duration,
+		})
 	}
 
 	log.Printf("Edited message %s", req.MessageId)

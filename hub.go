@@ -19,6 +19,7 @@ type Hub struct {
 	clients       map[gen.ChatService_ChatServer]string // maps stream to username
 	authenticated map[gen.ChatService_ChatServer]bool   // tracks if stream is authenticated
 	rooms         map[gen.ChatService_ChatServer]string // maps stream to current room ID
+	typingStreams map[gen.ChatService_TypingServer]string
 
 	// onStatusChange is a callback triggered when user list changes
 	onStatusChange func()
@@ -30,8 +31,23 @@ func NewHub(onStatusChange func()) *Hub {
 		clients:        make(map[gen.ChatService_ChatServer]string),
 		authenticated:  make(map[gen.ChatService_ChatServer]bool),
 		rooms:          make(map[gen.ChatService_ChatServer]string),
+		typingStreams:  make(map[gen.ChatService_TypingServer]string),
 		onStatusChange: onStatusChange,
 	}
+}
+
+// RegisterTyping adds a new typing stream to the hub
+func (h *Hub) RegisterTyping(stream gen.ChatService_TypingServer) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.typingStreams[stream] = ""
+}
+
+// UnregisterTyping removes a typing stream
+func (h *Hub) UnregisterTyping(stream gen.ChatService_TypingServer) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	delete(h.typingStreams, stream)
 }
 
 // Register adds a new stream (client) to the broadcast list
@@ -149,5 +165,22 @@ func (h *Hub) Broadcast(msg *gen.Message) {
 				continue
 			}
 		}
+	}
+}
+
+// BroadcastTyping sends a typing signal to all clients in the same room
+func (h *Hub) BroadcastTyping(signal *gen.TypingSignal) {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	roomID := signal.RoomId
+	if roomID == "" {
+		return
+	}
+
+	for stream := range h.typingStreams {
+		// In BIDI stream we don't have a direct way to know the room without a map
+		// For now we broadcast to all, and client will filter by roomId
+		_ = stream.Send(signal)
 	}
 }
