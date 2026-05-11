@@ -63,6 +63,24 @@ WHERE current_theme_id IS NULL
        AND current_theme_id != 'dark'
        AND current_theme_id != 'light');
 
+-- 5. Очистка осиротевших данных (Orphaned Data Cleanup)
+-- Удаляем сообщения, черновики, мьюты и метаданные для чатов, которых больше нет в таблице chats.
+\echo 'Удаление осиротевших сообщений (сообщения без чата)...'
+DELETE FROM messages WHERE room_id != '' AND room_id NOT LIKE 'favorites_%' AND room_id NOT IN (SELECT id FROM chats);
+
+\echo 'Удаление осиротевших черновиков...'
+DELETE FROM draft_messages WHERE room_id NOT LIKE 'favorites_%' AND room_id NOT IN (SELECT id FROM chats);
+
+\echo 'Удаление осиротевших настроек уведомлений (muted)...'
+DELETE FROM muted_chats WHERE room_id NOT IN (SELECT id FROM chats);
+
+\echo 'Удаление осиротевших метаданных чтения...'
+DELETE FROM user_chat_metadata WHERE room_id NOT IN (SELECT id FROM chats);
+
+-- 6. Очистка битых реакций (ссылающихся на удаленные сообщения)
+\echo 'Очистка осиротевших реакций...'
+DELETE FROM reactions WHERE message_id NOT IN (SELECT message_id FROM messages);
+
 SQL
 
 if [ $? -eq 0 ]; then
