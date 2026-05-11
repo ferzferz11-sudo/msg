@@ -76,7 +76,7 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 	defer func() {
 		// Unregister the client when the connection ends
 		s.hub.Unregister(stream)
-		log.Printf("%s disconnected", connectedUser)
+		log.Printf("Stream for %s closed", connectedUser)
 	}()
 
 	for {
@@ -1634,11 +1634,22 @@ func (s *server) GetFavorites(ctx context.Context, req *gen.GetFavoritesRequest)
 			decryptedText = "не удалось расшифровать"
 		}
 
+		// Получаем реакции для сообщения
+		rawReactions, _ := s.db.GetReactionsForMessage(m.MessageID)
+		var reactions []*gen.Reaction
+		for _, r := range rawReactions {
+			reactions = append(reactions, &gen.Reaction{
+				User:  r.Username,
+				Emoji: r.Emoji,
+			})
+		}
+
 		messages = append(messages, &gen.Message{
 			Id:                 m.MessageID,
 			User:               m.Username,
 			Text:               decryptedText,
 			CreatedAt:          timestamppb.New(m.CreatedAt),
+			Reactions:          reactions,
 			RepliedToMessageId: m.RepliedToMessageID,
 			RepliedToUser:      m.RepliedToUser,
 			RepliedToText:      m.RepliedToText,
@@ -1691,6 +1702,8 @@ func (s *server) SaveFavoriteMessage(ctx context.Context, req *gen.Message) (*ge
 	}
 
 	// 6. Broadcast to favorites room for live update
+	// Get reactions for the message we just saved (should be empty but good for consistency)
+	req.RoomId = favRoomID
 	s.hub.Broadcast(req)
 
 	return &gen.AddFavoriteResponse{Success: true}, nil

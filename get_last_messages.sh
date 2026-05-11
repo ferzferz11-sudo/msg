@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Скрипт для получения последних 10 сообщений с их реакциями из базы данных Lavender Messenger
+# Скрипт для получения последних 10 сообщений с самыми свежими реакциями
 
 # Загружаем переменные окружения из .env файла
 if [ -f .env ]; then
@@ -12,42 +12,47 @@ if [ -z "$DATABASE_URL" ]; then
   exit 1
 fi
 
-echo "======================================================"
-echo "Последние 10 сообщений в базе данных Lavender Messenger"
-echo "======================================================"
-
-# Выполняем SQL запрос через psql
-# Для расшифровки текста требуется ключ, поэтому выводим зашифрованные данные как hex
-# В реальной системе текст зашифрован, но мы можем проверить связи и реакции
+echo "======================================================================="
+echo "Последние 10 сообщений с самыми свежими реакциями"
+echo "======================================================================="
 
 psql "$DATABASE_URL" -c "
-WITH last_msgs AS (
+WITH latest_reactions AS (
+    SELECT
+        message_id,
+        MAX(id) as last_reaction_id
+    FROM reactions
+    GROUP BY message_id
+),
+ranked_messages AS (
     SELECT
         m.id,
         m.message_id,
         m.username,
         m.room_id,
         m.created_at,
+        lr.last_reaction_id,
         substring(encode(m.encrypted_text, 'hex') from 1 for 20) || '...' as encrypted_preview
     FROM messages m
-    ORDER BY m.created_at DESC
+    LEFT JOIN latest_reactions lr ON m.message_id = lr.message_id
+    ORDER BY lr.last_reaction_id DESC NULLS LAST, m.created_at DESC
     LIMIT 10
 )
 SELECT
-    lm.message_id,
-    lm.username as sender,
-    lm.room_id,
-    lm.created_at,
+    rm.message_id,
+    rm.username as sender,
+    rm.room_id,
+    rm.created_at,
     COALESCE(
         json_agg(
             json_build_object('user', r.username, 'emoji', r.emoji)
         ) FILTER (WHERE r.id IS NOT NULL),
         '[]'
     ) as reactions
-FROM last_msgs lm
-LEFT JOIN reactions r ON lm.message_id = r.message_id
+FROM ranked_messages rm
+LEFT JOIN reactions r ON rm.message_id = r.message_id
 GROUP BY
-    lm.id, lm.message_id, lm.username, lm.room_id, lm.created_at, lm.encrypted_preview
+    rm.id, rm.message_id, rm.username, rm.room_id, rm.created_at, rm.encrypted_preview, rm.last_reaction_id
 ORDER BY
-    lm.created_at DESC;
+    rm.last_reaction_id DESC NULLS LAST, rm.created_at DESC;
 "
