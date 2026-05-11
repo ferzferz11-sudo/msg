@@ -375,16 +375,22 @@ func DeleteImageFile(imageURL string) error {
 		return fmt.Errorf("unknown file prefix: %s", prefix)
 	}
 
-	filePath := filepath.Join(saveDir, filename)
+	// Нормализуем пути для корректного сравнения
+	cleanSaveDir := filepath.Clean(saveDir)
+	filePath := filepath.Join(cleanSaveDir, filename)
 
-	// Безопасность: Проверяем, что итоговый путь действительно лежит внутри целевой папки
-	if !strings.HasPrefix(filePath, saveDir) {
-		return fmt.Errorf("security alert: attempt to delete file outside of the allowed directory")
+	// Дополнительная проверка безопасности: путь должен оставаться внутри целевой директории
+	// Используем Abs для абсолютной уверенности
+	absSaveDir, _ := filepath.Abs(cleanSaveDir)
+	absFilePath, _ := filepath.Abs(filePath)
+
+	if !strings.HasPrefix(absFilePath, absSaveDir) {
+		return fmt.Errorf("security alert: attempt to delete file outside of the allowed directory (path: %s, base: %s)", absFilePath, absSaveDir)
 	}
 
 	// Проверяем существование файла
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		return nil // Файл уже удален
+		return nil // Файл уже удален или не существует
 	}
 
 	err := os.Remove(filePath)

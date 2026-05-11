@@ -508,8 +508,25 @@ func (db *DB) UpdateChatParticipants(id, p string) error {
 	return err
 }
 func (db *DB) DeleteChat(id string) error {
-	_, err := db.Exec(`DELETE FROM chats WHERE id=$1`, id)
-	return err
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// Удаляем все сообщения чата
+	_, _ = tx.Exec(`DELETE FROM messages WHERE room_id = $1`, id)
+	// Удаляем метаданные, мьюты и черновики
+	_, _ = tx.Exec(`DELETE FROM user_chat_metadata WHERE room_id = $1`, id)
+	_, _ = tx.Exec(`DELETE FROM muted_chats WHERE room_id = $1`, id)
+	_, _ = tx.Exec(`DELETE FROM draft_messages WHERE room_id = $1`, id)
+	// Удаляем сам чат
+	_, err = tx.Exec(`DELETE FROM chats WHERE id = $1`, id)
+
+	if err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 func (db *DB) AddContact(user, contact string) error {
 	_, err := db.Exec(`INSERT INTO contacts (username, contact_username) VALUES ($1, $2) ON CONFLICT DO NOTHING`, user, contact)
@@ -552,9 +569,46 @@ func (db *DB) IncrementParticipantsChatListVersion(id string) error {
 	_, err := db.Exec(`UPDATE users SET chat_list_version=chat_list_version+1 WHERE username IN (SELECT json_array_elements_text(participants::json) FROM chats WHERE id=$1)`, id)
 	return err
 }
-func (db *DB) SaveUserTheme(user string, t *gen.CustomTheme) error { return nil }
-func (db *DB) SetCurrentTheme(user, id string) error               { return nil }
-func (db *DB) DeleteUserTheme(user, id string) error               { return nil }
+func (db *DB) SaveUserTheme(user string, t *gen.CustomTheme) error {
+	query := `INSERT INTO user_themes (
+		username, theme_id, name, primary_color, on_primary_color,
+		surface_color, on_surface_color, background_color,
+		text_primary_color, text_secondary_color, is_dark,
+		chat_background_image_url, chat_list_background_image_url,
+		bottom_panel_color, on_bottom_panel_color, surface_container,
+		outgoing_bubble_color, incoming_bubble_color
+	) VALUES (
+		$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18
+	) ON CONFLICT (username, theme_id) DO UPDATE SET
+		name=EXCLUDED.name, primary_color=EXCLUDED.primary_color,
+		on_primary_color=EXCLUDED.on_primary_color, surface_color=EXCLUDED.surface_color,
+		on_surface_color=EXCLUDED.on_surface_color, background_color=EXCLUDED.background_color,
+		text_primary_color=EXCLUDED.text_primary_color, text_secondary_color=EXCLUDED.text_secondary_color,
+		is_dark=EXCLUDED.is_dark, chat_background_image_url=EXCLUDED.chat_background_image_url,
+		chat_list_background_image_url=EXCLUDED.chat_list_background_image_url,
+		bottom_panel_color=EXCLUDED.bottom_panel_color, on_bottom_panel_color=EXCLUDED.on_bottom_panel_color,
+		surface_container=EXCLUDED.surface_container, outgoing_bubble_color=EXCLUDED.outgoing_bubble_color,
+		incoming_bubble_color=EXCLUDED.incoming_bubble_color`
+
+	_, err := db.Exec(query,
+		user, t.Id, t.Name, t.PrimaryColor, t.OnPrimaryColor,
+		t.SurfaceColor, t.OnSurfaceColor, t.BackgroundColor,
+		t.TextPrimaryColor, t.TextSecondaryColor, t.IsDark,
+		t.ChatBackgroundImageUrl, t.ChatListBackgroundImageUrl,
+		t.BottomPanelColor, t.OnBottomPanelColor, t.SurfaceContainer,
+		t.OutgoingBubbleColor, t.IncomingBubbleColor)
+	return err
+}
+
+func (db *DB) SetCurrentTheme(user, id string) error {
+	_, err := db.Exec(`UPDATE users SET current_theme_id = $1 WHERE username = $2`, id, user)
+	return err
+}
+
+func (db *DB) DeleteUserTheme(user, id string) error {
+	_, err := db.Exec(`DELETE FROM user_themes WHERE username = $1 AND theme_id = $2`, user, id)
+	return err
+}
 func (db *DB) SaveDraftByUserID(uid, room, text, mid, user, rtext string) error {
 	q := `INSERT INTO draft_messages (user_id, room_id, draft_text, replied_to_message_id, replied_to_user, replied_to_text, username) VALUES ($1::uuid, $2, $3, $4, $5, $6, (SELECT username FROM users WHERE id=$1::uuid)) ON CONFLICT (username, room_id) DO UPDATE SET draft_text=EXCLUDED.draft_text, replied_to_message_id=EXCLUDED.replied_to_message_id, replied_to_user=EXCLUDED.replied_to_user, replied_to_text=EXCLUDED.replied_to_text`
 	_, err := db.Exec(q, uid, room, text, mid, user, rtext)
@@ -724,8 +778,22 @@ func (db *DB) GetFavorites(uid string) ([]struct {
 	}
 	return res, nil
 }
-func (db *DB) AddFavorite(uid, mid string) error    { return nil }
-func (db *DB) RemoveFavorite(uid, mid string) error { return nil }
+func (db *DB) AddFavorite(uid, mid string) error {
+	// Если передан не UUID (а имя пользователя), сначала получим его ID
+	query := `INSERT INTO favorites (user_id, message_id)
+	          VALUES (CASE WHEN $1 ~ '^[0-9a-fA-F-]{36}$' THEN $1::uuid ELSE (SELECT id FROM users WHERE username=$1::text) END, $2)
+	          ON CONFLICT DO NOTHING`
+	_, err := db.Exec(query, uid, mid)
+	return err
+}
+
+func (db *DB) RemoveFavorite(uid, mid string) error {
+	query := `DELETE FROM favorites
+	          WHERE user_id = (CASE WHEN $1 ~ '^[0-9a-fA-F-]{36}$' THEN $1::uuid ELSE (SELECT id FROM users WHERE username=$1::text) END)
+	          AND message_id = $2`
+	_, err := db.Exec(query, uid, mid)
+	return err
+}
 func (db *DB) CleanupEmptyMessages() (int64, error) {
 	q := `DELETE FROM messages WHERE encrypted_text = 'DECRYPTION_FAILED'::bytea OR encrypted_text = 'CORRUPTED_FIX'::bytea`
 	res, err := db.Exec(q)
