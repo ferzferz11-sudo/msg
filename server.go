@@ -24,7 +24,7 @@ import (
 	"firebase.google.com/go/v4/messaging"
 )
 
-const ServerVersion = "1.0.4.5"
+const ServerVersion = "1.0.4.6"
 
 // server implements the gRPC ChatService interface
 type server struct {
@@ -558,6 +558,8 @@ func (s *server) GetHistory(_ context.Context, req *gen.GetHistoryRequest) (*gen
 
 // SetReaction saves or updates a reaction and broadcasts it
 func (s *server) SetReaction(_ context.Context, req *gen.ReactionRequest) (*gen.ReactionResponse, error) {
+	log.Printf("[Reaction] %s on %s by %s", req.Reaction.Emoji, req.MessageId, req.Reaction.User)
+
 	err := s.db.SetReaction(req.MessageId, req.Reaction.User, req.Reaction.Emoji)
 	if err != nil {
 		log.Printf("Failed to set reaction: %v", err)
@@ -567,42 +569,54 @@ func (s *server) SetReaction(_ context.Context, req *gen.ReactionRequest) (*gen.
 	// Broadcast the updated message to all clients in the room
 	// 1. Get the full message from DB
 	m, err := s.db.GetMessageByUUID(req.MessageId)
-	if err == nil {
-		// 2. Decrypt text
-		decryptedText, _ := decrypt(m.Encrypted)
-
-		// 3. Get all reactions
-		rawReactions, _ := s.db.GetReactionsForMessage(m.MessageID)
-		var reactions []*gen.Reaction
-		for _, r := range rawReactions {
-			reactions = append(reactions, &gen.Reaction{
-				User:  r.Username,
-				Emoji: r.Emoji,
-			})
-		}
-
-		// 4. Create message object for broadcast
-		msg := &gen.Message{
-			Id:                 m.MessageID,
-			User:               m.Username,
-			Text:               decryptedText,
-			CreatedAt:          timestamppb.New(m.CreatedAt),
-			Reactions:          reactions,
-			RepliedToMessageId: m.RepliedToMessageID,
-			RepliedToUser:      m.RepliedToUser,
-			RepliedToText:      m.RepliedToText,
-			RoomId:             m.RoomID,
-			IsRead:             m.IsRead,
-			AvatarUrl:          m.AvatarURL,
-			ImageUrl:           m.ImageURL,
-			Edited:             m.Edited,
-			VoiceUrl:           m.VoiceURL,
-			Duration:           m.Duration,
-		}
-
-		// 5. Broadcast to everyone in the room
-		s.hub.Broadcast(msg)
+	if err != nil {
+		log.Printf("Error retrieving message %s for broadcast after reaction: %v", req.MessageId, err)
+		return &gen.ReactionResponse{Success: true}, nil // Return true as DB was updated
 	}
+
+	// 2. Decrypt text
+	decryptedText, err := decrypt(m.Encrypted)
+	if err != nil {
+		log.Printf("Warning: Failed to decrypt message %s during reaction broadcast: %v", req.MessageId, err)
+		decryptedText = "не удалось расшифровать"
+	}
+
+	// 3. Get all reactions
+	rawReactions, err := s.db.GetReactionsForMessage(m.MessageID)
+	if err != nil {
+		log.Printf("Warning: Failed to get reactions for message %s: %v", req.MessageId, err)
+	}
+
+	var reactions []*gen.Reaction
+	for _, r := range rawReactions {
+		reactions = append(reactions, &gen.Reaction{
+			User:  r.Username,
+			Emoji: r.Emoji,
+		})
+	}
+
+	// 4. Create message object for broadcast
+	msg := &gen.Message{
+		Id:                 m.MessageID,
+		User:               m.Username,
+		Text:               decryptedText,
+		CreatedAt:          timestamppb.New(m.CreatedAt),
+		Reactions:          reactions,
+		RepliedToMessageId: m.RepliedToMessageID,
+		RepliedToUser:      m.RepliedToUser,
+		RepliedToText:      m.RepliedToText,
+		RoomId:             m.RoomID,
+		IsRead:             m.IsRead,
+		AvatarUrl:          m.AvatarURL,
+		ImageUrl:           m.ImageURL,
+		Edited:             m.Edited,
+		VoiceUrl:           m.VoiceURL,
+		Duration:           m.Duration,
+	}
+
+	// 5. Broadcast to everyone in the room
+	log.Printf("Broadcasting updated message %s with reactions to room %s", msg.Id, msg.RoomId)
+	s.hub.Broadcast(msg)
 
 	return &gen.ReactionResponse{Success: true}, nil
 }
