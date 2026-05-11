@@ -571,7 +571,7 @@ func (db *DB) GetDraftByUserID(uid, room string) (struct {
 		DraftText, RepliedToMessageID, RepliedToUser, RepliedToText string
 		UpdatedAt                                                   time.Time
 	}
-	q := `SELECT draft_text, COALESCE(replied_to_message_id,''), COALESCE(replied_to_user,''), COALESCE(replied_to_text,''), updated_at FROM draft_messages WHERE (user_id=$1::uuid OR username=$1) AND room_id=$2`
+	q := `SELECT draft_text, COALESCE(replied_to_message_id,''), COALESCE(replied_to_user,''), COALESCE(replied_to_text,''), updated_at FROM draft_messages WHERE (user_id=$1::uuid OR username=$1::text) AND room_id=$2`
 	db.QueryRow(q, uid, room).Scan(&r.DraftText, &r.RepliedToMessageID, &r.RepliedToUser, &r.RepliedToText, &r.UpdatedAt)
 	return r, nil
 }
@@ -582,7 +582,7 @@ func (db *DB) GetDraft(uid, room string) (struct {
 	return db.GetDraftByUserID(uid, room)
 }
 func (db *DB) DeleteDraftByUserID(uid, room string) (bool, error) {
-	res, err := db.Exec(`DELETE FROM draft_messages WHERE (user_id=$1::uuid OR username=$1) AND room_id=$2`, uid, room)
+	res, err := db.Exec(`DELETE FROM draft_messages WHERE (user_id=$1::uuid OR username=$1::text) AND room_id=$2`, uid, room)
 	if err != nil {
 		return false, err
 	}
