@@ -24,7 +24,7 @@ import (
 	"firebase.google.com/go/v4/messaging"
 )
 
-const ServerVersion = "1.0.4.6"
+const ServerVersion = "1.0.4.7"
 
 // server implements the gRPC ChatService interface
 type server struct {
@@ -96,8 +96,6 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 			msg.User = trimmedUser
 			connectedUser = msg.User
 
-			log.Printf("Auth attempt: %s (%s)", connectedUser, msg.ClientVersion)
-
 			// Check if user exists first
 			userExists, err := s.db.UserExists(msg.User)
 			if err != nil {
@@ -162,7 +160,8 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 			s.hub.SetAuthenticated(stream, true)
 			connectedUser = msg.User
 
-			log.Printf("%s (%s) authenticated successfully", msg.User, msg.ClientVersion)
+			// Single unified log line for successful auth and initial connection
+			log.Printf("Auth success: %s (v%s), initial signal: %s", msg.User, msg.ClientVersion, msg.RoomId)
 
 			// Update last client version and last seen timestamp in DB
 			if msg.ClientVersion != "" {
@@ -241,11 +240,7 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 
 		// Skip empty messages (unless they have an image or voice)
 		if strings.TrimSpace(msg.Text) == "" && msg.ImageUrl == "" && msg.VoiceUrl == "" {
-			if roomID != "" {
-				log.Printf("Auth signal: %s (%s)", msg.User, roomID)
-			} else {
-				log.Printf("Auth signal: %s (Global)", msg.User)
-			}
+			// Don't log empty messages if they are just room switches (which we now log on auth)
 			continue
 		}
 
@@ -558,9 +553,23 @@ func (s *server) GetHistory(_ context.Context, req *gen.GetHistoryRequest) (*gen
 
 // SetReaction saves or updates a reaction and broadcasts it
 func (s *server) SetReaction(_ context.Context, req *gen.ReactionRequest) (*gen.ReactionResponse, error) {
-	log.Printf("[Reaction] %s on %s by %s", req.Reaction.Emoji, req.MessageId, req.Reaction.User)
+	// Получаем оригинальное сообщение для логирования текста
+	var msgText string = "..."
+	m, err := s.db.GetMessageByUUID(req.MessageId)
+	if err == nil {
+		decryptedText, err := decrypt(m.Encrypted)
+		if err == nil {
+			if len(decryptedText) > 15 {
+				msgText = decryptedText[:15] + "..."
+			} else {
+				msgText = decryptedText
+			}
+		}
+	}
 
-	err := s.db.SetReaction(req.MessageId, req.Reaction.User, req.Reaction.Emoji)
+	log.Printf("[Reaction] %s on %s (%s) by %s", req.Reaction.Emoji, req.MessageId, msgText, req.Reaction.User)
+
+	err = s.db.SetReaction(req.MessageId, req.Reaction.User, req.Reaction.Emoji)
 	if err != nil {
 		log.Printf("Failed to set reaction: %v", err)
 		return &gen.ReactionResponse{Success: false}, err
@@ -568,55 +577,43 @@ func (s *server) SetReaction(_ context.Context, req *gen.ReactionRequest) (*gen.
 
 	// Broadcast the updated message to all clients in the room
 	// 1. Get the full message from DB
-	m, err := s.db.GetMessageByUUID(req.MessageId)
-	if err != nil {
-		log.Printf("Error retrieving message %s for broadcast after reaction: %v", req.MessageId, err)
-		return &gen.ReactionResponse{Success: true}, nil // Return true as DB was updated
-	}
+	if m.MessageID != "" { // m is already fetched above
+		// 2. Decrypt text
+		decryptedText, _ := decrypt(m.Encrypted)
 
-	// 2. Decrypt text
-	decryptedText, err := decrypt(m.Encrypted)
-	if err != nil {
-		log.Printf("Warning: Failed to decrypt message %s during reaction broadcast: %v", req.MessageId, err)
-		decryptedText = "не удалось расшифровать"
-	}
+		// 3. Get all reactions
+		rawReactions, _ := s.db.GetReactionsForMessage(m.MessageID)
+		var reactions []*gen.Reaction
+		for _, r := range rawReactions {
+			reactions = append(reactions, &gen.Reaction{
+				User:  r.Username,
+				Emoji: r.Emoji,
+			})
+		}
 
-	// 3. Get all reactions
-	rawReactions, err := s.db.GetReactionsForMessage(m.MessageID)
-	if err != nil {
-		log.Printf("Warning: Failed to get reactions for message %s: %v", req.MessageId, err)
-	}
+		// 4. Create message object for broadcast
+		msg := &gen.Message{
+			Id:                 m.MessageID,
+			User:               m.Username,
+			Text:               decryptedText,
+			CreatedAt:          timestamppb.New(m.CreatedAt),
+			Reactions:          reactions,
+			RepliedToMessageId: m.RepliedToMessageID,
+			RepliedToUser:      m.RepliedToUser,
+			RepliedToText:      m.RepliedToText,
+			RoomId:             m.RoomID,
+			IsRead:             m.IsRead,
+			AvatarUrl:          m.AvatarURL,
+			ImageUrl:           m.ImageURL,
+			Edited:             m.Edited,
+			VoiceUrl:           m.VoiceURL,
+			Duration:           m.Duration,
+		}
 
-	var reactions []*gen.Reaction
-	for _, r := range rawReactions {
-		reactions = append(reactions, &gen.Reaction{
-			User:  r.Username,
-			Emoji: r.Emoji,
-		})
+		// 5. Broadcast to everyone in the room
+		log.Printf("Broadcasting updated message %s with reactions to room %s", msg.Id, msg.RoomId)
+		s.hub.Broadcast(msg)
 	}
-
-	// 4. Create message object for broadcast
-	msg := &gen.Message{
-		Id:                 m.MessageID,
-		User:               m.Username,
-		Text:               decryptedText,
-		CreatedAt:          timestamppb.New(m.CreatedAt),
-		Reactions:          reactions,
-		RepliedToMessageId: m.RepliedToMessageID,
-		RepliedToUser:      m.RepliedToUser,
-		RepliedToText:      m.RepliedToText,
-		RoomId:             m.RoomID,
-		IsRead:             m.IsRead,
-		AvatarUrl:          m.AvatarURL,
-		ImageUrl:           m.ImageURL,
-		Edited:             m.Edited,
-		VoiceUrl:           m.VoiceURL,
-		Duration:           m.Duration,
-	}
-
-	// 5. Broadcast to everyone in the room
-	log.Printf("Broadcasting updated message %s with reactions to room %s", msg.Id, msg.RoomId)
-	s.hub.Broadcast(msg)
 
 	return &gen.ReactionResponse{Success: true}, nil
 }
@@ -785,20 +782,21 @@ func (s *server) MarkRead(_ context.Context, req *gen.MarkReadRequest) (*gen.Mar
 		return &gen.MarkReadResponse{Success: true}, nil
 	}
 
-	err := s.db.MarkRead(req.RoomId, req.Username)
+	changed, err := s.db.MarkReadAndCheck(req.RoomId, req.Username)
 	if err != nil {
 		log.Printf("Failed to mark read for %s in room %s: %v", req.Username, req.RoomId, err)
 		return &gen.MarkReadResponse{Success: false}, err
 	}
 
-	log.Printf("Marked read for %s in room %s", req.Username, req.RoomId)
-
-	// Broadcast read signal to the room
-	s.hub.Broadcast(&gen.Message{
-		User:   "SYSTEM",
-		Text:   "READ_ALL:" + req.Username,
-		RoomId: req.RoomId,
-	})
+	if changed {
+		log.Printf("Marked read for %s in room %s", req.Username, req.RoomId)
+		// Broadcast read signal to the room
+		s.hub.Broadcast(&gen.Message{
+			User:   "SYSTEM",
+			Text:   "READ_ALL:" + req.Username,
+			RoomId: req.RoomId,
+		})
+	}
 
 	return &gen.MarkReadResponse{Success: true}, nil
 }

@@ -428,9 +428,15 @@ func (db *DB) UpdateAvatarWithFull(user, a, f string) error {
 }
 
 func (db *DB) MarkRead(room, user string) error {
+	_, err := db.MarkReadAndCheck(room, user)
+	return err
+}
+
+// MarkReadAndCheck marks messages as read and returns true if any were changed
+func (db *DB) MarkReadAndCheck(room, user string) (bool, error) {
 	tx, err := db.Begin()
 	if err != nil {
-		return err
+		return false, err
 	}
 	defer tx.Rollback()
 
@@ -440,13 +446,18 @@ func (db *DB) MarkRead(room, user string) error {
 	          ON CONFLICT (username, room_id) DO UPDATE SET last_read_at=NOW()`, user, room)
 
 	// Mark messages as read in the room
-	tx.Exec(`UPDATE messages SET is_read=TRUE WHERE room_id=$1 AND username!=$2 AND is_read=FALSE`, room, user)
+	res, err := tx.Exec(`UPDATE messages SET is_read=TRUE WHERE room_id=$1 AND username!=$2 AND is_read=FALSE`, room, user)
+	if err != nil {
+		return false, err
+	}
+
+	affected, _ := res.RowsAffected()
 
 	err = tx.Commit()
-	if err == nil {
+	if err == nil && affected > 0 {
 		_ = db.IncrementUserChatListVersion(user)
 	}
-	return err
+	return affected > 0, err
 }
 
 func (db *DB) CreateChat(id, name, t, p, c string) error {
@@ -566,7 +577,9 @@ func (db *DB) GetDraftByUserID(uid, room string) (struct {
 func (db *DB) GetDraft(uid, room string) (struct {
 	DraftText, RepliedToMessageID, RepliedToUser, RepliedToText string
 	UpdatedAt                                                   time.Time
-}, error) { return db.GetDraftByUserID(uid, room) }
+}, error) {
+	return db.GetDraftByUserID(uid, room)
+}
 func (db *DB) DeleteDraftByUserID(uid, room string) (bool, error) {
 	res, err := db.Exec(`DELETE FROM draft_messages WHERE username=$1 AND room_id=$2`, uid, room)
 	if err != nil {
@@ -730,7 +743,9 @@ func (db *DB) GetChatMessages(room string) ([]struct {
 	Edited                                                   bool
 	VoiceURL                                                 string
 	Duration                                                 int32
-}, error) { return db.GetMessages(100, room) }
+}, error) {
+	return db.GetMessages(100, room)
+}
 func (db *DB) GetFavoritesMessages(uid string) ([]struct {
 	MessageID, Username                                      string
 	Encrypted                                                []byte
@@ -741,7 +756,9 @@ func (db *DB) GetFavoritesMessages(uid string) ([]struct {
 	Edited                                                   bool
 	VoiceURL                                                 string
 	Duration                                                 int32
-}, error) { return db.GetFavorites(uid) }
+}, error) {
+	return db.GetFavorites(uid)
+}
 func (db *DB) GetUserAvatarWithFullURL(user string) (string, string, error) {
 	return db.GetUserAvatarWithFull(user)
 }
