@@ -128,6 +128,23 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 					return fmt.Errorf("authentication failed")
 				}
 			} else {
+				// User does not exist. Check if registration is requested.
+				if !msg.Register {
+					log.Printf("Login attempt for non-existent user: %s", msg.User)
+
+					// Send user not found message to the client
+					notFoundMsg := &gen.Message{
+						User:      "SYSTEM",
+						Text:      "USER_NOT_FOUND",
+						Id:        uuid.New().String(),
+						CreatedAt: timestamppb.Now(),
+					}
+					if err := stream.Send(notFoundMsg); err != nil {
+						log.Printf("Failed to send user not found message: %v", err)
+					}
+					return fmt.Errorf("user not found")
+				}
+
 				// New user, hash password and create
 				passwordHash, err := HashPassword(msg.Password)
 				if err != nil {

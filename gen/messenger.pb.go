@@ -42,6 +42,7 @@ type Message struct {
 	IsSuperAdmin       bool                   `protobuf:"varint,16,opt,name=is_super_admin,json=isSuperAdmin,proto3" json:"is_super_admin,omitempty"` // Whether the user is a super admin
 	VoiceUrl           string                 `protobuf:"bytes,17,opt,name=voice_url,json=voiceUrl,proto3" json:"voice_url,omitempty"`                // URL of the voice message audio file
 	Duration           int32                  `protobuf:"varint,18,opt,name=duration,proto3" json:"duration,omitempty"`                               // Duration of voice message in seconds
+	Register           bool                   `protobuf:"varint,19,opt,name=register,proto3" json:"register,omitempty"`                               // Flag to register a new user
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -200,6 +201,13 @@ func (x *Message) GetDuration() int32 {
 		return x.Duration
 	}
 	return 0
+}
+
+func (x *Message) GetRegister() bool {
+	if x != nil {
+		return x.Register
+	}
+	return false
 }
 
 type Reaction struct {
@@ -5054,7 +5062,7 @@ var File_messenger_proto protoreflect.FileDescriptor
 
 const file_messenger_proto_rawDesc = "" +
 	"\n" +
-	"\x0fmessenger.proto\x12\tmessenger\x1a\x1fgoogle/protobuf/timestamp.proto\"\xda\x04\n" +
+	"\x0fmessenger.proto\x12\tmessenger\x1a\x1fgoogle/protobuf/timestamp.proto\"\xf6\x04\n" +
 	"\aMessage\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04user\x18\x02 \x01(\tR\x04user\x12\x12\n" +
@@ -5076,7 +5084,8 @@ const file_messenger_proto_rawDesc = "" +
 	"\x0eclient_version\x18\x0f \x01(\tR\rclientVersion\x12$\n" +
 	"\x0eis_super_admin\x18\x10 \x01(\bR\fisSuperAdmin\x12\x1b\n" +
 	"\tvoice_url\x18\x11 \x01(\tR\bvoiceUrl\x12\x1a\n" +
-	"\bduration\x18\x12 \x01(\x05R\bduration\"4\n" +
+	"\bduration\x18\x12 \x01(\x05R\bduration\x12\x1a\n" +
+	"\bregister\x18\x13 \x01(\bR\bregister\"4\n" +
 	"\bReaction\x12\x12\n" +
 	"\x04user\x18\x01 \x01(\tR\x04user\x12\x14\n" +
 	"\x05emoji\x18\x02 \x01(\tR\x05emoji\"a\n" +

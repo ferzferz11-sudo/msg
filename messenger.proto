@@ -23,6 +23,7 @@ message Message {
   bool is_super_admin = 16; // Whether the user is a super admin
   string voice_url = 17; // URL of the voice message audio file
   int32 duration = 18; // Duration of voice message in seconds
+  bool register = 19; // Flag to register a new user
 }
 
 message Reaction {
