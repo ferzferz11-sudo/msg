@@ -17,7 +17,8 @@ message Message {
   string room_id = 10; // Room/chat ID for the message
   bool is_read = 11;
   string avatar_url = 12; // URL of the user's avatar
-  string image_url = 13; // URL of the attached image
+  string image_url = 13; // URL of the attached image (legacy, single image)
+  repeated string image_urls = 20; // URLs of attached images (for gallery support)
   bool edited = 14; // Whether the message has been edited
   string client_version = 15; // Client application version
   bool is_super_admin = 16; // Whether the user is a super admin

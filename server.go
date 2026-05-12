@@ -24,7 +24,7 @@ import (
 	"firebase.google.com/go/v4/messaging"
 )
 
-const ServerVersion = "1.0.4.9"
+const ServerVersion = "1.0.4.10"
 
 // server implements the gRPC ChatService interface
 type server struct {
@@ -256,12 +256,14 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 		}
 
 		// Skip empty messages (unless they have an image or voice)
-		if strings.TrimSpace(msg.Text) == "" && msg.ImageUrl == "" && msg.VoiceUrl == "" {
+		if strings.TrimSpace(msg.Text) == "" && msg.ImageUrl == "" && len(msg.ImageUrls) == 0 && msg.VoiceUrl == "" {
 			// Don't log empty messages if they are just room switches (which we now log on auth)
 			continue
 		}
 
-		if msg.ImageUrl != "" {
+		if len(msg.ImageUrls) > 0 {
+			log.Printf("[%s] in %s: %s (ImageURLs: %v)", msg.User, roomID, msg.Text, msg.ImageUrls)
+		} else if msg.ImageUrl != "" {
 			log.Printf("[%s] in %s: %s (ImageURL: %s)", msg.User, roomID, msg.Text, msg.ImageUrl)
 		} else if msg.VoiceUrl != "" {
 			log.Printf("[%s] in %s: Voice message (%d seconds) - %s", msg.User, roomID, msg.Duration, msg.VoiceUrl)
@@ -288,9 +290,14 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 
 			// Save encrypted message to database with UUID
 			imageURL := msg.ImageUrl
+			imageURLsJSON := "[]"
+			if len(msg.ImageUrls) > 0 {
+				imageURLsBytes, _ := json.Marshal(msg.ImageUrls)
+				imageURLsJSON = string(imageURLsBytes)
+			}
 			voiceURL := msg.VoiceUrl
 			duration := msg.Duration
-			err = s.db.SaveMessage(msg.Id, msg.User, encryptedText, msg.CreatedAt.AsTime(), msg.RepliedToMessageId, msg.RepliedToUser, msg.RepliedToText, roomID, imageURL, voiceURL, duration)
+			err = s.db.SaveMessage(msg.Id, msg.User, encryptedText, msg.CreatedAt.AsTime(), msg.RepliedToMessageId, msg.RepliedToUser, msg.RepliedToText, roomID, imageURL, imageURLsJSON, voiceURL, duration)
 			if err != nil {
 				log.Printf("Failed to save msg: %v", err)
 			} else {
@@ -544,6 +551,12 @@ func (s *server) GetHistory(_ context.Context, req *gen.GetHistoryRequest) (*gen
 			})
 		}
 
+		// Parse image URLs from JSON
+		var imageURLs []string
+		if m.ImageURLs != "" && m.ImageURLs != "[]" {
+			json.Unmarshal([]byte(m.ImageURLs), &imageURLs)
+		}
+
 		messages = append(messages, &gen.Message{
 			Id:                 m.MessageID,
 			User:               m.Username,
@@ -557,6 +570,7 @@ func (s *server) GetHistory(_ context.Context, req *gen.GetHistoryRequest) (*gen
 			IsRead:             m.IsRead,
 			AvatarUrl:          m.AvatarURL,
 			ImageUrl:           m.ImageURL,
+			ImageUrls:          imageURLs,
 			Edited:             m.Edited,
 			VoiceUrl:           m.VoiceURL,
 			Duration:           m.Duration,
@@ -608,6 +622,12 @@ func (s *server) SetReaction(_ context.Context, req *gen.ReactionRequest) (*gen.
 			})
 		}
 
+		// Parse image URLs from JSON
+		var imageURLs []string
+		if m.ImageURLs != "" && m.ImageURLs != "[]" {
+			json.Unmarshal([]byte(m.ImageURLs), &imageURLs)
+		}
+
 		// 4. Create message object for broadcast
 		msg := &gen.Message{
 			Id:                 m.MessageID,
@@ -622,6 +642,7 @@ func (s *server) SetReaction(_ context.Context, req *gen.ReactionRequest) (*gen.
 			IsRead:             m.IsRead,
 			AvatarUrl:          m.AvatarURL,
 			ImageUrl:           m.ImageURL,
+			ImageUrls:          imageURLs,
 			Edited:             m.Edited,
 			VoiceUrl:           m.VoiceURL,
 			Duration:           m.Duration,
@@ -1148,17 +1169,30 @@ func (s *server) DeleteMessages(_ context.Context, req *gen.DeleteMessagesReques
 
 		// Try deleting by ID first if available
 		if msg.Id != "" {
-			// Get image URL before deletion
-			imageURL, err := s.db.GetMessageImageURL(msg.Id)
+			// Get full message with image URLs before deletion
+			fullMsg, err := s.db.GetMessageByUUID(msg.Id)
 			if err != nil {
-				log.Printf("Failed to get image URL for message %s: %v", msg.Id, err)
-			}
+				log.Printf("Failed to get message %s: %v", msg.Id, err)
+			} else {
+				// Delete single image file if exists
+				if fullMsg.ImageURL != "" {
+					if err := DeleteImageFile(fullMsg.ImageURL); err != nil {
+						log.Printf("Failed to delete image file for message %s: %v", msg.Id, err)
+						// Continue with message deletion even if image deletion fails
+					}
+				}
 
-			// Delete image file if exists
-			if imageURL != "" {
-				if err := DeleteImageFile(imageURL); err != nil {
-					log.Printf("Failed to delete image file for message %s: %v", msg.Id, err)
-					// Continue with message deletion even if image deletion fails
+				// Delete all gallery images if exists
+				if fullMsg.ImageURLs != "" && fullMsg.ImageURLs != "[]" {
+					var imageURLs []string
+					if err := json.Unmarshal([]byte(fullMsg.ImageURLs), &imageURLs); err == nil {
+						for _, url := range imageURLs {
+							if err := DeleteImageFile(url); err != nil {
+								log.Printf("Failed to delete gallery image file for message %s: %v", msg.Id, err)
+								// Continue with message deletion even if image deletion fails
+							}
+						}
+					}
 				}
 			}
 
@@ -1192,11 +1226,24 @@ func (s *server) DeleteMessages(_ context.Context, req *gen.DeleteMessagesReques
 			}
 
 			if decryptedText == msg.Text {
-				// Delete image file if candidate has one
+				// Delete single image file if candidate has one
 				if candidate.ImageURL != "" {
 					if err := DeleteImageFile(candidate.ImageURL); err != nil {
 						log.Printf("Failed to delete image file for candidate message: %v", err)
 						// Continue with message deletion even if image deletion fails
+					}
+				}
+
+				// Delete all gallery images if candidate has them
+				if candidate.ImageURLs != "" && candidate.ImageURLs != "[]" {
+					var imageURLs []string
+					if err := json.Unmarshal([]byte(candidate.ImageURLs), &imageURLs); err == nil {
+						for _, url := range imageURLs {
+							if err := DeleteImageFile(url); err != nil {
+								log.Printf("Failed to delete gallery image file for candidate message: %v", err)
+								// Continue with message deletion even if image deletion fails
+							}
+						}
 					}
 				}
 
@@ -1242,6 +1289,12 @@ func (s *server) EditMessage(_ context.Context, req *gen.EditMessageRequest) (*g
 			reactions = append(reactions, &gen.Reaction{User: r.Username, Emoji: r.Emoji})
 		}
 
+		// Parse image URLs from JSON
+		var imageURLs []string
+		if m.ImageURLs != "" && m.ImageURLs != "[]" {
+			json.Unmarshal([]byte(m.ImageURLs), &imageURLs)
+		}
+
 		s.hub.Broadcast(&gen.Message{
 			Id:                 m.MessageID,
 			User:               m.Username,
@@ -1255,6 +1308,7 @@ func (s *server) EditMessage(_ context.Context, req *gen.EditMessageRequest) (*g
 			IsRead:             m.IsRead,
 			AvatarUrl:          m.AvatarURL,
 			ImageUrl:           m.ImageURL,
+			ImageUrls:          imageURLs,
 			Edited:             m.Edited,
 			VoiceUrl:           m.VoiceURL,
 			Duration:           m.Duration,
@@ -1661,6 +1715,12 @@ func (s *server) GetFavorites(ctx context.Context, req *gen.GetFavoritesRequest)
 			})
 		}
 
+		// Parse image URLs from JSON
+		var imageURLs []string
+		if m.ImageURLs != "" && m.ImageURLs != "[]" {
+			json.Unmarshal([]byte(m.ImageURLs), &imageURLs)
+		}
+
 		messages = append(messages, &gen.Message{
 			Id:                 m.MessageID,
 			User:               m.Username,
@@ -1674,6 +1734,7 @@ func (s *server) GetFavorites(ctx context.Context, req *gen.GetFavoritesRequest)
 			IsRead:             m.IsRead,
 			AvatarUrl:          m.AvatarURL,
 			ImageUrl:           m.ImageURL,
+			ImageUrls:          imageURLs,
 			Edited:             m.Edited,
 			VoiceUrl:           m.VoiceURL,
 			Duration:           m.Duration,
@@ -1707,7 +1768,12 @@ func (s *server) SaveFavoriteMessage(ctx context.Context, req *gen.Message) (*ge
 	// 4. Save message to DB in a special "favorites" room for consistency
 	// Room ID is "favorites_" + username
 	favRoomID := "favorites_" + req.User
-	err = s.db.SaveMessage(req.Id, req.User, encryptedText, req.CreatedAt.AsTime(), req.RepliedToMessageId, req.RepliedToUser, req.RepliedToText, favRoomID, req.ImageUrl, req.VoiceUrl, req.Duration)
+	imageURLsJSON := "[]"
+	if len(req.ImageUrls) > 0 {
+		imageURLsBytes, _ := json.Marshal(req.ImageUrls)
+		imageURLsJSON = string(imageURLsBytes)
+	}
+	err = s.db.SaveMessage(req.Id, req.User, encryptedText, req.CreatedAt.AsTime(), req.RepliedToMessageId, req.RepliedToUser, req.RepliedToText, favRoomID, req.ImageUrl, imageURLsJSON, req.VoiceUrl, req.Duration)
 	if err != nil {
 		return &gen.AddFavoriteResponse{Success: false, Message: "failed to save message"}, nil
 	}

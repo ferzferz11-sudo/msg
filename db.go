@@ -45,6 +45,7 @@ func ConnectDB() (*DB, error) {
 			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='room_id') THEN ALTER TABLE messages ADD COLUMN room_id VARCHAR(255) DEFAULT ''; END IF;
 			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='is_read') THEN ALTER TABLE messages ADD COLUMN is_read BOOLEAN DEFAULT FALSE; END IF;
 			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='image_url') THEN ALTER TABLE messages ADD COLUMN image_url VARCHAR(512) DEFAULT ''; END IF;
+			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='image_urls') THEN ALTER TABLE messages ADD COLUMN image_urls TEXT DEFAULT '[]'; END IF;
 			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='edited') THEN ALTER TABLE messages ADD COLUMN edited BOOLEAN DEFAULT FALSE; END IF;
 			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='voice_url') THEN ALTER TABLE messages ADD COLUMN voice_url VARCHAR(512); END IF;
 			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='duration') THEN ALTER TABLE messages ADD COLUMN duration INTEGER DEFAULT 0; END IF;
@@ -90,10 +91,10 @@ func ConnectDB() (*DB, error) {
 
 func (db *DB) Close() error { return db.DB.Close() }
 
-func (db *DB) SaveMessage(mid, user string, enc []byte, created time.Time, rmid, ruser, rtext, room, img, voice string, dur int32) error {
+func (db *DB) SaveMessage(mid, user string, enc []byte, created time.Time, rmid, ruser, rtext, room, img, imgUrls, voice string, dur int32) error {
 	isRead := strings.HasPrefix(room, "favorites_")
-	q := `INSERT INTO messages (message_id, username, user_id, encrypted_text, created_at, replied_to_message_id, replied_to_user, replied_to_text, room_id, is_read, image_url, voice_url, duration) VALUES ($1, $2::text, (SELECT id FROM users WHERE username=$2::text), $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`
-	_, err := db.Exec(q, mid, user, enc, created, rmid, ruser, rtext, room, isRead, img, voice, dur)
+	q := `INSERT INTO messages (message_id, username, user_id, encrypted_text, created_at, replied_to_message_id, replied_to_user, replied_to_text, room_id, is_read, image_url, image_urls, voice_url, duration) VALUES ($1, $2::text, (SELECT id FROM users WHERE username=$2::text), $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`
+	_, err := db.Exec(q, mid, user, enc, created, rmid, ruser, rtext, room, isRead, img, imgUrls, voice, dur)
 	if err == nil && room != "" {
 		db.IncrementParticipantsChatListVersion(room)
 	}
@@ -106,7 +107,7 @@ func (db *DB) GetMessages(limit int, room string) ([]struct {
 	CreatedAt                                                time.Time
 	RepliedToMessageID, RepliedToUser, RepliedToText, RoomID string
 	IsRead                                                   bool
-	AvatarURL, ImageURL                                      string
+	AvatarURL, ImageURL, ImageURLs                           string
 	Edited                                                   bool
 	VoiceURL                                                 string
 	Duration                                                 int32
@@ -115,10 +116,10 @@ func (db *DB) GetMessages(limit int, room string) ([]struct {
 	var err error
 	if strings.HasPrefix(room, "favorites_") {
 		username := strings.TrimPrefix(room, "favorites_")
-		q := `SELECT COALESCE(m.message_id, ''), m.username, m.encrypted_text, COALESCE(f.created_at, m.created_at), COALESCE(m.replied_to_message_id, ''), COALESCE(m.replied_to_user, ''), COALESCE(m.replied_to_text, ''), COALESCE(m.room_id, ''), TRUE as is_read, COALESCE(u.avatar_url, ''), COALESCE(m.image_url, ''), COALESCE(m.edited, false), COALESCE(m.voice_url, ''), COALESCE(m.duration, 0) FROM messages m LEFT JOIN users u ON m.username = u.username LEFT JOIN favorites f ON f.message_id = m.message_id AND f.user_id = (SELECT id FROM users WHERE username = $1) WHERE m.room_id = $2 OR f.message_id IS NOT NULL ORDER BY 4 ASC LIMIT $3`
+		q := `SELECT COALESCE(m.message_id, ''), m.username, m.encrypted_text, COALESCE(f.created_at, m.created_at), COALESCE(m.replied_to_message_id, ''), COALESCE(m.replied_to_user, ''), COALESCE(m.replied_to_text, ''), COALESCE(m.room_id, ''), TRUE as is_read, COALESCE(u.avatar_url, ''), COALESCE(m.image_url, ''), COALESCE(m.image_urls, '[]'), COALESCE(m.edited, false), COALESCE(m.voice_url, ''), COALESCE(m.duration, 0) FROM messages m LEFT JOIN users u ON m.username = u.username LEFT JOIN favorites f ON f.message_id = m.message_id AND f.user_id = (SELECT id FROM users WHERE username = $1) WHERE m.room_id = $2 OR f.message_id IS NOT NULL ORDER BY 4 ASC LIMIT $3`
 		rows, err = db.Query(q, username, room, limit)
 	} else {
-		q := `SELECT COALESCE(m.message_id, ''), m.username, m.encrypted_text, m.created_at, COALESCE(m.replied_to_message_id, ''), COALESCE(m.replied_to_user, ''), COALESCE(m.replied_to_text, ''), COALESCE(m.room_id, ''), m.is_read, COALESCE(u.avatar_url, ''), COALESCE(m.image_url, ''), COALESCE(m.edited, false), COALESCE(m.voice_url, ''), COALESCE(m.duration, 0) FROM messages m LEFT JOIN users u ON m.username = u.username WHERE m.room_id = $1 ORDER BY m.created_at DESC LIMIT $2`
+		q := `SELECT COALESCE(m.message_id, ''), m.username, m.encrypted_text, m.created_at, COALESCE(m.replied_to_message_id, ''), COALESCE(m.replied_to_user, ''), COALESCE(m.replied_to_text, ''), COALESCE(m.room_id, ''), m.is_read, COALESCE(u.avatar_url, ''), COALESCE(m.image_url, ''), COALESCE(m.image_urls, '[]'), COALESCE(m.edited, false), COALESCE(m.voice_url, ''), COALESCE(m.duration, 0) FROM messages m LEFT JOIN users u ON m.username = u.username WHERE m.room_id = $1 ORDER BY m.created_at DESC LIMIT $2`
 		rows, err = db.Query(q, room, limit)
 	}
 	if err != nil {
@@ -131,7 +132,7 @@ func (db *DB) GetMessages(limit int, room string) ([]struct {
 		CreatedAt                                                time.Time
 		RepliedToMessageID, RepliedToUser, RepliedToText, RoomID string
 		IsRead                                                   bool
-		AvatarURL, ImageURL                                      string
+		AvatarURL, ImageURL, ImageURLs                           string
 		Edited                                                   bool
 		VoiceURL                                                 string
 		Duration                                                 int32
@@ -143,12 +144,12 @@ func (db *DB) GetMessages(limit int, room string) ([]struct {
 			CreatedAt                                                time.Time
 			RepliedToMessageID, RepliedToUser, RepliedToText, RoomID string
 			IsRead                                                   bool
-			AvatarURL, ImageURL                                      string
+			AvatarURL, ImageURL, ImageURLs                           string
 			Edited                                                   bool
 			VoiceURL                                                 string
 			Duration                                                 int32
 		}
-		rows.Scan(&r.MessageID, &r.Username, &r.Encrypted, &r.CreatedAt, &r.RepliedToMessageID, &r.RepliedToUser, &r.RepliedToText, &r.RoomID, &r.IsRead, &r.AvatarURL, &r.ImageURL, &r.Edited, &r.VoiceURL, &r.Duration)
+		rows.Scan(&r.MessageID, &r.Username, &r.Encrypted, &r.CreatedAt, &r.RepliedToMessageID, &r.RepliedToUser, &r.RepliedToText, &r.RoomID, &r.IsRead, &r.AvatarURL, &r.ImageURL, &r.ImageURLs, &r.Edited, &r.VoiceURL, &r.Duration)
 		res = append(res, r)
 	}
 	return res, nil
@@ -228,7 +229,7 @@ func (db *DB) GetMessageByUUID(id string) (struct {
 	CreatedAt                                                time.Time
 	RepliedToMessageID, RepliedToUser, RepliedToText, RoomID string
 	IsRead                                                   bool
-	AvatarURL, ImageURL                                      string
+	AvatarURL, ImageURL, ImageURLs                           string
 	Edited                                                   bool
 	VoiceURL                                                 string
 	Duration                                                 int32
@@ -239,12 +240,12 @@ func (db *DB) GetMessageByUUID(id string) (struct {
 		CreatedAt                                                time.Time
 		RepliedToMessageID, RepliedToUser, RepliedToText, RoomID string
 		IsRead                                                   bool
-		AvatarURL, ImageURL                                      string
+		AvatarURL, ImageURL, ImageURLs                           string
 		Edited                                                   bool
 		VoiceURL                                                 string
 		Duration                                                 int32
 	}
-	err := db.QueryRow(`SELECT COALESCE(m.message_id, ''), m.username, m.encrypted_text, m.created_at, COALESCE(m.replied_to_message_id, ''), COALESCE(m.replied_to_user, ''), COALESCE(m.replied_to_text, ''), COALESCE(m.room_id, ''), TRUE as is_read, COALESCE(u.avatar_url, ''), COALESCE(m.image_url, ''), COALESCE(m.edited, false), COALESCE(m.voice_url, ''), COALESCE(m.duration, 0) FROM messages m LEFT JOIN users u ON m.username = u.username WHERE m.message_id = $1`, id).Scan(&r.MessageID, &r.Username, &r.Encrypted, &r.CreatedAt, &r.RepliedToMessageID, &r.RepliedToUser, &r.RepliedToText, &r.RoomID, &r.IsRead, &r.AvatarURL, &r.ImageURL, &r.Edited, &r.VoiceURL, &r.Duration)
+	err := db.QueryRow(`SELECT COALESCE(m.message_id, ''), m.username, m.encrypted_text, m.created_at, COALESCE(m.replied_to_message_id, ''), COALESCE(m.replied_to_user, ''), COALESCE(m.replied_to_text, ''), COALESCE(m.room_id, ''), TRUE as is_read, COALESCE(u.avatar_url, ''), COALESCE(m.image_url, ''), COALESCE(m.image_urls, '[]'), COALESCE(m.edited, false), COALESCE(m.voice_url, ''), COALESCE(m.duration, 0) FROM messages m LEFT JOIN users u ON m.username = u.username WHERE m.message_id = $1`, id).Scan(&r.MessageID, &r.Username, &r.Encrypted, &r.CreatedAt, &r.RepliedToMessageID, &r.RepliedToUser, &r.RepliedToText, &r.RoomID, &r.IsRead, &r.AvatarURL, &r.ImageURL, &r.ImageURLs, &r.Edited, &r.VoiceURL, &r.Duration)
 	return r, err
 }
 
@@ -259,27 +260,27 @@ func (db *DB) DeleteMessageByID(id int) error {
 }
 
 func (db *DB) GetMessagesByUserAndTime(u string, t time.Time) ([]struct {
-	ID                          int
-	Encrypted                   []byte
-	ImageURL, MessageID, RoomID string
+	ID                                     int
+	Encrypted                              []byte
+	ImageURL, ImageURLs, MessageID, RoomID string
 }, error) {
-	rows, err := db.Query(`SELECT id, encrypted_text, COALESCE(image_url, ''), message_id, room_id FROM messages WHERE username = $1 AND created_at >= $2 AND created_at <= $3`, u, t.Add(-2*time.Second), t.Add(2*time.Second))
+	rows, err := db.Query(`SELECT id, encrypted_text, COALESCE(image_url, ''), COALESCE(image_urls, '[]'), message_id, room_id FROM messages WHERE username = $1 AND created_at >= $2 AND created_at <= $3`, u, t.Add(-2*time.Second), t.Add(2*time.Second))
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	var res []struct {
-		ID                          int
-		Encrypted                   []byte
-		ImageURL, MessageID, RoomID string
+		ID                                     int
+		Encrypted                              []byte
+		ImageURL, ImageURLs, MessageID, RoomID string
 	}
 	for rows.Next() {
 		var r struct {
-			ID                          int
-			Encrypted                   []byte
-			ImageURL, MessageID, RoomID string
+			ID                                     int
+			Encrypted                              []byte
+			ImageURL, ImageURLs, MessageID, RoomID string
 		}
-		rows.Scan(&r.ID, &r.Encrypted, &r.ImageURL, &r.MessageID, &r.RoomID)
+		rows.Scan(&r.ID, &r.Encrypted, &r.ImageURL, &r.ImageURLs, &r.MessageID, &r.RoomID)
 		res = append(res, r)
 	}
 	return res, nil
@@ -728,7 +729,7 @@ func (db *DB) GetFavorites(uid string) ([]struct {
 	CreatedAt                                                time.Time
 	RepliedToMessageID, RepliedToUser, RepliedToText, RoomID string
 	IsRead                                                   bool
-	AvatarURL, ImageURL                                      string
+	AvatarURL, ImageURL, ImageURLs                           string
 	Edited                                                   bool
 	VoiceURL                                                 string
 	Duration                                                 int32
@@ -739,7 +740,7 @@ func (db *DB) GetFavorites(uid string) ([]struct {
 		_ = db.QueryRow(`SELECT username FROM users WHERE id = $1::uuid OR username = $1`, uid).Scan(&username)
 	}
 
-	q := `SELECT COALESCE(m.message_id, ''), m.username, m.encrypted_text, COALESCE(f.created_at, m.created_at), COALESCE(m.replied_to_message_id, ''), COALESCE(m.replied_to_user, ''), COALESCE(m.replied_to_text, ''), COALESCE(m.room_id, ''), TRUE as is_read, COALESCE(u.avatar_url, ''), COALESCE(m.image_url, ''), COALESCE(m.edited, false), COALESCE(m.voice_url, ''), COALESCE(m.duration, 0)
+	q := `SELECT COALESCE(m.message_id, ''), m.username, m.encrypted_text, COALESCE(f.created_at, m.created_at), COALESCE(m.replied_to_message_id, ''), COALESCE(m.replied_to_user, ''), COALESCE(m.replied_to_text, ''), COALESCE(m.room_id, ''), TRUE as is_read, COALESCE(u.avatar_url, ''), COALESCE(m.image_url, ''), COALESCE(m.image_urls, '[]'), COALESCE(m.edited, false), COALESCE(m.voice_url, ''), COALESCE(m.duration, 0)
 	      FROM messages m
 	      LEFT JOIN users u ON m.username = u.username
 	      LEFT JOIN favorites f ON f.message_id = m.message_id AND f.user_id = (SELECT id FROM users WHERE username = $1::text)
@@ -756,7 +757,7 @@ func (db *DB) GetFavorites(uid string) ([]struct {
 		CreatedAt                                                time.Time
 		RepliedToMessageID, RepliedToUser, RepliedToText, RoomID string
 		IsRead                                                   bool
-		AvatarURL, ImageURL                                      string
+		AvatarURL, ImageURL, ImageURLs                           string
 		Edited                                                   bool
 		VoiceURL                                                 string
 		Duration                                                 int32
@@ -768,12 +769,12 @@ func (db *DB) GetFavorites(uid string) ([]struct {
 			CreatedAt                                                time.Time
 			RepliedToMessageID, RepliedToUser, RepliedToText, RoomID string
 			IsRead                                                   bool
-			AvatarURL, ImageURL                                      string
+			AvatarURL, ImageURL, ImageURLs                           string
 			Edited                                                   bool
 			VoiceURL                                                 string
 			Duration                                                 int32
 		}
-		rows.Scan(&r.MessageID, &r.Username, &r.Encrypted, &r.CreatedAt, &r.RepliedToMessageID, &r.RepliedToUser, &r.RepliedToText, &r.RoomID, &r.IsRead, &r.AvatarURL, &r.ImageURL, &r.Edited, &r.VoiceURL, &r.Duration)
+		rows.Scan(&r.MessageID, &r.Username, &r.Encrypted, &r.CreatedAt, &r.RepliedToMessageID, &r.RepliedToUser, &r.RepliedToText, &r.RoomID, &r.IsRead, &r.AvatarURL, &r.ImageURL, &r.ImageURLs, &r.Edited, &r.VoiceURL, &r.Duration)
 		res = append(res, r)
 	}
 	return res, nil
@@ -808,7 +809,7 @@ func (db *DB) GetChatMessages(room string) ([]struct {
 	CreatedAt                                                time.Time
 	RepliedToMessageID, RepliedToUser, RepliedToText, RoomID string
 	IsRead                                                   bool
-	AvatarURL, ImageURL                                      string
+	AvatarURL, ImageURL, ImageURLs                           string
 	Edited                                                   bool
 	VoiceURL                                                 string
 	Duration                                                 int32
@@ -821,7 +822,7 @@ func (db *DB) GetFavoritesMessages(uid string) ([]struct {
 	CreatedAt                                                time.Time
 	RepliedToMessageID, RepliedToUser, RepliedToText, RoomID string
 	IsRead                                                   bool
-	AvatarURL, ImageURL                                      string
+	AvatarURL, ImageURL, ImageURLs                           string
 	Edited                                                   bool
 	VoiceURL                                                 string
 	Duration                                                 int32

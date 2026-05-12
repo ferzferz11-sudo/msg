@@ -36,7 +36,8 @@ type Message struct {
 	RoomId             string                 `protobuf:"bytes,10,opt,name=room_id,json=roomId,proto3" json:"room_id,omitempty"`                                        // Room/chat ID for the message
 	IsRead             bool                   `protobuf:"varint,11,opt,name=is_read,json=isRead,proto3" json:"is_read,omitempty"`
 	AvatarUrl          string                 `protobuf:"bytes,12,opt,name=avatar_url,json=avatarUrl,proto3" json:"avatar_url,omitempty"`             // URL of the user's avatar
-	ImageUrl           string                 `protobuf:"bytes,13,opt,name=image_url,json=imageUrl,proto3" json:"image_url,omitempty"`                // URL of the attached image
+	ImageUrl           string                 `protobuf:"bytes,13,opt,name=image_url,json=imageUrl,proto3" json:"image_url,omitempty"`                // URL of the attached image (legacy, single image)
+	ImageUrls          []string               `protobuf:"bytes,20,rep,name=image_urls,json=imageUrls,proto3" json:"image_urls,omitempty"`             // URLs of attached images (for gallery support)
 	Edited             bool                   `protobuf:"varint,14,opt,name=edited,proto3" json:"edited,omitempty"`                                   // Whether the message has been edited
 	ClientVersion      string                 `protobuf:"bytes,15,opt,name=client_version,json=clientVersion,proto3" json:"client_version,omitempty"` // Client application version
 	IsSuperAdmin       bool                   `protobuf:"varint,16,opt,name=is_super_admin,json=isSuperAdmin,proto3" json:"is_super_admin,omitempty"` // Whether the user is a super admin
@@ -166,6 +167,13 @@ func (x *Message) GetImageUrl() string {
 		return x.ImageUrl
 	}
 	return ""
+}
+
+func (x *Message) GetImageUrls() []string {
+	if x != nil {
+		return x.ImageUrls
+	}
+	return nil
 }
 
 func (x *Message) GetEdited() bool {
@@ -5062,7 +5070,7 @@ var File_messenger_proto protoreflect.FileDescriptor
 
 const file_messenger_proto_rawDesc = "" +
 	"\n" +
-	"\x0fmessenger.proto\x12\tmessenger\x1a\x1fgoogle/protobuf/timestamp.proto\"\xf6\x04\n" +
+	"\x0fmessenger.proto\x12\tmessenger\x1a\x1fgoogle/protobuf/timestamp.proto\"\x95\x05\n" +
 	"\aMessage\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04user\x18\x02 \x01(\tR\x04user\x12\x12\n" +
@@ -5079,7 +5087,9 @@ const file_messenger_proto_rawDesc = "" +
 	"\ais_read\x18\v \x01(\bR\x06isRead\x12\x1d\n" +
 	"\n" +
 	"avatar_url\x18\f \x01(\tR\tavatarUrl\x12\x1b\n" +
-	"\timage_url\x18\r \x01(\tR\bimageUrl\x12\x16\n" +
+	"\timage_url\x18\r \x01(\tR\bimageUrl\x12\x1d\n" +
+	"\n" +
+	"image_urls\x18\x14 \x03(\tR\timageUrls\x12\x16\n" +
 	"\x06edited\x18\x0e \x01(\bR\x06edited\x12%\n" +
 	"\x0eclient_version\x18\x0f \x01(\tR\rclientVersion\x12$\n" +
 	"\x0eis_super_admin\x18\x10 \x01(\bR\fisSuperAdmin\x12\x1b\n" +
