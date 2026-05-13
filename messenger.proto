@@ -58,6 +58,7 @@ message UserInfo {
 
 message GetAllUsersResponse {
   repeated UserInfo users = 1;
+  google.protobuf.Timestamp server_time = 2;
 }
 
 message GetAllChatsRequest {}

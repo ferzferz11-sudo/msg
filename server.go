@@ -24,7 +24,7 @@ import (
 	"firebase.google.com/go/v4/messaging"
 )
 
-const ServerVersion = "1.0.4.11"
+const ServerVersion = "1.0.4.12"
 
 // server implements the gRPC ChatService interface
 type server struct {
@@ -443,8 +443,12 @@ func (s *server) GetAllUsers(ctx context.Context, req *gen.GetAllUsersRequest) (
 		})
 	}
 
+	// Add server time to response for admin panel
+	serverTime := timestamppb.Now()
+
 	return &gen.GetAllUsersResponse{
-		Users: userInfos,
+		Users:      userInfos,
+		ServerTime: serverTime,
 	}, nil
 }
 
