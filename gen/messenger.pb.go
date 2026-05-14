@@ -2515,10 +2515,11 @@ func (x *EditMessageResponse) GetMessage() string {
 }
 
 type DeleteChatRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ChatId        string                 `protobuf:"bytes,1,opt,name=chat_id,json=chatId,proto3" json:"chat_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	ChatId            string                 `protobuf:"bytes,1,opt,name=chat_id,json=chatId,proto3" json:"chat_id,omitempty"`
+	RequesterUsername string                 `protobuf:"bytes,2,opt,name=requester_username,json=requesterUsername,proto3" json:"requester_username,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *DeleteChatRequest) Reset() {
@@ -2554,6 +2555,13 @@ func (*DeleteChatRequest) Descriptor() ([]byte, []int) {
 func (x *DeleteChatRequest) GetChatId() string {
 	if x != nil {
 		return x.ChatId
+	}
+	return ""
+}
+
+func (x *DeleteChatRequest) GetRequesterUsername() string {
+	if x != nil {
+		return x.RequesterUsername
 	}
 	return ""
 }
@@ -5247,9 +5255,10 @@ const file_messenger_proto_rawDesc = "" +
 	"\x04text\x18\x02 \x01(\tR\x04text\"I\n" +
 	"\x13EditMessageResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage\",\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"[\n" +
 	"\x11DeleteChatRequest\x12\x17\n" +
-	"\achat_id\x18\x01 \x01(\tR\x06chatId\"H\n" +
+	"\achat_id\x18\x01 \x01(\tR\x06chatId\x12-\n" +
+	"\x12requester_username\x18\x02 \x01(\tR\x11requesterUsername\"H\n" +
 	"\x12DeleteChatResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
 	"\amessage\x18\x02 \x01(\tR\amessage\"2\n" +

@@ -24,7 +24,7 @@ import (
 	"firebase.google.com/go/v4/messaging"
 )
 
-const ServerVersion = "1.0.4.13"
+const ServerVersion = "1.0.4.14"
 
 // server implements the gRPC ChatService interface
 type server struct {
@@ -996,14 +996,25 @@ func (s *server) DeleteChat(_ context.Context, req *gen.DeleteChatRequest) (*gen
 		return &gen.DeleteChatResponse{Success: false, Message: "Chat ID is required"}, nil
 	}
 
-	log.Printf("DeleteChat: Request to delete chat %s", req.ChatId)
+	log.Printf("DeleteChat: Request to delete chat %s by %s", req.ChatId, req.RequesterUsername)
 
-	// 1. Get all participants before deletion to notify them
+	// 1. Get all participants and creator before deletion
 	chat, err := s.db.GetChat(req.ChatId)
 	if err != nil {
 		log.Printf("DeleteChat warning: Chat %s not found or DB error: %v", req.ChatId, err)
-		// Return success anyway if chat not found to satisfy client
-		return &gen.DeleteChatResponse{Success: true, Message: "Chat already gone"}, nil
+		// Return error to inform user that chat is already deleted
+		return &gen.DeleteChatResponse{Success: false, Message: "Chat or group already deleted"}, nil
+	}
+
+	// Security check: only creator can delete group chats
+	// We allow users to delete their own direct chats, but groups must be deleted by the creator
+	if chat.Type == "group" && chat.CreatorUsername != req.RequesterUsername {
+		log.Printf("DeleteChat error: User %s is not authorized to delete group chat %s (creator: %s)",
+			req.RequesterUsername, req.ChatId, chat.CreatorUsername)
+		return &gen.DeleteChatResponse{
+			Success: false,
+			Message: "You don't have permission to delete this group. Only the group administrator can delete it.",
+		}, nil
 	}
 
 	var participants []string

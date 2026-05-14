@@ -247,6 +247,7 @@ message EditMessageResponse {
 
 message DeleteChatRequest {
   string chat_id = 1;
+  string requester_username = 2;
 }
 
 message DeleteChatResponse {
