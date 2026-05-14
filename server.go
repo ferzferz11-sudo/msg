@@ -24,7 +24,7 @@ import (
 	"firebase.google.com/go/v4/messaging"
 )
 
-const ServerVersion = "1.0.4.12"
+const ServerVersion = "1.0.4.13"
 
 // server implements the gRPC ChatService interface
 type server struct {
@@ -1038,7 +1038,14 @@ func (s *server) DeleteChat(_ context.Context, req *gen.DeleteChatRequest) (*gen
 		_ = s.db.IncrementUserChatListVersion(p)
 	}
 
-	// 6. Broadcast update signal
+	// 6. Send signal to clear cache for all participants
+	s.hub.Broadcast(&gen.Message{
+		User:   "SYSTEM",
+		Text:   "CLEAR_CACHE:" + req.ChatId,
+		RoomId: req.ChatId,
+	})
+
+	// 7. Broadcast update signal
 	s.broadcastOnlineUsers()
 
 	return &gen.DeleteChatResponse{Success: true, Message: "Chat deleted successfully"}, nil
