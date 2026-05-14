@@ -1045,7 +1045,14 @@ func (s *server) DeleteChat(_ context.Context, req *gen.DeleteChatRequest) (*gen
 		RoomId: req.ChatId,
 	})
 
-	// 7. Broadcast update signal
+	// 7. Send signal to exit the deleted chat for all participants
+	s.hub.Broadcast(&gen.Message{
+		User:   "SYSTEM",
+		Text:   "CHAT_DELETED:" + req.ChatId,
+		RoomId: req.ChatId,
+	})
+
+	// 8. Broadcast update signal
 	s.broadcastOnlineUsers()
 
 	return &gen.DeleteChatResponse{Success: true, Message: "Chat deleted successfully"}, nil
@@ -1212,6 +1219,9 @@ func (s *server) DeleteMessages(_ context.Context, req *gen.DeleteMessagesReques
 				anyDeleted = true
 				log.Printf("Deleted message by ID: %s", msg.Id)
 
+				// Increment chat list version for all participants to trigger cache refresh
+				_ = s.db.IncrementParticipantsChatListVersion(msg.RoomId)
+
 				// Broadcast deletion to the room
 				s.hub.Broadcast(&gen.Message{
 					User:   "SYSTEM",
@@ -1263,6 +1273,9 @@ func (s *server) DeleteMessages(_ context.Context, req *gen.DeleteMessagesReques
 					anyDeleted = true
 					log.Printf("Deleted message by content from %s", msg.User)
 
+					// Increment chat list version for all participants to trigger cache refresh
+					_ = s.db.IncrementParticipantsChatListVersion(candidate.RoomID)
+
 					// Broadcast deletion to the room
 					s.hub.Broadcast(&gen.Message{
 						User:   "SYSTEM",
@@ -1293,6 +1306,9 @@ func (s *server) EditMessage(_ context.Context, req *gen.EditMessageRequest) (*g
 	// Broadcast the updated message
 	m, err := s.db.GetMessageByUUID(req.MessageId)
 	if err == nil {
+		// Increment chat list version for all participants to trigger cache refresh
+		_ = s.db.IncrementParticipantsChatListVersion(m.RoomID)
+
 		decryptedText, _ := decrypt(m.Encrypted)
 		rawReactions, _ := s.db.GetReactionsForMessage(m.MessageID)
 		var reactions []*gen.Reaction

@@ -476,10 +476,12 @@ func (db *DB) GetDirectChatBetweenUsers(u1, u2 string) (string, error) {
 	if err == nil {
 		return id, nil
 	}
-	id = u1 + "_" + u2 + "_direct"
+	// Generate unique ID with timestamp to avoid conflicts after deletion
+	baseId := u1 + "_" + u2 + "_direct"
 	if u1 > u2 {
-		id = u2 + "_" + u1 + "_direct"
+		baseId = u2 + "_" + u1 + "_direct"
 	}
+	id = baseId + "_" + fmt.Sprintf("%d", time.Now().Unix())
 	db.CreateChat(id, u1+" & "+u2, "direct", `["`+u1+`","`+u2+`"]`, u1)
 	return id, nil
 }
