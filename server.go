@@ -24,7 +24,7 @@ import (
 	"firebase.google.com/go/v4/messaging"
 )
 
-const ServerVersion = "1.0.4.14"
+const ServerVersion = "1.0.4.15"
 
 // server implements the gRPC ChatService interface
 type server struct {
@@ -440,6 +440,7 @@ func (s *server) GetAllUsers(ctx context.Context, req *gen.GetAllUsersRequest) (
 			AvatarUrl:         u.AvatarURL,
 			LastClientVersion: u.LastClientVersion,
 			LastSeenAt:        lastSeen,
+			Email:             u.Email,
 		})
 	}
 

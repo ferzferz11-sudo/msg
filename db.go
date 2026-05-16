@@ -62,6 +62,7 @@ func ConnectDB() (*DB, error) {
 			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='is_super_admin') THEN ALTER TABLE users ADD COLUMN is_super_admin BOOLEAN DEFAULT FALSE; END IF;
 			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='last_client_version') THEN ALTER TABLE users ADD COLUMN last_client_version VARCHAR(50); END IF;
 			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='last_seen_at') THEN ALTER TABLE users ADD COLUMN last_seen_at TIMESTAMP; END IF;
+			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='email') THEN ALTER TABLE users ADD COLUMN email VARCHAR(255); END IF;
 		END $$;`,
 		`CREATE TABLE IF NOT EXISTS chats (id VARCHAR(255) PRIMARY KEY, name VARCHAR(255) NOT NULL, type VARCHAR(50) NOT NULL, participants TEXT NOT NULL, creator_username VARCHAR(255), created_at TIMESTAMP NOT NULL DEFAULT NOW(), avatar_url TEXT DEFAULT '', full_avatar_url TEXT DEFAULT '')`,
 		`CREATE TABLE IF NOT EXISTS reactions (id SERIAL PRIMARY KEY, message_id VARCHAR(255) NOT NULL REFERENCES messages(message_id) ON DELETE CASCADE, username VARCHAR(255) NOT NULL, emoji VARCHAR(50) NOT NULL)`,
@@ -201,24 +202,24 @@ func (db *DB) IsSuperAdmin(user string) bool {
 }
 
 func (db *DB) GetAllUsers() ([]struct {
-	Username, AvatarURL, LastClientVersion string
-	LastSeenAt                             sql.NullTime
+	Username, AvatarURL, LastClientVersion, Email string
+	LastSeenAt                                    sql.NullTime
 }, error) {
-	rows, err := db.Query(`SELECT username, COALESCE(avatar_url, ''), COALESCE(last_client_version, ''), last_seen_at FROM users ORDER BY username`)
+	rows, err := db.Query(`SELECT username, COALESCE(avatar_url, ''), COALESCE(last_client_version, ''), last_seen_at, COALESCE(email, '') FROM users ORDER BY username`)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	var res []struct {
-		Username, AvatarURL, LastClientVersion string
-		LastSeenAt                             sql.NullTime
+		Username, AvatarURL, LastClientVersion, Email string
+		LastSeenAt                                    sql.NullTime
 	}
 	for rows.Next() {
 		var u struct {
-			Username, AvatarURL, LastClientVersion string
-			LastSeenAt                             sql.NullTime
+			Username, AvatarURL, LastClientVersion, Email string
+			LastSeenAt                                    sql.NullTime
 		}
-		rows.Scan(&u.Username, &u.AvatarURL, &u.LastClientVersion, &u.LastSeenAt)
+		rows.Scan(&u.Username, &u.AvatarURL, &u.LastClientVersion, &u.LastSeenAt, &u.Email)
 		res = append(res, u)
 	}
 	return res, nil

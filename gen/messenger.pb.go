@@ -488,6 +488,7 @@ type UserInfo struct {
 	AvatarUrl         string                 `protobuf:"bytes,2,opt,name=avatar_url,json=avatarUrl,proto3" json:"avatar_url,omitempty"`
 	LastClientVersion string                 `protobuf:"bytes,3,opt,name=last_client_version,json=lastClientVersion,proto3" json:"last_client_version,omitempty"`
 	LastSeenAt        *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=last_seen_at,json=lastSeenAt,proto3" json:"last_seen_at,omitempty"`
+	Email             string                 `protobuf:"bytes,5,opt,name=email,proto3" json:"email,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -548,6 +549,13 @@ func (x *UserInfo) GetLastSeenAt() *timestamppb.Timestamp {
 		return x.LastSeenAt
 	}
 	return nil
+}
+
+func (x *UserInfo) GetEmail() string {
+	if x != nil {
+		return x.Email
+	}
+	return ""
 }
 
 type GetAllUsersResponse struct {
@@ -5124,14 +5132,15 @@ const file_messenger_proto_rawDesc = "" +
 	"\x11ClientListRequest\".\n" +
 	"\x12ClientListResponse\x12\x18\n" +
 	"\aclients\x18\x01 \x03(\tR\aclients\"\x14\n" +
-	"\x12GetAllUsersRequest\"\xb3\x01\n" +
+	"\x12GetAllUsersRequest\"\xc9\x01\n" +
 	"\bUserInfo\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12\x1d\n" +
 	"\n" +
 	"avatar_url\x18\x02 \x01(\tR\tavatarUrl\x12.\n" +
 	"\x13last_client_version\x18\x03 \x01(\tR\x11lastClientVersion\x12<\n" +
 	"\flast_seen_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
-	"lastSeenAt\"}\n" +
+	"lastSeenAt\x12\x14\n" +
+	"\x05email\x18\x05 \x01(\tR\x05email\"}\n" +
 	"\x13GetAllUsersResponse\x12)\n" +
 	"\x05users\x18\x01 \x03(\v2\x13.messenger.UserInfoR\x05users\x12;\n" +
 	"\vserver_time\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
