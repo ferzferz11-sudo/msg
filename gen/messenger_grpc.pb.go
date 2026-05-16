@@ -64,6 +64,8 @@ const (
 	ChatService_RemoveFavorite_FullMethodName      = "/messenger.ChatService/RemoveFavorite"
 	ChatService_GetFavorites_FullMethodName        = "/messenger.ChatService/GetFavorites"
 	ChatService_SaveFavoriteMessage_FullMethodName = "/messenger.ChatService/SaveFavoriteMessage"
+	ChatService_GetDevices_FullMethodName          = "/messenger.ChatService/GetDevices"
+	ChatService_DeleteDevice_FullMethodName        = "/messenger.ChatService/DeleteDevice"
 )
 
 // ChatServiceClient is the client API for ChatService service.
@@ -115,6 +117,8 @@ type ChatServiceClient interface {
 	RemoveFavorite(ctx context.Context, in *RemoveFavoriteRequest, opts ...grpc.CallOption) (*RemoveFavoriteResponse, error)
 	GetFavorites(ctx context.Context, in *GetFavoritesRequest, opts ...grpc.CallOption) (*GetFavoritesResponse, error)
 	SaveFavoriteMessage(ctx context.Context, in *Message, opts ...grpc.CallOption) (*AddFavoriteResponse, error)
+	GetDevices(ctx context.Context, in *GetDevicesRequest, opts ...grpc.CallOption) (*GetDevicesResponse, error)
+	DeleteDevice(ctx context.Context, in *DeleteDeviceRequest, opts ...grpc.CallOption) (*DeleteDeviceResponse, error)
 }
 
 type chatServiceClient struct {
@@ -581,6 +585,26 @@ func (c *chatServiceClient) SaveFavoriteMessage(ctx context.Context, in *Message
 	return out, nil
 }
 
+func (c *chatServiceClient) GetDevices(ctx context.Context, in *GetDevicesRequest, opts ...grpc.CallOption) (*GetDevicesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetDevicesResponse)
+	err := c.cc.Invoke(ctx, ChatService_GetDevices_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) DeleteDevice(ctx context.Context, in *DeleteDeviceRequest, opts ...grpc.CallOption) (*DeleteDeviceResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteDeviceResponse)
+	err := c.cc.Invoke(ctx, ChatService_DeleteDevice_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ChatServiceServer is the server API for ChatService service.
 // All implementations must embed UnimplementedChatServiceServer
 // for forward compatibility.
@@ -630,6 +654,8 @@ type ChatServiceServer interface {
 	RemoveFavorite(context.Context, *RemoveFavoriteRequest) (*RemoveFavoriteResponse, error)
 	GetFavorites(context.Context, *GetFavoritesRequest) (*GetFavoritesResponse, error)
 	SaveFavoriteMessage(context.Context, *Message) (*AddFavoriteResponse, error)
+	GetDevices(context.Context, *GetDevicesRequest) (*GetDevicesResponse, error)
+	DeleteDevice(context.Context, *DeleteDeviceRequest) (*DeleteDeviceResponse, error)
 	mustEmbedUnimplementedChatServiceServer()
 }
 
@@ -774,6 +800,12 @@ func (UnimplementedChatServiceServer) GetFavorites(context.Context, *GetFavorite
 }
 func (UnimplementedChatServiceServer) SaveFavoriteMessage(context.Context, *Message) (*AddFavoriteResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SaveFavoriteMessage not implemented")
+}
+func (UnimplementedChatServiceServer) GetDevices(context.Context, *GetDevicesRequest) (*GetDevicesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetDevices not implemented")
+}
+func (UnimplementedChatServiceServer) DeleteDevice(context.Context, *DeleteDeviceRequest) (*DeleteDeviceResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteDevice not implemented")
 }
 func (UnimplementedChatServiceServer) mustEmbedUnimplementedChatServiceServer() {}
 func (UnimplementedChatServiceServer) testEmbeddedByValue()                     {}
@@ -1584,6 +1616,42 @@ func _ChatService_SaveFavoriteMessage_Handler(srv interface{}, ctx context.Conte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ChatService_GetDevices_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetDevicesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).GetDevices(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_GetDevices_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).GetDevices(ctx, req.(*GetDevicesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_DeleteDevice_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteDeviceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).DeleteDevice(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_DeleteDevice_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).DeleteDevice(ctx, req.(*DeleteDeviceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ChatService_ServiceDesc is the grpc.ServiceDesc for ChatService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1762,6 +1830,14 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SaveFavoriteMessage",
 			Handler:    _ChatService_SaveFavoriteMessage_Handler,
+		},
+		{
+			MethodName: "GetDevices",
+			Handler:    _ChatService_GetDevices_Handler,
+		},
+		{
+			MethodName: "DeleteDevice",
+			Handler:    _ChatService_DeleteDevice_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

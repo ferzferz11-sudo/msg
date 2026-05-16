@@ -37,6 +37,7 @@ func ConnectDB() (*DB, error) {
 	}
 
 	queries := []string{
+		`CREATE TABLE IF NOT EXISTS user_devices (device_id VARCHAR(255) PRIMARY KEY, username VARCHAR(255) NOT NULL REFERENCES users(username) ON DELETE CASCADE, device_name VARCHAR(255), client_version VARCHAR(50), last_seen_at TIMESTAMP NOT NULL DEFAULT NOW(), ip_address VARCHAR(255))`,
 		`CREATE TABLE IF NOT EXISTS messages (id SERIAL PRIMARY KEY, message_id VARCHAR(255) UNIQUE, username VARCHAR(255) NOT NULL, encrypted_text BYTEA NOT NULL, created_at TIMESTAMP NOT NULL)`,
 		`DO $$ BEGIN
 			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='replied_to_message_id') THEN ALTER TABLE messages ADD COLUMN replied_to_message_id VARCHAR(255); END IF;
@@ -838,3 +839,47 @@ func (db *DB) GetUserAvatarWithFullURL(user string) (string, string, error) {
 }
 func (db *DB) GetUserPassword(user string) (string, error) { return db.GetUserPasswordHash(user) }
 func (db *DB) GetUserId(user string) (string, error)       { return db.GetUserIdByUsername(user) }
+
+func (db *DB) AddUserDevice(username, deviceID, deviceName, clientVersion, ipAddress string) error {
+	_, err := db.Exec(`
+		INSERT INTO user_devices (device_id, username, device_name, client_version, ip_address, last_seen_at)
+		VALUES ($1, $2, $3, $4, $5, NOW())
+		ON CONFLICT (device_id) DO UPDATE SET
+			username = EXCLUDED.username,
+			device_name = EXCLUDED.device_name,
+			client_version = EXCLUDED.client_version,
+			ip_address = EXCLUDED.ip_address,
+			last_seen_at = NOW()
+	`, deviceID, username, deviceName, clientVersion, ipAddress)
+	return err
+}
+
+func (db *DB) GetUserDevices(username string) ([]struct {
+	DeviceID, DeviceName, ClientVersion, IPAddress string
+	LastSeenAt                                     time.Time
+}, error) {
+	rows, err := db.Query(`SELECT device_id, COALESCE(device_name, ''), COALESCE(client_version, ''), COALESCE(ip_address, ''), last_seen_at FROM user_devices WHERE username = $1 ORDER BY last_seen_at DESC`, username)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var res []struct {
+		DeviceID, DeviceName, ClientVersion, IPAddress string
+		LastSeenAt                                     time.Time
+	}
+	for rows.Next() {
+		var d struct {
+			DeviceID, DeviceName, ClientVersion, IPAddress string
+			LastSeenAt                                     time.Time
+		}
+		rows.Scan(&d.DeviceID, &d.DeviceName, &d.ClientVersion, &d.IPAddress, &d.LastSeenAt)
+		res = append(res, d)
+	}
+	return res, nil
+}
+
+func (db *DB) DeleteUserDevice(deviceID, username string) error {
+	_, err := db.Exec(`DELETE FROM user_devices WHERE device_id = $1 AND username = $2`, deviceID, username)
+	return err
+}

@@ -24,7 +24,7 @@ import (
 	"firebase.google.com/go/v4/messaging"
 )
 
-const ServerVersion = "1.0.4.15"
+const ServerVersion = "1.0.4.16"
 
 // server implements the gRPC ChatService interface
 type server struct {
@@ -1829,4 +1829,41 @@ func (s *server) SaveFavoriteMessage(ctx context.Context, req *gen.Message) (*ge
 	s.hub.Broadcast(req)
 
 	return &gen.AddFavoriteResponse{Success: true}, nil
+}
+
+func (s *server) GetDevices(ctx context.Context, req *gen.GetDevicesRequest) (*gen.GetDevicesResponse, error) {
+	_ = ctx
+	dbDevices, err := s.db.GetUserDevices(req.Username)
+	if err != nil {
+		return nil, err
+	}
+
+	var pbDevices []*gen.DeviceInfo
+	for _, d := range dbDevices {
+		pbDevices = append(pbDevices, &gen.DeviceInfo{
+			DeviceId:      d.DeviceID,
+			DeviceName:    d.DeviceName,
+			ClientVersion: d.ClientVersion,
+			IpAddress:     d.IPAddress,
+			LastSeenAt:    timestamppb.New(d.LastSeenAt),
+		})
+	}
+
+	return &gen.GetDevicesResponse{Devices: pbDevices}, nil
+}
+
+func (s *server) DeleteDevice(ctx context.Context, req *gen.DeleteDeviceRequest) (*gen.DeleteDeviceResponse, error) {
+	_ = ctx
+	err := s.db.DeleteUserDevice(req.DeviceId, req.Username)
+	if err != nil {
+		return &gen.DeleteDeviceResponse{Success: false, Message: err.Error()}, nil
+	}
+
+	// Tell connected client to logout
+	s.hub.BroadcastGlobal(&gen.Message{
+		User: "SYSTEM",
+		Text: "FORCE_DISCONNECT_DEVICE:" + req.DeviceId,
+	})
+
+	return &gen.DeleteDeviceResponse{Success: true, Message: "Device removed"}, nil
 }

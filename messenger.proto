@@ -25,6 +25,8 @@ message Message {
   string voice_url = 17; // URL of the voice message audio file
   int32 duration = 18; // Duration of voice message in seconds
   bool register = 19; // Flag to register a new user
+  string device_id = 21; // Device ID for tracking active sessions
+  string device_name = 22; // Device name for displaying in settings
 }
 
 message Reaction {
@@ -494,6 +496,32 @@ message TypingSignal {
   bool is_typing = 3;
 }
 
+message DeviceInfo {
+  string device_id = 1;
+  string device_name = 2;
+  string client_version = 3;
+  google.protobuf.Timestamp last_seen_at = 4;
+  string ip_address = 5;
+}
+
+message GetDevicesRequest {
+  string username = 1;
+}
+
+message GetDevicesResponse {
+  repeated DeviceInfo devices = 1;
+}
+
+message DeleteDeviceRequest {
+  string username = 1;
+  string device_id = 2;
+}
+
+message DeleteDeviceResponse {
+  bool success = 1;
+  string message = 2;
+}
+
 service ChatService {
   rpc Chat(stream Message) returns (stream Message);
   rpc Typing(stream TypingRequest) returns (stream TypingSignal);
@@ -540,4 +568,6 @@ service ChatService {
   rpc RemoveFavorite(RemoveFavoriteRequest) returns (RemoveFavoriteResponse);
   rpc GetFavorites(GetFavoritesRequest) returns (GetFavoritesResponse);
   rpc SaveFavoriteMessage(Message) returns (AddFavoriteResponse);
+  rpc GetDevices(GetDevicesRequest) returns (GetDevicesResponse);
+  rpc DeleteDevice(DeleteDeviceRequest) returns (DeleteDeviceResponse);
 }
