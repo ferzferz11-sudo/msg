@@ -9,6 +9,7 @@ package main
 import (
 	"LavenderMessenger/gen"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -871,17 +872,41 @@ func (s *server) UpdateProfile(_ context.Context, req *gen.UpdateProfileRequest)
 
 // GetUserProfile retrieves user profile information
 func (s *server) GetUserProfile(_ context.Context, req *gen.GetUserProfileRequest) (*gen.GetUserProfileResponse, error) {
-	profile, err := s.db.GetUserProfile(req.Username)
-	if err != nil {
-		log.Printf("Failed to get profile for %s: %v", req.Username, err)
+	var profile struct {
+		Username, Bio, Status, AvatarURL string
+		LastSeenAt                       sql.NullTime
+	}
+	var err error
+
+	// Если передан user_id, используем его, иначе username (для обратной совместимости)
+	if req.UserId != "" {
+		profile, err = s.db.GetUserProfileById(req.UserId)
+		if err != nil {
+			log.Printf("Failed to get profile for user_id %s: %v", req.UserId, err)
+			return &gen.GetUserProfileResponse{}, nil
+		}
+	} else if req.Username != "" {
+		profile, err = s.db.GetUserProfile(req.Username)
+		if err != nil {
+			log.Printf("Failed to get profile for username %s: %v", req.Username, err)
+			return &gen.GetUserProfileResponse{}, nil
+		}
+	} else {
+		log.Printf("Failed to get profile: neither user_id nor username provided")
 		return &gen.GetUserProfileResponse{}, nil
 	}
 
+	var lastSeen *timestamppb.Timestamp
+	if profile.LastSeenAt.Valid {
+		lastSeen = timestamppb.New(profile.LastSeenAt.Time)
+	}
+
 	return &gen.GetUserProfileResponse{
-		Username:  profile.Username,
-		Bio:       profile.Bio,
-		Status:    profile.Status,
-		AvatarUrl: profile.AvatarURL,
+		Username:   profile.Username,
+		Bio:        profile.Bio,
+		Status:     profile.Status,
+		AvatarUrl:  profile.AvatarURL,
+		LastSeenAt: lastSeen,
 	}, nil
 }
 
