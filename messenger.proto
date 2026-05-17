@@ -200,6 +200,7 @@ message UpdateProfileResponse {
 
 message GetUserProfileRequest {
   string username = 1;
+  string user_id = 2;
 }
 
 message GetUserProfileResponse {
@@ -207,6 +208,7 @@ message GetUserProfileResponse {
   string bio = 2;
   string status = 3;
   string avatar_url = 4;
+  google.protobuf.Timestamp last_seen_at = 5;
 }
 
 message GetUserAvatarRequest {

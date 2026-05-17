@@ -185,6 +185,12 @@ func (db *DB) UserExists(user string) (bool, error) {
 	return e, err
 }
 
+func (db *DB) EmailExists(email string) (bool, error) {
+	var e bool
+	err := db.QueryRow(`SELECT EXISTS(SELECT 1 FROM users WHERE email=$1 AND email != '')`, email).Scan(&e)
+	return e, err
+}
+
 func (db *DB) GetUserPasswordHash(user string) (string, error) {
 	var h string
 	err := db.QueryRow(`SELECT password_hash FROM users WHERE username=$1`, user).Scan(&h)
@@ -492,9 +498,15 @@ func (db *DB) DeleteProfile(user string) error {
 	_, err := db.Exec(`DELETE FROM users WHERE username=$1`, user)
 	return err
 }
-func (db *DB) GetUserProfile(user string) (struct{ Username, Bio, Status, AvatarURL string }, error) {
-	var p struct{ Username, Bio, Status, AvatarURL string }
-	err := db.QueryRow(`SELECT username, COALESCE(bio, ''), COALESCE(status, ''), COALESCE(avatar_url, '') FROM users WHERE username=$1`, user).Scan(&p.Username, &p.Bio, &p.Status, &p.AvatarURL)
+func (db *DB) GetUserProfile(user string) (struct {
+	Username, Bio, Status, AvatarURL string
+	LastSeenAt                       sql.NullTime
+}, error) {
+	var p struct {
+		Username, Bio, Status, AvatarURL string
+		LastSeenAt                       sql.NullTime
+	}
+	err := db.QueryRow(`SELECT username, COALESCE(bio, ''), COALESCE(status, ''), COALESCE(avatar_url, ''), last_seen_at FROM users WHERE username=$1`, user).Scan(&p.Username, &p.Bio, &p.Status, &p.AvatarURL, &p.LastSeenAt)
 	return p, err
 }
 func (db *DB) UpdateProfile(user, bio, status string) error {
