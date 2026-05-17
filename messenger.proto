@@ -524,6 +524,25 @@ message DeleteDeviceResponse {
   string message = 2;
 }
 
+message RequestPasswordResetRequest {
+  string email = 1;
+}
+
+message RequestPasswordResetResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message ResetPasswordRequest {
+  string token = 1;
+  string new_password = 2;
+}
+
+message ResetPasswordResponse {
+  bool success = 1;
+  string message = 2;
+}
+
 service ChatService {
   rpc Chat(stream Message) returns (stream Message);
   rpc Typing(stream TypingRequest) returns (stream TypingSignal);
@@ -572,4 +591,6 @@ service ChatService {
   rpc SaveFavoriteMessage(Message) returns (AddFavoriteResponse);
   rpc GetDevices(GetDevicesRequest) returns (GetDevicesResponse);
   rpc DeleteDevice(DeleteDeviceRequest) returns (DeleteDeviceResponse);
+  rpc RequestPasswordReset(RequestPasswordResetRequest) returns (RequestPasswordResetResponse);
+  rpc ResetPassword(ResetPasswordRequest) returns (ResetPasswordResponse);
 }

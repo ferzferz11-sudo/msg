@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -25,7 +26,7 @@ import (
 	"firebase.google.com/go/v4/messaging"
 )
 
-const ServerVersion = "1.0.5.0"
+const ServerVersion = "1.0.5.1"
 
 // server implements the gRPC ChatService interface
 type server struct {
@@ -1891,4 +1892,90 @@ func (s *server) DeleteDevice(ctx context.Context, req *gen.DeleteDeviceRequest)
 	})
 
 	return &gen.DeleteDeviceResponse{Success: true, Message: "Device removed"}, nil
+}
+
+// RequestPasswordReset initiates password reset by sending email with reset token
+func (s *server) RequestPasswordReset(_ context.Context, req *gen.RequestPasswordResetRequest) (*gen.RequestPasswordResetResponse, error) {
+	if req.Email == "" {
+		return &gen.RequestPasswordResetResponse{Success: false, Message: "Email is required"}, nil
+	}
+
+	// Check if SMTP is configured
+	smtpHost := os.Getenv("SMTP_HOST")
+	if smtpHost == "" {
+		return &gen.RequestPasswordResetResponse{Success: false, Message: "SMTP_NOT_CONFIGURED"}, nil
+	}
+
+	// Find user by email
+	userId, err := s.db.GetUserIdByEmail(req.Email)
+	if err != nil {
+		// Don't reveal if email exists or not for security
+		log.Printf("Password reset requested for non-existent email: %s", req.Email)
+		return &gen.RequestPasswordResetResponse{Success: true, Message: "If the email exists, a reset link has been sent"}, nil
+	}
+
+	// Generate reset token
+	token, err := GenerateResetToken()
+	if err != nil {
+		log.Printf("Failed to generate reset token: %v", err)
+		return &gen.RequestPasswordResetResponse{Success: false, Message: "Failed to generate reset token"}, nil
+	}
+
+	// Token expires in 1 hour
+	expiresAt := time.Now().Add(1 * time.Hour)
+
+	// Save token to database
+	err = s.db.CreatePasswordResetToken(token, userId, expiresAt)
+	if err != nil {
+		log.Printf("Failed to save reset token: %v", err)
+		return &gen.RequestPasswordResetResponse{Success: false, Message: "Failed to save reset token"}, nil
+	}
+
+	// Send email with token
+	err = SendPasswordResetEmail(req.Email, token)
+	if err != nil {
+		log.Printf("Failed to send reset email: %v", err)
+		if err.Error() == "SMTP_NOT_CONFIGURED" {
+			return &gen.RequestPasswordResetResponse{Success: false, Message: "SMTP_NOT_CONFIGURED"}, nil
+		}
+		return &gen.RequestPasswordResetResponse{Success: false, Message: "Failed to send reset email"}, nil
+	}
+
+	log.Printf("Password reset initiated for email: %s", req.Email)
+	return &gen.RequestPasswordResetResponse{Success: true, Message: "If the email exists, a reset link has been sent"}, nil
+}
+
+// ResetPassword resets user password using valid token
+func (s *server) ResetPassword(_ context.Context, req *gen.ResetPasswordRequest) (*gen.ResetPasswordResponse, error) {
+	if req.Token == "" || req.NewPassword == "" {
+		return &gen.ResetPasswordResponse{Success: false, Message: "Token and new password are required"}, nil
+	}
+
+	// Validate token and get user ID
+	userId, err := s.db.ValidatePasswordResetToken(req.Token)
+	if err != nil {
+		log.Printf("Invalid or expired reset token: %v", err)
+		return &gen.ResetPasswordResponse{Success: false, Message: "Invalid or expired reset token"}, nil
+	}
+
+	// Get username from user ID
+	var username string
+	err = s.db.QueryRow(`SELECT username FROM users WHERE id=$1::uuid`, userId).Scan(&username)
+	if err != nil {
+		log.Printf("Failed to get username from user ID: %v", err)
+		return &gen.ResetPasswordResponse{Success: false, Message: "User not found"}, nil
+	}
+
+	// Update password
+	err = s.db.UpdatePassword(username, req.NewPassword)
+	if err != nil {
+		log.Printf("Failed to update password: %v", err)
+		return &gen.ResetPasswordResponse{Success: false, Message: "Failed to update password"}, nil
+	}
+
+	// Delete used token
+	_ = s.db.DeletePasswordResetToken(req.Token)
+
+	log.Printf("Password reset successful for user: %s", username)
+	return &gen.ResetPasswordResponse{Success: true, Message: "Password reset successfully"}, nil
 }

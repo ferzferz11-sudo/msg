@@ -80,6 +80,7 @@ func ConnectDB() (*DB, error) {
 		END $$;`,
 		`CREATE TABLE IF NOT EXISTS muted_chats (username VARCHAR(255) NOT NULL, room_id VARCHAR(255) NOT NULL, muted BOOLEAN NOT NULL DEFAULT TRUE, updated_at TIMESTAMP NOT NULL DEFAULT NOW(), user_id UUID, PRIMARY KEY (username, room_id))`,
 		`CREATE TABLE IF NOT EXISTS favorites (user_id UUID REFERENCES users(id) ON DELETE CASCADE, message_id VARCHAR(255) REFERENCES messages(message_id) ON DELETE CASCADE, created_at TIMESTAMP NOT NULL DEFAULT NOW(), PRIMARY KEY (user_id, message_id))`,
+		`CREATE TABLE IF NOT EXISTS password_reset_tokens (token VARCHAR(255) PRIMARY KEY, user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE, expires_at TIMESTAMP NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT NOW())`,
 	}
 
 	for _, q := range queries {
@@ -905,5 +906,34 @@ func (db *DB) GetUserDevices(username string) ([]struct {
 
 func (db *DB) DeleteUserDevice(deviceID, username string) error {
 	_, err := db.Exec(`DELETE FROM user_devices WHERE device_id = $1 AND username = $2`, deviceID, username)
+	return err
+}
+
+func (db *DB) GetUserIdByEmail(email string) (string, error) {
+	var id string
+	err := db.QueryRow(`SELECT id::text FROM users WHERE email=$1`, email).Scan(&id)
+	return id, err
+}
+
+func (db *DB) CreatePasswordResetToken(token, userId string, expiresAt time.Time) error {
+	_, err := db.Exec(`INSERT INTO password_reset_tokens (token, user_id, expires_at) VALUES ($1, $2::uuid, $3)`, token, userId, expiresAt)
+	return err
+}
+
+func (db *DB) ValidatePasswordResetToken(token string) (string, error) {
+	var userId string
+	var expiresAt time.Time
+	err := db.QueryRow(`SELECT user_id::text, expires_at FROM password_reset_tokens WHERE token=$1`, token).Scan(&userId, &expiresAt)
+	if err != nil {
+		return "", err
+	}
+	if time.Now().After(expiresAt) {
+		return "", fmt.Errorf("token expired")
+	}
+	return userId, nil
+}
+
+func (db *DB) DeletePasswordResetToken(token string) error {
+	_, err := db.Exec(`DELETE FROM password_reset_tokens WHERE token=$1`, token)
 	return err
 }
