@@ -26,7 +26,7 @@ import (
 	"firebase.google.com/go/v4/messaging"
 )
 
-const ServerVersion = "1.0.5.1"
+const ServerVersion = "1.0.5.2"
 
 // server implements the gRPC ChatService interface
 type server struct {
@@ -1859,7 +1859,7 @@ func (s *server) SaveFavoriteMessage(ctx context.Context, req *gen.Message) (*ge
 
 func (s *server) GetDevices(ctx context.Context, req *gen.GetDevicesRequest) (*gen.GetDevicesResponse, error) {
 	_ = ctx
-	dbDevices, err := s.db.GetUserDevices(req.Username)
+	dbDevices, err := s.db.GetUserDevices(req.UserId)
 	if err != nil {
 		return nil, err
 	}
@@ -1880,7 +1880,7 @@ func (s *server) GetDevices(ctx context.Context, req *gen.GetDevicesRequest) (*g
 
 func (s *server) DeleteDevice(ctx context.Context, req *gen.DeleteDeviceRequest) (*gen.DeleteDeviceResponse, error) {
 	_ = ctx
-	err := s.db.DeleteUserDevice(req.DeviceId, req.Username)
+	err := s.db.DeleteUserDevice(req.DeviceId, req.UserId)
 	if err != nil {
 		return &gen.DeleteDeviceResponse{Success: false, Message: err.Error()}, nil
 	}

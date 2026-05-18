@@ -879,11 +879,11 @@ func (db *DB) AddUserDevice(username, deviceID, deviceName, clientVersion, ipAdd
 	return err
 }
 
-func (db *DB) GetUserDevices(username string) ([]struct {
+func (db *DB) GetUserDevices(userId string) ([]struct {
 	DeviceID, DeviceName, ClientVersion, IPAddress string
 	LastSeenAt                                     time.Time
 }, error) {
-	rows, err := db.Query(`SELECT device_id, COALESCE(device_name, ''), COALESCE(client_version, ''), COALESCE(ip_address, ''), last_seen_at FROM user_devices WHERE username = $1 ORDER BY last_seen_at DESC`, username)
+	rows, err := db.Query(`SELECT device_id, COALESCE(device_name, ''), COALESCE(client_version, ''), COALESCE(ip_address, ''), last_seen_at FROM user_devices WHERE user_id = $1::uuid ORDER BY last_seen_at DESC`, userId)
 	if err != nil {
 		return nil, err
 	}
@@ -904,8 +904,8 @@ func (db *DB) GetUserDevices(username string) ([]struct {
 	return res, nil
 }
 
-func (db *DB) DeleteUserDevice(deviceID, username string) error {
-	_, err := db.Exec(`DELETE FROM user_devices WHERE device_id = $1 AND username = $2`, deviceID, username)
+func (db *DB) DeleteUserDevice(deviceID, userId string) error {
+	_, err := db.Exec(`DELETE FROM user_devices WHERE device_id = $1 AND user_id = $2::uuid`, deviceID, userId)
 	return err
 }
 

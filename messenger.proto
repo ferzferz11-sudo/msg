@@ -323,6 +323,8 @@ message CustomTheme {
   string surface_container = 15;
   string outgoing_bubble_color = 16;
   string incoming_bubble_color = 17;
+  string outgoing_text_color = 18;
+  string incoming_text_color = 19;
 }
 
 message GetThemesRequest {
@@ -507,7 +509,7 @@ message DeviceInfo {
 }
 
 message GetDevicesRequest {
-  string username = 1;
+  string user_id = 1;
 }
 
 message GetDevicesResponse {
@@ -515,7 +517,7 @@ message GetDevicesResponse {
 }
 
 message DeleteDeviceRequest {
-  string username = 1;
+  string user_id = 1;
   string device_id = 2;
 }
 

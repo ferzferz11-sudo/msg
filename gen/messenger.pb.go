@@ -3157,6 +3157,8 @@ type CustomTheme struct {
 	SurfaceContainer           string                 `protobuf:"bytes,15,opt,name=surface_container,json=surfaceContainer,proto3" json:"surface_container,omitempty"`
 	OutgoingBubbleColor        string                 `protobuf:"bytes,16,opt,name=outgoing_bubble_color,json=outgoingBubbleColor,proto3" json:"outgoing_bubble_color,omitempty"`
 	IncomingBubbleColor        string                 `protobuf:"bytes,17,opt,name=incoming_bubble_color,json=incomingBubbleColor,proto3" json:"incoming_bubble_color,omitempty"`
+	OutgoingTextColor          string                 `protobuf:"bytes,18,opt,name=outgoing_text_color,json=outgoingTextColor,proto3" json:"outgoing_text_color,omitempty"`
+	IncomingTextColor          string                 `protobuf:"bytes,19,opt,name=incoming_text_color,json=incomingTextColor,proto3" json:"incoming_text_color,omitempty"`
 	unknownFields              protoimpl.UnknownFields
 	sizeCache                  protoimpl.SizeCache
 }
@@ -3306,6 +3308,20 @@ func (x *CustomTheme) GetOutgoingBubbleColor() string {
 func (x *CustomTheme) GetIncomingBubbleColor() string {
 	if x != nil {
 		return x.IncomingBubbleColor
+	}
+	return ""
+}
+
+func (x *CustomTheme) GetOutgoingTextColor() string {
+	if x != nil {
+		return x.OutgoingTextColor
+	}
+	return ""
+}
+
+func (x *CustomTheme) GetIncomingTextColor() string {
+	if x != nil {
+		return x.IncomingTextColor
 	}
 	return ""
 }
@@ -5200,7 +5216,7 @@ func (x *DeviceInfo) GetIpAddress() string {
 
 type GetDevicesRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Username      string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -5235,9 +5251,9 @@ func (*GetDevicesRequest) Descriptor() ([]byte, []int) {
 	return file_messenger_proto_rawDescGZIP(), []int{94}
 }
 
-func (x *GetDevicesRequest) GetUsername() string {
+func (x *GetDevicesRequest) GetUserId() string {
 	if x != nil {
-		return x.Username
+		return x.UserId
 	}
 	return ""
 }
@@ -5288,7 +5304,7 @@ func (x *GetDevicesResponse) GetDevices() []*DeviceInfo {
 
 type DeleteDeviceRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Username      string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	DeviceId      string                 `protobuf:"bytes,2,opt,name=device_id,json=deviceId,proto3" json:"device_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -5324,9 +5340,9 @@ func (*DeleteDeviceRequest) Descriptor() ([]byte, []int) {
 	return file_messenger_proto_rawDescGZIP(), []int{96}
 }
 
-func (x *DeleteDeviceRequest) GetUsername() string {
+func (x *DeleteDeviceRequest) GetUserId() string {
 	if x != nil {
-		return x.Username
+		return x.UserId
 	}
 	return ""
 }
@@ -5801,7 +5817,7 @@ const file_messenger_proto_rawDesc = "" +
 	"\x19GetChatListVersionRequest\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\"6\n" +
 	"\x1aGetChatListVersionResponse\x12\x18\n" +
-	"\aversion\x18\x01 \x01(\x03R\aversion\"\xe8\x05\n" +
+	"\aversion\x18\x01 \x01(\x03R\aversion\"\xc8\x06\n" +
 	"\vCustomTheme\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12#\n" +
@@ -5820,7 +5836,9 @@ const file_messenger_proto_rawDesc = "" +
 	"\x15on_bottom_panel_color\x18\x0e \x01(\tR\x12onBottomPanelColor\x12+\n" +
 	"\x11surface_container\x18\x0f \x01(\tR\x10surfaceContainer\x122\n" +
 	"\x15outgoing_bubble_color\x18\x10 \x01(\tR\x13outgoingBubbleColor\x122\n" +
-	"\x15incoming_bubble_color\x18\x11 \x01(\tR\x13incomingBubbleColor\".\n" +
+	"\x15incoming_bubble_color\x18\x11 \x01(\tR\x13incomingBubbleColor\x12.\n" +
+	"\x13outgoing_text_color\x18\x12 \x01(\tR\x11outgoingTextColor\x12.\n" +
+	"\x13incoming_text_color\x18\x13 \x01(\tR\x11incomingTextColor\".\n" +
 	"\x10GetThemesRequest\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\"z\n" +
 	"\x11GetThemesResponse\x12(\n" +
@@ -5939,13 +5957,13 @@ const file_messenger_proto_rawDesc = "" +
 	"\flast_seen_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
 	"lastSeenAt\x12\x1d\n" +
 	"\n" +
-	"ip_address\x18\x05 \x01(\tR\tipAddress\"/\n" +
-	"\x11GetDevicesRequest\x12\x1a\n" +
-	"\busername\x18\x01 \x01(\tR\busername\"E\n" +
+	"ip_address\x18\x05 \x01(\tR\tipAddress\",\n" +
+	"\x11GetDevicesRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\"E\n" +
 	"\x12GetDevicesResponse\x12/\n" +
-	"\adevices\x18\x01 \x03(\v2\x15.messenger.DeviceInfoR\adevices\"N\n" +
-	"\x13DeleteDeviceRequest\x12\x1a\n" +
-	"\busername\x18\x01 \x01(\tR\busername\x12\x1b\n" +
+	"\adevices\x18\x01 \x03(\v2\x15.messenger.DeviceInfoR\adevices\"K\n" +
+	"\x13DeleteDeviceRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1b\n" +
 	"\tdevice_id\x18\x02 \x01(\tR\bdeviceId\"J\n" +
 	"\x14DeleteDeviceResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
