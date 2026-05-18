@@ -66,6 +66,7 @@ const (
 	ChatService_SaveFavoriteMessage_FullMethodName  = "/messenger.ChatService/SaveFavoriteMessage"
 	ChatService_GetDevices_FullMethodName           = "/messenger.ChatService/GetDevices"
 	ChatService_DeleteDevice_FullMethodName         = "/messenger.ChatService/DeleteDevice"
+	ChatService_DeleteOtherDevices_FullMethodName   = "/messenger.ChatService/DeleteOtherDevices"
 	ChatService_RequestPasswordReset_FullMethodName = "/messenger.ChatService/RequestPasswordReset"
 	ChatService_ResetPassword_FullMethodName        = "/messenger.ChatService/ResetPassword"
 )
@@ -121,6 +122,7 @@ type ChatServiceClient interface {
 	SaveFavoriteMessage(ctx context.Context, in *Message, opts ...grpc.CallOption) (*AddFavoriteResponse, error)
 	GetDevices(ctx context.Context, in *GetDevicesRequest, opts ...grpc.CallOption) (*GetDevicesResponse, error)
 	DeleteDevice(ctx context.Context, in *DeleteDeviceRequest, opts ...grpc.CallOption) (*DeleteDeviceResponse, error)
+	DeleteOtherDevices(ctx context.Context, in *DeleteDeviceRequest, opts ...grpc.CallOption) (*DeleteDeviceResponse, error)
 	RequestPasswordReset(ctx context.Context, in *RequestPasswordResetRequest, opts ...grpc.CallOption) (*RequestPasswordResetResponse, error)
 	ResetPassword(ctx context.Context, in *ResetPasswordRequest, opts ...grpc.CallOption) (*ResetPasswordResponse, error)
 }
@@ -609,6 +611,16 @@ func (c *chatServiceClient) DeleteDevice(ctx context.Context, in *DeleteDeviceRe
 	return out, nil
 }
 
+func (c *chatServiceClient) DeleteOtherDevices(ctx context.Context, in *DeleteDeviceRequest, opts ...grpc.CallOption) (*DeleteDeviceResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteDeviceResponse)
+	err := c.cc.Invoke(ctx, ChatService_DeleteOtherDevices_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *chatServiceClient) RequestPasswordReset(ctx context.Context, in *RequestPasswordResetRequest, opts ...grpc.CallOption) (*RequestPasswordResetResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(RequestPasswordResetResponse)
@@ -680,6 +692,7 @@ type ChatServiceServer interface {
 	SaveFavoriteMessage(context.Context, *Message) (*AddFavoriteResponse, error)
 	GetDevices(context.Context, *GetDevicesRequest) (*GetDevicesResponse, error)
 	DeleteDevice(context.Context, *DeleteDeviceRequest) (*DeleteDeviceResponse, error)
+	DeleteOtherDevices(context.Context, *DeleteDeviceRequest) (*DeleteDeviceResponse, error)
 	RequestPasswordReset(context.Context, *RequestPasswordResetRequest) (*RequestPasswordResetResponse, error)
 	ResetPassword(context.Context, *ResetPasswordRequest) (*ResetPasswordResponse, error)
 	mustEmbedUnimplementedChatServiceServer()
@@ -832,6 +845,9 @@ func (UnimplementedChatServiceServer) GetDevices(context.Context, *GetDevicesReq
 }
 func (UnimplementedChatServiceServer) DeleteDevice(context.Context, *DeleteDeviceRequest) (*DeleteDeviceResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteDevice not implemented")
+}
+func (UnimplementedChatServiceServer) DeleteOtherDevices(context.Context, *DeleteDeviceRequest) (*DeleteDeviceResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteOtherDevices not implemented")
 }
 func (UnimplementedChatServiceServer) RequestPasswordReset(context.Context, *RequestPasswordResetRequest) (*RequestPasswordResetResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RequestPasswordReset not implemented")
@@ -1684,6 +1700,24 @@ func _ChatService_DeleteDevice_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ChatService_DeleteOtherDevices_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteDeviceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).DeleteOtherDevices(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_DeleteOtherDevices_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).DeleteOtherDevices(ctx, req.(*DeleteDeviceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ChatService_RequestPasswordReset_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RequestPasswordResetRequest)
 	if err := dec(in); err != nil {
@@ -1906,6 +1940,10 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteDevice",
 			Handler:    _ChatService_DeleteDevice_Handler,
+		},
+		{
+			MethodName: "DeleteOtherDevices",
+			Handler:    _ChatService_DeleteOtherDevices_Handler,
 		},
 		{
 			MethodName: "RequestPasswordReset",

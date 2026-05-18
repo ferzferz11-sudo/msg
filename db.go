@@ -37,7 +37,14 @@ func ConnectDB() (*DB, error) {
 	}
 
 	queries := []string{
-		`CREATE TABLE IF NOT EXISTS user_devices (device_id VARCHAR(255) PRIMARY KEY, username VARCHAR(255) NOT NULL REFERENCES users(username) ON DELETE CASCADE, device_name VARCHAR(255), client_version VARCHAR(50), last_seen_at TIMESTAMP NOT NULL DEFAULT NOW(), ip_address VARCHAR(255))`,
+		`CREATE TABLE IF NOT EXISTS user_devices (device_id VARCHAR(255) PRIMARY KEY, user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE, device_name VARCHAR(255), client_version VARCHAR(50), last_seen_at TIMESTAMP NOT NULL DEFAULT NOW(), ip_address VARCHAR(255))`,
+		`DO $$ BEGIN
+			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='user_devices' AND column_name='user_id') THEN
+				ALTER TABLE user_devices ADD COLUMN user_id UUID REFERENCES users(id) ON DELETE CASCADE;
+				UPDATE user_devices ud SET user_id = (SELECT id FROM users u WHERE u.username = ud.username);
+			END IF;
+			ALTER TABLE user_devices ALTER COLUMN username DROP NOT NULL;
+		END $$;`,
 		`CREATE TABLE IF NOT EXISTS messages (id SERIAL PRIMARY KEY, message_id VARCHAR(255) UNIQUE, username VARCHAR(255) NOT NULL, encrypted_text BYTEA NOT NULL, created_at TIMESTAMP NOT NULL)`,
 		`DO $$ BEGIN
 			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='replied_to_message_id') THEN ALTER TABLE messages ADD COLUMN replied_to_message_id VARCHAR(255); END IF;
@@ -865,17 +872,17 @@ func (db *DB) GetUserAvatarWithFullURL(user string) (string, string, error) {
 func (db *DB) GetUserPassword(user string) (string, error) { return db.GetUserPasswordHash(user) }
 func (db *DB) GetUserId(user string) (string, error)       { return db.GetUserIdByUsername(user) }
 
-func (db *DB) AddUserDevice(username, deviceID, deviceName, clientVersion, ipAddress string) error {
+func (db *DB) AddUserDevice(userID, deviceID, deviceName, clientVersion, ipAddress string) error {
 	_, err := db.Exec(`
-		INSERT INTO user_devices (device_id, username, device_name, client_version, ip_address, last_seen_at)
-		VALUES ($1, $2, $3, $4, $5, NOW())
+		INSERT INTO user_devices (device_id, user_id, device_name, client_version, ip_address, last_seen_at)
+		VALUES ($1, $2::uuid, $3, $4, $5, NOW())
 		ON CONFLICT (device_id) DO UPDATE SET
-			username = EXCLUDED.username,
+			user_id = EXCLUDED.user_id,
 			device_name = EXCLUDED.device_name,
 			client_version = EXCLUDED.client_version,
 			ip_address = EXCLUDED.ip_address,
 			last_seen_at = NOW()
-	`, deviceID, username, deviceName, clientVersion, ipAddress)
+	`, deviceID, userID, deviceName, clientVersion, ipAddress)
 	return err
 }
 
@@ -906,6 +913,11 @@ func (db *DB) GetUserDevices(userId string) ([]struct {
 
 func (db *DB) DeleteUserDevice(deviceID, userId string) error {
 	_, err := db.Exec(`DELETE FROM user_devices WHERE device_id = $1 AND user_id = $2::uuid`, deviceID, userId)
+	return err
+}
+
+func (db *DB) DeleteOtherDevices(userId, exceptDeviceId string) error {
+	_, err := db.Exec(`DELETE FROM user_devices WHERE user_id = $1::uuid AND device_id != $2`, userId, exceptDeviceId)
 	return err
 }
 

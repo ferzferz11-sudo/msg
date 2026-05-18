@@ -593,6 +593,7 @@ service ChatService {
   rpc SaveFavoriteMessage(Message) returns (AddFavoriteResponse);
   rpc GetDevices(GetDevicesRequest) returns (GetDevicesResponse);
   rpc DeleteDevice(DeleteDeviceRequest) returns (DeleteDeviceResponse);
+  rpc DeleteOtherDevices(DeleteDeviceRequest) returns (DeleteDeviceResponse);
   rpc RequestPasswordReset(RequestPasswordResetRequest) returns (RequestPasswordResetResponse);
   rpc ResetPassword(ResetPasswordRequest) returns (ResetPasswordResponse);
 }

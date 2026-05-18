@@ -20,13 +20,14 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"google.golang.org/grpc/peer"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	firebase "firebase.google.com/go/v4"
 	"firebase.google.com/go/v4/messaging"
 )
 
-const ServerVersion = "1.0.5.2"
+const ServerVersion = "1.0.5.3"
 
 // server implements the gRPC ChatService interface
 type server struct {
@@ -71,6 +72,7 @@ func (s *server) logFCM(level, format string, v ...interface{}) {
 // Chat handles bidirectional streaming for real-time messaging
 func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 	var connectedUser string = "Anonymous"
+	var connectedUserID string = ""
 	var currentRoom string = ""
 
 	// Register the new client stream with the hub
@@ -179,6 +181,10 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 			s.hub.SetAuthenticated(stream, true)
 			connectedUser = msg.User
 
+			// Fetch and store user ID for session tracking
+			uid, _ := s.db.GetUserIdByUsername(msg.User)
+			connectedUserID = uid
+
 			// Single unified log line for successful auth and initial connection
 			log.Printf("Auth success: %s (v%s), initial signal: %s", msg.User, msg.ClientVersion, msg.RoomId)
 
@@ -210,6 +216,20 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 				}
 				if err := stream.Send(statusMsg); err != nil {
 					log.Printf("Failed to send super admin status: %v", err)
+				}
+			}
+
+			// Register device session
+			if msg.DeviceId != "" && connectedUserID != "" {
+				ip := "unknown"
+				if p, ok := peer.FromContext(stream.Context()); ok {
+					ip = p.Addr.String()
+				}
+				err := s.db.AddUserDevice(connectedUserID, msg.DeviceId, msg.DeviceName, msg.ClientVersion, ip)
+				if err != nil {
+					log.Printf("Failed to register device %s for %s (ID: %s): %v", msg.DeviceId, msg.User, connectedUserID, err)
+				} else {
+					log.Printf("Device registered: %s (%s) for %s", msg.DeviceName, msg.DeviceId, msg.User)
 				}
 			}
 
@@ -255,6 +275,15 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 		if roomID != "" && roomID != currentRoom {
 			currentRoom = roomID
 			s.hub.SetRoom(stream, roomID)
+		}
+
+		// Update device status if info is provided (periodic heartbeat)
+		if msg.DeviceId != "" && s.hub.IsAuthenticated(stream) && connectedUserID != "" {
+			ip := "unknown"
+			if p, ok := peer.FromContext(stream.Context()); ok {
+				ip = p.Addr.String()
+			}
+			_ = s.db.AddUserDevice(connectedUserID, msg.DeviceId, msg.DeviceName, msg.ClientVersion, ip)
 		}
 
 		// Skip empty messages (unless they have an image or voice)
@@ -1892,6 +1921,22 @@ func (s *server) DeleteDevice(ctx context.Context, req *gen.DeleteDeviceRequest)
 	})
 
 	return &gen.DeleteDeviceResponse{Success: true, Message: "Device removed"}, nil
+}
+
+func (s *server) DeleteOtherDevices(ctx context.Context, req *gen.DeleteDeviceRequest) (*gen.DeleteDeviceResponse, error) {
+	_ = ctx
+	err := s.db.DeleteOtherDevices(req.UserId, req.DeviceId)
+	if err != nil {
+		return &gen.DeleteDeviceResponse{Success: false, Message: err.Error()}, nil
+	}
+
+	// Tell all other devices of this user to logout
+	s.hub.BroadcastGlobal(&gen.Message{
+		User: "SYSTEM",
+		Text: "FORCE_LOGOUT_EXCEPT:" + req.DeviceId,
+	})
+
+	return &gen.DeleteDeviceResponse{Success: true, Message: "All other sessions terminated"}, nil
 }
 
 // RequestPasswordReset initiates password reset by sending email with reset token
