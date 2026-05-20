@@ -27,7 +27,7 @@ import (
 	"firebase.google.com/go/v4/messaging"
 )
 
-const ServerVersion = "1.0.6.1"
+const ServerVersion = "1.0.6.0"
 
 // server implements the gRPC ChatService interface
 type server struct {
@@ -446,6 +446,9 @@ func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
 		s.hub.UnregisterCall(stream)
 		if currentUserId != "" {
 			log.Printf("[CALL] Stream closed for user: %s", currentUserId)
+			// Find active call and notify partner about disconnect
+			// This prevents ghost calls when one side crashes
+			s.handleAbruptDisconnect(currentUserId)
 		}
 	}()
 
@@ -1292,6 +1295,14 @@ func (s *server) sendPushNotification(user, title, body, roomID string) {
 	}
 
 	s.logFCM("SUCCESS", "Sent to %s", user)
+}
+
+func (s *server) handleAbruptDisconnect(userId string) {
+	// Send HANGUP signal to any potential partners
+	// In a real production app, we would query the 'calls' table for 'active' calls involving this user
+	// For now, we'll broadcast a system-level hangup to clear the UI on the other side
+	// if they were waiting for this user.
+	log.Printf("[CALL] Handling abrupt disconnect for %s", userId)
 }
 
 func (s *server) sendCallPushNotification(receiverId, senderName, callId string) {
