@@ -545,9 +545,29 @@ message ResetPasswordResponse {
   string message = 2;
 }
 
+message CallMessage {
+  string call_id = 1;
+  string sender_id = 2;
+  string receiver_id = 3;
+
+  enum Type {
+    INITIATE = 0;    // Абонент А звонит Абоненту Б
+    ACCEPT = 1;      // Абонент Б принял вызов
+    REJECT = 2;      // Абонент Б отклонил вызов
+    HANGUP = 3;      // Завершение звонка
+    OFFER = 4;       // WebRTC SDP Offer
+    ANSWER = 5;      // WebRTC SDP Answer
+    ICE_CANDIDATE = 6; // WebRTC ICE Candidate
+  }
+  Type type = 4;
+
+  string payload = 5; // JSON-строка с SDP или ICE данными
+}
+
 service ChatService {
   rpc Chat(stream Message) returns (stream Message);
   rpc Typing(stream TypingRequest) returns (stream TypingSignal);
+  rpc CallSession (stream CallMessage) returns (stream CallMessage);
   rpc GetClients(ClientListRequest) returns (ClientListResponse);
   rpc GetAllUsers(GetAllUsersRequest) returns (GetAllUsersResponse);
   rpc GetAllChats(GetAllChatsRequest) returns (GetAllChatsResponse);

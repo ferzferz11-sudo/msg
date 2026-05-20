@@ -21,6 +21,7 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	ChatService_Chat_FullMethodName                 = "/messenger.ChatService/Chat"
 	ChatService_Typing_FullMethodName               = "/messenger.ChatService/Typing"
+	ChatService_CallSession_FullMethodName          = "/messenger.ChatService/CallSession"
 	ChatService_GetClients_FullMethodName           = "/messenger.ChatService/GetClients"
 	ChatService_GetAllUsers_FullMethodName          = "/messenger.ChatService/GetAllUsers"
 	ChatService_GetAllChats_FullMethodName          = "/messenger.ChatService/GetAllChats"
@@ -77,6 +78,7 @@ const (
 type ChatServiceClient interface {
 	Chat(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[Message, Message], error)
 	Typing(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[TypingRequest, TypingSignal], error)
+	CallSession(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[CallMessage, CallMessage], error)
 	GetClients(ctx context.Context, in *ClientListRequest, opts ...grpc.CallOption) (*ClientListResponse, error)
 	GetAllUsers(ctx context.Context, in *GetAllUsersRequest, opts ...grpc.CallOption) (*GetAllUsersResponse, error)
 	GetAllChats(ctx context.Context, in *GetAllChatsRequest, opts ...grpc.CallOption) (*GetAllChatsResponse, error)
@@ -160,6 +162,19 @@ func (c *chatServiceClient) Typing(ctx context.Context, opts ...grpc.CallOption)
 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type ChatService_TypingClient = grpc.BidiStreamingClient[TypingRequest, TypingSignal]
+
+func (c *chatServiceClient) CallSession(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[CallMessage, CallMessage], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &ChatService_ServiceDesc.Streams[2], ChatService_CallSession_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[CallMessage, CallMessage]{ClientStream: stream}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type ChatService_CallSessionClient = grpc.BidiStreamingClient[CallMessage, CallMessage]
 
 func (c *chatServiceClient) GetClients(ctx context.Context, in *ClientListRequest, opts ...grpc.CallOption) (*ClientListResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
@@ -647,6 +662,7 @@ func (c *chatServiceClient) ResetPassword(ctx context.Context, in *ResetPassword
 type ChatServiceServer interface {
 	Chat(grpc.BidiStreamingServer[Message, Message]) error
 	Typing(grpc.BidiStreamingServer[TypingRequest, TypingSignal]) error
+	CallSession(grpc.BidiStreamingServer[CallMessage, CallMessage]) error
 	GetClients(context.Context, *ClientListRequest) (*ClientListResponse, error)
 	GetAllUsers(context.Context, *GetAllUsersRequest) (*GetAllUsersResponse, error)
 	GetAllChats(context.Context, *GetAllChatsRequest) (*GetAllChatsResponse, error)
@@ -710,6 +726,9 @@ func (UnimplementedChatServiceServer) Chat(grpc.BidiStreamingServer[Message, Mes
 }
 func (UnimplementedChatServiceServer) Typing(grpc.BidiStreamingServer[TypingRequest, TypingSignal]) error {
 	return status.Error(codes.Unimplemented, "method Typing not implemented")
+}
+func (UnimplementedChatServiceServer) CallSession(grpc.BidiStreamingServer[CallMessage, CallMessage]) error {
+	return status.Error(codes.Unimplemented, "method CallSession not implemented")
 }
 func (UnimplementedChatServiceServer) GetClients(context.Context, *ClientListRequest) (*ClientListResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetClients not implemented")
@@ -889,6 +908,13 @@ func _ChatService_Typing_Handler(srv interface{}, stream grpc.ServerStream) erro
 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type ChatService_TypingServer = grpc.BidiStreamingServer[TypingRequest, TypingSignal]
+
+func _ChatService_CallSession_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(ChatServiceServer).CallSession(&grpc.GenericServerStream[CallMessage, CallMessage]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type ChatService_CallSessionServer = grpc.BidiStreamingServer[CallMessage, CallMessage]
 
 func _ChatService_GetClients_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ClientListRequest)
@@ -1964,6 +1990,12 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "Typing",
 			Handler:       _ChatService_Typing_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
+		},
+		{
+			StreamName:    "CallSession",
+			Handler:       _ChatService_CallSession_Handler,
 			ServerStreams: true,
 			ClientStreams: true,
 		},

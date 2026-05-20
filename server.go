@@ -27,7 +27,7 @@ import (
 	"firebase.google.com/go/v4/messaging"
 )
 
-const ServerVersion = "1.0.5.3"
+const ServerVersion = "1.0.5.9"
 
 // server implements the gRPC ChatService interface
 type server struct {
@@ -436,6 +436,47 @@ func (s *server) Typing(stream gen.ChatService_TypingServer) error {
 			IsTyping: req.IsTyping,
 		}
 		s.hub.BroadcastTyping(signal)
+	}
+}
+
+func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
+	var currentUserId string
+	s.hub.RegisterCall(stream)
+	defer s.hub.UnregisterCall(stream)
+
+	for {
+		msg, err := stream.Recv()
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+
+		if currentUserId == "" && msg.SenderId != "" {
+			currentUserId = msg.SenderId
+			s.hub.UpdateCallName(stream, currentUserId)
+		}
+
+		// Handle database updates based on message type
+		switch msg.Type {
+		case gen.CallMessage_INITIATE:
+			callId, err := s.db.CreateCall(msg.SenderId, msg.ReceiverId, "video", "")
+			if err == nil {
+				msg.CallId = callId
+			}
+			// Always try to send push for INITIATE to wake up the receiver
+			s.sendCallPushNotification(msg.ReceiverId, msg.SenderId, msg.CallId)
+		case gen.CallMessage_ACCEPT:
+			_ = s.db.UpdateCallStatus(msg.CallId, "active")
+		case gen.CallMessage_REJECT:
+			_ = s.db.UpdateCallStatus(msg.CallId, "rejected")
+		case gen.CallMessage_HANGUP:
+			_ = s.db.UpdateCallStatus(msg.CallId, "completed")
+		}
+
+		// Broadcast message to receiver
+		s.hub.BroadcastCall(msg)
 	}
 }
 
@@ -1214,6 +1255,46 @@ func (s *server) sendPushNotification(user, title, body, roomID string) {
 	}
 
 	s.logFCM("SUCCESS", "Sent to %s", user)
+}
+
+func (s *server) sendCallPushNotification(receiverId, senderName, callId string) {
+	if s.firebaseApp == nil {
+		return
+	}
+
+	// Resolve receiverId to username if it's a UUID
+	username := s.resolveUsername(receiverId)
+	senderUsername := s.resolveUsername(senderName)
+
+	token, err := s.db.GetUserToken(username)
+	if err != nil || token == "" || token == "DISABLED" {
+		return
+	}
+
+	ctx := context.Background()
+	client, err := s.firebaseApp.Messaging(ctx)
+	if err != nil {
+		return
+	}
+
+	message := &messaging.Message{
+		Token: token,
+		Data: map[string]string{
+			"type":      "VOIP_CALL",
+			"call_id":   callId,
+			"sender_id": senderUsername,
+		},
+		Android: &messaging.AndroidConfig{
+			Priority: "high",
+		},
+	}
+
+	_, err = client.Send(ctx, message)
+	if err != nil {
+		s.logFCM("ERROR", "Call Push to %s failed: %v", receiverId, err)
+	} else {
+		s.logFCM("SUCCESS", "Call Push sent to %s", receiverId)
+	}
 }
 
 func (s *server) broadcastOnlineUsers() {

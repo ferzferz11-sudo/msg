@@ -88,6 +88,19 @@ func ConnectDB() (*DB, error) {
 		`CREATE TABLE IF NOT EXISTS muted_chats (username VARCHAR(255) NOT NULL, room_id VARCHAR(255) NOT NULL, muted BOOLEAN NOT NULL DEFAULT TRUE, updated_at TIMESTAMP NOT NULL DEFAULT NOW(), user_id UUID, PRIMARY KEY (username, room_id))`,
 		`CREATE TABLE IF NOT EXISTS favorites (user_id UUID REFERENCES users(id) ON DELETE CASCADE, message_id VARCHAR(255) REFERENCES messages(message_id) ON DELETE CASCADE, created_at TIMESTAMP NOT NULL DEFAULT NOW(), PRIMARY KEY (user_id, message_id))`,
 		`CREATE TABLE IF NOT EXISTS password_reset_tokens (token VARCHAR(255) PRIMARY KEY, user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE, expires_at TIMESTAMP NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT NOW())`,
+		`CREATE TABLE IF NOT EXISTS calls (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			caller_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			receiver_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			room_id VARCHAR(255),
+			type VARCHAR(50) NOT NULL,
+			status VARCHAR(50) NOT NULL,
+			created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+			started_at TIMESTAMP,
+			ended_at TIMESTAMP
+		)`,
+		`CREATE INDEX IF NOT EXISTS idx_calls_caller ON calls(caller_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_calls_receiver ON calls(receiver_id)`,
 	}
 
 	for _, q := range queries {
@@ -947,5 +960,27 @@ func (db *DB) ValidatePasswordResetToken(token string) (string, error) {
 
 func (db *DB) DeletePasswordResetToken(token string) error {
 	_, err := db.Exec(`DELETE FROM password_reset_tokens WHERE token=$1`, token)
+	return err
+}
+
+func (db *DB) CreateCall(callerID, receiverID, callType, roomID string) (string, error) {
+	var id string
+	err := db.QueryRow(`INSERT INTO calls (caller_id, receiver_id, type, room_id, status) VALUES (
+		CASE WHEN $1 ~ '^[0-9a-fA-F-]{36}$' THEN $1::uuid ELSE (SELECT id FROM users WHERE username=$1::text) END,
+		CASE WHEN $2 ~ '^[0-9a-fA-F-]{36}$' THEN $2::uuid ELSE (SELECT id FROM users WHERE username=$2::text) END,
+		$3, $4, 'pending') RETURNING id`, callerID, receiverID, callType, roomID).Scan(&id)
+	return id, err
+}
+
+func (db *DB) UpdateCallStatus(callID, status string) error {
+	var query string
+	if status == "active" {
+		query = `UPDATE calls SET status = $1, started_at = NOW() WHERE id = $2::uuid`
+	} else if status == "completed" || status == "rejected" || status == "missed" || status == "busy" {
+		query = `UPDATE calls SET status = $1, ended_at = NOW() WHERE id = $2::uuid`
+	} else {
+		query = `UPDATE calls SET status = $1 WHERE id = $2::uuid`
+	}
+	_, err := db.Exec(query, status, callID)
 	return err
 }

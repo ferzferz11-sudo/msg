@@ -20,6 +20,7 @@ type Hub struct {
 	authenticated map[gen.ChatService_ChatServer]bool   // tracks if stream is authenticated
 	rooms         map[gen.ChatService_ChatServer]string // maps stream to current room ID
 	typingStreams map[gen.ChatService_TypingServer]string
+	callStreams   map[gen.ChatService_CallSessionServer]string
 
 	// onStatusChange is a callback triggered when user list changes
 	onStatusChange func()
@@ -32,8 +33,30 @@ func NewHub(onStatusChange func()) *Hub {
 		authenticated:  make(map[gen.ChatService_ChatServer]bool),
 		rooms:          make(map[gen.ChatService_ChatServer]string),
 		typingStreams:  make(map[gen.ChatService_TypingServer]string),
+		callStreams:    make(map[gen.ChatService_CallSessionServer]string),
 		onStatusChange: onStatusChange,
 	}
+}
+
+// RegisterCall adds a new call stream
+func (h *Hub) RegisterCall(stream gen.ChatService_CallSessionServer) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.callStreams[stream] = "Anonymous"
+}
+
+// UpdateCallName updates the username associated with a call stream
+func (h *Hub) UpdateCallName(stream gen.ChatService_CallSessionServer, name string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.callStreams[stream] = name
+}
+
+// UnregisterCall removes a call stream
+func (h *Hub) UnregisterCall(stream gen.ChatService_CallSessionServer) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	delete(h.callStreams, stream)
 }
 
 // RegisterTyping adds a new typing stream to the hub
@@ -183,4 +206,21 @@ func (h *Hub) BroadcastTyping(signal *gen.TypingSignal) {
 		// For now we broadcast to all, and client will filter by roomId
 		_ = stream.Send(signal)
 	}
+}
+
+// BroadcastCall sends a call signal to the specific receiver. Returns true if delivered to at least one stream.
+func (h *Hub) BroadcastCall(signal *gen.CallMessage) bool {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	delivered := false
+	for stream, username := range h.callStreams {
+		if username == signal.ReceiverId {
+			err := stream.Send(signal)
+			if err == nil {
+				delivered = true
+			}
+		}
+	}
+	return delivered
 }
