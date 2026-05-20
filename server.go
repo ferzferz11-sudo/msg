@@ -442,7 +442,12 @@ func (s *server) Typing(stream gen.ChatService_TypingServer) error {
 func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
 	var currentUserId string
 	s.hub.RegisterCall(stream)
-	defer s.hub.UnregisterCall(stream)
+	defer func() {
+		s.hub.UnregisterCall(stream)
+		if currentUserId != "" {
+			log.Printf("[CALL] Stream closed for user: %s", currentUserId)
+		}
+	}()
 
 	for {
 		msg, err := stream.Recv()
@@ -450,33 +455,65 @@ func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
 			return nil
 		}
 		if err != nil {
+			log.Printf("[CALL] Error receiving signal: %v", err)
 			return err
 		}
 
 		if currentUserId == "" && msg.SenderId != "" {
 			currentUserId = msg.SenderId
 			s.hub.UpdateCallName(stream, currentUserId)
+			log.Printf("[CALL] Stream identified for user: %s", currentUserId)
 		}
+
+		log.Printf("[CALL] Signal: %s | From: %s | To: %s | CallID: %s",
+			msg.Type.String(), msg.SenderId, msg.ReceiverId, msg.CallId)
 
 		// Handle database updates based on message type
 		switch msg.Type {
 		case gen.CallMessage_INITIATE:
 			callId, err := s.db.CreateCall(msg.SenderId, msg.ReceiverId, "video", "")
-			if err == nil {
+			if err != nil {
+				log.Printf("[CALL] Failed to create call in DB: %v", err)
+			} else {
 				msg.CallId = callId
+				log.Printf("[CALL] New call created: %s", callId)
 			}
+			// Route to receiver
+			delivered := s.hub.BroadcastCall(msg)
+			log.Printf("[CALL] INITIATE from %s to %s delivered: %v", msg.SenderId, msg.ReceiverId, delivered)
+
+			// Also send back to sender so they get the generated call_id
+			senderSignal := *msg
+			senderSignal.ReceiverId = msg.SenderId
+			s.hub.BroadcastCall(&senderSignal)
+
 			// Always try to send push for INITIATE to wake up the receiver
 			s.sendCallPushNotification(msg.ReceiverId, msg.SenderId, msg.CallId)
+			continue // Already broadcasted above
 		case gen.CallMessage_ACCEPT:
+			log.Printf("[CALL] Accepted: %s", msg.CallId)
 			_ = s.db.UpdateCallStatus(msg.CallId, "active")
 		case gen.CallMessage_REJECT:
+			log.Printf("[CALL] Rejected: %s", msg.CallId)
 			_ = s.db.UpdateCallStatus(msg.CallId, "rejected")
 		case gen.CallMessage_HANGUP:
+			log.Printf("[CALL] Hung up: %s", msg.CallId)
 			_ = s.db.UpdateCallStatus(msg.CallId, "completed")
 		}
 
 		// Broadcast message to receiver
-		s.hub.BroadcastCall(msg)
+		delivered := s.hub.BroadcastCall(msg)
+		if !delivered && msg.Type != gen.CallMessage_INITIATE {
+			log.Printf("[CALL] Warning: Signal %s not delivered to %s (stream not found)",
+				msg.Type.String(), msg.ReceiverId)
+		}
+
+		// Also send back to sender for INITIATE so they get the generated call_id
+		if msg.Type == gen.CallMessage_INITIATE {
+			senderSignal := *msg
+			senderSignal.ReceiverId = msg.SenderId // Route back to sender
+			s.hub.BroadcastCall(&senderSignal)
+		}
 	}
 }
 
