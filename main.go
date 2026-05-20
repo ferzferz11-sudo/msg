@@ -111,7 +111,7 @@ func main() {
 			MaxConnectionAge:      30 * time.Minute,
 			MaxConnectionAgeGrace: 5 * time.Second,
 			Time:                  20 * time.Second, // Ping clients every 20s
-			Timeout:               10 * time.Second, // Allow 10s for response (better for mobile)
+			Timeout:               20 * time.Second, // Allow 20s for response (lenient for emulators/mobile)
 		}),
 	)
 

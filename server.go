@@ -27,7 +27,7 @@ import (
 	"firebase.google.com/go/v4/messaging"
 )
 
-const ServerVersion = "1.0.6.0"
+const ServerVersion = "1.0.6.2"
 
 // server implements the gRPC ChatService interface
 type server struct {
@@ -458,7 +458,9 @@ func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
 			return nil
 		}
 		if err != nil {
-			log.Printf("[CALL] Error receiving signal: %v", err)
+			if err != context.Canceled {
+				log.Printf("[CALL] Error receiving signal: %v", err)
+			}
 			return err
 		}
 
