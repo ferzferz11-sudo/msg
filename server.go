@@ -27,7 +27,7 @@ import (
 	"firebase.google.com/go/v4/messaging"
 )
 
-const ServerVersion = "1.0.6.2"
+const ServerVersion = "1.0.6.3"
 
 // server implements the gRPC ChatService interface
 type server struct {
@@ -473,6 +473,11 @@ func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
 		log.Printf("[CALL] Signal: %s | From: %s | To: %s | CallID: %s",
 			msg.Type.String(), msg.SenderId, msg.ReceiverId, msg.CallId)
 
+		// If this is just an identity signal, we've already updated the name above
+		if msg.ReceiverId == "" && msg.Payload == "IDENTITY" {
+			continue
+		}
+
 		// Handle database updates based on message type
 		switch msg.Type {
 		case gen.CallMessage_INITIATE:
@@ -483,18 +488,20 @@ func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
 				msg.CallId = callId
 				log.Printf("[CALL] New call created: %s", callId)
 			}
-			// Route to receiver
+
+			// 1. Route to receiver
 			delivered := s.hub.BroadcastCall(msg)
 			log.Printf("[CALL] INITIATE from %s to %s delivered: %v", msg.SenderId, msg.ReceiverId, delivered)
 
-			// Also send back to sender so they get the generated call_id
+			// 2. Route back to sender so they get the generated call_id
 			senderSignal := *msg
 			senderSignal.ReceiverId = msg.SenderId
 			s.hub.BroadcastCall(&senderSignal)
 
-			// Always try to send push for INITIATE to wake up the receiver
+			// 3. Send push to wake up receiver
 			s.sendCallPushNotification(msg.ReceiverId, msg.SenderId, msg.CallId)
-			continue // Already broadcasted above
+			continue
+
 		case gen.CallMessage_ACCEPT:
 			log.Printf("[CALL] Accepted: %s", msg.CallId)
 			_ = s.db.UpdateCallStatus(msg.CallId, "active")
@@ -506,18 +513,11 @@ func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
 			_ = s.db.UpdateCallStatus(msg.CallId, "completed")
 		}
 
-		// Broadcast message to receiver
+		// Broadcast WebRTC signals (OFFER, ANSWER, ICE) to partner
 		delivered := s.hub.BroadcastCall(msg)
-		if !delivered && msg.Type != gen.CallMessage_INITIATE {
-			log.Printf("[CALL] Warning: Signal %s not delivered to %s (stream not found)",
+		if !delivered {
+			log.Printf("[CALL] Warning: Signal %s not delivered to %s (offline)",
 				msg.Type.String(), msg.ReceiverId)
-		}
-
-		// Also send back to sender for INITIATE so they get the generated call_id
-		if msg.Type == gen.CallMessage_INITIATE {
-			senderSignal := *msg
-			senderSignal.ReceiverId = msg.SenderId // Route back to sender
-			s.hub.BroadcastCall(&senderSignal)
 		}
 	}
 }
