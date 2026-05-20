@@ -2,6 +2,25 @@
 
 **Author:** Pavel Davydov (ferz)
 
+## [1.0.6.0] - 2026-05-10
+- **Major Feature Update: Video Calls (WebRTC)**
+  - **Server: Signaling & Persistence**
+    - Added `calls` table for call history and status tracking.
+    - Implemented `CallSession` bidirectional gRPC stream for real-time signaling.
+    - Automated call status management (INITIATE, ACCEPT, REJECT, HANGUP).
+    - Added High-Priority FCM Push notifications for incoming calls to wake up background devices.
+  - **Android Client:**
+    - Integrated Google WebRTC for professional-grade P2P video/audio communication.
+    - Implemented `CallManager` for centralized call lifecycle management.
+    - New `CallActivity` with full-screen video, remote/local preview, and in-call controls.
+    - Added high-priority incoming call handling in background mode via FCM.
+    - Integrated video call action in chat toolbars for direct P2P connection.
+  - **Infrastructure:**
+    - Updated `messenger.proto` with comprehensive `CallMessage` schema.
+    - Added database indexes for fast call history retrieval.
+  - Server version: 1.0.6.0
+  - Android version: 1.0.6.0
+
 ## [1.0.3.5] - 2026-05-05
 - **Drafts & Mutes Migration to User ID**
   - **Server: Database Schema**
