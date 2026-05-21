@@ -27,7 +27,7 @@ import (
 	"firebase.google.com/go/v4/messaging"
 )
 
-const ServerVersion = "1.0.6.4"
+const ServerVersion = "1.0.6.5"
 
 // server implements the gRPC ChatService interface
 type server struct {
@@ -462,9 +462,8 @@ func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
 	defer func() {
 		s.hub.UnregisterCall(stream)
 		if currentUserId != "" {
-			log.Printf("[CALL] Stream closed for user ID: %s", currentUserId)
-			// Find active call and notify partner about disconnect
-			// This prevents ghost calls when one side crashes
+			username := s.resolveUsername(currentUserId)
+			log.Printf("[CALL] Stream closed: %s (%s)", currentUserId, username)
 			s.handleAbruptDisconnect(currentUserId)
 		}
 	}()
@@ -475,7 +474,8 @@ func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
 			return nil
 		}
 		if err != nil {
-			if err != context.Canceled {
+			// Don't log normal connection closures as errors
+			if err != context.Canceled && !strings.Contains(err.Error(), "transport is closing") {
 				log.Printf("[CALL] Error receiving signal: %v", err)
 			}
 			return err
@@ -488,16 +488,19 @@ func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
 		if currentUserId == "" && msg.SenderId != "" {
 			currentUserId = msg.SenderId
 			s.hub.UpdateCallName(stream, currentUserId)
-			log.Printf("[CALL] Stream identified for user ID: %s", currentUserId)
+			username := s.resolveUsername(currentUserId)
+			log.Printf("[CALL] Stream identified: %s (%s)", currentUserId, username)
 		}
 
-		log.Printf("[CALL] Signal: %s | From: %s | To: %s | CallID: %s",
-			msg.Type.String(), msg.SenderId, msg.ReceiverId, msg.CallId)
-
-		// If this is just an identity signal, we've already updated the name above
+		// Silence identity signals to reduce log volume
 		if msg.ReceiverId == "" && msg.Payload == "IDENTITY" {
 			continue
 		}
+
+		senderName := s.resolveUsername(msg.SenderId)
+		receiverName := s.resolveUsername(msg.ReceiverId)
+		log.Printf("[CALL] Signal: %s | From: %s (%s) | To: %s (%s) | CallID: %s",
+			msg.Type.String(), msg.SenderId, senderName, msg.ReceiverId, receiverName, msg.CallId)
 
 		// Handle database updates based on message type
 		switch msg.Type {
