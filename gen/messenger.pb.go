@@ -1127,8 +1127,9 @@ type ChatInfo struct {
 	Creator             string                 `protobuf:"bytes,8,opt,name=creator,proto3" json:"creator,omitempty"`
 	LastMessageText     string                 `protobuf:"bytes,9,opt,name=last_message_text,json=lastMessageText,proto3" json:"last_message_text,omitempty"`
 	AvatarUrl           string                 `protobuf:"bytes,10,opt,name=avatar_url,json=avatarUrl,proto3" json:"avatar_url,omitempty"`
-	LastMessageUsername string                 `protobuf:"bytes,11,opt,name=last_message_username,json=lastMessageUsername,proto3" json:"last_message_username,omitempty"`
-	LastMessageHasImage bool                   `protobuf:"varint,12,opt,name=last_message_has_image,json=lastMessageHasImage,proto3" json:"last_message_has_image,omitempty"`
+	FullAvatarUrl       string                 `protobuf:"bytes,11,opt,name=full_avatar_url,json=fullAvatarUrl,proto3" json:"full_avatar_url,omitempty"`
+	LastMessageUsername string                 `protobuf:"bytes,12,opt,name=last_message_username,json=lastMessageUsername,proto3" json:"last_message_username,omitempty"`
+	LastMessageHasImage bool                   `protobuf:"varint,13,opt,name=last_message_has_image,json=lastMessageHasImage,proto3" json:"last_message_has_image,omitempty"`
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache
 }
@@ -1229,6 +1230,13 @@ func (x *ChatInfo) GetLastMessageText() string {
 func (x *ChatInfo) GetAvatarUrl() string {
 	if x != nil {
 		return x.AvatarUrl
+	}
+	return ""
+}
+
+func (x *ChatInfo) GetFullAvatarUrl() string {
+	if x != nil {
+		return x.FullAvatarUrl
 	}
 	return ""
 }
@@ -6046,7 +6054,7 @@ const file_messenger_proto_rawDesc = "" +
 	"\x05token\x18\x02 \x01(\tR\x05token\x12!\n" +
 	"\fpush_enabled\x18\x03 \x01(\bR\vpushEnabled\")\n" +
 	"\rTokenResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess\"\xda\x03\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\"\x82\x04\n" +
 	"\bChatInfo\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
@@ -6060,9 +6068,10 @@ const file_messenger_proto_rawDesc = "" +
 	"\x11last_message_text\x18\t \x01(\tR\x0flastMessageText\x12\x1d\n" +
 	"\n" +
 	"avatar_url\x18\n" +
-	" \x01(\tR\tavatarUrl\x122\n" +
-	"\x15last_message_username\x18\v \x01(\tR\x13lastMessageUsername\x123\n" +
-	"\x16last_message_has_image\x18\f \x01(\bR\x13lastMessageHasImage\"F\n" +
+	" \x01(\tR\tavatarUrl\x12&\n" +
+	"\x0ffull_avatar_url\x18\v \x01(\tR\rfullAvatarUrl\x122\n" +
+	"\x15last_message_username\x18\f \x01(\tR\x13lastMessageUsername\x123\n" +
+	"\x16last_message_has_image\x18\r \x01(\bR\x13lastMessageHasImage\"F\n" +
 	"\x0fGetChatsRequest\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12\x17\n" +
 	"\auser_id\x18\x02 \x01(\tR\x06userId\"=\n" +

@@ -612,6 +612,7 @@ func (s *server) GetAllChats(ctx context.Context, req *gen.GetAllChatsRequest) (
 			Creator:             c.Creator,
 			LastMessageText:     c.LastMessageText,
 			AvatarUrl:           c.AvatarURL,
+			FullAvatarUrl:       c.FullAvatarURL,
 			LastMessageUsername: c.LastMessageUsername,
 			LastMessageHasImage: c.LastMessageHasImage,
 		})
@@ -847,6 +848,7 @@ func (s *server) GetChats(_ context.Context, req *gen.GetChatsRequest) (*gen.Get
 			Creator:             c.Creator,
 			LastMessageText:     c.LastMessageText,
 			AvatarUrl:           c.AvatarURL,
+			FullAvatarUrl:       c.FullAvatarURL,
 			LastMessageUsername: c.LastMessageUsername,
 			LastMessageHasImage: c.LastMessageHasImage,
 		})

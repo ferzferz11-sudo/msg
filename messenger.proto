@@ -114,8 +114,9 @@ message ChatInfo {
   string creator = 8;
   string last_message_text = 9;
   string avatar_url = 10;
-  string last_message_username = 11;
-  bool last_message_has_image = 12;
+  string full_avatar_url = 11;
+  string last_message_username = 12;
+  bool last_message_has_image = 13;
 }
 
 message GetChatsRequest {
