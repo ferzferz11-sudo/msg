@@ -2,7 +2,7 @@
 
 **Author:** Pavel Davydov (ferz)
 
-**Version:** 1.0.3.5
+**Version:** 1.0.6.8
 
 A real-time secure messaging application with gRPC server and multiple client implementations.
 
@@ -108,6 +108,7 @@ LavenderMessenger/
   - Client connection management
   - Message broadcasting and encryption
   - Database integration for message persistence
+  - Administrative actions (Admin Password Reset)
 
 - **`db.go`** - Database operations and PostgreSQL integration
   - PostgreSQL connection management
@@ -171,7 +172,8 @@ LavenderMessenger/
   - Custom lavender logo and branding
   - Avatar display in chat list and user list
   - **Background APK downloading and update system**
-  - Version: 1.0.6.6
+  - **Super Admin tools: User/Chat management and Password Reset**
+  - Version: 1.0.6.8
 
 - **`console/main.go`** - Console client application (primary CLI client)
   - YAML-based configuration (no .env required)
@@ -281,6 +283,7 @@ LavenderMessenger/
 - **SQL NULL handling**: Fixed scanning error in `GetUserChats` when `last_message_time` is NULL for empty chats. Now uses `sql.NullTime` to properly handle NULL values from the MAX() subquery.
 
 ### Features
+- **Admin Password Reset**: Super Admins can now securely reset any user's password directly from the admin panel.
 - **Background Android Updates**: Implemented `WorkManager` based background downloading for Android APKs with progress notifications and auto-navigation to install.
 - **Improved gRPC Reliability**: Fixed reconnection race conditions on Android to ensure messages sent while offline are delivered immediately upon reconnection.
 - **Push notification improvements**: Added `room_id` to push notification data payload for proper chat navigation on notification click.

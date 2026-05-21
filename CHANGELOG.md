@@ -2,6 +2,19 @@
 
 **Author:** Pavel Davydov (ferz)
 
+## [1.0.6.8] - 2026-05-25
+- **Admin Tools Enhancement**
+  - **Server:**
+    - Implemented `AdminUpdatePassword` gRPC method allowing Super Admins to reset user passwords.
+    - Added server-side verification to ensure only Super Admins can execute password resets.
+    - Updated `server.go` with version constant 1.0.6.8.
+  - **Android Client:**
+    - Integrated "Change Password" action in the Super Admin panel.
+    - Dynamic toolbar icon appears when exactly one user is selected in the admin list.
+    - Simplified reset dialog for admins (hides old password requirement).
+  - Server version: 1.0.6.8
+  - Android version: 1.0.6.8
+
 ## [1.0.6.6] - 2026-05-21
 - **Background Updates & Reliability (Android)**
   - **Android Client:**
