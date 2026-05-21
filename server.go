@@ -957,6 +957,34 @@ func (s *server) UpdatePassword(_ context.Context, req *gen.UpdatePasswordReques
 	}, nil
 }
 
+// AdminUpdatePassword allows a super admin to reset any user's password
+func (s *server) AdminUpdatePassword(_ context.Context, req *gen.AdminUpdatePasswordRequest) (*gen.AdminUpdatePasswordResponse, error) {
+	// Verify admin status
+	if !s.db.IsSuperAdmin(req.AdminUsername) {
+		log.Printf("Unauthorized AdminUpdatePassword attempt by %s", req.AdminUsername)
+		return &gen.AdminUpdatePasswordResponse{
+			Success: false,
+			Message: "Unauthorized: only super admins can reset passwords",
+		}, nil
+	}
+
+	// Update password
+	err := s.db.UpdatePassword(req.TargetUsername, req.NewPassword)
+	if err != nil {
+		log.Printf("Failed to admin-reset password for %s: %v", req.TargetUsername, err)
+		return &gen.AdminUpdatePasswordResponse{
+			Success: false,
+			Message: err.Error(),
+		}, err
+	}
+
+	log.Printf("Admin %s reset password for user: %s", req.AdminUsername, req.TargetUsername)
+	return &gen.AdminUpdatePasswordResponse{
+		Success: true,
+		Message: "Password reset successfully",
+	}, nil
+}
+
 // MarkRead marks messages in a room as read for a user
 func (s *server) MarkRead(_ context.Context, req *gen.MarkReadRequest) (*gen.MarkReadResponse, error) {
 	if strings.HasPrefix(req.RoomId, "favorites_") {

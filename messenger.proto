@@ -168,6 +168,17 @@ message UpdatePasswordResponse {
   string message = 2;
 }
 
+message AdminUpdatePasswordRequest {
+  string target_username = 1;
+  string new_password = 2;
+  string admin_username = 3;
+}
+
+message AdminUpdatePasswordResponse {
+  bool success = 1;
+  string message = 2;
+}
+
 message MarkReadRequest {
   string room_id = 1;
   string username = 2;
@@ -594,6 +605,7 @@ service ChatService {
   rpc CreateGroupChat(CreateGroupChatRequest) returns (CreateGroupChatResponse);
   rpc UpdateUsername(UpdateUsernameRequest) returns (UpdateUsernameResponse);
   rpc UpdatePassword(UpdatePasswordRequest) returns (UpdatePasswordResponse);
+  rpc AdminUpdatePassword(AdminUpdatePasswordRequest) returns (AdminUpdatePasswordResponse);
   rpc MarkRead(MarkReadRequest) returns (MarkReadResponse);
   rpc UpdateAvatar(UpdateAvatarRequest) returns (UpdateAvatarResponse);
   rpc UpdateProfile(UpdateProfileRequest) returns (UpdateProfileResponse);

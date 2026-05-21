@@ -35,6 +35,7 @@ const (
 	ChatService_CreateGroupChat_FullMethodName      = "/messenger.ChatService/CreateGroupChat"
 	ChatService_UpdateUsername_FullMethodName       = "/messenger.ChatService/UpdateUsername"
 	ChatService_UpdatePassword_FullMethodName       = "/messenger.ChatService/UpdatePassword"
+	ChatService_AdminUpdatePassword_FullMethodName  = "/messenger.ChatService/AdminUpdatePassword"
 	ChatService_MarkRead_FullMethodName             = "/messenger.ChatService/MarkRead"
 	ChatService_UpdateAvatar_FullMethodName         = "/messenger.ChatService/UpdateAvatar"
 	ChatService_UpdateProfile_FullMethodName        = "/messenger.ChatService/UpdateProfile"
@@ -92,6 +93,7 @@ type ChatServiceClient interface {
 	CreateGroupChat(ctx context.Context, in *CreateGroupChatRequest, opts ...grpc.CallOption) (*CreateGroupChatResponse, error)
 	UpdateUsername(ctx context.Context, in *UpdateUsernameRequest, opts ...grpc.CallOption) (*UpdateUsernameResponse, error)
 	UpdatePassword(ctx context.Context, in *UpdatePasswordRequest, opts ...grpc.CallOption) (*UpdatePasswordResponse, error)
+	AdminUpdatePassword(ctx context.Context, in *AdminUpdatePasswordRequest, opts ...grpc.CallOption) (*AdminUpdatePasswordResponse, error)
 	MarkRead(ctx context.Context, in *MarkReadRequest, opts ...grpc.CallOption) (*MarkReadResponse, error)
 	UpdateAvatar(ctx context.Context, in *UpdateAvatarRequest, opts ...grpc.CallOption) (*UpdateAvatarResponse, error)
 	UpdateProfile(ctx context.Context, in *UpdateProfileRequest, opts ...grpc.CallOption) (*UpdateProfileResponse, error)
@@ -300,6 +302,16 @@ func (c *chatServiceClient) UpdatePassword(ctx context.Context, in *UpdatePasswo
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(UpdatePasswordResponse)
 	err := c.cc.Invoke(ctx, ChatService_UpdatePassword_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) AdminUpdatePassword(ctx context.Context, in *AdminUpdatePasswordRequest, opts ...grpc.CallOption) (*AdminUpdatePasswordResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AdminUpdatePasswordResponse)
+	err := c.cc.Invoke(ctx, ChatService_AdminUpdatePassword_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -676,6 +688,7 @@ type ChatServiceServer interface {
 	CreateGroupChat(context.Context, *CreateGroupChatRequest) (*CreateGroupChatResponse, error)
 	UpdateUsername(context.Context, *UpdateUsernameRequest) (*UpdateUsernameResponse, error)
 	UpdatePassword(context.Context, *UpdatePasswordRequest) (*UpdatePasswordResponse, error)
+	AdminUpdatePassword(context.Context, *AdminUpdatePasswordRequest) (*AdminUpdatePasswordResponse, error)
 	MarkRead(context.Context, *MarkReadRequest) (*MarkReadResponse, error)
 	UpdateAvatar(context.Context, *UpdateAvatarRequest) (*UpdateAvatarResponse, error)
 	UpdateProfile(context.Context, *UpdateProfileRequest) (*UpdateProfileResponse, error)
@@ -768,6 +781,9 @@ func (UnimplementedChatServiceServer) UpdateUsername(context.Context, *UpdateUse
 }
 func (UnimplementedChatServiceServer) UpdatePassword(context.Context, *UpdatePasswordRequest) (*UpdatePasswordResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method UpdatePassword not implemented")
+}
+func (UnimplementedChatServiceServer) AdminUpdatePassword(context.Context, *AdminUpdatePasswordRequest) (*AdminUpdatePasswordResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method AdminUpdatePassword not implemented")
 }
 func (UnimplementedChatServiceServer) MarkRead(context.Context, *MarkReadRequest) (*MarkReadResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method MarkRead not implemented")
@@ -1146,6 +1162,24 @@ func _ChatService_UpdatePassword_Handler(srv interface{}, ctx context.Context, d
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ChatServiceServer).UpdatePassword(ctx, req.(*UpdatePasswordRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_AdminUpdatePassword_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AdminUpdatePasswordRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).AdminUpdatePassword(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_AdminUpdatePassword_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).AdminUpdatePassword(ctx, req.(*AdminUpdatePasswordRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1838,6 +1872,10 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdatePassword",
 			Handler:    _ChatService_UpdatePassword_Handler,
+		},
+		{
+			MethodName: "AdminUpdatePassword",
+			Handler:    _ChatService_AdminUpdatePassword_Handler,
 		},
 		{
 			MethodName: "MarkRead",
