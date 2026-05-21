@@ -27,7 +27,7 @@ import (
 	"firebase.google.com/go/v4/messaging"
 )
 
-const ServerVersion = "1.0.6.3"
+const ServerVersion = "1.0.6.4"
 
 // server implements the gRPC ChatService interface
 type server struct {
@@ -439,13 +439,30 @@ func (s *server) Typing(stream gen.ChatService_TypingServer) error {
 	}
 }
 
+// resolveUserId converts a potential username to a user ID if needed
+func (s *server) resolveUserId(identifier string) string {
+	if identifier == "" {
+		return ""
+	}
+	// Check if it's a UUID
+	if _, err := uuid.Parse(identifier); err == nil {
+		return identifier
+	}
+	// It's a username, try to get the ID
+	id, err := s.db.GetUserIdByUsername(identifier)
+	if err == nil && id != "" {
+		return id
+	}
+	return identifier
+}
+
 func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
 	var currentUserId string
 	s.hub.RegisterCall(stream)
 	defer func() {
 		s.hub.UnregisterCall(stream)
 		if currentUserId != "" {
-			log.Printf("[CALL] Stream closed for user: %s", currentUserId)
+			log.Printf("[CALL] Stream closed for user ID: %s", currentUserId)
 			// Find active call and notify partner about disconnect
 			// This prevents ghost calls when one side crashes
 			s.handleAbruptDisconnect(currentUserId)
@@ -464,10 +481,14 @@ func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
 			return err
 		}
 
+		// Normalize IDs to UUIDs for stable routing
+		msg.SenderId = s.resolveUserId(msg.SenderId)
+		msg.ReceiverId = s.resolveUserId(msg.ReceiverId)
+
 		if currentUserId == "" && msg.SenderId != "" {
 			currentUserId = msg.SenderId
 			s.hub.UpdateCallName(stream, currentUserId)
-			log.Printf("[CALL] Stream identified for user: %s", currentUserId)
+			log.Printf("[CALL] Stream identified for user ID: %s", currentUserId)
 		}
 
 		log.Printf("[CALL] Signal: %s | From: %s | To: %s | CallID: %s",
