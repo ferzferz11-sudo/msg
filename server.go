@@ -27,7 +27,7 @@ import (
 	"firebase.google.com/go/v4/messaging"
 )
 
-const ServerVersion = "1.0.6.8"
+const ServerVersion = "1.0.6.9"
 
 // server implements the gRPC ChatService interface
 type server struct {
@@ -613,6 +613,7 @@ func (s *server) GetAllChats(ctx context.Context, req *gen.GetAllChatsRequest) (
 			LastMessageText:     c.LastMessageText,
 			AvatarUrl:           c.AvatarURL,
 			LastMessageUsername: c.LastMessageUsername,
+			LastMessageHasImage: c.LastMessageHasImage,
 		})
 	}
 
@@ -668,19 +669,6 @@ func (s *server) GetHistory(_ context.Context, req *gen.GetHistoryRequest) (*gen
 		// Check if decrypted text is empty (skip ONLY if NO media at all)
 		if decryptedText == "" && m.ImageURL == "" && m.VoiceURL == "" {
 			log.Printf("Warning: message %s decrypted to empty string, skipping", m.MessageID)
-			continue
-		}
-
-		// Skip legacy "Image" placeholder messages where imageUrl was never stored
-		// These are old messages sent before image_url column existed in DB
-		if decryptedText == "Image" && m.ImageURL == "" {
-			log.Printf("Skipping legacy image placeholder message %s (no imageUrl stored)", m.MessageID)
-			continue
-		}
-
-		// Skip legacy "Voice message" placeholder messages where voiceUrl was never stored
-		if decryptedText == "Voice message" && m.VoiceURL == "" {
-			log.Printf("Skipping legacy voice placeholder message %s (no voiceUrl stored)", m.MessageID)
 			continue
 		}
 
@@ -860,6 +848,7 @@ func (s *server) GetChats(_ context.Context, req *gen.GetChatsRequest) (*gen.Get
 			LastMessageText:     c.LastMessageText,
 			AvatarUrl:           c.AvatarURL,
 			LastMessageUsername: c.LastMessageUsername,
+			LastMessageHasImage: c.LastMessageHasImage,
 		})
 	}
 

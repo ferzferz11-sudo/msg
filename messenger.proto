@@ -17,7 +17,7 @@ message Message {
   string room_id = 10; // Room/chat ID for the message
   bool is_read = 11;
   string avatar_url = 12; // URL of the user's avatar
-  string image_url = 13; // URL of the attached image (legacy, single image)
+  string image_url = 13; // URL of the attached image
   repeated string image_urls = 20; // URLs of attached images (for gallery support)
   bool edited = 14; // Whether the message has been edited
   string client_version = 15; // Client application version
@@ -115,6 +115,7 @@ message ChatInfo {
   string last_message_text = 9;
   string avatar_url = 10;
   string last_message_username = 11;
+  bool last_message_has_image = 12;
 }
 
 message GetChatsRequest {

@@ -364,8 +364,9 @@ func (db *DB) GetAllChats() ([]struct {
 	ID, Name, Type, Participants, Creator, LastMessageText, AvatarURL, LastMessageUsername string
 	CreatedAt, LastMessageTime                                                             time.Time
 	UnreadCount                                                                            int
+	LastMessageHasImage                                                                    bool
 }, error) {
-	query := `WITH last_messages AS (SELECT DISTINCT ON (room_id) room_id, created_at, encrypted_text, username FROM messages ORDER BY room_id, created_at DESC) SELECT c.id, c.name, c.type, c.participants, c.created_at, COALESCE(c.creator_username, ''), COALESCE(lm.created_at, c.created_at), COALESCE(lm.encrypted_text, ''::bytea), COALESCE(c.avatar_url, ''), COALESCE(lm.username, '') FROM chats c LEFT JOIN last_messages lm ON c.id = lm.room_id ORDER BY 7 DESC`
+	query := `WITH last_messages AS (SELECT DISTINCT ON (room_id) room_id, created_at, encrypted_text, username, image_url, image_urls FROM messages ORDER BY room_id, created_at DESC) SELECT c.id, c.name, c.type, c.participants, c.created_at, COALESCE(c.creator_username, ''), COALESCE(lm.created_at, c.created_at), COALESCE(lm.encrypted_text, ''::bytea), COALESCE(c.avatar_url, ''), COALESCE(lm.username, ''), (COALESCE(lm.image_url, '') != '' OR COALESCE(lm.image_urls, '[]') != '[]') FROM chats c LEFT JOIN last_messages lm ON c.id = lm.room_id ORDER BY 7 DESC`
 	rows, err := db.Query(query)
 	if err != nil {
 		return nil, err
@@ -375,20 +376,23 @@ func (db *DB) GetAllChats() ([]struct {
 		ID, Name, Type, Participants, Creator, LastMessageText, AvatarURL, LastMessageUsername string
 		CreatedAt, LastMessageTime                                                             time.Time
 		UnreadCount                                                                            int
+		LastMessageHasImage                                                                    bool
 	}
 	for rows.Next() {
 		var c struct {
 			ID, Name, Type, Participants, Creator, Avatar, LastUser string
 			CreatedAt, LastTime                                     time.Time
 			Enc                                                     []byte
+			HasImg                                                  bool
 		}
-		rows.Scan(&c.ID, &c.Name, &c.Type, &c.Participants, &c.CreatedAt, &c.Creator, &c.LastTime, &c.Enc, &c.Avatar, &c.LastUser)
+		rows.Scan(&c.ID, &c.Name, &c.Type, &c.Participants, &c.CreatedAt, &c.Creator, &c.LastTime, &c.Enc, &c.Avatar, &c.LastUser, &c.HasImg)
 		txt, _ := decrypt(c.Enc)
 		res = append(res, struct {
 			ID, Name, Type, Participants, Creator, LastMessageText, AvatarURL, LastMessageUsername string
 			CreatedAt, LastMessageTime                                                             time.Time
 			UnreadCount                                                                            int
-		}{c.ID, c.Name, c.Type, c.Participants, c.Creator, txt, c.Avatar, c.LastUser, c.CreatedAt, c.LastTime, 0})
+			LastMessageHasImage                                                                    bool
+		}{c.ID, c.Name, c.Type, c.Participants, c.Creator, txt, c.Avatar, c.LastUser, c.CreatedAt, c.LastTime, 0, c.HasImg})
 	}
 	return res, nil
 }
@@ -397,8 +401,9 @@ func (db *DB) GetUserChats(uid, user string) ([]struct {
 	ID, Name, Type, Participants, Creator, LastMessageText, AvatarURL, LastMessageUsername string
 	CreatedAt, LastMessageTime                                                             time.Time
 	UnreadCount                                                                            int
+	LastMessageHasImage                                                                    bool
 }, error) {
-	query := `WITH last_messages AS (SELECT DISTINCT ON (room_id) room_id, created_at, encrypted_text, username FROM messages ORDER BY room_id, created_at DESC), unread_counts AS (SELECT room_id, COUNT(*) as count FROM messages WHERE is_read = FALSE AND username != $1 GROUP BY room_id) SELECT c.id, c.name, c.type, c.participants, c.created_at, COALESCE(uc.count, 0), COALESCE(lm.created_at, c.created_at), COALESCE(c.creator_username, ''), COALESCE(lm.encrypted_text, ''::bytea), COALESCE(c.avatar_url, ''), COALESCE(lm.username, '') FROM chats c LEFT JOIN last_messages lm ON c.id = lm.room_id LEFT JOIN unread_counts uc ON c.id = uc.room_id WHERE c.participants::jsonb @> jsonb_build_array($2::text) ORDER BY 7 DESC`
+	query := `WITH last_messages AS (SELECT DISTINCT ON (room_id) room_id, created_at, encrypted_text, username, image_url, image_urls FROM messages ORDER BY room_id, created_at DESC), unread_counts AS (SELECT room_id, COUNT(*) as count FROM messages WHERE is_read = FALSE AND username != $1 GROUP BY room_id) SELECT c.id, c.name, c.type, c.participants, c.created_at, COALESCE(uc.count, 0), COALESCE(lm.created_at, c.created_at), COALESCE(c.creator_username, ''), COALESCE(lm.encrypted_text, ''::bytea), COALESCE(c.avatar_url, ''), COALESCE(lm.username, ''), (COALESCE(lm.image_url, '') != '' OR COALESCE(lm.image_urls, '[]') != '[]') FROM chats c LEFT JOIN last_messages lm ON c.id = lm.room_id LEFT JOIN unread_counts uc ON c.id = uc.room_id WHERE c.participants::jsonb @> jsonb_build_array($2::text) ORDER BY 7 DESC`
 	rows, err := db.Query(query, user, user)
 	if err != nil {
 		return nil, err
@@ -408,6 +413,7 @@ func (db *DB) GetUserChats(uid, user string) ([]struct {
 		ID, Name, Type, Participants, Creator, LastMessageText, AvatarURL, LastMessageUsername string
 		CreatedAt, LastMessageTime                                                             time.Time
 		UnreadCount                                                                            int
+		LastMessageHasImage                                                                    bool
 	}
 	for rows.Next() {
 		var c struct {
@@ -415,14 +421,16 @@ func (db *DB) GetUserChats(uid, user string) ([]struct {
 			CreatedAt, LastTime                                     time.Time
 			Enc                                                     []byte
 			Unread                                                  int
+			HasImg                                                  bool
 		}
-		rows.Scan(&c.ID, &c.Name, &c.Type, &c.Participants, &c.CreatedAt, &c.Unread, &c.LastTime, &c.Creator, &c.Enc, &c.Avatar, &c.LastUser)
+		rows.Scan(&c.ID, &c.Name, &c.Type, &c.Participants, &c.CreatedAt, &c.Unread, &c.LastTime, &c.Creator, &c.Enc, &c.Avatar, &c.LastUser, &c.HasImg)
 		txt, _ := decrypt(c.Enc)
 		res = append(res, struct {
 			ID, Name, Type, Participants, Creator, LastMessageText, AvatarURL, LastMessageUsername string
 			CreatedAt, LastMessageTime                                                             time.Time
 			UnreadCount                                                                            int
-		}{c.ID, c.Name, c.Type, c.Participants, c.Creator, txt, c.Avatar, c.LastUser, c.CreatedAt, c.LastTime, c.Unread})
+			LastMessageHasImage                                                                    bool
+		}{c.ID, c.Name, c.Type, c.Participants, c.Creator, txt, c.Avatar, c.LastUser, c.CreatedAt, c.LastTime, c.Unread, c.HasImg})
 	}
 	return res, nil
 }
