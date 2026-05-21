@@ -27,6 +27,7 @@ message Message {
   bool register = 19; // Flag to register a new user
   string device_id = 21; // Device ID for tracking active sessions
   string device_name = 22; // Device name for displaying in settings
+  string user_id = 23; // Stable user ID (UUID)
 }
 
 message Reaction {
@@ -170,6 +171,7 @@ message UpdatePasswordResponse {
 message MarkReadRequest {
   string room_id = 1;
   string username = 2;
+  string user_id = 3;
 }
 
 message MarkReadResponse {
@@ -180,6 +182,7 @@ message UpdateAvatarRequest {
   string username = 1;
   string avatar_url = 2;
   string full_avatar_url = 3;
+  string user_id = 4;
 }
 
 message UpdateAvatarResponse {
@@ -191,6 +194,7 @@ message UpdateProfileRequest {
   string username = 1;
   string bio = 2;
   string status = 3;
+  string user_id = 4;
 }
 
 message UpdateProfileResponse {
@@ -262,6 +266,7 @@ message DeleteChatResponse {
 
 message DeleteProfileRequest {
   string username = 1;
+  string user_id = 2;
 }
 
 message DeleteProfileResponse {
@@ -272,6 +277,7 @@ message DeleteProfileResponse {
 message AddContactRequest {
   string username = 1;
   string contact_username = 2;
+  string user_id = 3;
 }
 
 message AddContactResponse {
@@ -282,6 +288,7 @@ message AddContactResponse {
 message RemoveContactRequest {
   string username = 1;
   string contact_username = 2;
+  string user_id = 3;
 }
 
 message RemoveContactResponse {
@@ -291,6 +298,7 @@ message RemoveContactResponse {
 
 message GetContactsRequest {
   string username = 1;
+  string user_id = 2;
 }
 
 message GetContactsResponse {
@@ -299,6 +307,7 @@ message GetContactsResponse {
 
 message GetChatListVersionRequest {
   string username = 1;
+  string user_id = 2;
 }
 
 message GetChatListVersionResponse {
@@ -329,6 +338,7 @@ message CustomTheme {
 
 message GetThemesRequest {
   string username = 1;
+  string user_id = 2;
 }
 
 message GetThemesResponse {
@@ -339,6 +349,7 @@ message GetThemesResponse {
 message SaveThemeRequest {
   string username = 1;
   CustomTheme theme = 2;
+  string user_id = 3;
 }
 
 message SaveThemeResponse {
@@ -349,6 +360,7 @@ message SaveThemeResponse {
 message SetCurrentThemeRequest {
   string username = 1;
   string theme_id = 2;
+  string user_id = 3;
 }
 
 message SetCurrentThemeResponse {
@@ -358,6 +370,7 @@ message SetCurrentThemeResponse {
 message DeleteThemeRequest {
   string username = 1;
   string theme_id = 2;
+  string user_id = 3;
 }
 
 message DeleteThemeResponse {

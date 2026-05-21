@@ -57,7 +57,10 @@ func ConnectDB() (*DB, error) {
 			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='edited') THEN ALTER TABLE messages ADD COLUMN edited BOOLEAN DEFAULT FALSE; END IF;
 			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='voice_url') THEN ALTER TABLE messages ADD COLUMN voice_url VARCHAR(512); END IF;
 			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='duration') THEN ALTER TABLE messages ADD COLUMN duration INTEGER DEFAULT 0; END IF;
-			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='user_id') THEN ALTER TABLE messages ADD COLUMN user_id UUID; END IF;
+			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='user_id') THEN
+				ALTER TABLE messages ADD COLUMN user_id UUID;
+				UPDATE messages m SET user_id = (SELECT id FROM users u WHERE u.username = m.username);
+			END IF;
 		END $$;`,
 		`CREATE TABLE IF NOT EXISTS users (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), username VARCHAR(255) UNIQUE NOT NULL, password_hash VARCHAR(255) NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT NOW())`,
 		`DO $$ BEGIN
@@ -114,11 +117,11 @@ func ConnectDB() (*DB, error) {
 
 func (db *DB) Close() error { return db.DB.Close() }
 
-func (db *DB) SaveMessage(mid, user string, enc []byte, created time.Time, rmid, ruser, rtext, room, img, imgUrls, voice string, dur int32) error {
+func (db *DB) SaveMessage(mid, user, uid string, enc []byte, created time.Time, rmid, ruser, rtext, room, img, imgUrls, voice string, dur int32) error {
 	// Favorites messages are to self, so mark as read immediately
 	isRead := strings.HasPrefix(room, "favorites_")
-	q := `INSERT INTO messages (message_id, username, user_id, encrypted_text, created_at, replied_to_message_id, replied_to_user, replied_to_text, room_id, is_read, image_url, image_urls, voice_url, duration) VALUES ($1, $2::text, (SELECT id FROM users WHERE username=$2::text), $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`
-	_, err := db.Exec(q, mid, user, enc, created, rmid, ruser, rtext, room, isRead, img, imgUrls, voice, dur)
+	q := `INSERT INTO messages (message_id, username, user_id, encrypted_text, created_at, replied_to_message_id, replied_to_user, replied_to_text, room_id, is_read, image_url, image_urls, voice_url, duration) VALUES ($1, $2::text, CASE WHEN $3 ~ '^[0-9a-fA-F-]{36}$' THEN $3::uuid ELSE (SELECT id FROM users WHERE username=$2::text) END, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`
+	_, err := db.Exec(q, mid, user, uid, enc, created, rmid, ruser, rtext, room, isRead, img, imgUrls, voice, dur)
 	if err == nil && room != "" {
 		db.IncrementParticipantsChatListVersion(room)
 	}
@@ -140,10 +143,10 @@ func (db *DB) GetMessages(limit int, room string) ([]struct {
 	var err error
 	if strings.HasPrefix(room, "favorites_") {
 		username := strings.TrimPrefix(room, "favorites_")
-		q := `SELECT COALESCE(m.message_id, ''), m.username, m.encrypted_text, COALESCE(f.created_at, m.created_at), COALESCE(m.replied_to_message_id, ''), COALESCE(m.replied_to_user, ''), COALESCE(m.replied_to_text, ''), COALESCE(m.room_id, ''), COALESCE(m.is_read, FALSE) as is_read, COALESCE(u.avatar_url, ''), COALESCE(m.image_url, ''), COALESCE(m.image_urls, '[]'), COALESCE(m.edited, false), COALESCE(m.voice_url, ''), COALESCE(m.duration, 0) FROM messages m LEFT JOIN users u ON m.username = u.username LEFT JOIN favorites f ON f.message_id = m.message_id AND f.user_id = (SELECT id FROM users WHERE username = $1) WHERE m.room_id = $2 OR f.message_id IS NOT NULL ORDER BY 4 ASC LIMIT $3`
+		q := `SELECT COALESCE(m.message_id, ''), m.username, m.encrypted_text, COALESCE(f.created_at, m.created_at), COALESCE(m.replied_to_message_id, ''), COALESCE(m.replied_to_user, ''), COALESCE(m.replied_to_text, ''), COALESCE(m.room_id, ''), COALESCE(m.is_read, FALSE) as is_read, COALESCE(u.avatar_url, ''), COALESCE(m.image_url, ''), COALESCE(m.image_urls, '[]'), COALESCE(m.edited, false), COALESCE(m.voice_url, ''), COALESCE(m.duration, 0) FROM messages m LEFT JOIN users u ON m.user_id = u.id LEFT JOIN favorites f ON f.message_id = m.message_id AND f.user_id = (SELECT id FROM users WHERE username = $1) WHERE m.room_id = $2 OR f.message_id IS NOT NULL ORDER BY 4 ASC LIMIT $3`
 		rows, err = db.Query(q, username, room, limit)
 	} else {
-		q := `SELECT COALESCE(m.message_id, ''), m.username, m.encrypted_text, m.created_at, COALESCE(m.replied_to_message_id, ''), COALESCE(m.replied_to_user, ''), COALESCE(m.replied_to_text, ''), COALESCE(m.room_id, ''), m.is_read, COALESCE(u.avatar_url, ''), COALESCE(m.image_url, ''), COALESCE(m.image_urls, '[]'), COALESCE(m.edited, false), COALESCE(m.voice_url, ''), COALESCE(m.duration, 0) FROM messages m LEFT JOIN users u ON m.username = u.username WHERE m.room_id = $1 ORDER BY m.created_at DESC LIMIT $2`
+		q := `SELECT COALESCE(m.message_id, ''), m.username, m.encrypted_text, m.created_at, COALESCE(m.replied_to_message_id, ''), COALESCE(m.replied_to_user, ''), COALESCE(m.replied_to_text, ''), COALESCE(m.room_id, ''), m.is_read, COALESCE(u.avatar_url, ''), COALESCE(m.image_url, ''), COALESCE(m.image_urls, '[]'), COALESCE(m.edited, false), COALESCE(m.voice_url, ''), COALESCE(m.duration, 0) FROM messages m LEFT JOIN users u ON m.user_id = u.id WHERE m.room_id = $1 ORDER BY m.created_at DESC LIMIT $2`
 		rows, err = db.Query(q, room, limit)
 	}
 	if err != nil {
@@ -275,7 +278,7 @@ func (db *DB) GetMessageByUUID(id string) (struct {
 		VoiceURL                                                 string
 		Duration                                                 int32
 	}
-	err := db.QueryRow(`SELECT COALESCE(m.message_id, ''), m.username, m.encrypted_text, m.created_at, COALESCE(m.replied_to_message_id, ''), COALESCE(m.replied_to_user, ''), COALESCE(m.replied_to_text, ''), COALESCE(m.room_id, ''), COALESCE(m.is_read, FALSE) as is_read, COALESCE(u.avatar_url, ''), COALESCE(m.image_url, ''), COALESCE(m.image_urls, '[]'), COALESCE(m.edited, false), COALESCE(m.voice_url, ''), COALESCE(m.duration, 0) FROM messages m LEFT JOIN users u ON m.username = u.username WHERE m.message_id = $1`, id).Scan(&r.MessageID, &r.Username, &r.Encrypted, &r.CreatedAt, &r.RepliedToMessageID, &r.RepliedToUser, &r.RepliedToText, &r.RoomID, &r.IsRead, &r.AvatarURL, &r.ImageURL, &r.ImageURLs, &r.Edited, &r.VoiceURL, &r.Duration)
+	err := db.QueryRow(`SELECT COALESCE(m.message_id, ''), m.username, m.encrypted_text, m.created_at, COALESCE(m.replied_to_message_id, ''), COALESCE(m.replied_to_user, ''), COALESCE(m.replied_to_text, ''), COALESCE(m.room_id, ''), COALESCE(m.is_read, FALSE) as is_read, COALESCE(u.avatar_url, ''), COALESCE(m.image_url, ''), COALESCE(m.image_urls, '[]'), COALESCE(m.edited, false), COALESCE(m.voice_url, ''), COALESCE(m.duration, 0) FROM messages m LEFT JOIN users u ON m.user_id = u.id WHERE m.message_id = $1`, id).Scan(&r.MessageID, &r.Username, &r.Encrypted, &r.CreatedAt, &r.RepliedToMessageID, &r.RepliedToUser, &r.RepliedToText, &r.RoomID, &r.IsRead, &r.AvatarURL, &r.ImageURL, &r.ImageURLs, &r.Edited, &r.VoiceURL, &r.Duration)
 	return r, err
 }
 
@@ -425,13 +428,48 @@ func (db *DB) GetUserChats(uid, user string) ([]struct {
 }
 
 func (db *DB) UpdateUsername(old, new string) error {
-	tx, _ := db.Begin()
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
 	defer tx.Rollback()
-	tx.Exec(`UPDATE users SET username=$1 WHERE username=$2`, new, old)
+
+	// 1. Update core user table
+	_, err = tx.Exec(`UPDATE users SET username=$1 WHERE username=$2`, new, old)
+	if err != nil {
+		return err
+	}
+
+	// 2. Update message history
 	tx.Exec(`UPDATE messages SET username=$1 WHERE username=$2`, new, old)
 	tx.Exec(`UPDATE messages SET replied_to_user=$1 WHERE replied_to_user=$2`, new, old)
+
+	// 3. Update reactions
+	tx.Exec(`UPDATE reactions SET username=$1 WHERE username=$2`, new, old)
+
+	// 4. Update chats (creator and participants list)
 	tx.Exec(`UPDATE chats SET creator_username=$1 WHERE creator_username=$2`, new, old)
+	// Update participants JSON array: replace old username with new one
+	// Using jsonb_set for reliable replacement if the column was jsonb, but it's text.
+	// We'll use string replacement for simplicity as it's stored as ["user1", "user2"]
+	tx.Exec(`UPDATE chats SET participants = REPLACE(participants, '"' || $2 || '"', '"' || $1 || '"') WHERE participants LIKE '%' || '"' || $2 || '"' || '%'`, new, old)
+
+	// 5. Update metadata and tokens
+	tx.Exec(`UPDATE user_chat_metadata SET username=$1 WHERE username=$2`, new, old)
 	tx.Exec(`UPDATE user_tokens SET username=$1 WHERE username=$2`, new, old)
+
+	// 6. Update themes
+	tx.Exec(`UPDATE user_themes SET username=$1 WHERE username=$2`, new, old)
+
+	// 7. Update drafts and mutes
+	tx.Exec(`UPDATE draft_messages SET username=$1 WHERE username=$2`, new, old)
+	tx.Exec(`UPDATE draft_messages SET replied_to_user=$1 WHERE replied_to_user=$2`, new, old)
+	tx.Exec(`UPDATE muted_chats SET username=$1 WHERE username=$2`, new, old)
+
+	// 8. Update contacts (both as owner and as a contact for others)
+	tx.Exec(`UPDATE contacts SET username=$1 WHERE username=$2`, new, old)
+	tx.Exec(`UPDATE contacts SET contact_username=$1 WHERE contact_username=$2`, new, old)
+
 	return tx.Commit()
 }
 
@@ -792,7 +830,7 @@ func (db *DB) GetFavorites(uid string) ([]struct {
 
 	q := `SELECT COALESCE(m.message_id, ''), m.username, m.encrypted_text, COALESCE(f.created_at, m.created_at), COALESCE(m.replied_to_message_id, ''), COALESCE(m.replied_to_user, ''), COALESCE(m.replied_to_text, ''), COALESCE(m.room_id, ''), COALESCE(m.is_read, FALSE) as is_read, COALESCE(u.avatar_url, ''), COALESCE(m.image_url, ''), COALESCE(m.image_urls, '[]'), COALESCE(m.edited, false), COALESCE(m.voice_url, ''), COALESCE(m.duration, 0)
 	      FROM messages m
-	      LEFT JOIN users u ON m.username = u.username
+	      LEFT JOIN users u ON m.user_id = u.id
 	      LEFT JOIN favorites f ON f.message_id = m.message_id AND f.user_id = (SELECT id FROM users WHERE username = $1::text)
 	      WHERE m.room_id = 'favorites_' || $1::text OR (f.message_id IS NOT NULL AND f.user_id = (SELECT id FROM users WHERE username = $1::text))
 	      ORDER BY 4 ASC`

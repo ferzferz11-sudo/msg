@@ -2,6 +2,17 @@
 
 **Author:** Pavel Davydov (ferz)
 
+## [1.0.6.6] - 2026-05-21
+- **Background Updates & Reliability (Android)**
+  - **Android Client:**
+    - Implemented **Background APK Downloading** using `WorkManager`. Users now receive a persistent notification with real-time progress and an install prompt upon completion.
+    - Fixed a critical race condition in **gRPC reconnection** where messages sent while offline could be lost or delayed.
+    - Improved **auto-reconnection logic** with exponential backoff and up to 100 retry attempts for better stability on unstable networks.
+    - Migrated to **AGP 9.0** and built-in Kotlin support for modern build performance.
+    - Enabled **KSP2** compatibility for faster annotation processing.
+    - Fully compatible with **Android 14+** foreground service requirements.
+  - Android version: 1.0.6.6
+
 ## [1.0.6.0] - 2026-05-10
 - **Major Feature Update: Video Calls (WebRTC)**
   - **Server: Signaling & Persistence**

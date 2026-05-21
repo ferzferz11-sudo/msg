@@ -107,6 +107,7 @@ type Message struct {
 	Register           bool                   `protobuf:"varint,19,opt,name=register,proto3" json:"register,omitempty"`                               // Flag to register a new user
 	DeviceId           string                 `protobuf:"bytes,21,opt,name=device_id,json=deviceId,proto3" json:"device_id,omitempty"`                // Device ID for tracking active sessions
 	DeviceName         string                 `protobuf:"bytes,22,opt,name=device_name,json=deviceName,proto3" json:"device_name,omitempty"`          // Device name for displaying in settings
+	UserId             string                 `protobuf:"bytes,23,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`                      // Stable user ID (UUID)
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -291,6 +292,13 @@ func (x *Message) GetDeviceId() string {
 func (x *Message) GetDeviceName() string {
 	if x != nil {
 		return x.DeviceName
+	}
+	return ""
+}
+
+func (x *Message) GetUserId() string {
+	if x != nil {
+		return x.UserId
 	}
 	return ""
 }
@@ -1763,6 +1771,7 @@ type MarkReadRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	RoomId        string                 `protobuf:"bytes,1,opt,name=room_id,json=roomId,proto3" json:"room_id,omitempty"`
 	Username      string                 `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
+	UserId        string                 `protobuf:"bytes,3,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1807,6 +1816,13 @@ func (x *MarkReadRequest) GetRoomId() string {
 func (x *MarkReadRequest) GetUsername() string {
 	if x != nil {
 		return x.Username
+	}
+	return ""
+}
+
+func (x *MarkReadRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
 	}
 	return ""
 }
@@ -1860,6 +1876,7 @@ type UpdateAvatarRequest struct {
 	Username      string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
 	AvatarUrl     string                 `protobuf:"bytes,2,opt,name=avatar_url,json=avatarUrl,proto3" json:"avatar_url,omitempty"`
 	FullAvatarUrl string                 `protobuf:"bytes,3,opt,name=full_avatar_url,json=fullAvatarUrl,proto3" json:"full_avatar_url,omitempty"`
+	UserId        string                 `protobuf:"bytes,4,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1911,6 +1928,13 @@ func (x *UpdateAvatarRequest) GetAvatarUrl() string {
 func (x *UpdateAvatarRequest) GetFullAvatarUrl() string {
 	if x != nil {
 		return x.FullAvatarUrl
+	}
+	return ""
+}
+
+func (x *UpdateAvatarRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
 	}
 	return ""
 }
@@ -1972,6 +1996,7 @@ type UpdateProfileRequest struct {
 	Username      string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
 	Bio           string                 `protobuf:"bytes,2,opt,name=bio,proto3" json:"bio,omitempty"`
 	Status        string                 `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"`
+	UserId        string                 `protobuf:"bytes,4,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2023,6 +2048,13 @@ func (x *UpdateProfileRequest) GetBio() string {
 func (x *UpdateProfileRequest) GetStatus() string {
 	if x != nil {
 		return x.Status
+	}
+	return ""
+}
+
+func (x *UpdateProfileRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
 	}
 	return ""
 }
@@ -2722,6 +2754,7 @@ func (x *DeleteChatResponse) GetMessage() string {
 type DeleteProfileRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Username      string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
+	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2759,6 +2792,13 @@ func (*DeleteProfileRequest) Descriptor() ([]byte, []int) {
 func (x *DeleteProfileRequest) GetUsername() string {
 	if x != nil {
 		return x.Username
+	}
+	return ""
+}
+
+func (x *DeleteProfileRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
 	}
 	return ""
 }
@@ -2819,6 +2859,7 @@ type AddContactRequest struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	Username        string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
 	ContactUsername string                 `protobuf:"bytes,2,opt,name=contact_username,json=contactUsername,proto3" json:"contact_username,omitempty"`
+	UserId          string                 `protobuf:"bytes,3,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -2863,6 +2904,13 @@ func (x *AddContactRequest) GetUsername() string {
 func (x *AddContactRequest) GetContactUsername() string {
 	if x != nil {
 		return x.ContactUsername
+	}
+	return ""
+}
+
+func (x *AddContactRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
 	}
 	return ""
 }
@@ -2923,6 +2971,7 @@ type RemoveContactRequest struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	Username        string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
 	ContactUsername string                 `protobuf:"bytes,2,opt,name=contact_username,json=contactUsername,proto3" json:"contact_username,omitempty"`
+	UserId          string                 `protobuf:"bytes,3,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -2967,6 +3016,13 @@ func (x *RemoveContactRequest) GetUsername() string {
 func (x *RemoveContactRequest) GetContactUsername() string {
 	if x != nil {
 		return x.ContactUsername
+	}
+	return ""
+}
+
+func (x *RemoveContactRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
 	}
 	return ""
 }
@@ -3026,6 +3082,7 @@ func (x *RemoveContactResponse) GetMessage() string {
 type GetContactsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Username      string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
+	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3063,6 +3120,13 @@ func (*GetContactsRequest) Descriptor() ([]byte, []int) {
 func (x *GetContactsRequest) GetUsername() string {
 	if x != nil {
 		return x.Username
+	}
+	return ""
+}
+
+func (x *GetContactsRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
 	}
 	return ""
 }
@@ -3114,6 +3178,7 @@ func (x *GetContactsResponse) GetContacts() []string {
 type GetChatListVersionRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Username      string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
+	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3151,6 +3216,13 @@ func (*GetChatListVersionRequest) Descriptor() ([]byte, []int) {
 func (x *GetChatListVersionRequest) GetUsername() string {
 	if x != nil {
 		return x.Username
+	}
+	return ""
+}
+
+func (x *GetChatListVersionRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
 	}
 	return ""
 }
@@ -3390,6 +3462,7 @@ func (x *CustomTheme) GetIncomingTextColor() string {
 type GetThemesRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Username      string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
+	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3427,6 +3500,13 @@ func (*GetThemesRequest) Descriptor() ([]byte, []int) {
 func (x *GetThemesRequest) GetUsername() string {
 	if x != nil {
 		return x.Username
+	}
+	return ""
+}
+
+func (x *GetThemesRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
 	}
 	return ""
 }
@@ -3487,6 +3567,7 @@ type SaveThemeRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Username      string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
 	Theme         *CustomTheme           `protobuf:"bytes,2,opt,name=theme,proto3" json:"theme,omitempty"`
+	UserId        string                 `protobuf:"bytes,3,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3533,6 +3614,13 @@ func (x *SaveThemeRequest) GetTheme() *CustomTheme {
 		return x.Theme
 	}
 	return nil
+}
+
+func (x *SaveThemeRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
 }
 
 type SaveThemeResponse struct {
@@ -3591,6 +3679,7 @@ type SetCurrentThemeRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Username      string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
 	ThemeId       string                 `protobuf:"bytes,2,opt,name=theme_id,json=themeId,proto3" json:"theme_id,omitempty"`
+	UserId        string                 `protobuf:"bytes,3,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3635,6 +3724,13 @@ func (x *SetCurrentThemeRequest) GetUsername() string {
 func (x *SetCurrentThemeRequest) GetThemeId() string {
 	if x != nil {
 		return x.ThemeId
+	}
+	return ""
+}
+
+func (x *SetCurrentThemeRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
 	}
 	return ""
 }
@@ -3687,6 +3783,7 @@ type DeleteThemeRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Username      string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
 	ThemeId       string                 `protobuf:"bytes,2,opt,name=theme_id,json=themeId,proto3" json:"theme_id,omitempty"`
+	UserId        string                 `protobuf:"bytes,3,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3731,6 +3828,13 @@ func (x *DeleteThemeRequest) GetUsername() string {
 func (x *DeleteThemeRequest) GetThemeId() string {
 	if x != nil {
 		return x.ThemeId
+	}
+	return ""
+}
+
+func (x *DeleteThemeRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
 	}
 	return ""
 }
@@ -5747,7 +5851,7 @@ var File_messenger_proto protoreflect.FileDescriptor
 
 const file_messenger_proto_rawDesc = "" +
 	"\n" +
-	"\x0fmessenger.proto\x12\tmessenger\x1a\x1fgoogle/protobuf/timestamp.proto\"\xd3\x05\n" +
+	"\x0fmessenger.proto\x12\tmessenger\x1a\x1fgoogle/protobuf/timestamp.proto\"\xec\x05\n" +
 	"\aMessage\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04user\x18\x02 \x01(\tR\x04user\x12\x12\n" +
@@ -5775,7 +5879,8 @@ const file_messenger_proto_rawDesc = "" +
 	"\bregister\x18\x13 \x01(\bR\bregister\x12\x1b\n" +
 	"\tdevice_id\x18\x15 \x01(\tR\bdeviceId\x12\x1f\n" +
 	"\vdevice_name\x18\x16 \x01(\tR\n" +
-	"deviceName\"4\n" +
+	"deviceName\x12\x17\n" +
+	"\auser_id\x18\x17 \x01(\tR\x06userId\"4\n" +
 	"\bReaction\x12\x12\n" +
 	"\x04user\x18\x01 \x01(\tR\x04user\x12\x14\n" +
 	"\x05emoji\x18\x02 \x01(\tR\x05emoji\"a\n" +
@@ -5867,24 +5972,27 @@ const file_messenger_proto_rawDesc = "" +
 	"\fnew_password\x18\x03 \x01(\tR\vnewPassword\"L\n" +
 	"\x16UpdatePasswordResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage\"F\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"_\n" +
 	"\x0fMarkReadRequest\x12\x17\n" +
 	"\aroom_id\x18\x01 \x01(\tR\x06roomId\x12\x1a\n" +
-	"\busername\x18\x02 \x01(\tR\busername\",\n" +
+	"\busername\x18\x02 \x01(\tR\busername\x12\x17\n" +
+	"\auser_id\x18\x03 \x01(\tR\x06userId\",\n" +
 	"\x10MarkReadResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess\"x\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\"\x91\x01\n" +
 	"\x13UpdateAvatarRequest\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12\x1d\n" +
 	"\n" +
 	"avatar_url\x18\x02 \x01(\tR\tavatarUrl\x12&\n" +
-	"\x0ffull_avatar_url\x18\x03 \x01(\tR\rfullAvatarUrl\"J\n" +
+	"\x0ffull_avatar_url\x18\x03 \x01(\tR\rfullAvatarUrl\x12\x17\n" +
+	"\auser_id\x18\x04 \x01(\tR\x06userId\"J\n" +
 	"\x14UpdateAvatarResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage\"\\\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"u\n" +
 	"\x14UpdateProfileRequest\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12\x10\n" +
 	"\x03bio\x18\x02 \x01(\tR\x03bio\x12\x16\n" +
-	"\x06status\x18\x03 \x01(\tR\x06status\"K\n" +
+	"\x06status\x18\x03 \x01(\tR\x06status\x12\x17\n" +
+	"\auser_id\x18\x04 \x01(\tR\x06userId\"K\n" +
 	"\x15UpdateProfileResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
 	"\amessage\x18\x02 \x01(\tR\amessage\"L\n" +
@@ -5929,30 +6037,35 @@ const file_messenger_proto_rawDesc = "" +
 	"\x12requester_username\x18\x02 \x01(\tR\x11requesterUsername\"H\n" +
 	"\x12DeleteChatResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage\"2\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"K\n" +
 	"\x14DeleteProfileRequest\x12\x1a\n" +
-	"\busername\x18\x01 \x01(\tR\busername\"K\n" +
+	"\busername\x18\x01 \x01(\tR\busername\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\"K\n" +
 	"\x15DeleteProfileResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage\"Z\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"s\n" +
 	"\x11AddContactRequest\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12)\n" +
-	"\x10contact_username\x18\x02 \x01(\tR\x0fcontactUsername\"H\n" +
+	"\x10contact_username\x18\x02 \x01(\tR\x0fcontactUsername\x12\x17\n" +
+	"\auser_id\x18\x03 \x01(\tR\x06userId\"H\n" +
 	"\x12AddContactResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage\"]\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"v\n" +
 	"\x14RemoveContactRequest\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12)\n" +
-	"\x10contact_username\x18\x02 \x01(\tR\x0fcontactUsername\"K\n" +
+	"\x10contact_username\x18\x02 \x01(\tR\x0fcontactUsername\x12\x17\n" +
+	"\auser_id\x18\x03 \x01(\tR\x06userId\"K\n" +
 	"\x15RemoveContactResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage\"0\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"I\n" +
 	"\x12GetContactsRequest\x12\x1a\n" +
-	"\busername\x18\x01 \x01(\tR\busername\"1\n" +
+	"\busername\x18\x01 \x01(\tR\busername\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\"1\n" +
 	"\x13GetContactsResponse\x12\x1a\n" +
-	"\bcontacts\x18\x01 \x03(\tR\bcontacts\"7\n" +
+	"\bcontacts\x18\x01 \x03(\tR\bcontacts\"P\n" +
 	"\x19GetChatListVersionRequest\x12\x1a\n" +
-	"\busername\x18\x01 \x01(\tR\busername\"6\n" +
+	"\busername\x18\x01 \x01(\tR\busername\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\"6\n" +
 	"\x1aGetChatListVersionResponse\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\x03R\aversion\"\xc8\x06\n" +
 	"\vCustomTheme\x12\x0e\n" +
@@ -5975,26 +6088,30 @@ const file_messenger_proto_rawDesc = "" +
 	"\x15outgoing_bubble_color\x18\x10 \x01(\tR\x13outgoingBubbleColor\x122\n" +
 	"\x15incoming_bubble_color\x18\x11 \x01(\tR\x13incomingBubbleColor\x12.\n" +
 	"\x13outgoing_text_color\x18\x12 \x01(\tR\x11outgoingTextColor\x12.\n" +
-	"\x13incoming_text_color\x18\x13 \x01(\tR\x11incomingTextColor\".\n" +
+	"\x13incoming_text_color\x18\x13 \x01(\tR\x11incomingTextColor\"G\n" +
 	"\x10GetThemesRequest\x12\x1a\n" +
-	"\busername\x18\x01 \x01(\tR\busername\"z\n" +
+	"\busername\x18\x01 \x01(\tR\busername\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\"z\n" +
 	"\x11GetThemesResponse\x12(\n" +
 	"\x10current_theme_id\x18\x01 \x01(\tR\x0ecurrentThemeId\x12;\n" +
-	"\rcustom_themes\x18\x02 \x03(\v2\x16.messenger.CustomThemeR\fcustomThemes\"\\\n" +
+	"\rcustom_themes\x18\x02 \x03(\v2\x16.messenger.CustomThemeR\fcustomThemes\"u\n" +
 	"\x10SaveThemeRequest\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12,\n" +
-	"\x05theme\x18\x02 \x01(\v2\x16.messenger.CustomThemeR\x05theme\"G\n" +
+	"\x05theme\x18\x02 \x01(\v2\x16.messenger.CustomThemeR\x05theme\x12\x17\n" +
+	"\auser_id\x18\x03 \x01(\tR\x06userId\"G\n" +
 	"\x11SaveThemeResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage\"O\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"h\n" +
 	"\x16SetCurrentThemeRequest\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12\x19\n" +
-	"\btheme_id\x18\x02 \x01(\tR\athemeId\"3\n" +
+	"\btheme_id\x18\x02 \x01(\tR\athemeId\x12\x17\n" +
+	"\auser_id\x18\x03 \x01(\tR\x06userId\"3\n" +
 	"\x17SetCurrentThemeResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess\"K\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\"d\n" +
 	"\x12DeleteThemeRequest\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12\x19\n" +
-	"\btheme_id\x18\x02 \x01(\tR\athemeId\"/\n" +
+	"\btheme_id\x18\x02 \x01(\tR\athemeId\x12\x17\n" +
+	"\auser_id\x18\x03 \x01(\tR\x06userId\"/\n" +
 	"\x13DeleteThemeResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\"K\n" +
 	"\x15UpdateChatNameRequest\x12\x17\n" +

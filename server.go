@@ -27,7 +27,7 @@ import (
 	"firebase.google.com/go/v4/messaging"
 )
 
-const ServerVersion = "1.0.6.5"
+const ServerVersion = "1.0.6.7"
 
 // server implements the gRPC ChatService interface
 type server struct {
@@ -328,7 +328,7 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 			}
 			voiceURL := msg.VoiceUrl
 			duration := msg.Duration
-			err = s.db.SaveMessage(msg.Id, msg.User, encryptedText, msg.CreatedAt.AsTime(), msg.RepliedToMessageId, msg.RepliedToUser, msg.RepliedToText, roomID, imageURL, imageURLsJSON, voiceURL, duration)
+			err = s.db.SaveMessage(msg.Id, msg.User, msg.UserId, encryptedText, msg.CreatedAt.AsTime(), msg.RepliedToMessageId, msg.RepliedToUser, msg.RepliedToText, roomID, imageURL, imageURLsJSON, voiceURL, duration)
 			if err != nil {
 				log.Printf("Failed to save msg: %v", err)
 			} else {
@@ -963,18 +963,26 @@ func (s *server) MarkRead(_ context.Context, req *gen.MarkReadRequest) (*gen.Mar
 		return &gen.MarkReadResponse{Success: true}, nil
 	}
 
-	changed, err := s.db.MarkReadAndCheck(req.RoomId, req.Username)
+	username := req.Username
+	if req.UserId != "" {
+		resolvedUsername := s.resolveUsername(req.UserId)
+		if resolvedUsername != "" {
+			username = resolvedUsername
+		}
+	}
+
+	changed, err := s.db.MarkReadAndCheck(req.RoomId, username)
 	if err != nil {
-		log.Printf("Failed to mark read for %s in room %s: %v", req.Username, req.RoomId, err)
+		log.Printf("Failed to mark read for %s in room %s: %v", username, req.RoomId, err)
 		return &gen.MarkReadResponse{Success: false}, err
 	}
 
 	if changed {
-		log.Printf("Marked read for %s in room %s", req.Username, req.RoomId)
+		log.Printf("Marked read for %s in room %s", username, req.RoomId)
 		// Broadcast read signal to the room
 		s.hub.Broadcast(&gen.Message{
 			User:   "SYSTEM",
-			Text:   "READ_ALL:" + req.Username,
+			Text:   "READ_ALL:" + username,
 			RoomId: req.RoomId,
 		})
 	}
@@ -984,26 +992,42 @@ func (s *server) MarkRead(_ context.Context, req *gen.MarkReadRequest) (*gen.Mar
 
 // UpdateAvatar updates the avatar URL for a user
 func (s *server) UpdateAvatar(_ context.Context, req *gen.UpdateAvatarRequest) (*gen.UpdateAvatarResponse, error) {
+	username := req.Username
+	if req.UserId != "" {
+		resolvedUsername := s.resolveUsername(req.UserId)
+		if resolvedUsername != "" {
+			username = resolvedUsername
+		}
+	}
+
 	// Save both thumbnail and full avatar URLs
-	err := s.db.UpdateAvatarWithFull(req.Username, req.AvatarUrl, req.FullAvatarUrl)
+	err := s.db.UpdateAvatarWithFull(username, req.AvatarUrl, req.FullAvatarUrl)
 	if err != nil {
-		log.Printf("Failed to update avatar for %s: %v", req.Username, err)
+		log.Printf("Failed to update avatar for %s: %v", username, err)
 		return &gen.UpdateAvatarResponse{Success: false, Message: err.Error()}, nil
 	}
 
-	log.Printf("Updated avatar for %s (thumb: %s, full: %s)", req.Username, req.AvatarUrl, req.FullAvatarUrl)
+	log.Printf("Updated avatar for %s (thumb: %s, full: %s)", username, req.AvatarUrl, req.FullAvatarUrl)
 	return &gen.UpdateAvatarResponse{Success: true, Message: "Avatar updated successfully"}, nil
 }
 
 // UpdateProfile updates user bio and status
 func (s *server) UpdateProfile(_ context.Context, req *gen.UpdateProfileRequest) (*gen.UpdateProfileResponse, error) {
-	err := s.db.UpdateProfile(req.Username, req.Bio, req.Status)
+	username := req.Username
+	if req.UserId != "" {
+		resolvedUsername := s.resolveUsername(req.UserId)
+		if resolvedUsername != "" {
+			username = resolvedUsername
+		}
+	}
+
+	err := s.db.UpdateProfile(username, req.Bio, req.Status)
 	if err != nil {
-		log.Printf("Failed to update profile for %s: %v", req.Username, err)
+		log.Printf("Failed to update profile for %s: %v", username, err)
 		return &gen.UpdateProfileResponse{Success: false, Message: err.Error()}, nil
 	}
 
-	log.Printf("Updated profile for %s", req.Username)
+	log.Printf("Updated profile for %s", username)
 	return &gen.UpdateProfileResponse{Success: true, Message: "Profile updated successfully"}, nil
 }
 
@@ -1234,31 +1258,33 @@ func (s *server) DeleteChat(_ context.Context, req *gen.DeleteChatRequest) (*gen
 
 // DeleteProfile deletes a user's profile and all their data
 func (s *server) DeleteProfile(ctx context.Context, req *gen.DeleteProfileRequest) (*gen.DeleteProfileResponse, error) {
-	if req.Username == "" {
-		return &gen.DeleteProfileResponse{Success: false, Message: "Username is required"}, nil
+	username := req.Username
+	if req.UserId != "" {
+		resolvedUsername := s.resolveUsername(req.UserId)
+		if resolvedUsername != "" {
+			username = resolvedUsername
+		}
 	}
 
-	// Permission check: only the user themselves OR super admin 'ferz' can delete a profile
-	// Note: ideally we would check authenticated user from context/stream, but for now we'll allow ferz
-	// or self-deletion based on the request.
-	// Since we don't have a secure way to verify the requester here in this unary call without token/metadata,
-	// we will trust the logic for now but implement basic 'ferz' check if possible.
+	if username == "" {
+		return &gen.DeleteProfileResponse{Success: false, Message: "Username or User ID is required"}, nil
+	}
 
-	log.Printf("DeleteProfile: Request to delete user %s", req.Username)
+	log.Printf("DeleteProfile: Request to delete user %s", username)
 
-	err := s.db.DeleteProfile(req.Username)
+	err := s.db.DeleteProfile(username)
 	if err != nil {
-		log.Printf("Failed to delete profile for %s: %v", req.Username, err)
+		log.Printf("Failed to delete profile for %s: %v", username, err)
 		return &gen.DeleteProfileResponse{Success: false, Message: err.Error()}, nil
 	}
 
 	// Force disconnect the user if they are currently online
 	s.hub.BroadcastGlobal(&gen.Message{
 		User: "SYSTEM",
-		Text: "FORCE_DISCONNECT:" + req.Username,
+		Text: "FORCE_DISCONNECT:" + username,
 	})
 
-	log.Printf("Successfully deleted profile for user: %s", req.Username)
+	log.Printf("Successfully deleted profile for user: %s", username)
 	s.broadcastOnlineUsers()
 
 	return &gen.DeleteProfileResponse{Success: true, Message: "Profile deleted successfully"}, nil
@@ -1625,36 +1651,68 @@ func (s *server) UpdateChatAvatar(_ context.Context, req *gen.UpdateChatAvatarRe
 }
 
 func (s *server) AddContact(_ context.Context, req *gen.AddContactRequest) (*gen.AddContactResponse, error) {
-	err := s.db.AddContact(req.Username, req.ContactUsername)
+	username := req.Username
+	if req.UserId != "" {
+		resolvedUsername := s.resolveUsername(req.UserId)
+		if resolvedUsername != "" {
+			username = resolvedUsername
+		}
+	}
+
+	err := s.db.AddContact(username, req.ContactUsername)
 	if err != nil {
-		log.Printf("Failed to add contact %s for %s: %v", req.ContactUsername, req.Username, err)
+		log.Printf("Failed to add contact %s for %s: %v", req.ContactUsername, username, err)
 		return &gen.AddContactResponse{Success: false, Message: err.Error()}, nil
 	}
-	log.Printf("User %s added contact %s", req.Username, req.ContactUsername)
+	log.Printf("User %s added contact %s", username, req.ContactUsername)
 	return &gen.AddContactResponse{Success: true, Message: "Contact added successfully"}, nil
 }
 
 func (s *server) RemoveContact(_ context.Context, req *gen.RemoveContactRequest) (*gen.RemoveContactResponse, error) {
-	err := s.db.RemoveContact(req.Username, req.ContactUsername)
+	username := req.Username
+	if req.UserId != "" {
+		resolvedUsername := s.resolveUsername(req.UserId)
+		if resolvedUsername != "" {
+			username = resolvedUsername
+		}
+	}
+
+	err := s.db.RemoveContact(username, req.ContactUsername)
 	if err != nil {
-		log.Printf("Failed to remove contact %s for %s: %v", req.ContactUsername, req.Username, err)
+		log.Printf("Failed to remove contact %s for %s: %v", req.ContactUsername, username, err)
 		return &gen.RemoveContactResponse{Success: false, Message: err.Error()}, nil
 	}
-	log.Printf("User %s removed contact %s", req.Username, req.ContactUsername)
+	log.Printf("User %s removed contact %s", username, req.ContactUsername)
 	return &gen.RemoveContactResponse{Success: true, Message: "Contact removed successfully"}, nil
 }
 
 func (s *server) GetContacts(_ context.Context, req *gen.GetContactsRequest) (*gen.GetContactsResponse, error) {
-	contacts, err := s.db.GetContacts(req.Username)
+	username := req.Username
+	if req.UserId != "" {
+		resolvedUsername := s.resolveUsername(req.UserId)
+		if resolvedUsername != "" {
+			username = resolvedUsername
+		}
+	}
+
+	contacts, err := s.db.GetContacts(username)
 	if err != nil {
-		log.Printf("Failed to get contacts for %s: %v", req.Username, err)
+		log.Printf("Failed to get contacts for %s: %v", username, err)
 		return &gen.GetContactsResponse{Contacts: nil}, nil
 	}
 	return &gen.GetContactsResponse{Contacts: contacts}, nil
 }
 
 func (s *server) GetChatListVersion(_ context.Context, req *gen.GetChatListVersionRequest) (*gen.GetChatListVersionResponse, error) {
-	version, err := s.db.GetUserChatListVersion(req.Username)
+	username := req.Username
+	if req.UserId != "" {
+		resolvedUsername := s.resolveUsername(req.UserId)
+		if resolvedUsername != "" {
+			username = resolvedUsername
+		}
+	}
+
+	version, err := s.db.GetUserChatListVersion(username)
 	if err != nil {
 		return &gen.GetChatListVersionResponse{Version: 0}, nil
 	}
@@ -1678,7 +1736,16 @@ func (s *server) resolveUsername(identifier string) string {
 }
 
 func (s *server) GetThemes(_ context.Context, req *gen.GetThemesRequest) (*gen.GetThemesResponse, error) {
-	username := s.resolveUsername(req.Username)
+	username := req.Username
+	if req.UserId != "" {
+		resolvedUsername := s.resolveUsername(req.UserId)
+		if resolvedUsername != "" {
+			username = resolvedUsername
+		}
+	} else {
+		username = s.resolveUsername(username)
+	}
+
 	currentID, themes, err := s.db.GetUserThemes(username)
 	if err != nil {
 		s.logErrorOnce("GetThemes:"+username, "Failed to get themes for %s: %v", username, err)
@@ -1717,7 +1784,16 @@ func (s *server) GetThemes(_ context.Context, req *gen.GetThemesRequest) (*gen.G
 }
 
 func (s *server) SaveTheme(_ context.Context, req *gen.SaveThemeRequest) (*gen.SaveThemeResponse, error) {
-	username := s.resolveUsername(req.Username)
+	username := req.Username
+	if req.UserId != "" {
+		resolvedUsername := s.resolveUsername(req.UserId)
+		if resolvedUsername != "" {
+			username = resolvedUsername
+		}
+	} else {
+		username = s.resolveUsername(username)
+	}
+
 	log.Printf("Saving theme '%s' (ID: %s) for user %s. Chat Background URL: %s", req.Theme.Name, req.Theme.Id, username, req.Theme.ChatBackgroundImageUrl)
 	err := s.db.SaveUserTheme(username, req.Theme)
 	if err != nil {
@@ -1729,7 +1805,16 @@ func (s *server) SaveTheme(_ context.Context, req *gen.SaveThemeRequest) (*gen.S
 }
 
 func (s *server) SetCurrentTheme(_ context.Context, req *gen.SetCurrentThemeRequest) (*gen.SetCurrentThemeResponse, error) {
-	username := s.resolveUsername(req.Username)
+	username := req.Username
+	if req.UserId != "" {
+		resolvedUsername := s.resolveUsername(req.UserId)
+		if resolvedUsername != "" {
+			username = resolvedUsername
+		}
+	} else {
+		username = s.resolveUsername(username)
+	}
+
 	log.Printf("Setting current theme to %s for user %s", req.ThemeId, username)
 	err := s.db.SetCurrentTheme(username, req.ThemeId)
 	if err != nil {
@@ -1740,7 +1825,16 @@ func (s *server) SetCurrentTheme(_ context.Context, req *gen.SetCurrentThemeRequ
 }
 
 func (s *server) DeleteTheme(_ context.Context, req *gen.DeleteThemeRequest) (*gen.DeleteThemeResponse, error) {
-	username := s.resolveUsername(req.Username)
+	username := req.Username
+	if req.UserId != "" {
+		resolvedUsername := s.resolveUsername(req.UserId)
+		if resolvedUsername != "" {
+			username = resolvedUsername
+		}
+	} else {
+		username = s.resolveUsername(username)
+	}
+
 	log.Printf("Deleting theme %s for user %s", req.ThemeId, username)
 	err := s.db.DeleteUserTheme(username, req.ThemeId)
 	if err != nil {
@@ -2022,7 +2116,7 @@ func (s *server) SaveFavoriteMessage(ctx context.Context, req *gen.Message) (*ge
 		imageURLsBytes, _ := json.Marshal(req.ImageUrls)
 		imageURLsJSON = string(imageURLsBytes)
 	}
-	err = s.db.SaveMessage(req.Id, req.User, encryptedText, req.CreatedAt.AsTime(), req.RepliedToMessageId, req.RepliedToUser, req.RepliedToText, favRoomID, req.ImageUrl, imageURLsJSON, req.VoiceUrl, req.Duration)
+	err = s.db.SaveMessage(req.Id, req.User, req.UserId, encryptedText, req.CreatedAt.AsTime(), req.RepliedToMessageId, req.RepliedToUser, req.RepliedToText, favRoomID, req.ImageUrl, imageURLsJSON, req.VoiceUrl, req.Duration)
 	if err != nil {
 		return &gen.AddFavoriteResponse{Success: false, Message: "failed to save message"}, nil
 	}
