@@ -575,6 +575,8 @@ message CallMessage {
   string call_id = 1;
   string sender_id = 2;
   string receiver_id = 3;
+  string sender_name = 6;
+  string receiver_name = 7;
 
   enum Type {
     INITIATE = 0;    // Абонент А звонит Абоненту Б

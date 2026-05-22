@@ -5904,6 +5904,8 @@ type CallMessage struct {
 	CallId        string                 `protobuf:"bytes,1,opt,name=call_id,json=callId,proto3" json:"call_id,omitempty"`
 	SenderId      string                 `protobuf:"bytes,2,opt,name=sender_id,json=senderId,proto3" json:"sender_id,omitempty"`
 	ReceiverId    string                 `protobuf:"bytes,3,opt,name=receiver_id,json=receiverId,proto3" json:"receiver_id,omitempty"`
+	SenderName    string                 `protobuf:"bytes,6,opt,name=sender_name,json=senderName,proto3" json:"sender_name,omitempty"`
+	ReceiverName  string                 `protobuf:"bytes,7,opt,name=receiver_name,json=receiverName,proto3" json:"receiver_name,omitempty"`
 	Type          CallMessage_Type       `protobuf:"varint,4,opt,name=type,proto3,enum=messenger.CallMessage_Type" json:"type,omitempty"`
 	Payload       string                 `protobuf:"bytes,5,opt,name=payload,proto3" json:"payload,omitempty"` // JSON-строка с SDP или ICE данными
 	unknownFields protoimpl.UnknownFields
@@ -5957,6 +5959,20 @@ func (x *CallMessage) GetSenderId() string {
 func (x *CallMessage) GetReceiverId() string {
 	if x != nil {
 		return x.ReceiverId
+	}
+	return ""
+}
+
+func (x *CallMessage) GetSenderName() string {
+	if x != nil {
+		return x.SenderName
+	}
+	return ""
+}
+
+func (x *CallMessage) GetReceiverName() string {
+	if x != nil {
+		return x.ReceiverName
 	}
 	return ""
 }
@@ -6369,12 +6385,15 @@ const file_messenger_proto_rawDesc = "" +
 	"\fnew_password\x18\x02 \x01(\tR\vnewPassword\"K\n" +
 	"\x15ResetPasswordResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage\"\x93\x02\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"\xd9\x02\n" +
 	"\vCallMessage\x12\x17\n" +
 	"\acall_id\x18\x01 \x01(\tR\x06callId\x12\x1b\n" +
 	"\tsender_id\x18\x02 \x01(\tR\bsenderId\x12\x1f\n" +
 	"\vreceiver_id\x18\x03 \x01(\tR\n" +
-	"receiverId\x12/\n" +
+	"receiverId\x12\x1f\n" +
+	"\vsender_name\x18\x06 \x01(\tR\n" +
+	"senderName\x12#\n" +
+	"\rreceiver_name\x18\a \x01(\tR\freceiverName\x12/\n" +
 	"\x04type\x18\x04 \x01(\x0e2\x1b.messenger.CallMessage.TypeR\x04type\x12\x18\n" +
 	"\apayload\x18\x05 \x01(\tR\apayload\"b\n" +
 	"\x04Type\x12\f\n" +

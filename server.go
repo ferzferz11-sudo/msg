@@ -27,7 +27,7 @@ import (
 	"firebase.google.com/go/v4/messaging"
 )
 
-const ServerVersion = "1.0.6.9"
+const ServerVersion = "1.0.6.10"
 
 // server implements the gRPC ChatService interface
 type server struct {
@@ -481,9 +481,11 @@ func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
 			return err
 		}
 
-		// Normalize IDs to UUIDs for stable routing
+		// Normalize IDs to UUIDs for stable routing and attach names for display
 		msg.SenderId = s.resolveUserId(msg.SenderId)
 		msg.ReceiverId = s.resolveUserId(msg.ReceiverId)
+		msg.SenderName = s.resolveUsername(msg.SenderId)
+		msg.ReceiverName = s.resolveUsername(msg.ReceiverId)
 
 		if currentUserId == "" && msg.SenderId != "" {
 			currentUserId = msg.SenderId
@@ -523,7 +525,7 @@ func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
 			s.hub.BroadcastCall(&senderSignal)
 
 			// 3. Send push to wake up receiver
-			s.sendCallPushNotification(msg.ReceiverId, msg.SenderId, msg.CallId)
+			s.sendCallPushNotification(msg.ReceiverId, msg.SenderName, msg.CallId)
 			continue
 
 		case gen.CallMessage_ACCEPT:
