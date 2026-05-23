@@ -1559,14 +1559,28 @@ func (s *server) DeleteMessages(_ context.Context, req *gen.DeleteMessagesReques
 			continue
 		}
 
-		// Permission check: only sender or group admin can delete
+		// Permission check: only sender or group admin or chat participant (for SYSTEM messages) can delete
 		canDelete := false
 		if msg.User == req.RequesterUsername {
 			canDelete = true
 		} else if msg.RoomId != "" {
 			chat, err := s.db.GetChat(msg.RoomId)
-			if err == nil && chat.CreatorUsername == req.RequesterUsername {
-				canDelete = true
+			if err == nil {
+				// Group admin can delete any message
+				if chat.CreatorUsername == req.RequesterUsername {
+					canDelete = true
+				} else if msg.User == "SYSTEM" {
+					// Any participant can delete SYSTEM messages in the chat
+					var participants []string
+					if json.Unmarshal([]byte(chat.Participants), &participants) == nil {
+						for _, p := range participants {
+							if p == req.RequesterUsername {
+								canDelete = true
+								break
+							}
+						}
+					}
+				}
 			}
 		}
 
