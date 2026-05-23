@@ -27,7 +27,7 @@ import (
 	"firebase.google.com/go/v4/messaging"
 )
 
-const ServerVersion = "1.0.6.10"
+const ServerVersion = "1.0.6.11"
 
 // server implements the gRPC ChatService interface
 type server struct {
@@ -526,6 +526,9 @@ func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
 
 			// 3. Send push to wake up receiver
 			s.sendCallPushNotification(msg.ReceiverId, msg.SenderName, msg.CallId)
+
+			// 4. Add system message to chat
+			s.saveCallSystemMessage(senderName, receiverName, "Видеозвонок")
 			continue
 
 		case gen.CallMessage_ACCEPT:
@@ -534,9 +537,11 @@ func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
 		case gen.CallMessage_REJECT:
 			log.Printf("[CALL] Rejected: %s", msg.CallId)
 			_ = s.db.UpdateCallStatus(msg.CallId, "rejected")
+			s.saveCallSystemMessage(senderName, receiverName, "Пропущенный вызов")
 		case gen.CallMessage_HANGUP:
 			log.Printf("[CALL] Hung up: %s", msg.CallId)
 			_ = s.db.UpdateCallStatus(msg.CallId, "completed")
+			s.saveCallSystemMessage(senderName, receiverName, "Звонок завершен")
 		}
 
 		// Broadcast WebRTC signals (OFFER, ANSWER, ICE) to partner
@@ -1368,6 +1373,42 @@ func (s *server) sendPushNotification(user, title, body, roomID string) {
 	}
 
 	s.logFCM("SUCCESS", "Sent to %s", user)
+}
+
+func (s *server) saveCallSystemMessage(u1, u2, text string) {
+	chatID, err := s.db.GetDirectChatBetweenUsers(u1, u2)
+	if err != nil {
+		log.Printf("[CALL] Failed to find chat for system message: %v", err)
+		return
+	}
+
+	msgId := uuid.New().String()
+	createdAt := time.Now()
+	displayText := "📹 " + text
+
+	// Encrypt for database
+	encryptedText, err := encrypt(displayText)
+	if err != nil {
+		log.Printf("[CALL] Encryption failed for system message: %v", err)
+		return
+	}
+
+	// Save to DB
+	err = s.db.SaveMessage(msgId, "SYSTEM", "", encryptedText, createdAt, "", "", "", chatID, "", "[]", "", 0)
+	if err != nil {
+		log.Printf("[CALL] Failed to save call system message: %v", err)
+		return
+	}
+
+	// Broadcast to the room
+	broadcastMsg := &gen.Message{
+		Id:        msgId,
+		User:      "SYSTEM",
+		Text:      displayText,
+		CreatedAt: timestamppb.New(createdAt),
+		RoomId:    chatID,
+	}
+	s.hub.Broadcast(broadcastMsg)
 }
 
 func (s *server) handleAbruptDisconnect(userId string) {
