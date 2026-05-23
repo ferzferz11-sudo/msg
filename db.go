@@ -6,6 +6,7 @@ package main
 import (
 	"LavenderMessenger/gen"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -543,6 +544,17 @@ func (db *DB) CreateChat(id, name, t, p, c string) error {
 		_ = db.IncrementParticipantsChatListVersion(id)
 	}
 	return err
+}
+
+func (db *DB) GetChatParticipants(id string) ([]string, error) {
+	var participantsJSON string
+	err := db.QueryRow(`SELECT participants FROM chats WHERE id=$1`, id).Scan(&participantsJSON)
+	if err != nil {
+		return nil, err
+	}
+	var participants []string
+	err = json.Unmarshal([]byte(participantsJSON), &participants)
+	return participants, err
 }
 
 func (db *DB) GetDirectChatBetweenUsers(u1, u2 string) (string, error) {

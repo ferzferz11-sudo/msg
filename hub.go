@@ -22,8 +22,15 @@ type Hub struct {
 	typingStreams map[gen.ChatService_TypingServer]string
 	callStreams   map[gen.ChatService_CallSessionServer]string
 
-	// onStatusChange is a callback triggered when user list changes
 	onStatusChange func()
+
+	// Conferences: roomID -> participants list
+	conferences map[string]*Conference
+}
+
+type Conference struct {
+	CreatorID    string
+	Participants map[string]string // userID -> username
 }
 
 // NewHub creates a new Hub instance
@@ -34,6 +41,7 @@ func NewHub(onStatusChange func()) *Hub {
 		rooms:          make(map[gen.ChatService_ChatServer]string),
 		typingStreams:  make(map[gen.ChatService_TypingServer]string),
 		callStreams:    make(map[gen.ChatService_CallSessionServer]string),
+		conferences:    make(map[string]*Conference),
 		onStatusChange: onStatusChange,
 	}
 }
@@ -223,4 +231,91 @@ func (h *Hub) BroadcastCall(signal *gen.CallMessage) bool {
 		}
 	}
 	return delivered
+}
+
+// BroadcastConference sends a signal to all members of a group room
+func (h *Hub) BroadcastConference(signal *gen.CallMessage, roomMembers []string) {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	// Create a map for fast lookup
+	memberMap := make(map[string]bool)
+	for _, m := range roomMembers {
+		memberMap[m] = true
+	}
+
+	for stream, username := range h.callStreams {
+		// If the user is a member of the room (and not the sender, optional)
+		if memberMap[username] {
+			_ = stream.Send(signal)
+		}
+	}
+}
+
+func (h *Hub) InitiateConference(roomID, creatorID, creatorName string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.conferences[roomID] = &Conference{
+		CreatorID: creatorID,
+		Participants: map[string]string{
+			creatorID: creatorName,
+		},
+	}
+}
+
+func (h *Hub) JoinConference(roomID, userID, userName string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if conf, ok := h.conferences[roomID]; ok {
+		conf.Participants[userID] = userName
+	}
+}
+
+func (h *Hub) LeaveConference(roomID, userID string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if conf, ok := h.conferences[roomID]; ok {
+		delete(conf.Participants, userID)
+		if len(conf.Participants) == 0 {
+			delete(h.conferences, roomID)
+		}
+	}
+}
+
+func (h *Hub) EndConference(roomID string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	delete(h.conferences, roomID)
+}
+
+func (h *Hub) GetConferenceParticipants(roomID string) map[string]string {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	if conf, ok := h.conferences[roomID]; ok {
+		// Return a copy to avoid concurrent access issues
+		res := make(map[string]string)
+		for k, v := range conf.Participants {
+			res[k] = v
+		}
+		return res
+	}
+	return nil
+}
+
+func (h *Hub) IsConferenceCreator(roomID, userID string) bool {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	if conf, ok := h.conferences[roomID]; ok {
+		return conf.CreatorID == userID
+	}
+	return false
+}
+
+func (h *Hub) GetConferenceCreator(roomID string) string {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	if conf, ok := h.conferences[roomID]; ok {
+		return conf.CreatorID
+	}
+	return ""
 }

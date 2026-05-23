@@ -32,27 +32,40 @@ const (
 	CallMessage_OFFER         CallMessage_Type = 4 // WebRTC SDP Offer
 	CallMessage_ANSWER        CallMessage_Type = 5 // WebRTC SDP Answer
 	CallMessage_ICE_CANDIDATE CallMessage_Type = 6 // WebRTC ICE Candidate
+	// Group Conference
+	CallMessage_INITIATE_CONFERENCE CallMessage_Type = 10
+	CallMessage_JOIN_CONFERENCE     CallMessage_Type = 11
+	CallMessage_LEAVE_CONFERENCE    CallMessage_Type = 12
+	CallMessage_END_CONFERENCE      CallMessage_Type = 13
 )
 
 // Enum value maps for CallMessage_Type.
 var (
 	CallMessage_Type_name = map[int32]string{
-		0: "INITIATE",
-		1: "ACCEPT",
-		2: "REJECT",
-		3: "HANGUP",
-		4: "OFFER",
-		5: "ANSWER",
-		6: "ICE_CANDIDATE",
+		0:  "INITIATE",
+		1:  "ACCEPT",
+		2:  "REJECT",
+		3:  "HANGUP",
+		4:  "OFFER",
+		5:  "ANSWER",
+		6:  "ICE_CANDIDATE",
+		10: "INITIATE_CONFERENCE",
+		11: "JOIN_CONFERENCE",
+		12: "LEAVE_CONFERENCE",
+		13: "END_CONFERENCE",
 	}
 	CallMessage_Type_value = map[string]int32{
-		"INITIATE":      0,
-		"ACCEPT":        1,
-		"REJECT":        2,
-		"HANGUP":        3,
-		"OFFER":         4,
-		"ANSWER":        5,
-		"ICE_CANDIDATE": 6,
+		"INITIATE":            0,
+		"ACCEPT":              1,
+		"REJECT":              2,
+		"HANGUP":              3,
+		"OFFER":               4,
+		"ANSWER":              5,
+		"ICE_CANDIDATE":       6,
+		"INITIATE_CONFERENCE": 10,
+		"JOIN_CONFERENCE":     11,
+		"LEAVE_CONFERENCE":    12,
+		"END_CONFERENCE":      13,
 	}
 )
 
@@ -5906,6 +5919,7 @@ type CallMessage struct {
 	ReceiverId    string                 `protobuf:"bytes,3,opt,name=receiver_id,json=receiverId,proto3" json:"receiver_id,omitempty"`
 	SenderName    string                 `protobuf:"bytes,6,opt,name=sender_name,json=senderName,proto3" json:"sender_name,omitempty"`
 	ReceiverName  string                 `protobuf:"bytes,7,opt,name=receiver_name,json=receiverName,proto3" json:"receiver_name,omitempty"`
+	RoomId        string                 `protobuf:"bytes,8,opt,name=room_id,json=roomId,proto3" json:"room_id,omitempty"`
 	Type          CallMessage_Type       `protobuf:"varint,4,opt,name=type,proto3,enum=messenger.CallMessage_Type" json:"type,omitempty"`
 	Payload       string                 `protobuf:"bytes,5,opt,name=payload,proto3" json:"payload,omitempty"` // JSON-строка с SDP или ICE данными
 	unknownFields protoimpl.UnknownFields
@@ -5973,6 +5987,13 @@ func (x *CallMessage) GetSenderName() string {
 func (x *CallMessage) GetReceiverName() string {
 	if x != nil {
 		return x.ReceiverName
+	}
+	return ""
+}
+
+func (x *CallMessage) GetRoomId() string {
+	if x != nil {
+		return x.RoomId
 	}
 	return ""
 }
@@ -6385,7 +6406,7 @@ const file_messenger_proto_rawDesc = "" +
 	"\fnew_password\x18\x02 \x01(\tR\vnewPassword\"K\n" +
 	"\x15ResetPasswordResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage\"\xd9\x02\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"\xcb\x03\n" +
 	"\vCallMessage\x12\x17\n" +
 	"\acall_id\x18\x01 \x01(\tR\x06callId\x12\x1b\n" +
 	"\tsender_id\x18\x02 \x01(\tR\bsenderId\x12\x1f\n" +
@@ -6393,9 +6414,10 @@ const file_messenger_proto_rawDesc = "" +
 	"receiverId\x12\x1f\n" +
 	"\vsender_name\x18\x06 \x01(\tR\n" +
 	"senderName\x12#\n" +
-	"\rreceiver_name\x18\a \x01(\tR\freceiverName\x12/\n" +
+	"\rreceiver_name\x18\a \x01(\tR\freceiverName\x12\x17\n" +
+	"\aroom_id\x18\b \x01(\tR\x06roomId\x12/\n" +
 	"\x04type\x18\x04 \x01(\x0e2\x1b.messenger.CallMessage.TypeR\x04type\x12\x18\n" +
-	"\apayload\x18\x05 \x01(\tR\apayload\"b\n" +
+	"\apayload\x18\x05 \x01(\tR\apayload\"\xba\x01\n" +
 	"\x04Type\x12\f\n" +
 	"\bINITIATE\x10\x00\x12\n" +
 	"\n" +
@@ -6407,7 +6429,12 @@ const file_messenger_proto_rawDesc = "" +
 	"\x05OFFER\x10\x04\x12\n" +
 	"\n" +
 	"\x06ANSWER\x10\x05\x12\x11\n" +
-	"\rICE_CANDIDATE\x10\x062\xe3 \n" +
+	"\rICE_CANDIDATE\x10\x06\x12\x17\n" +
+	"\x13INITIATE_CONFERENCE\x10\n" +
+	"\x12\x13\n" +
+	"\x0fJOIN_CONFERENCE\x10\v\x12\x14\n" +
+	"\x10LEAVE_CONFERENCE\x10\f\x12\x12\n" +
+	"\x0eEND_CONFERENCE\x10\r2\xe3 \n" +
 	"\vChatService\x122\n" +
 	"\x04Chat\x12\x12.messenger.Message\x1a\x12.messenger.Message(\x010\x01\x12?\n" +
 	"\x06Typing\x12\x18.messenger.TypingRequest\x1a\x17.messenger.TypingSignal(\x010\x01\x12A\n" +

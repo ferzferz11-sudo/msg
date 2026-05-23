@@ -577,6 +577,7 @@ message CallMessage {
   string receiver_id = 3;
   string sender_name = 6;
   string receiver_name = 7;
+  string room_id = 8;
 
   enum Type {
     INITIATE = 0;    // Абонент А звонит Абоненту Б
@@ -586,6 +587,12 @@ message CallMessage {
     OFFER = 4;       // WebRTC SDP Offer
     ANSWER = 5;      // WebRTC SDP Answer
     ICE_CANDIDATE = 6; // WebRTC ICE Candidate
+
+    // Group Conference
+    INITIATE_CONFERENCE = 10;
+    JOIN_CONFERENCE = 11;
+    LEAVE_CONFERENCE = 12;
+    END_CONFERENCE = 13;
   }
   Type type = 4;
 

@@ -27,7 +27,7 @@ import (
 	"firebase.google.com/go/v4/messaging"
 )
 
-const ServerVersion = "1.0.6.11"
+const ServerVersion = "1.0.6.10"
 
 // server implements the gRPC ChatService interface
 type server struct {
@@ -542,6 +542,48 @@ func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
 			log.Printf("[CALL] Hung up: %s", msg.CallId)
 			_ = s.db.UpdateCallStatus(msg.CallId, "completed")
 			s.saveCallSystemMessage(senderName, receiverName, "📞↗️", "Звонок завершен")
+
+		case gen.CallMessage_INITIATE_CONFERENCE:
+			if s.hub.GetConferenceCreator(msg.RoomId) == "" {
+				s.hub.InitiateConference(msg.RoomId, msg.SenderId, msg.SenderName)
+				s.saveConferenceSystemMessage(msg.RoomId, "Создана конференция")
+			}
+			members, _ := s.db.GetChatParticipants(msg.RoomId)
+			s.hub.BroadcastConference(msg, members)
+			continue
+
+		case gen.CallMessage_JOIN_CONFERENCE:
+			if s.hub.GetConferenceCreator(msg.RoomId) == "" {
+				s.hub.InitiateConference(msg.RoomId, msg.SenderId, msg.SenderName)
+				s.saveConferenceSystemMessage(msg.RoomId, "Создана конференция")
+			}
+			s.hub.JoinConference(msg.RoomId, msg.SenderId, msg.SenderName)
+			participants := s.hub.GetConferenceParticipants(msg.RoomId)
+			creatorID := s.hub.GetConferenceCreator(msg.RoomId)
+			response := map[string]interface{}{
+				"participants": participants,
+				"creator_id":   creatorID,
+			}
+			responseJSON, _ := json.Marshal(response)
+			msg.Payload = string(responseJSON)
+			members, _ := s.db.GetChatParticipants(msg.RoomId)
+			s.hub.BroadcastConference(msg, members)
+			continue
+
+		case gen.CallMessage_LEAVE_CONFERENCE:
+			s.hub.LeaveConference(msg.RoomId, msg.SenderId)
+			members, _ := s.db.GetChatParticipants(msg.RoomId)
+			s.hub.BroadcastConference(msg, members)
+			continue
+
+		case gen.CallMessage_END_CONFERENCE:
+			if s.hub.IsConferenceCreator(msg.RoomId, msg.SenderId) {
+				s.hub.EndConference(msg.RoomId)
+				s.saveConferenceSystemMessage(msg.RoomId, "Конференция завершена")
+				members, _ := s.db.GetChatParticipants(msg.RoomId)
+				s.hub.BroadcastConference(msg, members)
+			}
+			continue
 		}
 
 		// Broadcast WebRTC signals (OFFER, ANSWER, ICE) to partner
@@ -1373,6 +1415,36 @@ func (s *server) sendPushNotification(user, title, body, roomID string) {
 	}
 
 	s.logFCM("SUCCESS", "Sent to %s", user)
+}
+
+func (s *server) saveConferenceSystemMessage(roomID, text string) {
+	msgId := uuid.New().String()
+	createdAt := time.Now()
+	displayText := "👥 " + text
+
+	// Encrypt for database
+	encryptedText, err := encrypt(displayText)
+	if err != nil {
+		log.Printf("[CONF] Encryption failed for system message: %v", err)
+		return
+	}
+
+	// Save to DB
+	err = s.db.SaveMessage(msgId, "SYSTEM", "", encryptedText, createdAt, "", "", "", roomID, "", "[]", "", 0)
+	if err != nil {
+		log.Printf("[CONF] Failed to save call system message: %v", err)
+		return
+	}
+
+	// Broadcast to the room
+	broadcastMsg := &gen.Message{
+		Id:        msgId,
+		User:      "SYSTEM",
+		Text:      displayText,
+		CreatedAt: timestamppb.New(createdAt),
+		RoomId:    roomID,
+	}
+	s.hub.Broadcast(broadcastMsg)
 }
 
 func (s *server) saveCallSystemMessage(u1, u2, icon, text string) {
