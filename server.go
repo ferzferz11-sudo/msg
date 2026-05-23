@@ -528,7 +528,7 @@ func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
 			s.sendCallPushNotification(msg.ReceiverId, msg.SenderName, msg.CallId)
 
 			// 4. Add system message to chat
-			s.saveCallSystemMessage(senderName, receiverName, "Видеозвонок")
+			s.saveCallSystemMessage(senderName, receiverName, "📹", "Видеозвонок")
 			continue
 
 		case gen.CallMessage_ACCEPT:
@@ -537,11 +537,11 @@ func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
 		case gen.CallMessage_REJECT:
 			log.Printf("[CALL] Rejected: %s", msg.CallId)
 			_ = s.db.UpdateCallStatus(msg.CallId, "rejected")
-			s.saveCallSystemMessage(senderName, receiverName, "Пропущенный вызов")
+			s.saveCallSystemMessage(senderName, receiverName, "📞↘️", "Пропущенный вызов")
 		case gen.CallMessage_HANGUP:
 			log.Printf("[CALL] Hung up: %s", msg.CallId)
 			_ = s.db.UpdateCallStatus(msg.CallId, "completed")
-			s.saveCallSystemMessage(senderName, receiverName, "Звонок завершен")
+			s.saveCallSystemMessage(senderName, receiverName, "📞↗️", "Звонок завершен")
 		}
 
 		// Broadcast WebRTC signals (OFFER, ANSWER, ICE) to partner
@@ -1375,7 +1375,7 @@ func (s *server) sendPushNotification(user, title, body, roomID string) {
 	s.logFCM("SUCCESS", "Sent to %s", user)
 }
 
-func (s *server) saveCallSystemMessage(u1, u2, text string) {
+func (s *server) saveCallSystemMessage(u1, u2, icon, text string) {
 	chatID, err := s.db.GetDirectChatBetweenUsers(u1, u2)
 	if err != nil {
 		log.Printf("[CALL] Failed to find chat for system message: %v", err)
@@ -1384,7 +1384,7 @@ func (s *server) saveCallSystemMessage(u1, u2, text string) {
 
 	msgId := uuid.New().String()
 	createdAt := time.Now()
-	displayText := "📹 " + text
+	displayText := icon + " " + text
 
 	// Encrypt for database
 	encryptedText, err := encrypt(displayText)
