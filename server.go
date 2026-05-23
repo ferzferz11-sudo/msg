@@ -27,7 +27,7 @@ import (
 	"firebase.google.com/go/v4/messaging"
 )
 
-const ServerVersion = "1.0.6.10"
+const ServerVersion = "1.0.6.11"
 
 // server implements the gRPC ChatService interface
 type server struct {
@@ -541,7 +541,15 @@ func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
 		case gen.CallMessage_HANGUP:
 			log.Printf("[CALL] Hung up: %s", msg.CallId)
 			_ = s.db.UpdateCallStatus(msg.CallId, "completed")
-			s.saveCallSystemMessage(senderName, receiverName, "📞↗️", "Звонок завершен")
+
+			durationText := ""
+			duration, err := s.db.GetCallDuration(msg.CallId)
+			if err == nil && duration > 0 {
+				minutes := duration / 60
+				seconds := duration % 60
+				durationText = fmt.Sprintf(" (%d:%02d)", minutes, seconds)
+			}
+			s.saveCallSystemMessage(senderName, receiverName, "📞↗️", "Звонок завершен"+durationText)
 
 		case gen.CallMessage_INITIATE_CONFERENCE:
 			if s.hub.GetConferenceCreator(msg.RoomId) == "" {
@@ -1420,7 +1428,7 @@ func (s *server) sendPushNotification(user, title, body, roomID string) {
 func (s *server) saveConferenceSystemMessage(roomID, text string) {
 	msgId := uuid.New().String()
 	createdAt := time.Now()
-	displayText := "👥 " + text
+	displayText := "📹 " + text
 
 	// Encrypt for database
 	encryptedText, err := encrypt(displayText)

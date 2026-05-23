@@ -2,6 +2,38 @@
 
 **Author:** Pavel Davydov (ferz)
 
+## [1.0.6.16] - 2026-05-24
+- **Call Experience Polish & Duration Tracking**
+  - **Server:**
+    - Implemented `GetCallDuration` in `db.go` to calculate conversation length.
+    - Updated `HANGUP` signaling to include talk duration in the "Звонок завершен" system message (e.g., "📹 Звонок завершен (2:15)").
+    - Unified conference and video call icons: conferences now use the `📹` icon.
+  - **Android Client:**
+    - Updated version to 1.0.6.16.
+    - Simplified system message display logic.
+  - Android version: 1.0.6.16
+
+## [1.0.6.11] - 2026-05-23
+- **Group Conferences & Call Experience Modernization**
+  - **Server: Group Conferences**
+    - Implemented signaling for group video conferences (`INITIATE_CONFERENCE`, `JOIN_CONFERENCE`, `LEAVE_CONFERENCE`, `END_CONFERENCE`).
+    - Added real-time presence tracking in `hub.go` to manage active participants.
+    - Implemented administrative controls allowing conference creators to "End for all".
+    - Automated system notifications in group chats for conference lifecycle events.
+  - **Server: Call Reliability & Logging**
+    - Implemented `GetChatParticipants` in `db.go` for accurate signal routing in group rooms.
+    - Enhanced call status tracking: distinguished between answered and missed calls with unique icons (`📞↘️`, `📞↗️`).
+    - Fixed gRPC marshalling for `room_id` and conference types in `messenger.proto`.
+  - **Android Client: Call UI Redesign**
+    - Modernized call screen with large central avatars and blurred backgrounds for a professional look.
+    - Optimized media startup: calls now start with video disabled to ensure reliability on slow connections.
+    - Added "End for all" button for conference organizers.
+    - Integrated real-time participant lists during conferences.
+  - **Android Client: Reliability & UX**
+    - Reduced message re-send timeout from 5 minutes to 1 minute for better responsiveness.
+    - Implemented visual indicators for background update downloads (rotating icon and install prompt).
+  - Server version: 1.0.6.11
+
 ## [1.0.6.8] - 2026-05-25
 - **Admin Tools Enhancement**
   - **Server:**

@@ -1042,3 +1042,9 @@ func (db *DB) UpdateCallStatus(callID, status string) error {
 	_, err := db.Exec(query, status, callID)
 	return err
 }
+
+func (db *DB) GetCallDuration(callID string) (int, error) {
+	var duration float64
+	err := db.QueryRow(`SELECT EXTRACT(EPOCH FROM (ended_at - started_at)) FROM calls WHERE id = $1::uuid AND started_at IS NOT NULL AND ended_at IS NOT NULL`, callID).Scan(&duration)
+	return int(duration), err
+}
