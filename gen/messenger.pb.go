@@ -1029,6 +1029,7 @@ type TokenRequest struct {
 	User          string                 `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
 	Token         string                 `protobuf:"bytes,2,opt,name=token,proto3" json:"token,omitempty"`
 	PushEnabled   bool                   `protobuf:"varint,3,opt,name=push_enabled,json=pushEnabled,proto3" json:"push_enabled,omitempty"` // Whether to send notifications to others FROM this user
+	UserId        string                 `protobuf:"bytes,4,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1082,6 +1083,13 @@ func (x *TokenRequest) GetPushEnabled() bool {
 		return x.PushEnabled
 	}
 	return false
+}
+
+func (x *TokenRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
 }
 
 type TokenResponse struct {
@@ -1368,6 +1376,8 @@ type CreateDirectChatRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	User1         string                 `protobuf:"bytes,1,opt,name=user1,proto3" json:"user1,omitempty"`
 	User2         string                 `protobuf:"bytes,2,opt,name=user2,proto3" json:"user2,omitempty"`
+	User1Id       string                 `protobuf:"bytes,3,opt,name=user1_id,json=user1Id,proto3" json:"user1_id,omitempty"`
+	User2Id       string                 `protobuf:"bytes,4,opt,name=user2_id,json=user2Id,proto3" json:"user2_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1412,6 +1422,20 @@ func (x *CreateDirectChatRequest) GetUser1() string {
 func (x *CreateDirectChatRequest) GetUser2() string {
 	if x != nil {
 		return x.User2
+	}
+	return ""
+}
+
+func (x *CreateDirectChatRequest) GetUser1Id() string {
+	if x != nil {
+		return x.User1Id
+	}
+	return ""
+}
+
+func (x *CreateDirectChatRequest) GetUser2Id() string {
+	if x != nil {
+		return x.User2Id
 	}
 	return ""
 }
@@ -1469,12 +1493,14 @@ func (x *CreateDirectChatResponse) GetSuccess() bool {
 }
 
 type CreateGroupChatRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Participants  []string               `protobuf:"bytes,2,rep,name=participants,proto3" json:"participants,omitempty"`
-	Creator       string                 `protobuf:"bytes,3,opt,name=creator,proto3" json:"creator,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Name           string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Participants   []string               `protobuf:"bytes,2,rep,name=participants,proto3" json:"participants,omitempty"`
+	Creator        string                 `protobuf:"bytes,3,opt,name=creator,proto3" json:"creator,omitempty"`
+	CreatorId      string                 `protobuf:"bytes,4,opt,name=creator_id,json=creatorId,proto3" json:"creator_id,omitempty"`
+	ParticipantIds []string               `protobuf:"bytes,5,rep,name=participant_ids,json=participantIds,proto3" json:"participant_ids,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *CreateGroupChatRequest) Reset() {
@@ -1526,6 +1552,20 @@ func (x *CreateGroupChatRequest) GetCreator() string {
 		return x.Creator
 	}
 	return ""
+}
+
+func (x *CreateGroupChatRequest) GetCreatorId() string {
+	if x != nil {
+		return x.CreatorId
+	}
+	return ""
+}
+
+func (x *CreateGroupChatRequest) GetParticipantIds() []string {
+	if x != nil {
+		return x.ParticipantIds
+	}
+	return nil
 }
 
 type CreateGroupChatResponse struct {
@@ -1584,6 +1624,7 @@ type UpdateUsernameRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	OldUsername   string                 `protobuf:"bytes,1,opt,name=old_username,json=oldUsername,proto3" json:"old_username,omitempty"`
 	NewUsername   string                 `protobuf:"bytes,2,opt,name=new_username,json=newUsername,proto3" json:"new_username,omitempty"`
+	UserId        string                 `protobuf:"bytes,3,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1628,6 +1669,13 @@ func (x *UpdateUsernameRequest) GetOldUsername() string {
 func (x *UpdateUsernameRequest) GetNewUsername() string {
 	if x != nil {
 		return x.NewUsername
+	}
+	return ""
+}
+
+func (x *UpdateUsernameRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
 	}
 	return ""
 }
@@ -1689,6 +1737,7 @@ type UpdatePasswordRequest struct {
 	Username      string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
 	OldPassword   string                 `protobuf:"bytes,2,opt,name=old_password,json=oldPassword,proto3" json:"old_password,omitempty"`
 	NewPassword   string                 `protobuf:"bytes,3,opt,name=new_password,json=newPassword,proto3" json:"new_password,omitempty"`
+	UserId        string                 `protobuf:"bytes,4,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1740,6 +1789,13 @@ func (x *UpdatePasswordRequest) GetOldPassword() string {
 func (x *UpdatePasswordRequest) GetNewPassword() string {
 	if x != nil {
 		return x.NewPassword
+	}
+	return ""
+}
+
+func (x *UpdatePasswordRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
 	}
 	return ""
 }
@@ -1801,6 +1857,7 @@ type AdminUpdatePasswordRequest struct {
 	TargetUsername string                 `protobuf:"bytes,1,opt,name=target_username,json=targetUsername,proto3" json:"target_username,omitempty"`
 	NewPassword    string                 `protobuf:"bytes,2,opt,name=new_password,json=newPassword,proto3" json:"new_password,omitempty"`
 	AdminUsername  string                 `protobuf:"bytes,3,opt,name=admin_username,json=adminUsername,proto3" json:"admin_username,omitempty"`
+	AdminUserId    string                 `protobuf:"bytes,4,opt,name=admin_user_id,json=adminUserId,proto3" json:"admin_user_id,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -1852,6 +1909,13 @@ func (x *AdminUpdatePasswordRequest) GetNewPassword() string {
 func (x *AdminUpdatePasswordRequest) GetAdminUsername() string {
 	if x != nil {
 		return x.AdminUsername
+	}
+	return ""
+}
+
+func (x *AdminUpdatePasswordRequest) GetAdminUserId() string {
+	if x != nil {
+		return x.AdminUserId
 	}
 	return ""
 }
@@ -2383,6 +2447,7 @@ func (x *GetUserProfileResponse) GetLastSeenAt() *timestamppb.Timestamp {
 type GetUserAvatarRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Username      string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
+	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2420,6 +2485,13 @@ func (*GetUserAvatarRequest) Descriptor() ([]byte, []int) {
 func (x *GetUserAvatarRequest) GetUsername() string {
 	if x != nil {
 		return x.Username
+	}
+	return ""
+}
+
+func (x *GetUserAvatarRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
 	}
 	return ""
 }
@@ -2480,6 +2552,7 @@ type AddParticipantRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ChatId        string                 `protobuf:"bytes,1,opt,name=chat_id,json=chatId,proto3" json:"chat_id,omitempty"`
 	Username      string                 `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
+	UserId        string                 `protobuf:"bytes,3,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2524,6 +2597,13 @@ func (x *AddParticipantRequest) GetChatId() string {
 func (x *AddParticipantRequest) GetUsername() string {
 	if x != nil {
 		return x.Username
+	}
+	return ""
+}
+
+func (x *AddParticipantRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
 	}
 	return ""
 }
@@ -2584,6 +2664,7 @@ type RemoveParticipantRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ChatId        string                 `protobuf:"bytes,1,opt,name=chat_id,json=chatId,proto3" json:"chat_id,omitempty"`
 	Username      string                 `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
+	UserId        string                 `protobuf:"bytes,3,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2628,6 +2709,13 @@ func (x *RemoveParticipantRequest) GetChatId() string {
 func (x *RemoveParticipantRequest) GetUsername() string {
 	if x != nil {
 		return x.Username
+	}
+	return ""
+}
+
+func (x *RemoveParticipantRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
 	}
 	return ""
 }
@@ -2792,6 +2880,7 @@ type DeleteChatRequest struct {
 	state             protoimpl.MessageState `protogen:"open.v1"`
 	ChatId            string                 `protobuf:"bytes,1,opt,name=chat_id,json=chatId,proto3" json:"chat_id,omitempty"`
 	RequesterUsername string                 `protobuf:"bytes,2,opt,name=requester_username,json=requesterUsername,proto3" json:"requester_username,omitempty"`
+	RequesterUserId   string                 `protobuf:"bytes,3,opt,name=requester_user_id,json=requesterUserId,proto3" json:"requester_user_id,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -2836,6 +2925,13 @@ func (x *DeleteChatRequest) GetChatId() string {
 func (x *DeleteChatRequest) GetRequesterUsername() string {
 	if x != nil {
 		return x.RequesterUsername
+	}
+	return ""
+}
+
+func (x *DeleteChatRequest) GetRequesterUserId() string {
+	if x != nil {
+		return x.RequesterUserId
 	}
 	return ""
 }
@@ -4134,6 +4230,7 @@ type UpdateChatAvatarRequest struct {
 	AvatarUrl     string                 `protobuf:"bytes,2,opt,name=avatar_url,json=avatarUrl,proto3" json:"avatar_url,omitempty"`
 	Username      string                 `protobuf:"bytes,3,opt,name=username,proto3" json:"username,omitempty"` // For admin verification
 	FullAvatarUrl string                 `protobuf:"bytes,4,opt,name=full_avatar_url,json=fullAvatarUrl,proto3" json:"full_avatar_url,omitempty"`
+	UserId        string                 `protobuf:"bytes,5,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -4192,6 +4289,13 @@ func (x *UpdateChatAvatarRequest) GetUsername() string {
 func (x *UpdateChatAvatarRequest) GetFullAvatarUrl() string {
 	if x != nil {
 		return x.FullAvatarUrl
+	}
+	return ""
+}
+
+func (x *UpdateChatAvatarRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
 	}
 	return ""
 }
@@ -5329,6 +5433,7 @@ type TypingRequest struct {
 	RoomId        string                 `protobuf:"bytes,1,opt,name=room_id,json=roomId,proto3" json:"room_id,omitempty"`
 	Username      string                 `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
 	IsTyping      bool                   `protobuf:"varint,3,opt,name=is_typing,json=isTyping,proto3" json:"is_typing,omitempty"`
+	UserId        string                 `protobuf:"bytes,4,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -5382,6 +5487,13 @@ func (x *TypingRequest) GetIsTyping() bool {
 		return x.IsTyping
 	}
 	return false
+}
+
+func (x *TypingRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
 }
 
 type TypingSignal struct {
@@ -6085,11 +6197,12 @@ const file_messenger_proto_rawDesc = "" +
 	"\bmessages\x18\x01 \x03(\v2\x12.messenger.MessageR\bmessages\x12-\n" +
 	"\x12requester_username\x18\x02 \x01(\tR\x11requesterUsername\"2\n" +
 	"\x16DeleteMessagesResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess\"[\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\"t\n" +
 	"\fTokenRequest\x12\x12\n" +
 	"\x04user\x18\x01 \x01(\tR\x04user\x12\x14\n" +
 	"\x05token\x18\x02 \x01(\tR\x05token\x12!\n" +
-	"\fpush_enabled\x18\x03 \x01(\bR\vpushEnabled\")\n" +
+	"\fpush_enabled\x18\x03 \x01(\bR\vpushEnabled\x12\x17\n" +
+	"\auser_id\x18\x04 \x01(\tR\x06userId\")\n" +
 	"\rTokenResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\"\x82\x04\n" +
 	"\bChatInfo\x12\x0e\n" +
@@ -6113,37 +6226,45 @@ const file_messenger_proto_rawDesc = "" +
 	"\busername\x18\x01 \x01(\tR\busername\x12\x17\n" +
 	"\auser_id\x18\x02 \x01(\tR\x06userId\"=\n" +
 	"\x10GetChatsResponse\x12)\n" +
-	"\x05chats\x18\x01 \x03(\v2\x13.messenger.ChatInfoR\x05chats\"E\n" +
+	"\x05chats\x18\x01 \x03(\v2\x13.messenger.ChatInfoR\x05chats\"{\n" +
 	"\x17CreateDirectChatRequest\x12\x14\n" +
 	"\x05user1\x18\x01 \x01(\tR\x05user1\x12\x14\n" +
-	"\x05user2\x18\x02 \x01(\tR\x05user2\"M\n" +
+	"\x05user2\x18\x02 \x01(\tR\x05user2\x12\x19\n" +
+	"\buser1_id\x18\x03 \x01(\tR\auser1Id\x12\x19\n" +
+	"\buser2_id\x18\x04 \x01(\tR\auser2Id\"M\n" +
 	"\x18CreateDirectChatResponse\x12\x17\n" +
 	"\achat_id\x18\x01 \x01(\tR\x06chatId\x12\x18\n" +
-	"\asuccess\x18\x02 \x01(\bR\asuccess\"j\n" +
+	"\asuccess\x18\x02 \x01(\bR\asuccess\"\xb2\x01\n" +
 	"\x16CreateGroupChatRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\"\n" +
 	"\fparticipants\x18\x02 \x03(\tR\fparticipants\x12\x18\n" +
-	"\acreator\x18\x03 \x01(\tR\acreator\"L\n" +
+	"\acreator\x18\x03 \x01(\tR\acreator\x12\x1d\n" +
+	"\n" +
+	"creator_id\x18\x04 \x01(\tR\tcreatorId\x12'\n" +
+	"\x0fparticipant_ids\x18\x05 \x03(\tR\x0eparticipantIds\"L\n" +
 	"\x17CreateGroupChatResponse\x12\x17\n" +
 	"\achat_id\x18\x01 \x01(\tR\x06chatId\x12\x18\n" +
-	"\asuccess\x18\x02 \x01(\bR\asuccess\"]\n" +
+	"\asuccess\x18\x02 \x01(\bR\asuccess\"v\n" +
 	"\x15UpdateUsernameRequest\x12!\n" +
 	"\fold_username\x18\x01 \x01(\tR\voldUsername\x12!\n" +
-	"\fnew_username\x18\x02 \x01(\tR\vnewUsername\"L\n" +
+	"\fnew_username\x18\x02 \x01(\tR\vnewUsername\x12\x17\n" +
+	"\auser_id\x18\x03 \x01(\tR\x06userId\"L\n" +
 	"\x16UpdateUsernameResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage\"y\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"\x92\x01\n" +
 	"\x15UpdatePasswordRequest\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12!\n" +
 	"\fold_password\x18\x02 \x01(\tR\voldPassword\x12!\n" +
-	"\fnew_password\x18\x03 \x01(\tR\vnewPassword\"L\n" +
+	"\fnew_password\x18\x03 \x01(\tR\vnewPassword\x12\x17\n" +
+	"\auser_id\x18\x04 \x01(\tR\x06userId\"L\n" +
 	"\x16UpdatePasswordResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage\"\x8f\x01\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"\xb3\x01\n" +
 	"\x1aAdminUpdatePasswordRequest\x12'\n" +
 	"\x0ftarget_username\x18\x01 \x01(\tR\x0etargetUsername\x12!\n" +
 	"\fnew_password\x18\x02 \x01(\tR\vnewPassword\x12%\n" +
-	"\x0eadmin_username\x18\x03 \x01(\tR\radminUsername\"Q\n" +
+	"\x0eadmin_username\x18\x03 \x01(\tR\radminUsername\x12\"\n" +
+	"\radmin_user_id\x18\x04 \x01(\tR\vadminUserId\"Q\n" +
 	"\x1bAdminUpdatePasswordResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
 	"\amessage\x18\x02 \x01(\tR\amessage\"_\n" +
@@ -6180,22 +6301,25 @@ const file_messenger_proto_rawDesc = "" +
 	"\n" +
 	"avatar_url\x18\x04 \x01(\tR\tavatarUrl\x12<\n" +
 	"\flast_seen_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
-	"lastSeenAt\"2\n" +
+	"lastSeenAt\"K\n" +
 	"\x14GetUserAvatarRequest\x12\x1a\n" +
-	"\busername\x18\x01 \x01(\tR\busername\"^\n" +
+	"\busername\x18\x01 \x01(\tR\busername\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\"^\n" +
 	"\x15GetUserAvatarResponse\x12\x1d\n" +
 	"\n" +
 	"avatar_url\x18\x01 \x01(\tR\tavatarUrl\x12&\n" +
-	"\x0ffull_avatar_url\x18\x02 \x01(\tR\rfullAvatarUrl\"L\n" +
+	"\x0ffull_avatar_url\x18\x02 \x01(\tR\rfullAvatarUrl\"e\n" +
 	"\x15AddParticipantRequest\x12\x17\n" +
 	"\achat_id\x18\x01 \x01(\tR\x06chatId\x12\x1a\n" +
-	"\busername\x18\x02 \x01(\tR\busername\"L\n" +
+	"\busername\x18\x02 \x01(\tR\busername\x12\x17\n" +
+	"\auser_id\x18\x03 \x01(\tR\x06userId\"L\n" +
 	"\x16AddParticipantResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage\"O\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"h\n" +
 	"\x18RemoveParticipantRequest\x12\x17\n" +
 	"\achat_id\x18\x01 \x01(\tR\x06chatId\x12\x1a\n" +
-	"\busername\x18\x02 \x01(\tR\busername\"O\n" +
+	"\busername\x18\x02 \x01(\tR\busername\x12\x17\n" +
+	"\auser_id\x18\x03 \x01(\tR\x06userId\"O\n" +
 	"\x19RemoveParticipantResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
 	"\amessage\x18\x02 \x01(\tR\amessage\"G\n" +
@@ -6205,10 +6329,11 @@ const file_messenger_proto_rawDesc = "" +
 	"\x04text\x18\x02 \x01(\tR\x04text\"I\n" +
 	"\x13EditMessageResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage\"[\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"\x87\x01\n" +
 	"\x11DeleteChatRequest\x12\x17\n" +
 	"\achat_id\x18\x01 \x01(\tR\x06chatId\x12-\n" +
-	"\x12requester_username\x18\x02 \x01(\tR\x11requesterUsername\"H\n" +
+	"\x12requester_username\x18\x02 \x01(\tR\x11requesterUsername\x12*\n" +
+	"\x11requester_user_id\x18\x03 \x01(\tR\x0frequesterUserId\"H\n" +
 	"\x12DeleteChatResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
 	"\amessage\x18\x02 \x01(\tR\amessage\"K\n" +
@@ -6293,13 +6418,14 @@ const file_messenger_proto_rawDesc = "" +
 	"\bnew_name\x18\x02 \x01(\tR\anewName\"L\n" +
 	"\x16UpdateChatNameResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage\"\x95\x01\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"\xae\x01\n" +
 	"\x17UpdateChatAvatarRequest\x12\x17\n" +
 	"\achat_id\x18\x01 \x01(\tR\x06chatId\x12\x1d\n" +
 	"\n" +
 	"avatar_url\x18\x02 \x01(\tR\tavatarUrl\x12\x1a\n" +
 	"\busername\x18\x03 \x01(\tR\busername\x12&\n" +
-	"\x0ffull_avatar_url\x18\x04 \x01(\tR\rfullAvatarUrl\"N\n" +
+	"\x0ffull_avatar_url\x18\x04 \x01(\tR\rfullAvatarUrl\x12\x17\n" +
+	"\auser_id\x18\x05 \x01(\tR\x06userId\"N\n" +
 	"\x18UpdateChatAvatarResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
 	"\amessage\x18\x02 \x01(\tR\amessage\"\x13\n" +
@@ -6367,11 +6493,12 @@ const file_messenger_proto_rawDesc = "" +
 	"\x13GetFavoritesRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\"F\n" +
 	"\x14GetFavoritesResponse\x12.\n" +
-	"\bmessages\x18\x01 \x03(\v2\x12.messenger.MessageR\bmessages\"a\n" +
+	"\bmessages\x18\x01 \x03(\v2\x12.messenger.MessageR\bmessages\"z\n" +
 	"\rTypingRequest\x12\x17\n" +
 	"\aroom_id\x18\x01 \x01(\tR\x06roomId\x12\x1a\n" +
 	"\busername\x18\x02 \x01(\tR\busername\x12\x1b\n" +
-	"\tis_typing\x18\x03 \x01(\bR\bisTyping\"`\n" +
+	"\tis_typing\x18\x03 \x01(\bR\bisTyping\x12\x17\n" +
+	"\auser_id\x18\x04 \x01(\tR\x06userId\"`\n" +
 	"\fTypingSignal\x12\x17\n" +
 	"\aroom_id\x18\x01 \x01(\tR\x06roomId\x12\x1a\n" +
 	"\busername\x18\x02 \x01(\tR\busername\x12\x1b\n" +

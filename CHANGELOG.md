@@ -2,6 +2,21 @@
 
 **Author:** Pavel Davydov (ferz)
 
+## [1.0.6.17] - 2026-05-25
+- **Stability & Identity Persistence (Universal UUID Migration)**
+  - **Server: Global ID Resolution**
+    - Updated `messenger.proto` to include `user_id` (UUID) across all account-related requests.
+    - Implemented priority-based identifier resolution: server now prefers stable UUIDs over mutable usernames for all operations.
+    - Migration of `RegisterToken`, `UpdateUsername`, `UpdatePassword`, `UpdateAvatar`, `UpdateProfile`, and `Typing` methods to support direct UUID lookup.
+    - Guaranteed session continuity after username changes.
+  - **Android Client: Core Stability**
+    - Integrated `userId` into all outgoing message objects (standard, gallery, voice).
+    - Updated `RealGrpcClient` marshallers to support new protocol fields.
+    - Implemented `ensureUserIdSet` logic for critical operations like draft saving and profile viewing.
+    - Refactored `ProfileActivity` and `EditProfileActivity` to use stable IDs for avatar and metadata fetching.
+  - Server version: 1.0.6.17
+  - Android version: 1.0.6.17
+
 ## [1.0.6.16] - 2026-05-24
 - **Call Experience Polish & Duration Tracking**
   - **Server:**

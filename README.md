@@ -2,7 +2,7 @@
 
 **Author:** Pavel Davydov (ferz)
 
-**Version:** 1.0.6.16
+**Version:** 1.0.6.17
 
 A real-time secure messaging application with gRPC server and multiple client implementations.
 
@@ -98,7 +98,7 @@ LavenderMessenger/
 
 - **`main.go`** - Server entry point and initialization
   - Loads environment variables from `.env`
-  - Sets up gRPC server with version "1.0.6.16"
+  - Sets up gRPC server with version "1.0.6.17"
   - Initializes database connection
   - Starts TCP listener on configured address
   - Registers chat service
@@ -175,7 +175,7 @@ LavenderMessenger/
   - **Super Admin tools: User/Chat management and Password Reset**
   - **Group Video Conferences with Presence and Admin controls**
   - **Call Duration Tracking in chat history**
-  - Version: 1.0.6.16
+  - Version: 1.0.6.17
 
 - **`console/main.go`** - Console client application (primary CLI client)
   - YAML-based configuration (no .env required)
@@ -289,6 +289,7 @@ LavenderMessenger/
 - **Background Android Updates**: Implemented `WorkManager` based background downloading for Android APKs with progress notifications and auto-navigation to install.
 - **Group Video Conferences**: Comprehensive support for group video meetings with real-time presence tracking, system notifications, and organizer administrative controls.
 - **Modernized Call Experience**: Redesigned call UI with large avatars, blurred backgrounds, and avatar-first startup for reliable performance on slow networks.
+- **Improved Stability (Universal UUID Migration)**: Full migration to stable User IDs (UUIDs) for all account operations, ensuring session and data continuity even after username changes.
 - **Improved gRPC Reliability**: Fixed reconnection race conditions on Android to ensure messages sent while offline are delivered immediately upon reconnection.
 - **Push notification improvements**: Added `room_id` to push notification data payload for proper chat navigation on notification click.
 - **Auto-navigation**: Server now sends room_id with push notifications to enable direct chat opening from notifications.

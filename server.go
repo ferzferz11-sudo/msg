@@ -27,7 +27,7 @@ import (
 	"firebase.google.com/go/v4/messaging"
 )
 
-const ServerVersion = "1.0.6.11"
+const ServerVersion = "1.0.6.17"
 
 // server implements the gRPC ChatService interface
 type server struct {
@@ -426,13 +426,21 @@ func (s *server) Typing(stream gen.ChatService_TypingServer) error {
 			return err
 		}
 
-		currentTypingUser = req.Username
+		username := req.Username
+		if req.UserId != "" {
+			resolved := s.resolveUsername(req.UserId)
+			if resolved != "" {
+				username = resolved
+			}
+		}
+
+		currentTypingUser = username
 		currentRoomID = req.RoomId
 
 		// Broadcast typing signal to others
 		signal := &gen.TypingSignal{
 			RoomId:   req.RoomId,
-			Username: req.Username,
+			Username: username,
 			IsTyping: req.IsTyping,
 		}
 		s.hub.BroadcastTyping(signal)
@@ -847,9 +855,17 @@ func (s *server) SetReaction(_ context.Context, req *gen.ReactionRequest) (*gen.
 
 // RegisterToken сохраняет FCM токен для пользователя
 func (s *server) RegisterToken(_ context.Context, req *gen.TokenRequest) (*gen.TokenResponse, error) {
-	err := s.db.SaveUserToken(req.User, req.Token, req.PushEnabled)
+	username := req.User
+	if req.UserId != "" {
+		resolved := s.resolveUsername(req.UserId)
+		if resolved != "" {
+			username = resolved
+		}
+	}
+
+	err := s.db.SaveUserToken(username, req.Token, req.PushEnabled)
 	if err != nil {
-		log.Printf("Failed to save token for %s: %v", req.User, err)
+		log.Printf("Failed to save token for %s: %v", username, err)
 		return &gen.TokenResponse{Success: false}, err
 	}
 
@@ -864,7 +880,7 @@ func (s *server) RegisterToken(_ context.Context, req *gen.TokenRequest) (*gen.T
 	}
 
 	s.logFCM("INFO", "Register: %s [%s] (Push for me: %s, Push from me: %v)",
-		req.User, displayToken, receiveStatus, req.PushEnabled)
+		username, displayToken, receiveStatus, req.PushEnabled)
 	return &gen.TokenResponse{Success: true}, nil
 }
 
@@ -916,8 +932,23 @@ func (s *server) GetChats(_ context.Context, req *gen.GetChatsRequest) (*gen.Get
 
 // CreateDirectChat создает или находит личный чат между двумя пользователями
 func (s *server) CreateDirectChat(_ context.Context, req *gen.CreateDirectChatRequest) (*gen.CreateDirectChatResponse, error) {
-	log.Printf("CreateDirectChat: %s <-> %s", req.User1, req.User2)
-	chatID, err := s.db.GetDirectChatBetweenUsers(req.User1, req.User2)
+	u1 := req.User1
+	if req.User1Id != "" {
+		resolved := s.resolveUsername(req.User1Id)
+		if resolved != "" {
+			u1 = resolved
+		}
+	}
+	u2 := req.User2
+	if req.User2Id != "" {
+		resolved := s.resolveUsername(req.User2Id)
+		if resolved != "" {
+			u2 = resolved
+		}
+	}
+
+	log.Printf("CreateDirectChat: %s <-> %s", u1, u2)
+	chatID, err := s.db.GetDirectChatBetweenUsers(u1, u2)
 	if err != nil {
 		log.Printf("Error creating direct chat: %v", err)
 		return &gen.CreateDirectChatResponse{Success: false}, err
@@ -928,7 +959,15 @@ func (s *server) CreateDirectChat(_ context.Context, req *gen.CreateDirectChatRe
 }
 
 func (s *server) CreateGroupChat(_ context.Context, req *gen.CreateGroupChatRequest) (*gen.CreateGroupChatResponse, error) {
-	log.Printf("CreateGroupChat: %s (Creator: %s)", req.Name, req.Creator)
+	creator := req.Creator
+	if req.CreatorId != "" {
+		resolved := s.resolveUsername(req.CreatorId)
+		if resolved != "" {
+			creator = resolved
+		}
+	}
+
+	log.Printf("CreateGroupChat: %s (Creator: %s)", req.Name, creator)
 	chatID := uuid.New().String()
 
 	// Convert participants slice to JSON string
@@ -941,7 +980,7 @@ func (s *server) CreateGroupChat(_ context.Context, req *gen.CreateGroupChatRequ
 	}
 	participants += "]"
 
-	err := s.db.CreateChat(chatID, req.Name, "group", participants, req.Creator)
+	err := s.db.CreateChat(chatID, req.Name, "group", participants, creator)
 	if err != nil {
 		log.Printf("Failed to create group chat in DB: %v", err)
 		return &gen.CreateGroupChatResponse{Success: false}, err
@@ -952,16 +991,24 @@ func (s *server) CreateGroupChat(_ context.Context, req *gen.CreateGroupChatRequ
 
 // UpdateUsername обновляет имя пользователя
 func (s *server) UpdateUsername(_ context.Context, req *gen.UpdateUsernameRequest) (*gen.UpdateUsernameResponse, error) {
-	err := s.db.UpdateUsername(req.OldUsername, req.NewUsername)
+	oldUsername := req.OldUsername
+	if req.UserId != "" {
+		resolved := s.resolveUsername(req.UserId)
+		if resolved != "" {
+			oldUsername = resolved
+		}
+	}
+
+	err := s.db.UpdateUsername(oldUsername, req.NewUsername)
 	if err != nil {
-		log.Printf("Failed to update username from %s to %s: %v", req.OldUsername, req.NewUsername, err)
+		log.Printf("Failed to update username from %s to %s: %v", oldUsername, req.NewUsername, err)
 		return &gen.UpdateUsernameResponse{
 			Success: false,
 			Message: err.Error(),
 		}, err
 	}
 
-	log.Printf("Username updated from %s to %s", req.OldUsername, req.NewUsername)
+	log.Printf("Username updated from %s to %s", oldUsername, req.NewUsername)
 	return &gen.UpdateUsernameResponse{
 		Success: true,
 		Message: "Username updated successfully",
@@ -970,10 +1017,18 @@ func (s *server) UpdateUsername(_ context.Context, req *gen.UpdateUsernameReques
 
 // UpdatePassword обновляет пароль пользователя
 func (s *server) UpdatePassword(_ context.Context, req *gen.UpdatePasswordRequest) (*gen.UpdatePasswordResponse, error) {
+	username := req.Username
+	if req.UserId != "" {
+		resolved := s.resolveUsername(req.UserId)
+		if resolved != "" {
+			username = resolved
+		}
+	}
+
 	// Проверяем старый пароль
-	storedHash, err := s.db.GetUserPasswordHash(req.Username)
+	storedHash, err := s.db.GetUserPasswordHash(username)
 	if err != nil {
-		log.Printf("Failed to get password hash for %s: %v", req.Username, err)
+		log.Printf("Failed to get password hash for %s: %v", username, err)
 		return &gen.UpdatePasswordResponse{
 			Success: false,
 			Message: "User not found",
@@ -981,7 +1036,7 @@ func (s *server) UpdatePassword(_ context.Context, req *gen.UpdatePasswordReques
 	}
 
 	if !CheckPassword(req.OldPassword, storedHash) {
-		log.Printf("Old password verification failed for user: %s", req.Username)
+		log.Printf("Old password verification failed for user: %s", username)
 		return &gen.UpdatePasswordResponse{
 			Success: false,
 			Message: "Old password is incorrect",
@@ -989,16 +1044,16 @@ func (s *server) UpdatePassword(_ context.Context, req *gen.UpdatePasswordReques
 	}
 
 	// Обновляем пароль
-	err = s.db.UpdatePassword(req.Username, req.NewPassword)
+	err = s.db.UpdatePassword(username, req.NewPassword)
 	if err != nil {
-		log.Printf("Failed to update password for %s: %v", req.Username, err)
+		log.Printf("Failed to update password for %s: %v", username, err)
 		return &gen.UpdatePasswordResponse{
 			Success: false,
 			Message: err.Error(),
 		}, err
 	}
 
-	log.Printf("Password updated for user: %s", req.Username)
+	log.Printf("Password updated for user: %s", username)
 	return &gen.UpdatePasswordResponse{
 		Success: true,
 		Message: "Password updated successfully",
@@ -1007,9 +1062,17 @@ func (s *server) UpdatePassword(_ context.Context, req *gen.UpdatePasswordReques
 
 // AdminUpdatePassword allows a super admin to reset any user's password
 func (s *server) AdminUpdatePassword(_ context.Context, req *gen.AdminUpdatePasswordRequest) (*gen.AdminUpdatePasswordResponse, error) {
+	adminUsername := req.AdminUsername
+	if req.AdminUserId != "" {
+		resolved := s.resolveUsername(req.AdminUserId)
+		if resolved != "" {
+			adminUsername = resolved
+		}
+	}
+
 	// Verify admin status
-	if !s.db.IsSuperAdmin(req.AdminUsername) {
-		log.Printf("Unauthorized AdminUpdatePassword attempt by %s", req.AdminUsername)
+	if !s.db.IsSuperAdmin(adminUsername) {
+		log.Printf("Unauthorized AdminUpdatePassword attempt by %s", adminUsername)
 		return &gen.AdminUpdatePasswordResponse{
 			Success: false,
 			Message: "Unauthorized: only super admins can reset passwords",
@@ -1026,7 +1089,7 @@ func (s *server) AdminUpdatePassword(_ context.Context, req *gen.AdminUpdatePass
 		}, err
 	}
 
-	log.Printf("Admin %s reset password for user: %s", req.AdminUsername, req.TargetUsername)
+	log.Printf("Admin %s reset password for user: %s", adminUsername, req.TargetUsername)
 	return &gen.AdminUpdatePasswordResponse{
 		Success: true,
 		Message: "Password reset successfully",
@@ -1149,9 +1212,17 @@ func (s *server) GetUserProfile(_ context.Context, req *gen.GetUserProfileReques
 
 // GetUserAvatar retrieves the avatar URL for a user (both thumbnail and full)
 func (s *server) GetUserAvatar(_ context.Context, req *gen.GetUserAvatarRequest) (*gen.GetUserAvatarResponse, error) {
-	avatarURL, fullAvatarURL, err := s.db.GetUserAvatarWithFull(req.Username)
+	username := req.Username
+	if req.UserId != "" {
+		resolved := s.resolveUsername(req.UserId)
+		if resolved != "" {
+			username = resolved
+		}
+	}
+
+	avatarURL, fullAvatarURL, err := s.db.GetUserAvatarWithFull(username)
 	if err != nil {
-		log.Printf("Failed to get avatar for %s: %v", req.Username, err)
+		log.Printf("Failed to get avatar for %s: %v", username, err)
 		return &gen.GetUserAvatarResponse{AvatarUrl: "", FullAvatarUrl: ""}, nil
 	}
 
@@ -1160,7 +1231,15 @@ func (s *server) GetUserAvatar(_ context.Context, req *gen.GetUserAvatarRequest)
 
 // AddParticipant adds a user to a group chat
 func (s *server) AddParticipant(_ context.Context, req *gen.AddParticipantRequest) (*gen.AddParticipantResponse, error) {
-	log.Printf("AddParticipant: Adding user %s to chat %s", req.Username, req.ChatId)
+	username := req.Username
+	if req.UserId != "" {
+		resolved := s.resolveUsername(req.UserId)
+		if resolved != "" {
+			username = resolved
+		}
+	}
+
+	log.Printf("AddParticipant: Adding user %s to chat %s", username, req.ChatId)
 	chat, err := s.db.GetChat(req.ChatId)
 	if err != nil {
 		log.Printf("AddParticipant error: Chat %s not found", req.ChatId)
@@ -1180,13 +1259,13 @@ func (s *server) AddParticipant(_ context.Context, req *gen.AddParticipantReques
 
 	// Check if user already in chat
 	for _, p := range participants {
-		if p == req.Username {
-			log.Printf("AddParticipant: User %s is already in chat %s", req.Username, req.ChatId)
+		if p == username {
+			log.Printf("AddParticipant: User %s is already in chat %s", username, req.ChatId)
 			return &gen.AddParticipantResponse{Success: false, Message: "User already in chat"}, nil
 		}
 	}
 
-	participants = append(participants, req.Username)
+	participants = append(participants, username)
 	updatedParticipants, _ := json.Marshal(participants)
 
 	if err := s.db.UpdateChatParticipants(req.ChatId, string(updatedParticipants)); err != nil {
@@ -1198,13 +1277,21 @@ func (s *server) AddParticipant(_ context.Context, req *gen.AddParticipantReques
 	_ = s.db.IncrementParticipantsChatListVersion(req.ChatId)
 	s.broadcastOnlineUsers() // Refresh lists for everyone
 
-	log.Printf("AddParticipant success: User %s added to chat %s", req.Username, req.ChatId)
+	log.Printf("AddParticipant success: User %s added to chat %s", username, req.ChatId)
 	return &gen.AddParticipantResponse{Success: true, Message: "User added successfully"}, nil
 }
 
 // RemoveParticipant removes a user from a group chat
 func (s *server) RemoveParticipant(_ context.Context, req *gen.RemoveParticipantRequest) (*gen.RemoveParticipantResponse, error) {
-	log.Printf("RemoveParticipant: Removing user %s from chat %s", req.Username, req.ChatId)
+	username := req.Username
+	if req.UserId != "" {
+		resolved := s.resolveUsername(req.UserId)
+		if resolved != "" {
+			username = resolved
+		}
+	}
+
+	log.Printf("RemoveParticipant: Removing user %s from chat %s", username, req.ChatId)
 	chat, err := s.db.GetChat(req.ChatId)
 	if err != nil {
 		log.Printf("RemoveParticipant error: Chat %s not found", req.ChatId)
@@ -1225,7 +1312,7 @@ func (s *server) RemoveParticipant(_ context.Context, req *gen.RemoveParticipant
 	newParticipants := []string{}
 	found := false
 	for _, p := range participants {
-		if p != req.Username {
+		if p != username {
 			newParticipants = append(newParticipants, p)
 		} else {
 			found = true
@@ -1233,7 +1320,7 @@ func (s *server) RemoveParticipant(_ context.Context, req *gen.RemoveParticipant
 	}
 
 	if !found {
-		log.Printf("RemoveParticipant error: User %s not in chat %s", req.Username, req.ChatId)
+		log.Printf("RemoveParticipant error: User %s not in chat %s", username, req.ChatId)
 		return &gen.RemoveParticipantResponse{Success: false, Message: "User not in chat"}, nil
 	}
 
@@ -1246,10 +1333,10 @@ func (s *server) RemoveParticipant(_ context.Context, req *gen.RemoveParticipant
 
 	// Notify all participants
 	_ = s.db.IncrementParticipantsChatListVersion(req.ChatId)
-	_ = s.db.IncrementUserChatListVersion(req.Username) // Notify the removed user too
+	_ = s.db.IncrementUserChatListVersion(username) // Notify the removed user too
 	s.broadcastOnlineUsers()
 
-	log.Printf("RemoveParticipant success: User %s removed from chat %s", req.Username, req.ChatId)
+	log.Printf("RemoveParticipant success: User %s removed from chat %s", username, req.ChatId)
 	return &gen.RemoveParticipantResponse{Success: true, Message: "User removed successfully"}, nil
 }
 
@@ -1259,7 +1346,15 @@ func (s *server) DeleteChat(_ context.Context, req *gen.DeleteChatRequest) (*gen
 		return &gen.DeleteChatResponse{Success: false, Message: "Chat ID is required"}, nil
 	}
 
-	log.Printf("DeleteChat: Request to delete chat %s by %s", req.ChatId, req.RequesterUsername)
+	requesterUsername := req.RequesterUsername
+	if req.RequesterUserId != "" {
+		resolved := s.resolveUsername(req.RequesterUserId)
+		if resolved != "" {
+			requesterUsername = resolved
+		}
+	}
+
+	log.Printf("DeleteChat: Request to delete chat %s by %s", req.ChatId, requesterUsername)
 
 	// 1. Get all participants and creator before deletion
 	chat, err := s.db.GetChat(req.ChatId)
@@ -1271,9 +1366,9 @@ func (s *server) DeleteChat(_ context.Context, req *gen.DeleteChatRequest) (*gen
 
 	// Security check: only creator can delete group chats
 	// We allow users to delete their own direct chats, but groups must be deleted by the creator
-	if chat.Type == "group" && chat.CreatorUsername != req.RequesterUsername {
+	if chat.Type == "group" && chat.CreatorUsername != requesterUsername {
 		log.Printf("DeleteChat error: User %s is not authorized to delete group chat %s (creator: %s)",
-			req.RequesterUsername, req.ChatId, chat.CreatorUsername)
+			requesterUsername, req.ChatId, chat.CreatorUsername)
 		return &gen.DeleteChatResponse{
 			Success: false,
 			Message: "You don't have permission to delete this group. Only the group administrator can delete it.",
@@ -1775,7 +1870,15 @@ func (s *server) UpdateChatAvatar(_ context.Context, req *gen.UpdateChatAvatarRe
 		return &gen.UpdateChatAvatarResponse{Success: false, Message: "Chat ID and Avatar URL are required"}, nil
 	}
 
-	log.Printf("UpdateChatAvatar: Checking admin status for chat %s, user %s", req.ChatId, req.Username)
+	username := req.Username
+	if req.UserId != "" {
+		resolved := s.resolveUsername(req.UserId)
+		if resolved != "" {
+			username = resolved
+		}
+	}
+
+	log.Printf("UpdateChatAvatar: Checking admin status for chat %s, user %s", req.ChatId, username)
 
 	// Get chat to verify admin status
 	chat, err := s.db.GetChat(req.ChatId)
@@ -1785,8 +1888,8 @@ func (s *server) UpdateChatAvatar(_ context.Context, req *gen.UpdateChatAvatarRe
 	}
 
 	// Verify user is the creator/admin
-	if chat.CreatorUsername != req.Username {
-		log.Printf("UpdateChatAvatar error: User %s is not admin (creator: %s)", req.Username, chat.CreatorUsername)
+	if chat.CreatorUsername != username {
+		log.Printf("UpdateChatAvatar error: User %s is not admin (creator: %s)", username, chat.CreatorUsername)
 		return &gen.UpdateChatAvatarResponse{Success: false, Message: "Only chat admin can change group photo"}, nil
 	}
 
@@ -1797,7 +1900,7 @@ func (s *server) UpdateChatAvatar(_ context.Context, req *gen.UpdateChatAvatarRe
 		return &gen.UpdateChatAvatarResponse{Success: false, Message: err.Error()}, nil
 	}
 
-	log.Printf("UpdateChatAvatar: Updated avatar for chat %s by admin %s (thumb: %s, full: %s)", req.ChatId, req.Username, req.AvatarUrl, req.FullAvatarUrl)
+	log.Printf("UpdateChatAvatar: Updated avatar for chat %s by admin %s (thumb: %s, full: %s)", req.ChatId, username, req.AvatarUrl, req.FullAvatarUrl)
 
 	// Increment version for all participants so their lists refresh
 	_ = s.db.IncrementParticipantsChatListVersion(req.ChatId)
@@ -1809,9 +1912,9 @@ func (s *server) UpdateChatAvatar(_ context.Context, req *gen.UpdateChatAvatarRe
 func (s *server) AddContact(_ context.Context, req *gen.AddContactRequest) (*gen.AddContactResponse, error) {
 	username := req.Username
 	if req.UserId != "" {
-		resolvedUsername := s.resolveUsername(req.UserId)
-		if resolvedUsername != "" {
-			username = resolvedUsername
+		resolved := s.resolveUsername(req.UserId)
+		if resolved != "" {
+			username = resolved
 		}
 	}
 
@@ -1827,9 +1930,9 @@ func (s *server) AddContact(_ context.Context, req *gen.AddContactRequest) (*gen
 func (s *server) RemoveContact(_ context.Context, req *gen.RemoveContactRequest) (*gen.RemoveContactResponse, error) {
 	username := req.Username
 	if req.UserId != "" {
-		resolvedUsername := s.resolveUsername(req.UserId)
-		if resolvedUsername != "" {
-			username = resolvedUsername
+		resolved := s.resolveUsername(req.UserId)
+		if resolved != "" {
+			username = resolved
 		}
 	}
 
@@ -1845,9 +1948,9 @@ func (s *server) RemoveContact(_ context.Context, req *gen.RemoveContactRequest)
 func (s *server) GetContacts(_ context.Context, req *gen.GetContactsRequest) (*gen.GetContactsResponse, error) {
 	username := req.Username
 	if req.UserId != "" {
-		resolvedUsername := s.resolveUsername(req.UserId)
-		if resolvedUsername != "" {
-			username = resolvedUsername
+		resolved := s.resolveUsername(req.UserId)
+		if resolved != "" {
+			username = resolved
 		}
 	}
 
@@ -1862,9 +1965,9 @@ func (s *server) GetContacts(_ context.Context, req *gen.GetContactsRequest) (*g
 func (s *server) GetChatListVersion(_ context.Context, req *gen.GetChatListVersionRequest) (*gen.GetChatListVersionResponse, error) {
 	username := req.Username
 	if req.UserId != "" {
-		resolvedUsername := s.resolveUsername(req.UserId)
-		if resolvedUsername != "" {
-			username = resolvedUsername
+		resolved := s.resolveUsername(req.UserId)
+		if resolved != "" {
+			username = resolved
 		}
 	}
 
@@ -1894,12 +1997,10 @@ func (s *server) resolveUsername(identifier string) string {
 func (s *server) GetThemes(_ context.Context, req *gen.GetThemesRequest) (*gen.GetThemesResponse, error) {
 	username := req.Username
 	if req.UserId != "" {
-		resolvedUsername := s.resolveUsername(req.UserId)
-		if resolvedUsername != "" {
-			username = resolvedUsername
+		resolved := s.resolveUsername(req.UserId)
+		if resolved != "" {
+			username = resolved
 		}
-	} else {
-		username = s.resolveUsername(username)
 	}
 
 	currentID, themes, err := s.db.GetUserThemes(username)
@@ -1942,12 +2043,10 @@ func (s *server) GetThemes(_ context.Context, req *gen.GetThemesRequest) (*gen.G
 func (s *server) SaveTheme(_ context.Context, req *gen.SaveThemeRequest) (*gen.SaveThemeResponse, error) {
 	username := req.Username
 	if req.UserId != "" {
-		resolvedUsername := s.resolveUsername(req.UserId)
-		if resolvedUsername != "" {
-			username = resolvedUsername
+		resolved := s.resolveUsername(req.UserId)
+		if resolved != "" {
+			username = resolved
 		}
-	} else {
-		username = s.resolveUsername(username)
 	}
 
 	log.Printf("Saving theme '%s' (ID: %s) for user %s. Chat Background URL: %s", req.Theme.Name, req.Theme.Id, username, req.Theme.ChatBackgroundImageUrl)
@@ -1963,12 +2062,10 @@ func (s *server) SaveTheme(_ context.Context, req *gen.SaveThemeRequest) (*gen.S
 func (s *server) SetCurrentTheme(_ context.Context, req *gen.SetCurrentThemeRequest) (*gen.SetCurrentThemeResponse, error) {
 	username := req.Username
 	if req.UserId != "" {
-		resolvedUsername := s.resolveUsername(req.UserId)
-		if resolvedUsername != "" {
-			username = resolvedUsername
+		resolved := s.resolveUsername(req.UserId)
+		if resolved != "" {
+			username = resolved
 		}
-	} else {
-		username = s.resolveUsername(username)
 	}
 
 	log.Printf("Setting current theme to %s for user %s", req.ThemeId, username)
@@ -1983,12 +2080,10 @@ func (s *server) SetCurrentTheme(_ context.Context, req *gen.SetCurrentThemeRequ
 func (s *server) DeleteTheme(_ context.Context, req *gen.DeleteThemeRequest) (*gen.DeleteThemeResponse, error) {
 	username := req.Username
 	if req.UserId != "" {
-		resolvedUsername := s.resolveUsername(req.UserId)
-		if resolvedUsername != "" {
-			username = resolvedUsername
+		resolved := s.resolveUsername(req.UserId)
+		if resolved != "" {
+			username = resolved
 		}
-	} else {
-		username = s.resolveUsername(username)
 	}
 
 	log.Printf("Deleting theme %s for user %s", req.ThemeId, username)
