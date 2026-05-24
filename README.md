@@ -98,7 +98,7 @@ LavenderMessenger/
 
 - **`main.go`** - Server entry point and initialization
   - Loads environment variables from `.env`
-  - Sets up gRPC server with version "1.0.6.17"
+  - Sets up gRPC server with version "1.0.6.18"
   - Initializes database connection
   - Starts TCP listener on configured address
   - Registers chat service
@@ -175,7 +175,7 @@ LavenderMessenger/
   - **Super Admin tools: User/Chat management and Password Reset**
   - **Group Video Conferences with Presence and Admin controls**
   - **Call Duration Tracking in chat history**
-  - Version: 1.0.6.17
+  - Version: 1.0.6.21
 
 - **`console/main.go`** - Console client application (primary CLI client)
   - YAML-based configuration (no .env required)

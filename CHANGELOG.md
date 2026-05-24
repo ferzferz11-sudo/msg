@@ -2,6 +2,17 @@
 
 **Author:** Pavel Davydov (ferz)
 
+## [1.0.6.21] - 2026-05-25
+- **UI Rebranding & UX Refinement**
+  - **Android Client:**
+    - **Rebranding:** App officially renamed to "Lava" (Лава) for Russian localization.
+    - **New Default Theme:** "Graphite Night" (Лава Графит) is now the default theme, replacing the old lavender style.
+    - **Smart Notifications:** Active push notifications are now automatically dismissed when entering the corresponding chat room.
+    - **Background Updates:** Enhanced APK download process with real-time percentage display in the toolbar and a direct "Install" action button in the system notification.
+    - **Theming Fixes:** Corrected UI color inconsistencies in "About", "Edit Profile", and "Contacts" activities to respect the current theme's primary palette.
+    - **Identity Stability:** Completed migration to stable User IDs (UUIDs) for all account and profile operations.
+  - Android version: 1.0.6.21
+
 ## [1.0.6.18] - 2026-05-25
 - **Profile Management & Avatar Cleanup**
   - **Server:**
