@@ -13,6 +13,16 @@
     - Added `ON CONFLICT` support to `SaveMessage` in `db.go` for efficient message editing and state updates.
   - Server version: 1.0.6.19
 
+## [1.0.6.25] - 2026-05-25
+- **Group Conferences & Call Experience Overhaul**
+  - **Android Client:**
+    - **Meet-Style Conferences:** Implemented instant entry into conferences. Users now see their own video preview immediately upon joining, with camera and microphone enabled by default.
+    - **Live Call Timer:** Added a real-time call duration timer to the call screen, visible during both 1-on-1 calls and group conferences.
+    - **Screen Persistence:** Integrated `keepScreenOn` to prevent the device screen from dimming or turning off during active video calls.
+    - **Interactive System Messages:** Improved system notifications in chat — tapping the live conference status now instantly joins the active call.
+    - **Bug Fixes:** Resolved an issue where multiple system messages would appear with inconsistent timestamps and fixed incorrect view selection in message long-press mode.
+  - Android version: 1.0.6.25
+
 ## [1.0.6.24] - 2026-05-25
 - **Critical Stability & UI Refinement**
   - **Android Client:**

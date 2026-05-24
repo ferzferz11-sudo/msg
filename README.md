@@ -175,7 +175,7 @@ LavenderMessenger/
   - **Super Admin tools: User/Chat management and Password Reset**
   - **Group Video Conferences with Presence and Admin controls**
   - **Call Duration Tracking in chat history**
-  - Version: 1.0.6.24
+  - Version: 1.0.6.25
 
 - **`console/main.go`** - Console client application (primary CLI client)
   - YAML-based configuration (no .env required)
