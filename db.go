@@ -578,26 +578,26 @@ func (db *DB) DeleteProfile(user string) error {
 	return err
 }
 func (db *DB) GetUserProfile(user string) (struct {
-	Username, Bio, Status, AvatarURL string
-	LastSeenAt                       sql.NullTime
+	Username, Bio, Status, AvatarURL, FullAvatarURL string
+	LastSeenAt                                      sql.NullTime
 }, error) {
 	var p struct {
-		Username, Bio, Status, AvatarURL string
-		LastSeenAt                       sql.NullTime
+		Username, Bio, Status, AvatarURL, FullAvatarURL string
+		LastSeenAt                                      sql.NullTime
 	}
-	err := db.QueryRow(`SELECT username, COALESCE(bio, ''), COALESCE(status, ''), COALESCE(avatar_url, ''), last_seen_at FROM users WHERE username=$1`, user).Scan(&p.Username, &p.Bio, &p.Status, &p.AvatarURL, &p.LastSeenAt)
+	err := db.QueryRow(`SELECT username, COALESCE(bio, ''), COALESCE(status, ''), COALESCE(avatar_url, ''), last_seen_at, COALESCE(full_avatar_url, '') FROM users WHERE username=$1`, user).Scan(&p.Username, &p.Bio, &p.Status, &p.AvatarURL, &p.LastSeenAt, &p.FullAvatarURL)
 	return p, err
 }
 
 func (db *DB) GetUserProfileById(userId string) (struct {
-	Username, Bio, Status, AvatarURL string
-	LastSeenAt                       sql.NullTime
+	Username, Bio, Status, AvatarURL, FullAvatarURL string
+	LastSeenAt                                      sql.NullTime
 }, error) {
 	var p struct {
-		Username, Bio, Status, AvatarURL string
-		LastSeenAt                       sql.NullTime
+		Username, Bio, Status, AvatarURL, FullAvatarURL string
+		LastSeenAt                                      sql.NullTime
 	}
-	err := db.QueryRow(`SELECT username, COALESCE(bio, ''), COALESCE(status, ''), COALESCE(avatar_url, ''), last_seen_at FROM users WHERE id=$1::uuid`, userId).Scan(&p.Username, &p.Bio, &p.Status, &p.AvatarURL, &p.LastSeenAt)
+	err := db.QueryRow(`SELECT username, COALESCE(bio, ''), COALESCE(status, ''), COALESCE(avatar_url, ''), last_seen_at, COALESCE(full_avatar_url, '') FROM users WHERE id=$1::uuid`, userId).Scan(&p.Username, &p.Bio, &p.Status, &p.AvatarURL, &p.LastSeenAt, &p.FullAvatarURL)
 	return p, err
 }
 func (db *DB) UpdateProfile(user, bio, status string) error {

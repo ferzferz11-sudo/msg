@@ -2,6 +2,17 @@
 
 **Author:** Pavel Davydov (ferz)
 
+## [1.0.6.18] - 2026-05-25
+- **Profile Management & Avatar Cleanup**
+  - **Server:**
+    - Updated `GetUserProfile` to return `full_avatar_url` in the response for high-resolution image viewing.
+    - Implemented automatic cleanup of old avatar files: thumbnail and full-size versions are now deleted from the disk when a user updates their photo.
+    - Improved `DeleteImageFile` utility to safely handle both relative and absolute URL formats.
+    - Updated `server.go` with version constant 1.0.6.18.
+  - **Protocol:**
+    - Added `full_avatar_url` field to `GetUserProfileResponse` in `messenger.proto`.
+  - Server version: 1.0.6.18
+
 ## [1.0.6.17] - 2026-05-25
 - **Stability & Identity Persistence (Universal UUID Migration)**
   - **Server: Global ID Resolution**

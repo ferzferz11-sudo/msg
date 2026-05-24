@@ -2375,6 +2375,7 @@ type GetUserProfileResponse struct {
 	Status        string                 `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"`
 	AvatarUrl     string                 `protobuf:"bytes,4,opt,name=avatar_url,json=avatarUrl,proto3" json:"avatar_url,omitempty"`
 	LastSeenAt    *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=last_seen_at,json=lastSeenAt,proto3" json:"last_seen_at,omitempty"`
+	FullAvatarUrl string                 `protobuf:"bytes,6,opt,name=full_avatar_url,json=fullAvatarUrl,proto3" json:"full_avatar_url,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2442,6 +2443,13 @@ func (x *GetUserProfileResponse) GetLastSeenAt() *timestamppb.Timestamp {
 		return x.LastSeenAt
 	}
 	return nil
+}
+
+func (x *GetUserProfileResponse) GetFullAvatarUrl() string {
+	if x != nil {
+		return x.FullAvatarUrl
+	}
+	return ""
 }
 
 type GetUserAvatarRequest struct {
@@ -6293,7 +6301,7 @@ const file_messenger_proto_rawDesc = "" +
 	"\amessage\x18\x02 \x01(\tR\amessage\"L\n" +
 	"\x15GetUserProfileRequest\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12\x17\n" +
-	"\auser_id\x18\x02 \x01(\tR\x06userId\"\xbb\x01\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\"\xe3\x01\n" +
 	"\x16GetUserProfileResponse\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12\x10\n" +
 	"\x03bio\x18\x02 \x01(\tR\x03bio\x12\x16\n" +
@@ -6301,7 +6309,8 @@ const file_messenger_proto_rawDesc = "" +
 	"\n" +
 	"avatar_url\x18\x04 \x01(\tR\tavatarUrl\x12<\n" +
 	"\flast_seen_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
-	"lastSeenAt\"K\n" +
+	"lastSeenAt\x12&\n" +
+	"\x0ffull_avatar_url\x18\x06 \x01(\tR\rfullAvatarUrl\"K\n" +
 	"\x14GetUserAvatarRequest\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12\x17\n" +
 	"\auser_id\x18\x02 \x01(\tR\x06userId\"^\n" +

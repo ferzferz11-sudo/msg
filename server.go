@@ -27,7 +27,7 @@ import (
 	"firebase.google.com/go/v4/messaging"
 )
 
-const ServerVersion = "1.0.6.17"
+const ServerVersion = "1.0.6.18"
 
 // server implements the gRPC ChatService interface
 type server struct {
@@ -1139,8 +1139,22 @@ func (s *server) UpdateAvatar(_ context.Context, req *gen.UpdateAvatarRequest) (
 		}
 	}
 
-	// Save both thumbnail and full avatar URLs
-	err := s.db.UpdateAvatarWithFull(username, req.AvatarUrl, req.FullAvatarUrl)
+	// 1. Get old avatar URLs for deletion
+	oldThumb, oldFull, err := s.db.GetUserAvatarWithFull(username)
+	if err == nil {
+		// Run deletion in background
+		go func(t, f string) {
+			if t != "" {
+				_ = DeleteImageFile(t)
+			}
+			if f != "" && f != t {
+				_ = DeleteImageFile(f)
+			}
+		}(oldThumb, oldFull)
+	}
+
+	// 2. Save both thumbnail and full avatar URLs
+	err = s.db.UpdateAvatarWithFull(username, req.AvatarUrl, req.FullAvatarUrl)
 	if err != nil {
 		log.Printf("Failed to update avatar for %s: %v", username, err)
 		return &gen.UpdateAvatarResponse{Success: false, Message: err.Error()}, nil
@@ -1173,8 +1187,8 @@ func (s *server) UpdateProfile(_ context.Context, req *gen.UpdateProfileRequest)
 // GetUserProfile retrieves user profile information
 func (s *server) GetUserProfile(_ context.Context, req *gen.GetUserProfileRequest) (*gen.GetUserProfileResponse, error) {
 	var profile struct {
-		Username, Bio, Status, AvatarURL string
-		LastSeenAt                       sql.NullTime
+		Username, Bio, Status, AvatarURL, FullAvatarURL string
+		LastSeenAt                                      sql.NullTime
 	}
 	var err error
 
@@ -1202,11 +1216,12 @@ func (s *server) GetUserProfile(_ context.Context, req *gen.GetUserProfileReques
 	}
 
 	return &gen.GetUserProfileResponse{
-		Username:   profile.Username,
-		Bio:        profile.Bio,
-		Status:     profile.Status,
-		AvatarUrl:  profile.AvatarURL,
-		LastSeenAt: lastSeen,
+		Username:      profile.Username,
+		Bio:           profile.Bio,
+		Status:        profile.Status,
+		AvatarUrl:     profile.AvatarURL,
+		LastSeenAt:    lastSeen,
+		FullAvatarUrl: profile.FullAvatarURL,
 	}, nil
 }
 

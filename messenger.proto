@@ -234,6 +234,7 @@ message GetUserProfileResponse {
   string status = 3;
   string avatar_url = 4;
   google.protobuf.Timestamp last_seen_at = 5;
+  string full_avatar_url = 6;
 }
 
 message GetUserAvatarRequest {
