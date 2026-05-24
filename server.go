@@ -575,9 +575,9 @@ func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
 		case gen.CallMessage_JOIN_CONFERENCE:
 			if s.hub.GetConferenceCreator(msg.RoomId) == "" {
 				s.hub.InitiateConference(msg.RoomId, msg.SenderId, msg.SenderName)
-				s.saveConferenceSystemMessage(msg.RoomId, "Создана конференция")
 			}
 			s.hub.JoinConference(msg.RoomId, msg.SenderId, msg.SenderName)
+			s.saveConferenceSystemMessage(msg.RoomId, "Конференция")
 			participants := s.hub.GetConferenceParticipants(msg.RoomId)
 			creatorID := s.hub.GetConferenceCreator(msg.RoomId)
 			response := map[string]interface{}{
@@ -596,6 +596,7 @@ func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
 
 		case gen.CallMessage_LEAVE_CONFERENCE:
 			s.hub.LeaveConference(msg.RoomId, msg.SenderId)
+			s.saveConferenceSystemMessage(msg.RoomId, "Конференция")
 			members, _ := s.db.GetChatParticipants(msg.RoomId)
 			var memberIDs []string
 			for _, m := range members {
@@ -1552,9 +1553,17 @@ func (s *server) sendPushNotification(user, title, body, roomID string) {
 }
 
 func (s *server) saveConferenceSystemMessage(roomID, text string) {
-	msgId := uuid.New().String()
+	msgId := "conf_" + roomID // Stable ID for live updates
 	createdAt := time.Now()
 	displayText := "📹 " + text
+
+	// Get participant count if active
+	participants := s.hub.GetConferenceParticipants(roomID)
+	if participants != nil && len(participants) > 0 {
+		displayText = fmt.Sprintf("📹 Конференция: %d участников. (Войти)", len(participants))
+	} else if strings.Contains(text, "завершена") {
+		displayText = "📹 Конференция завершена"
+	}
 
 	// Encrypt for database
 	encryptedText, err := encrypt(displayText)
@@ -1563,7 +1572,7 @@ func (s *server) saveConferenceSystemMessage(roomID, text string) {
 		return
 	}
 
-	// Save to DB
+	// Save to DB (now supports ON CONFLICT update)
 	err = s.db.SaveMessage(msgId, "SYSTEM", "", encryptedText, createdAt, "", "", "", roomID, "", "[]", "", 0)
 	if err != nil {
 		log.Printf("[CONF] Failed to save call system message: %v", err)

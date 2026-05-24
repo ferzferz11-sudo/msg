@@ -121,7 +121,11 @@ func (db *DB) Close() error { return db.DB.Close() }
 func (db *DB) SaveMessage(mid, user, uid string, enc []byte, created time.Time, rmid, ruser, rtext, room, img, imgUrls, voice string, dur int32) error {
 	// Favorites messages are to self, so mark as read immediately
 	isRead := strings.HasPrefix(room, "favorites_")
-	q := `INSERT INTO messages (message_id, username, user_id, encrypted_text, created_at, replied_to_message_id, replied_to_user, replied_to_text, room_id, is_read, image_url, image_urls, voice_url, duration) VALUES ($1, $2::text, CASE WHEN $3 ~ '^[0-9a-fA-F-]{36}$' THEN $3::uuid ELSE (SELECT id FROM users WHERE username=$2::text) END, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`
+	q := `INSERT INTO messages (message_id, username, user_id, encrypted_text, created_at, replied_to_message_id, replied_to_user, replied_to_text, room_id, is_read, image_url, image_urls, voice_url, duration)
+	      VALUES ($1, $2::text, CASE WHEN $3 ~ '^[0-9a-fA-F-]{36}$' THEN $3::uuid ELSE (SELECT id FROM users WHERE username=$2::text) END, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+		  ON CONFLICT (message_id) DO UPDATE SET
+		  encrypted_text = EXCLUDED.encrypted_text,
+		  edited = TRUE`
 	_, err := db.Exec(q, mid, user, uid, enc, created, rmid, ruser, rtext, room, isRead, img, imgUrls, voice, dur)
 	if err == nil && room != "" {
 		db.IncrementParticipantsChatListVersion(room)

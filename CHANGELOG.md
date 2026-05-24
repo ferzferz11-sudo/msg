@@ -2,6 +2,28 @@
 
 **Author:** Pavel Davydov (ferz)
 
+## [1.0.6.19] - 2026-05-25
+- **Live Conference Status & Database Reliability**
+  - **Server:**
+    - Implemented **Live Conference Status Messages**: System notifications in group chats now update in real-time with participant counts (e.g., "📹 Конференция: 3 участников").
+    - Optimized message storage: Unified system messages for conferences using stable IDs and `ON CONFLICT` updates to prevent chat history spam.
+    - Fixed gRPC signal routing for conferences to ensure all group members receive join/leave notifications immediately.
+    - Updated `server.go` with version constant 1.0.6.19.
+  - **Database:**
+    - Added `ON CONFLICT` support to `SaveMessage` in `db.go` for efficient message editing and state updates.
+  - Server version: 1.0.6.19
+
+## [1.0.6.24] - 2026-05-25
+- **Critical Stability & UI Refinement**
+  - **Android Client:**
+    - **Xiaomi/MIUI Fix:** Implemented a workaround for the `BinderProxy` ClassCastException in `onResume`, ensuring stability on newer Xiaomi devices.
+    - **Optimization:** Replaced `notifyDataSetChanged` with a more efficient `updateTheme` method in all adapters, reducing main thread pressure during lifecycle transitions.
+    - **Network Resilience:** Added automatic timeouts and robust fallbacks for theme loading. If the server is unreachable during an update, the app now gracefully falls back to the local cache or default theme without closing.
+    - **UI Polish:** Fixed the "ugly contour" issue on default avatars by optimizing how `ShapeableImageView` handles backgrounds and removing redundant strokes.
+    - **UX Improvements:** Implemented single-line ellipsis for chat previews and smart visibility for profile save buttons.
+    - **Performance:** Streamlined avatar rendering and implemented payload-based list updates to ensure zero lag.
+  - Android version: 1.0.6.24
+
 ## [1.0.6.23] - 2026-05-25
 - **Startup Stability & Theme Persistence**
   - **Android Client:**
