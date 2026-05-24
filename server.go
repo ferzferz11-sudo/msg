@@ -27,7 +27,7 @@ import (
 	"firebase.google.com/go/v4/messaging"
 )
 
-const ServerVersion = "1.0.6.18"
+const ServerVersion = "1.0.6.19"
 
 // server implements the gRPC ChatService interface
 type server struct {
@@ -565,7 +565,11 @@ func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
 				s.saveConferenceSystemMessage(msg.RoomId, "Создана конференция")
 			}
 			members, _ := s.db.GetChatParticipants(msg.RoomId)
-			s.hub.BroadcastConference(msg, members)
+			var memberIDs []string
+			for _, m := range members {
+				memberIDs = append(memberIDs, s.resolveUserId(m))
+			}
+			s.hub.BroadcastConference(msg, memberIDs)
 			continue
 
 		case gen.CallMessage_JOIN_CONFERENCE:
@@ -583,13 +587,21 @@ func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
 			responseJSON, _ := json.Marshal(response)
 			msg.Payload = string(responseJSON)
 			members, _ := s.db.GetChatParticipants(msg.RoomId)
-			s.hub.BroadcastConference(msg, members)
+			var memberIDs []string
+			for _, m := range members {
+				memberIDs = append(memberIDs, s.resolveUserId(m))
+			}
+			s.hub.BroadcastConference(msg, memberIDs)
 			continue
 
 		case gen.CallMessage_LEAVE_CONFERENCE:
 			s.hub.LeaveConference(msg.RoomId, msg.SenderId)
 			members, _ := s.db.GetChatParticipants(msg.RoomId)
-			s.hub.BroadcastConference(msg, members)
+			var memberIDs []string
+			for _, m := range members {
+				memberIDs = append(memberIDs, s.resolveUserId(m))
+			}
+			s.hub.BroadcastConference(msg, memberIDs)
 			continue
 
 		case gen.CallMessage_END_CONFERENCE:
@@ -597,7 +609,11 @@ func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
 				s.hub.EndConference(msg.RoomId)
 				s.saveConferenceSystemMessage(msg.RoomId, "Конференция завершена")
 				members, _ := s.db.GetChatParticipants(msg.RoomId)
-				s.hub.BroadcastConference(msg, members)
+				var memberIDs []string
+				for _, m := range members {
+					memberIDs = append(memberIDs, s.resolveUserId(m))
+				}
+				s.hub.BroadcastConference(msg, memberIDs)
 			}
 			continue
 		}

@@ -2,6 +2,24 @@
 
 **Author:** Pavel Davydov (ferz)
 
+## [1.0.6.23] - 2026-05-25
+- **Startup Stability & Theme Persistence**
+  - **Android Client:**
+    - **Offline Themes:** Implemented a local caching system for custom themes. Your personalized colors now load instantly on app startup even without an internet connection.
+    - **Resilient Loading:** Added a fast-initialization phase in `SplashActivity` to eliminate UI flickering during theme application.
+    - **Crash Prevention:** Enhanced `ThemeMappers` with safe defaults and robust error handling to prevent app closures during data migration or network instability.
+    - **Universal Safety:** Standardized color parsing across all list adapters to ensure stability under all theme configurations.
+  - Android version: 1.0.6.23
+
+## [1.0.6.22] - 2026-05-25
+- **Performance & UI Optimization**
+  - **Android Client:**
+    - **Optimization:** Replaced `CircleImageView` with `ShapeableImageView` across all user and chat lists, significantly improving scrolling performance and entry/exit times for selection modes.
+    - **UI Polish:** Removed redundant strokes and "ugly contours" from default avatars.
+    - **Branding:** Balanced logo (bird) proportions in default avatars and launcher icons.
+    - **Stability:** Implemented Payload-based partial updates in lists to avoid full rebinds.
+  - Android version: 1.0.6.22
+
 ## [1.0.6.21] - 2026-05-25
 - **UI Rebranding & UX Refinement**
   - **Android Client:**
