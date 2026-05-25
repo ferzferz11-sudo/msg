@@ -620,6 +620,19 @@ func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
 				startTime := time.UnixMilli(startTimeMs)
 
 				s.hub.UpdateConferenceMetadata(msg.RoomId, topic, startTime)
+
+				// If trigger_notify is set, send pushes to all invited members
+				if notify, ok := data["trigger_notify"].(bool); ok && notify {
+					invited := s.hub.GetConferenceInvited(msg.RoomId)
+					notificationText := fmt.Sprintf("Начало конференции: %s", topic)
+					if topic == "" {
+						notificationText = "Конференция начинается!"
+					}
+					for uid := range invited {
+						s.sendConferencePush(uid, notificationText, msg.RoomId, startTime)
+					}
+				}
+
 				s.broadcastConferenceStatus(msg.RoomId)
 			}
 			continue
