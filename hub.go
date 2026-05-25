@@ -8,6 +8,7 @@ package main
 
 import (
 	"sync"
+	"time"
 
 	"LavenderMessenger/gen" // Generated gRPC code package
 )
@@ -30,7 +31,10 @@ type Hub struct {
 
 type Conference struct {
 	CreatorID    string
-	Participants map[string]string // userID -> username
+	Participants map[string]string // userID -> username (currently in call)
+	Invited      map[string]string // userID -> username (invited but not necessarily joined)
+	Topic        string
+	StartTime    time.Time
 }
 
 // NewHub creates a new Hub instance
@@ -260,7 +264,66 @@ func (h *Hub) InitiateConference(roomID, creatorID, creatorName string) {
 		Participants: map[string]string{
 			creatorID: creatorName,
 		},
+		Invited:   make(map[string]string),
+		Topic:     "",
+		StartTime: time.Now(),
 	}
+}
+
+func (h *Hub) UpdateConferenceMetadata(roomID, topic string, startTime time.Time) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if conf, ok := h.conferences[roomID]; ok {
+		conf.Topic = topic
+		conf.StartTime = startTime
+	}
+}
+
+func (h *Hub) InviteToConference(roomID, userID, userName string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if conf, ok := h.conferences[roomID]; ok {
+		conf.Invited[userID] = userName
+	}
+}
+
+func (h *Hub) RemoveFromConference(roomID, userID string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if conf, ok := h.conferences[roomID]; ok {
+		delete(conf.Invited, userID)
+	}
+}
+
+func (h *Hub) GetConferenceInvited(roomID string) map[string]string {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	if conf, ok := h.conferences[roomID]; ok {
+		res := make(map[string]string)
+		for k, v := range conf.Invited {
+			res[k] = v
+		}
+		return res
+	}
+	return nil
+}
+
+func (h *Hub) GetConferenceTopic(roomID string) string {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	if conf, ok := h.conferences[roomID]; ok {
+		return conf.Topic
+	}
+	return ""
+}
+
+func (h *Hub) GetConferenceStartTime(roomID string) time.Time {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	if conf, ok := h.conferences[roomID]; ok {
+		return conf.StartTime
+	}
+	return time.Time{}
 }
 
 func (h *Hub) JoinConference(roomID, userID, userName string) {

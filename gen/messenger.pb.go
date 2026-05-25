@@ -33,10 +33,13 @@ const (
 	CallMessage_ANSWER        CallMessage_Type = 5 // WebRTC SDP Answer
 	CallMessage_ICE_CANDIDATE CallMessage_Type = 6 // WebRTC ICE Candidate
 	// Group Conference
-	CallMessage_INITIATE_CONFERENCE CallMessage_Type = 10
-	CallMessage_JOIN_CONFERENCE     CallMessage_Type = 11
-	CallMessage_LEAVE_CONFERENCE    CallMessage_Type = 12
-	CallMessage_END_CONFERENCE      CallMessage_Type = 13
+	CallMessage_INITIATE_CONFERENCE    CallMessage_Type = 10
+	CallMessage_JOIN_CONFERENCE        CallMessage_Type = 11
+	CallMessage_LEAVE_CONFERENCE       CallMessage_Type = 12
+	CallMessage_END_CONFERENCE         CallMessage_Type = 13
+	CallMessage_INVITE_TO_CONFERENCE   CallMessage_Type = 14
+	CallMessage_REMOVE_FROM_CONFERENCE CallMessage_Type = 15
+	CallMessage_UPDATE_CONFERENCE      CallMessage_Type = 16
 )
 
 // Enum value maps for CallMessage_Type.
@@ -53,19 +56,25 @@ var (
 		11: "JOIN_CONFERENCE",
 		12: "LEAVE_CONFERENCE",
 		13: "END_CONFERENCE",
+		14: "INVITE_TO_CONFERENCE",
+		15: "REMOVE_FROM_CONFERENCE",
+		16: "UPDATE_CONFERENCE",
 	}
 	CallMessage_Type_value = map[string]int32{
-		"INITIATE":            0,
-		"ACCEPT":              1,
-		"REJECT":              2,
-		"HANGUP":              3,
-		"OFFER":               4,
-		"ANSWER":              5,
-		"ICE_CANDIDATE":       6,
-		"INITIATE_CONFERENCE": 10,
-		"JOIN_CONFERENCE":     11,
-		"LEAVE_CONFERENCE":    12,
-		"END_CONFERENCE":      13,
+		"INITIATE":               0,
+		"ACCEPT":                 1,
+		"REJECT":                 2,
+		"HANGUP":                 3,
+		"OFFER":                  4,
+		"ANSWER":                 5,
+		"ICE_CANDIDATE":          6,
+		"INITIATE_CONFERENCE":    10,
+		"JOIN_CONFERENCE":        11,
+		"LEAVE_CONFERENCE":       12,
+		"END_CONFERENCE":         13,
+		"INVITE_TO_CONFERENCE":   14,
+		"REMOVE_FROM_CONFERENCE": 15,
+		"UPDATE_CONFERENCE":      16,
 	}
 )
 
@@ -6542,7 +6551,7 @@ const file_messenger_proto_rawDesc = "" +
 	"\fnew_password\x18\x02 \x01(\tR\vnewPassword\"K\n" +
 	"\x15ResetPasswordResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage\"\xcb\x03\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"\x98\x04\n" +
 	"\vCallMessage\x12\x17\n" +
 	"\acall_id\x18\x01 \x01(\tR\x06callId\x12\x1b\n" +
 	"\tsender_id\x18\x02 \x01(\tR\bsenderId\x12\x1f\n" +
@@ -6553,7 +6562,7 @@ const file_messenger_proto_rawDesc = "" +
 	"\rreceiver_name\x18\a \x01(\tR\freceiverName\x12\x17\n" +
 	"\aroom_id\x18\b \x01(\tR\x06roomId\x12/\n" +
 	"\x04type\x18\x04 \x01(\x0e2\x1b.messenger.CallMessage.TypeR\x04type\x12\x18\n" +
-	"\apayload\x18\x05 \x01(\tR\apayload\"\xba\x01\n" +
+	"\apayload\x18\x05 \x01(\tR\apayload\"\x87\x02\n" +
 	"\x04Type\x12\f\n" +
 	"\bINITIATE\x10\x00\x12\n" +
 	"\n" +
@@ -6570,7 +6579,10 @@ const file_messenger_proto_rawDesc = "" +
 	"\x12\x13\n" +
 	"\x0fJOIN_CONFERENCE\x10\v\x12\x14\n" +
 	"\x10LEAVE_CONFERENCE\x10\f\x12\x12\n" +
-	"\x0eEND_CONFERENCE\x10\r2\xe3 \n" +
+	"\x0eEND_CONFERENCE\x10\r\x12\x18\n" +
+	"\x14INVITE_TO_CONFERENCE\x10\x0e\x12\x1a\n" +
+	"\x16REMOVE_FROM_CONFERENCE\x10\x0f\x12\x15\n" +
+	"\x11UPDATE_CONFERENCE\x10\x102\xe3 \n" +
 	"\vChatService\x122\n" +
 	"\x04Chat\x12\x12.messenger.Message\x1a\x12.messenger.Message(\x010\x01\x12?\n" +
 	"\x06Typing\x12\x18.messenger.TypingRequest\x1a\x17.messenger.TypingSignal(\x010\x01\x12A\n" +

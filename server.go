@@ -565,14 +565,11 @@ func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
 		case gen.CallMessage_INITIATE_CONFERENCE:
 			if s.hub.GetConferenceCreator(msg.RoomId) == "" {
 				s.hub.InitiateConference(msg.RoomId, msg.SenderId, msg.SenderName)
-				s.saveConferenceSystemMessage(msg.RoomId, "Создана конференция", senderName, msg.SenderId)
+				// Initial setup doesn't broadcast to everyone yet, just creates the lobby
+				log.Printf("[CONF] Lobby created for room %s by %s", msg.RoomId, msg.SenderId)
 			}
-			members, _ := s.db.GetChatParticipants(msg.RoomId)
-			var memberIDs []string
-			for _, m := range members {
-				memberIDs = append(memberIDs, s.resolveUserId(m))
-			}
-			s.hub.BroadcastConference(msg, memberIDs)
+			// Respond to creator with the status
+			s.broadcastConferenceStatus(msg.RoomId)
 			continue
 
 		case gen.CallMessage_JOIN_CONFERENCE:
@@ -581,43 +578,57 @@ func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
 			}
 			s.hub.JoinConference(msg.RoomId, msg.SenderId, msg.SenderName)
 			s.saveConferenceSystemMessage(msg.RoomId, "Конференция", senderName, msg.SenderId)
-			participants := s.hub.GetConferenceParticipants(msg.RoomId)
-			creatorID := s.hub.GetConferenceCreator(msg.RoomId)
-			response := map[string]interface{}{
-				"participants": participants,
-				"creator_id":   creatorID,
-			}
-			responseJSON, _ := json.Marshal(response)
-			msg.Payload = string(responseJSON)
-			members, _ := s.db.GetChatParticipants(msg.RoomId)
-			var memberIDs []string
-			for _, m := range members {
-				memberIDs = append(memberIDs, s.resolveUserId(m))
-			}
-			s.hub.BroadcastConference(msg, memberIDs)
+			s.broadcastConferenceStatus(msg.RoomId)
 			continue
 
 		case gen.CallMessage_LEAVE_CONFERENCE:
 			s.hub.LeaveConference(msg.RoomId, msg.SenderId)
 			s.saveConferenceSystemMessage(msg.RoomId, "Конференция", senderName, msg.SenderId)
-			members, _ := s.db.GetChatParticipants(msg.RoomId)
-			var memberIDs []string
-			for _, m := range members {
-				memberIDs = append(memberIDs, s.resolveUserId(m))
+			s.broadcastConferenceStatus(msg.RoomId)
+			continue
+
+		case gen.CallMessage_INVITE_TO_CONFERENCE:
+			// payload should contain userID to invite
+			targetUserID := msg.ReceiverId
+			targetUserName := msg.ReceiverName
+			s.hub.InviteToConference(msg.RoomId, targetUserID, targetUserName)
+
+			topic := s.hub.GetConferenceTopic(msg.RoomId)
+			startTime := s.hub.GetConferenceStartTime(msg.RoomId)
+
+			// Send push notification to invited user
+			notificationText := fmt.Sprintf("Приглашение в конференцию: %s", topic)
+			if topic == "" {
+				notificationText = "Приглашение в конференцию"
 			}
-			s.hub.BroadcastConference(msg, memberIDs)
+			s.sendConferencePush(targetUserID, notificationText, msg.RoomId, startTime)
+
+			s.broadcastConferenceStatus(msg.RoomId)
+			continue
+
+		case gen.CallMessage_REMOVE_FROM_CONFERENCE:
+			s.hub.RemoveFromConference(msg.RoomId, msg.ReceiverId)
+			s.broadcastConferenceStatus(msg.RoomId)
+			continue
+
+		case gen.CallMessage_UPDATE_CONFERENCE:
+			if s.hub.IsConferenceCreator(msg.RoomId, msg.SenderId) {
+				var data map[string]interface{}
+				json.Unmarshal([]byte(msg.Payload), &data)
+				topic := fmt.Sprintf("%v", data["topic"])
+				startTimeMs := int64(data["start_time"].(float64))
+				startTime := time.UnixMilli(startTimeMs)
+
+				s.hub.UpdateConferenceMetadata(msg.RoomId, topic, startTime)
+				s.broadcastConferenceStatus(msg.RoomId)
+			}
 			continue
 
 		case gen.CallMessage_END_CONFERENCE:
 			if s.hub.IsConferenceCreator(msg.RoomId, msg.SenderId) {
 				s.hub.EndConference(msg.RoomId)
 				s.saveConferenceSystemMessage(msg.RoomId, "Конференция завершена", senderName, msg.SenderId)
-				members, _ := s.db.GetChatParticipants(msg.RoomId)
-				var memberIDs []string
-				for _, m := range members {
-					memberIDs = append(memberIDs, s.resolveUserId(m))
-				}
-				s.hub.BroadcastConference(msg, memberIDs)
+				s.broadcastConferenceStatus(msg.RoomId)
 			}
 			continue
 		}
@@ -1596,6 +1607,81 @@ func (s *server) saveConferenceSystemMessage(roomID, text, senderName, senderId 
 		RoomId:    roomID,
 	}
 	s.hub.Broadcast(broadcastMsg)
+}
+
+func (s *server) broadcastConferenceStatus(roomID string) {
+	participants := s.hub.GetConferenceParticipants(roomID)
+	invited := s.hub.GetConferenceInvited(roomID)
+	creatorID := s.hub.GetConferenceCreator(roomID)
+	topic := s.hub.GetConferenceTopic(roomID)
+	startTime := s.hub.GetConferenceStartTime(roomID)
+
+	response := map[string]interface{}{
+		"participants": participants,
+		"invited":      invited,
+		"creator_id":   creatorID,
+		"topic":        topic,
+		"start_time":   startTime.UnixMilli(),
+	}
+	responseJSON, _ := json.Marshal(response)
+
+	msg := &gen.CallMessage{
+		Type:    gen.CallMessage_JOIN_CONFERENCE, // We reuse JOIN_CONFERENCE for status updates
+		RoomId:  roomID,
+		Payload: string(responseJSON),
+	}
+
+	members, _ := s.db.GetChatParticipants(roomID)
+	var memberIDs []string
+	for _, m := range members {
+		memberIDs = append(memberIDs, s.resolveUserId(m))
+	}
+	s.hub.BroadcastConference(msg, memberIDs)
+}
+
+func (s *server) sendConferencePush(targetUserID, text, roomID string, startTime time.Time) {
+	// Implementation for FCM push
+	log.Printf("[PUSH] Sending conference invitation to %s: %s (at %v)", targetUserID, text, startTime)
+
+	// Construct push data
+	data := map[string]string{
+		"type":          "conference_invite",
+		"room_id":       roomID,
+		"text":          text,
+		"start_time_ms": fmt.Sprintf("%d", startTime.UnixMilli()),
+		"is_conference": "true",
+	}
+
+	s.sendPushInternal(targetUserID, "Новая конференция", text, data)
+}
+
+func (s *server) sendPushInternal(targetUserID, title, body string, data map[string]string) {
+	// Look up token
+	token, err := s.db.GetUserTokenByUserID(targetUserID)
+	if err != nil || token == "" {
+		return
+	}
+
+	ctx := context.Background()
+	client, err := s.firebaseApp.Messaging(ctx)
+	if err != nil {
+		log.Printf("[FCM] Error getting messaging client: %v", err)
+		return
+	}
+
+	pushMsg := &messaging.Message{
+		Token: token,
+		Notification: &messaging.Notification{
+			Title: title,
+			Body:  body,
+		},
+		Data: data,
+	}
+
+	_, err = client.Send(ctx, pushMsg)
+	if err != nil {
+		log.Printf("[FCM] Error sending conference push: %v", err)
+	}
 }
 
 func (s *server) saveCallSystemMessage(u1, u2, icon, text, senderName, senderId string) {

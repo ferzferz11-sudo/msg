@@ -608,6 +608,9 @@ message CallMessage {
     JOIN_CONFERENCE = 11;
     LEAVE_CONFERENCE = 12;
     END_CONFERENCE = 13;
+    INVITE_TO_CONFERENCE = 14;
+    REMOVE_FROM_CONFERENCE = 15;
+    UPDATE_CONFERENCE = 16;
   }
   Type type = 4;
 

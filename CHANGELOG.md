@@ -3,17 +3,18 @@
 **Author:** Pavel Davydov (ferz)
 
 ## [1.0.6.27] - 2026-05-25
-- **Conference Lobby & UX Polish**
+- **Advanced Conference Setup & Audio UX**
   - **Android Client:**
-    - **Conference Lobby:** Introduced a "Lobby" screen for group conferences. Users can now preview their camera, toggle mic/video, and see conference info before joining.
-    - **Smart Routing:** Tapping a conference notification (chat or push) now leads to the Lobby instead of joining immediately.
-    - **Audio Feedback:** Added professional dial tones for outgoing calls and standard ringtones for incoming calls.
-    - **Modern Call Bubbles:** Improved rendering of call history with color-coded status and icons.
-    - **Time Sync:** Fixed "future messages" issue by implementing device-side timestamp normalization.
+    - **Interactive Lobby:** Users can now configure conferences (Topic, Start Time) and preview media before joining.
+    - **Invitations:** Integrated participant selection for conferences with direct push notifications to invited members.
+    - **Audio UX:** Added high-quality dial tones for outgoing calls and system ringtones for incoming calls.
+    - **Modern History:** Call notifications now use chat bubbles with color-coded status icons and smart alignment.
+    - **Time Normalization:** Implemented local timestamp capping to fix "messages from the future" sync issues.
   - **Server:**
-    - **Proper Attribution:** All call events are now attributed to the caller's ID instead of a generic "SYSTEM" user.
-    - **UTC Enforcement:** Hardened all message timestamps to strict UTC format.
-    - Incremented server version to 1.0.6.27.
+    - **Conference Metadata:** Added support for persistent conference topics, start times, and invited participant lists.
+    - **Refined Attribution:** Corrected message ownership for call events; "Missed" and "Completed" calls are now properly attributed to the caller.
+    - **UTC Enforcement:** All server-side timestamps are now strictly UTC.
+    - Updated server version to 1.0.6.27.
   - Version: 1.0.6.27
 
 ## [1.0.6.26] - 2026-05-25

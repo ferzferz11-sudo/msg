@@ -813,6 +813,12 @@ func (db *DB) GetUserToken(user string) (string, error) {
 	db.QueryRow(`SELECT fcm_token FROM user_tokens WHERE username=$1`, user).Scan(&t)
 	return t, nil
 }
+
+func (db *DB) GetUserTokenByUserID(uid string) (string, error) {
+	var t string
+	err := db.QueryRow(`SELECT fcm_token FROM user_tokens ut JOIN users u ON ut.username = u.username WHERE u.id = $1::uuid`, uid).Scan(&t)
+	return t, err
+}
 func (db *DB) SaveUserToken(user, token string, e bool) error {
 	_, err := db.Exec(`INSERT INTO user_tokens (username, fcm_token, push_enabled, updated_at) VALUES ($1, $2, $3, NOW()) ON CONFLICT (username) DO UPDATE SET fcm_token=EXCLUDED.fcm_token, updated_at=NOW()`, user, token, e)
 	return err
