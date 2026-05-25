@@ -27,7 +27,7 @@ import (
 	"firebase.google.com/go/v4/messaging"
 )
 
-const ServerVersion = "1.0.6.26"
+const ServerVersion = "1.0.6.27"
 
 // server implements the gRPC ChatService interface
 type server struct {
@@ -545,7 +545,9 @@ func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
 		case gen.CallMessage_REJECT:
 			log.Printf("[CALL] Rejected: %s", msg.CallId)
 			_ = s.db.UpdateCallStatus(msg.CallId, "rejected")
-			s.saveCallSystemMessage(senderName, receiverName, "📞↘️", "Пропущенный вызов", senderName, msg.SenderId)
+			// For missed calls, the message should be attributed to the CALLER (ReceiverId in REJECT signal)
+			// so that the person who missed it sees it as an incoming message (on the left)
+			s.saveCallSystemMessage(senderName, receiverName, "📞↘️", "Пропущенный вызов", receiverName, msg.ReceiverId)
 		case gen.CallMessage_HANGUP:
 			log.Printf("[CALL] Hung up: %s", msg.CallId)
 			_ = s.db.UpdateCallStatus(msg.CallId, "completed")
@@ -557,7 +559,8 @@ func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
 				seconds := duration % 60
 				durationText = fmt.Sprintf(" (%d:%02d)", minutes, seconds)
 			}
-			s.saveCallSystemMessage(senderName, receiverName, "📞↗️", "Звонок завершен"+durationText, senderName, msg.SenderId)
+			// For completed calls, attribute to the original CALLER for history consistency
+			s.saveCallSystemMessage(senderName, receiverName, "📞↗️", "Звонок завершен"+durationText, receiverName, msg.ReceiverId)
 
 		case gen.CallMessage_INITIATE_CONFERENCE:
 			if s.hub.GetConferenceCreator(msg.RoomId) == "" {

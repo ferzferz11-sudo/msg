@@ -2,6 +2,19 @@
 
 **Author:** Pavel Davydov (ferz)
 
+## [1.0.6.27] - 2026-05-25
+- **Unified Call History & Modern UI**
+  - **Android Client:**
+    - **Modern Call Bubbles:** System messages for calls (initiated, missed, completed) are now rendered as standard chat bubbles.
+    - **Visual Indicators:** Added color coding (red for missed) and icons (📞↗️, 📞↙️, 🚫) to quickly identify call types.
+    - **Smart Alignment:** Fixed call direction—outgoing calls always appear on the right, incoming on the left.
+    - **Time Sync:** Implemented automatic "future message" correction to handle server/client timezone offsets.
+  - **Server:**
+    - **Proper Attribution:** All call events are now attributed to the caller's ID instead of a generic "SYSTEM" user.
+    - **UTC Enforcement:** Hardened all message timestamps to strict UTC format.
+    - Incremented server version to 1.0.6.27.
+  - Version: 1.0.6.27
+
 ## [1.0.6.26] - 2026-05-25
 - **Architecture Refactoring & Call System Modularization**
   - **Android Client:**
@@ -10,6 +23,16 @@
     - **State Management:** Implemented `CallViewModel` for stable timer and connection state.
     - **MIUI Compatibility:** Hardened lifecycle handling for Xiaomi devices.
   - Android version: 1.0.6.26
+
+## [1.0.6.25] - 2026-05-25
+- **Group Conferences & Call Experience Overhaul**
+  - **Android Client:**
+    - **Meet-Style Conferences:** Implemented instant entry into conferences. Users now see their own video preview immediately upon joining, with camera and microphone enabled by default.
+    - **Live Call Timer:** Added a real-time call duration timer to the call screen, visible during both 1-on-1 calls and group conferences.
+    - **Screen Persistence:** Integrated `keepScreenOn` to prevent the device screen from dimming or turning off during active video calls.
+    - **Interactive System Messages:** Improved system notifications in chat — tapping the live conference status now instantly joins the active call.
+    - **Bug Fixes:** Resolved an issue where multiple system messages would appear with inconsistent timestamps and fixed incorrect view selection in message long-press mode.
+  - Android version: 1.0.6.25
 
 ## [1.0.6.19] - 2026-05-25
 - **Live Conference Status & Database Reliability**

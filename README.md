@@ -2,7 +2,7 @@
 
 **Author:** Pavel Davydov (ferz)
 
-**Version:** 1.0.6.19
+**Version:** 1.0.6.27
 
 A real-time secure messaging application with gRPC server and multiple client implementations.
 
@@ -98,7 +98,7 @@ LavenderMessenger/
 
 - **`main.go`** - Server entry point and initialization
   - Loads environment variables from `.env`
-  - Sets up gRPC server with version "1.0.6.19"
+  - Sets up gRPC server with version "1.0.6.27"
   - Initializes database connection
   - Starts TCP listener on configured address
   - Registers chat service
