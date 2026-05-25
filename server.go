@@ -588,21 +588,10 @@ func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
 			continue
 
 		case gen.CallMessage_INVITE_TO_CONFERENCE:
-			// payload should contain userID to invite
+			// Just add to the invited list, don't send push yet
 			targetUserID := msg.ReceiverId
 			targetUserName := msg.ReceiverName
 			s.hub.InviteToConference(msg.RoomId, targetUserID, targetUserName)
-
-			topic := s.hub.GetConferenceTopic(msg.RoomId)
-			startTime := s.hub.GetConferenceStartTime(msg.RoomId)
-
-			// Send push notification to invited user
-			notificationText := fmt.Sprintf("Приглашение в конференцию: %s", topic)
-			if topic == "" {
-				notificationText = "Приглашение в конференцию"
-			}
-			s.sendConferencePush(targetUserID, notificationText, msg.RoomId, startTime)
-
 			s.broadcastConferenceStatus(msg.RoomId)
 			continue
 

@@ -5,15 +5,17 @@
 ## [1.0.6.27] - 2026-05-25
 - **Advanced Conference Setup & Audio UX**
   - **Android Client:**
-    - **Interactive Lobby:** Users can now configure conferences (Topic, Start Time) and preview media before joining.
-    - **Invitations:** Integrated participant selection for conferences with direct push notifications to invited members.
-    - **Audio UX:** Added high-quality dial tones for outgoing calls and system ringtones for incoming calls.
-    - **Modern History:** Call notifications now use chat bubbles with color-coded status icons and smart alignment.
-    - **Time Normalization:** Implemented local timestamp capping to fix "messages from the future" sync issues.
+    - **Interactive Lobby:** Introduced a "Lobby" screen with camera preview, mic/video toggles, and personalized avatars when the camera is off.
+    - **Conference Configuration:** Users can now set custom topics and scheduled start times (default +5m, with quick +5m buttons).
+    - **Triggered Notifications:** Added a dedicated "Notify Participants" button to send push alerts only when the conference is fully set up.
+    - **Participant Management:** Integrated [+] button for inviting group members via a themed bottom sheet and the ability to remove invitees.
+    - **Audio UX:** Added professional dial tones for outgoing calls and standard ringtones for incoming calls.
+    - **Modern History:** Call notifications now use standard chat bubbles with color-coded status icons (red for missed) and smart side-alignment.
+    - **Time Normalization:** Fixed "future messages" issue by implementing device-side timestamp normalization and strict server UTC.
   - **Server:**
-    - **Conference Metadata:** Added support for persistent conference topics, start times, and invited participant lists.
-    - **Refined Attribution:** Corrected message ownership for call events; "Missed" and "Completed" calls are now properly attributed to the caller.
-    - **UTC Enforcement:** All server-side timestamps are now strictly UTC.
+    - **Conference Metadata:** Support for topics, start times, and delayed push notification triggers.
+    - **Refined Attribution:** All call events are now attributed to the caller's ID for correct history alignment.
+    - **UTC Enforcement:** All server timestamps are now strictly UTC.
     - Updated server version to 1.0.6.27.
   - Version: 1.0.6.27
 
