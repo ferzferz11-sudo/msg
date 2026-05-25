@@ -2,6 +2,15 @@
 
 **Author:** Pavel Davydov (ferz)
 
+## [1.0.6.26] - 2026-05-25
+- **Architecture Refactoring & Call System Modularization**
+  - **Android Client:**
+    - **Modular Call System:** Extracted call logic into standalone components: `CallNavigator`, `CallController`, and `AudioModeManager`.
+    - **Modular Updates:** Introduced `UpdateManager` for version checks and background downloads.
+    - **State Management:** Implemented `CallViewModel` for stable timer and connection state.
+    - **MIUI Compatibility:** Hardened lifecycle handling for Xiaomi devices.
+  - Android version: 1.0.6.26
+
 ## [1.0.6.19] - 2026-05-25
 - **Live Conference Status & Database Reliability**
   - **Server:**

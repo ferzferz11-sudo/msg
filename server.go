@@ -27,7 +27,7 @@ import (
 	"firebase.google.com/go/v4/messaging"
 )
 
-const ServerVersion = "1.0.6.19"
+const ServerVersion = "1.0.6.26"
 
 // server implements the gRPC ChatService interface
 type server struct {
@@ -536,7 +536,7 @@ func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
 			s.sendCallPushNotification(msg.ReceiverId, msg.SenderName, msg.CallId)
 
 			// 4. Add system message to chat
-			s.saveCallSystemMessage(senderName, receiverName, "📹", "Видеозвонок")
+			s.saveCallSystemMessage(senderName, receiverName, "📹", "Видеозвонок", senderName, msg.SenderId)
 			continue
 
 		case gen.CallMessage_ACCEPT:
@@ -545,7 +545,7 @@ func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
 		case gen.CallMessage_REJECT:
 			log.Printf("[CALL] Rejected: %s", msg.CallId)
 			_ = s.db.UpdateCallStatus(msg.CallId, "rejected")
-			s.saveCallSystemMessage(senderName, receiverName, "📞↘️", "Пропущенный вызов")
+			s.saveCallSystemMessage(senderName, receiverName, "📞↘️", "Пропущенный вызов", senderName, msg.SenderId)
 		case gen.CallMessage_HANGUP:
 			log.Printf("[CALL] Hung up: %s", msg.CallId)
 			_ = s.db.UpdateCallStatus(msg.CallId, "completed")
@@ -557,12 +557,12 @@ func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
 				seconds := duration % 60
 				durationText = fmt.Sprintf(" (%d:%02d)", minutes, seconds)
 			}
-			s.saveCallSystemMessage(senderName, receiverName, "📞↗️", "Звонок завершен"+durationText)
+			s.saveCallSystemMessage(senderName, receiverName, "📞↗️", "Звонок завершен"+durationText, senderName, msg.SenderId)
 
 		case gen.CallMessage_INITIATE_CONFERENCE:
 			if s.hub.GetConferenceCreator(msg.RoomId) == "" {
 				s.hub.InitiateConference(msg.RoomId, msg.SenderId, msg.SenderName)
-				s.saveConferenceSystemMessage(msg.RoomId, "Создана конференция")
+				s.saveConferenceSystemMessage(msg.RoomId, "Создана конференция", senderName, msg.SenderId)
 			}
 			members, _ := s.db.GetChatParticipants(msg.RoomId)
 			var memberIDs []string
@@ -577,7 +577,7 @@ func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
 				s.hub.InitiateConference(msg.RoomId, msg.SenderId, msg.SenderName)
 			}
 			s.hub.JoinConference(msg.RoomId, msg.SenderId, msg.SenderName)
-			s.saveConferenceSystemMessage(msg.RoomId, "Конференция")
+			s.saveConferenceSystemMessage(msg.RoomId, "Конференция", senderName, msg.SenderId)
 			participants := s.hub.GetConferenceParticipants(msg.RoomId)
 			creatorID := s.hub.GetConferenceCreator(msg.RoomId)
 			response := map[string]interface{}{
@@ -596,7 +596,7 @@ func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
 
 		case gen.CallMessage_LEAVE_CONFERENCE:
 			s.hub.LeaveConference(msg.RoomId, msg.SenderId)
-			s.saveConferenceSystemMessage(msg.RoomId, "Конференция")
+			s.saveConferenceSystemMessage(msg.RoomId, "Конференция", senderName, msg.SenderId)
 			members, _ := s.db.GetChatParticipants(msg.RoomId)
 			var memberIDs []string
 			for _, m := range members {
@@ -608,7 +608,7 @@ func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
 		case gen.CallMessage_END_CONFERENCE:
 			if s.hub.IsConferenceCreator(msg.RoomId, msg.SenderId) {
 				s.hub.EndConference(msg.RoomId)
-				s.saveConferenceSystemMessage(msg.RoomId, "Конференция завершена")
+				s.saveConferenceSystemMessage(msg.RoomId, "Конференция завершена", senderName, msg.SenderId)
 				members, _ := s.db.GetChatParticipants(msg.RoomId)
 				var memberIDs []string
 				for _, m := range members {
@@ -1552,9 +1552,9 @@ func (s *server) sendPushNotification(user, title, body, roomID string) {
 	s.logFCM("SUCCESS", "Sent to %s", user)
 }
 
-func (s *server) saveConferenceSystemMessage(roomID, text string) {
+func (s *server) saveConferenceSystemMessage(roomID, text, senderName, senderId string) {
 	msgId := "conf_" + roomID // Stable ID for live updates
-	createdAt := time.Now()
+	createdAt := time.Now().UTC()
 	displayText := "📹 " + text
 
 	// Get participant count if active
@@ -1565,15 +1565,19 @@ func (s *server) saveConferenceSystemMessage(roomID, text string) {
 		displayText = "📹 Конференция завершена"
 	}
 
-	// Encrypt for database
-	encryptedText, err := encrypt(displayText)
-	if err != nil {
-		log.Printf("[CONF] Encryption failed for system message: %v", err)
-		return
+	// Save to DB using the performer's name instead of SYSTEM if available
+	user := "SYSTEM"
+	uid := ""
+	if senderName != "" {
+		user = senderName
+		uid = senderId
 	}
 
+	// Encrypt for database
+	encryptedText, _ := encrypt(displayText)
+
 	// Save to DB (now supports ON CONFLICT update)
-	err = s.db.SaveMessage(msgId, "SYSTEM", "", encryptedText, createdAt, "", "", "", roomID, "", "[]", "", 0)
+	err := s.db.SaveMessage(msgId, user, uid, encryptedText, createdAt, "", "", "", roomID, "", "[]", "", 0)
 	if err != nil {
 		log.Printf("[CONF] Failed to save call system message: %v", err)
 		return
@@ -1582,7 +1586,8 @@ func (s *server) saveConferenceSystemMessage(roomID, text string) {
 	// Broadcast to the room
 	broadcastMsg := &gen.Message{
 		Id:        msgId,
-		User:      "SYSTEM",
+		User:      user,
+		UserId:    uid,
 		Text:      displayText,
 		CreatedAt: timestamppb.New(createdAt),
 		RoomId:    roomID,
@@ -1590,7 +1595,7 @@ func (s *server) saveConferenceSystemMessage(roomID, text string) {
 	s.hub.Broadcast(broadcastMsg)
 }
 
-func (s *server) saveCallSystemMessage(u1, u2, icon, text string) {
+func (s *server) saveCallSystemMessage(u1, u2, icon, text, senderName, senderId string) {
 	chatID, err := s.db.GetDirectChatBetweenUsers(u1, u2)
 	if err != nil {
 		log.Printf("[CALL] Failed to find chat for system message: %v", err)
@@ -1598,18 +1603,14 @@ func (s *server) saveCallSystemMessage(u1, u2, icon, text string) {
 	}
 
 	msgId := uuid.New().String()
-	createdAt := time.Now()
+	// Use UTC for consistent timing across regions
+	createdAt := time.Now().UTC()
 	displayText := icon + " " + text
 
-	// Encrypt for database
-	encryptedText, err := encrypt(displayText)
-	if err != nil {
-		log.Printf("[CALL] Encryption failed for system message: %v", err)
-		return
-	}
-
-	// Save to DB
-	err = s.db.SaveMessage(msgId, "SYSTEM", "", encryptedText, createdAt, "", "", "", chatID, "", "[]", "", 0)
+	// Save to DB using the performer's name instead of SYSTEM
+	// This ensures the message appears as a bubble on the correct side
+	encryptedText, _ := encrypt(displayText)
+	err = s.db.SaveMessage(msgId, senderName, senderId, encryptedText, createdAt, "", "", "", chatID, "", "[]", "", 0)
 	if err != nil {
 		log.Printf("[CALL] Failed to save call system message: %v", err)
 		return
@@ -1618,7 +1619,8 @@ func (s *server) saveCallSystemMessage(u1, u2, icon, text string) {
 	// Broadcast to the room
 	broadcastMsg := &gen.Message{
 		Id:        msgId,
-		User:      "SYSTEM",
+		User:      senderName,
+		UserId:    senderId,
 		Text:      displayText,
 		CreatedAt: timestamppb.New(createdAt),
 		RoomId:    chatID,
