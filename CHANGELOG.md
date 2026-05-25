@@ -3,12 +3,13 @@
 **Author:** Pavel Davydov (ferz)
 
 ## [1.0.6.27] - 2026-05-25
-- **Unified Call History & Modern UI**
+- **Conference Lobby & UX Polish**
   - **Android Client:**
-    - **Modern Call Bubbles:** System messages for calls (initiated, missed, completed) are now rendered as standard chat bubbles.
-    - **Visual Indicators:** Added color coding (red for missed) and icons (📞↗️, 📞↙️, 🚫) to quickly identify call types.
-    - **Smart Alignment:** Fixed call direction—outgoing calls always appear on the right, incoming on the left.
-    - **Time Sync:** Implemented automatic "future message" correction to handle server/client timezone offsets.
+    - **Conference Lobby:** Introduced a "Lobby" screen for group conferences. Users can now preview their camera, toggle mic/video, and see conference info before joining.
+    - **Smart Routing:** Tapping a conference notification (chat or push) now leads to the Lobby instead of joining immediately.
+    - **Audio Feedback:** Added professional dial tones for outgoing calls and standard ringtones for incoming calls.
+    - **Modern Call Bubbles:** Improved rendering of call history with color-coded status and icons.
+    - **Time Sync:** Fixed "future messages" issue by implementing device-side timestamp normalization.
   - **Server:**
     - **Proper Attribution:** All call events are now attributed to the caller's ID instead of a generic "SYSTEM" user.
     - **UTC Enforcement:** Hardened all message timestamps to strict UTC format.
