@@ -27,7 +27,7 @@ import (
 	"firebase.google.com/go/v4/messaging"
 )
 
-const ServerVersion = "1.0.6.27"
+const ServerVersion = "1.0.6.32"
 
 // server implements the gRPC ChatService interface
 type server struct {
@@ -528,9 +528,10 @@ func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
 			log.Printf("[CALL] INITIATE from %s to %s delivered: %v", msg.SenderId, msg.ReceiverId, delivered)
 
 			// 2. Route back to sender so they get the generated call_id
-			senderSignal := *msg
-			senderSignal.ReceiverId = msg.SenderId
-			s.hub.BroadcastCall(&senderSignal)
+			originalReceiver := msg.ReceiverId
+			msg.ReceiverId = msg.SenderId
+			s.hub.BroadcastCall(msg)
+			msg.ReceiverId = originalReceiver
 
 			// 3. Send push to wake up receiver
 			s.sendCallPushNotification(msg.ReceiverId, msg.SenderName, msg.CallId)
@@ -713,6 +714,7 @@ func (s *server) GetAllChats(ctx context.Context, req *gen.GetAllChatsRequest) (
 			FullAvatarUrl:       c.FullAvatarURL,
 			LastMessageUsername: c.LastMessageUsername,
 			LastMessageHasImage: c.LastMessageHasImage,
+			AllowMembersToAdd:   c.AllowMembersToAdd,
 		})
 	}
 
@@ -957,6 +959,7 @@ func (s *server) GetChats(_ context.Context, req *gen.GetChatsRequest) (*gen.Get
 			FullAvatarUrl:       c.FullAvatarURL,
 			LastMessageUsername: c.LastMessageUsername,
 			LastMessageHasImage: c.LastMessageHasImage,
+			AllowMembersToAdd:   c.AllowMembersToAdd,
 		})
 	}
 
@@ -2040,6 +2043,35 @@ func (s *server) UpdateChatAvatar(_ context.Context, req *gen.UpdateChatAvatarRe
 	s.broadcastOnlineUsers()
 
 	return &gen.UpdateChatAvatarResponse{Success: true, Message: "Chat avatar updated successfully"}, nil
+}
+
+func (s *server) UpdateChatSettings(_ context.Context, req *gen.UpdateChatSettingsRequest) (*gen.UpdateChatSettingsResponse, error) {
+	if req.ChatId == "" {
+		return &gen.UpdateChatSettingsResponse{Success: false, Message: "Chat ID is required"}, nil
+	}
+
+	// Verify user is admin
+	chat, err := s.db.GetChat(req.ChatId)
+	if err != nil {
+		return &gen.UpdateChatSettingsResponse{Success: false, Message: "Chat not found"}, nil
+	}
+
+	username := s.resolveUsername(req.UserId)
+	if chat.CreatorUsername != username {
+		return &gen.UpdateChatSettingsResponse{Success: false, Message: "Unauthorized: only admin can change settings"}, nil
+	}
+
+	err = s.db.UpdateChatSettings(req.ChatId, req.AllowMembersToAdd)
+	if err != nil {
+		return &gen.UpdateChatSettingsResponse{Success: false, Message: err.Error()}, nil
+	}
+
+	// Refresh list for participants
+	_ = s.db.IncrementParticipantsChatListVersion(req.ChatId)
+	s.broadcastOnlineUsers()
+
+	log.Printf("UpdateChatSettings: Chat %s allow_add updated to %v by %s", req.ChatId, req.AllowMembersToAdd, username)
+	return &gen.UpdateChatSettingsResponse{Success: true, Message: "Settings updated successfully"}, nil
 }
 
 func (s *server) AddContact(_ context.Context, req *gen.AddContactRequest) (*gen.AddContactResponse, error) {

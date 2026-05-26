@@ -77,6 +77,11 @@ func ConnectDB() (*DB, error) {
 			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='email') THEN ALTER TABLE users ADD COLUMN email VARCHAR(255); END IF;
 		END $$;`,
 		`CREATE TABLE IF NOT EXISTS chats (id VARCHAR(255) PRIMARY KEY, name VARCHAR(255) NOT NULL, type VARCHAR(50) NOT NULL, participants TEXT NOT NULL, creator_username VARCHAR(255), created_at TIMESTAMP NOT NULL DEFAULT NOW(), avatar_url TEXT DEFAULT '', full_avatar_url TEXT DEFAULT '')`,
+		`DO $$ BEGIN
+			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='chats' AND column_name='allow_members_to_add') THEN
+				ALTER TABLE chats ADD COLUMN allow_members_to_add BOOLEAN DEFAULT FALSE;
+			END IF;
+		END $$;`,
 		`CREATE TABLE IF NOT EXISTS reactions (id SERIAL PRIMARY KEY, message_id VARCHAR(255) NOT NULL REFERENCES messages(message_id) ON DELETE CASCADE, username VARCHAR(255) NOT NULL, emoji VARCHAR(50) NOT NULL)`,
 		`CREATE TABLE IF NOT EXISTS user_chat_metadata (username VARCHAR(255) NOT NULL, room_id VARCHAR(255) NOT NULL, last_read_at TIMESTAMP NOT NULL DEFAULT NOW(), PRIMARY KEY (username, room_id))`,
 		`CREATE TABLE IF NOT EXISTS user_tokens (username VARCHAR(255) PRIMARY KEY, fcm_token TEXT NOT NULL, updated_at TIMESTAMP NOT NULL, push_enabled BOOLEAN DEFAULT TRUE)`,
@@ -369,9 +374,9 @@ func (db *DB) GetAllChats() ([]struct {
 	ID, Name, Type, Participants, Creator, LastMessageText, AvatarURL, FullAvatarURL, LastMessageUsername string
 	CreatedAt, LastMessageTime                                                                            time.Time
 	UnreadCount                                                                                           int
-	LastMessageHasImage                                                                                   bool
+	LastMessageHasImage, AllowMembersToAdd                                                                bool
 }, error) {
-	query := `WITH last_messages AS (SELECT DISTINCT ON (room_id) room_id, created_at, encrypted_text, username, image_url, image_urls FROM messages ORDER BY room_id, created_at DESC) SELECT c.id, c.name, c.type, c.participants, c.created_at, COALESCE(c.creator_username, ''), COALESCE(lm.created_at, c.created_at), COALESCE(lm.encrypted_text, ''::bytea), COALESCE(c.avatar_url, ''), COALESCE(c.full_avatar_url, ''), COALESCE(lm.username, ''), (COALESCE(lm.image_url, '') != '' OR COALESCE(lm.image_urls, '[]') != '[]') FROM chats c LEFT JOIN last_messages lm ON c.id = lm.room_id ORDER BY 7 DESC`
+	query := `WITH last_messages AS (SELECT DISTINCT ON (room_id) room_id, created_at, encrypted_text, username, image_url, image_urls FROM messages ORDER BY room_id, created_at DESC) SELECT c.id, c.name, c.type, c.participants, c.created_at, COALESCE(c.creator_username, ''), COALESCE(lm.created_at, c.created_at), COALESCE(lm.encrypted_text, ''::bytea), COALESCE(c.avatar_url, ''), COALESCE(c.full_avatar_url, ''), COALESCE(lm.username, ''), (COALESCE(lm.image_url, '') != '' OR COALESCE(lm.image_urls, '[]') != '[]'), COALESCE(c.allow_members_to_add, FALSE) FROM chats c LEFT JOIN last_messages lm ON c.id = lm.room_id ORDER BY 7 DESC`
 	rows, err := db.Query(query)
 	if err != nil {
 		return nil, err
@@ -381,23 +386,23 @@ func (db *DB) GetAllChats() ([]struct {
 		ID, Name, Type, Participants, Creator, LastMessageText, AvatarURL, FullAvatarURL, LastMessageUsername string
 		CreatedAt, LastMessageTime                                                                            time.Time
 		UnreadCount                                                                                           int
-		LastMessageHasImage                                                                                   bool
+		LastMessageHasImage, AllowMembersToAdd                                                                bool
 	}
 	for rows.Next() {
 		var c struct {
 			ID, Name, Type, Participants, Creator, Avatar, FullAvatar, LastUser string
 			CreatedAt, LastTime                                                 time.Time
 			Enc                                                                 []byte
-			HasImg                                                              bool
+			HasImg, AllowAdd                                                    bool
 		}
-		rows.Scan(&c.ID, &c.Name, &c.Type, &c.Participants, &c.CreatedAt, &c.Creator, &c.LastTime, &c.Enc, &c.Avatar, &c.FullAvatar, &c.LastUser, &c.HasImg)
+		rows.Scan(&c.ID, &c.Name, &c.Type, &c.Participants, &c.CreatedAt, &c.Creator, &c.LastTime, &c.Enc, &c.Avatar, &c.FullAvatar, &c.LastUser, &c.HasImg, &c.AllowAdd)
 		txt, _ := decrypt(c.Enc)
 		res = append(res, struct {
 			ID, Name, Type, Participants, Creator, LastMessageText, AvatarURL, FullAvatarURL, LastMessageUsername string
 			CreatedAt, LastMessageTime                                                                            time.Time
 			UnreadCount                                                                                           int
-			LastMessageHasImage                                                                                   bool
-		}{c.ID, c.Name, c.Type, c.Participants, c.Creator, txt, c.Avatar, c.FullAvatar, c.LastUser, c.CreatedAt, c.LastTime, 0, c.HasImg})
+			LastMessageHasImage, AllowMembersToAdd                                                                bool
+		}{c.ID, c.Name, c.Type, c.Participants, c.Creator, txt, c.Avatar, c.FullAvatar, c.LastUser, c.CreatedAt, c.LastTime, 0, c.HasImg, c.AllowAdd})
 	}
 	return res, nil
 }
@@ -406,9 +411,9 @@ func (db *DB) GetUserChats(uid, user string) ([]struct {
 	ID, Name, Type, Participants, Creator, LastMessageText, AvatarURL, FullAvatarURL, LastMessageUsername string
 	CreatedAt, LastMessageTime                                                                            time.Time
 	UnreadCount                                                                                           int
-	LastMessageHasImage                                                                                   bool
+	LastMessageHasImage, AllowMembersToAdd                                                                bool
 }, error) {
-	query := `WITH last_messages AS (SELECT DISTINCT ON (room_id) room_id, created_at, encrypted_text, username, image_url, image_urls FROM messages ORDER BY room_id, created_at DESC), unread_counts AS (SELECT room_id, COUNT(*) as count FROM messages WHERE is_read = FALSE AND username != $1 GROUP BY room_id) SELECT c.id, c.name, c.type, c.participants, c.created_at, COALESCE(uc.count, 0), COALESCE(lm.created_at, c.created_at), COALESCE(c.creator_username, ''), COALESCE(lm.encrypted_text, ''::bytea), COALESCE(c.avatar_url, ''), COALESCE(c.full_avatar_url, ''), COALESCE(lm.username, ''), (COALESCE(lm.image_url, '') != '' OR COALESCE(lm.image_urls, '[]') != '[]') FROM chats c LEFT JOIN last_messages lm ON c.id = lm.room_id LEFT JOIN unread_counts uc ON c.id = uc.room_id WHERE c.participants::jsonb @> jsonb_build_array($2::text) ORDER BY 7 DESC`
+	query := `WITH last_messages AS (SELECT DISTINCT ON (room_id) room_id, created_at, encrypted_text, username, image_url, image_urls FROM messages ORDER BY room_id, created_at DESC), unread_counts AS (SELECT room_id, COUNT(*) as count FROM messages WHERE is_read = FALSE AND username != $1 GROUP BY room_id) SELECT c.id, c.name, c.type, c.participants, c.created_at, COALESCE(uc.count, 0), COALESCE(lm.created_at, c.created_at), COALESCE(c.creator_username, ''), COALESCE(lm.encrypted_text, ''::bytea), COALESCE(c.avatar_url, ''), COALESCE(c.full_avatar_url, ''), COALESCE(lm.username, ''), (COALESCE(lm.image_url, '') != '' OR COALESCE(lm.image_urls, '[]') != '[]'), COALESCE(c.allow_members_to_add, FALSE) FROM chats c LEFT JOIN last_messages lm ON c.id = lm.room_id LEFT JOIN unread_counts uc ON c.id = uc.room_id WHERE c.participants::jsonb @> jsonb_build_array($2::text) ORDER BY 7 DESC`
 	rows, err := db.Query(query, user, user)
 	if err != nil {
 		return nil, err
@@ -418,7 +423,7 @@ func (db *DB) GetUserChats(uid, user string) ([]struct {
 		ID, Name, Type, Participants, Creator, LastMessageText, AvatarURL, FullAvatarURL, LastMessageUsername string
 		CreatedAt, LastMessageTime                                                                            time.Time
 		UnreadCount                                                                                           int
-		LastMessageHasImage                                                                                   bool
+		LastMessageHasImage, AllowMembersToAdd                                                                bool
 	}
 	for rows.Next() {
 		var c struct {
@@ -426,16 +431,16 @@ func (db *DB) GetUserChats(uid, user string) ([]struct {
 			CreatedAt, LastTime                                                 time.Time
 			Unread                                                              int
 			Enc                                                                 []byte
-			HasImg                                                              bool
+			HasImg, AllowAdd                                                    bool
 		}
-		rows.Scan(&c.ID, &c.Name, &c.Type, &c.Participants, &c.CreatedAt, &c.Unread, &c.LastTime, &c.Creator, &c.Enc, &c.Avatar, &c.FullAvatar, &c.LastUser, &c.HasImg)
+		rows.Scan(&c.ID, &c.Name, &c.Type, &c.Participants, &c.CreatedAt, &c.Unread, &c.LastTime, &c.Creator, &c.Enc, &c.Avatar, &c.FullAvatar, &c.LastUser, &c.HasImg, &c.AllowAdd)
 		txt, _ := decrypt(c.Enc)
 		res = append(res, struct {
 			ID, Name, Type, Participants, Creator, LastMessageText, AvatarURL, FullAvatarURL, LastMessageUsername string
 			CreatedAt, LastMessageTime                                                                            time.Time
 			UnreadCount                                                                                           int
-			LastMessageHasImage                                                                                   bool
-		}{c.ID, c.Name, c.Type, c.Participants, c.Creator, txt, c.Avatar, c.FullAvatar, c.LastUser, c.CreatedAt, c.LastTime, c.Unread, c.HasImg})
+			LastMessageHasImage, AllowMembersToAdd                                                                bool
+		}{c.ID, c.Name, c.Type, c.Participants, c.Creator, txt, c.Avatar, c.FullAvatar, c.LastUser, c.CreatedAt, c.LastTime, c.Unread, c.HasImg, c.AllowAdd})
 	}
 	return res, nil
 }
@@ -614,6 +619,10 @@ func (db *DB) UpdateChatName(id, name string) error {
 }
 func (db *DB) UpdateChatAvatarWithFull(id, a, f string) error {
 	_, err := db.Exec(`UPDATE chats SET avatar_url=$1, full_avatar_url=$2 WHERE id=$3`, a, f, id)
+	return err
+}
+func (db *DB) UpdateChatSettings(id string, allowAdd bool) error {
+	_, err := db.Exec(`UPDATE chats SET allow_members_to_add=$1 WHERE id=$2`, allowAdd, id)
 	return err
 }
 func (db *DB) UpdateChatParticipants(id, p string) error {

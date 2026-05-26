@@ -118,6 +118,7 @@ message ChatInfo {
   string full_avatar_url = 11;
   string last_message_username = 12;
   bool last_message_has_image = 13;
+  bool allow_members_to_add = 14;
 }
 
 message GetChatsRequest {
@@ -426,6 +427,17 @@ message UpdateChatAvatarResponse {
   string message = 2;
 }
 
+message UpdateChatSettingsRequest {
+  string chat_id = 1;
+  bool allow_members_to_add = 2;
+  string user_id = 3;
+}
+
+message UpdateChatSettingsResponse {
+  bool success = 1;
+  string message = 2;
+}
+
 message GetFCMLogsRequest {}
 
 message FCMLogEntry {
@@ -645,6 +657,7 @@ service ChatService {
   rpc EditMessage(EditMessageRequest) returns (EditMessageResponse);
   rpc UpdateChatName(UpdateChatNameRequest) returns (UpdateChatNameResponse);
   rpc UpdateChatAvatar(UpdateChatAvatarRequest) returns (UpdateChatAvatarResponse);
+  rpc UpdateChatSettings(UpdateChatSettingsRequest) returns (UpdateChatSettingsResponse);
   rpc DeleteChat(DeleteChatRequest) returns (DeleteChatResponse);
   rpc DeleteProfile(DeleteProfileRequest) returns (DeleteProfileResponse);
   rpc AddContact(AddContactRequest) returns (AddContactResponse);

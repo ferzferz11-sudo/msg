@@ -46,6 +46,7 @@ const (
 	ChatService_EditMessage_FullMethodName          = "/messenger.ChatService/EditMessage"
 	ChatService_UpdateChatName_FullMethodName       = "/messenger.ChatService/UpdateChatName"
 	ChatService_UpdateChatAvatar_FullMethodName     = "/messenger.ChatService/UpdateChatAvatar"
+	ChatService_UpdateChatSettings_FullMethodName   = "/messenger.ChatService/UpdateChatSettings"
 	ChatService_DeleteChat_FullMethodName           = "/messenger.ChatService/DeleteChat"
 	ChatService_DeleteProfile_FullMethodName        = "/messenger.ChatService/DeleteProfile"
 	ChatService_AddContact_FullMethodName           = "/messenger.ChatService/AddContact"
@@ -104,6 +105,7 @@ type ChatServiceClient interface {
 	EditMessage(ctx context.Context, in *EditMessageRequest, opts ...grpc.CallOption) (*EditMessageResponse, error)
 	UpdateChatName(ctx context.Context, in *UpdateChatNameRequest, opts ...grpc.CallOption) (*UpdateChatNameResponse, error)
 	UpdateChatAvatar(ctx context.Context, in *UpdateChatAvatarRequest, opts ...grpc.CallOption) (*UpdateChatAvatarResponse, error)
+	UpdateChatSettings(ctx context.Context, in *UpdateChatSettingsRequest, opts ...grpc.CallOption) (*UpdateChatSettingsResponse, error)
 	DeleteChat(ctx context.Context, in *DeleteChatRequest, opts ...grpc.CallOption) (*DeleteChatResponse, error)
 	DeleteProfile(ctx context.Context, in *DeleteProfileRequest, opts ...grpc.CallOption) (*DeleteProfileResponse, error)
 	AddContact(ctx context.Context, in *AddContactRequest, opts ...grpc.CallOption) (*AddContactResponse, error)
@@ -418,6 +420,16 @@ func (c *chatServiceClient) UpdateChatAvatar(ctx context.Context, in *UpdateChat
 	return out, nil
 }
 
+func (c *chatServiceClient) UpdateChatSettings(ctx context.Context, in *UpdateChatSettingsRequest, opts ...grpc.CallOption) (*UpdateChatSettingsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateChatSettingsResponse)
+	err := c.cc.Invoke(ctx, ChatService_UpdateChatSettings_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *chatServiceClient) DeleteChat(ctx context.Context, in *DeleteChatRequest, opts ...grpc.CallOption) (*DeleteChatResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(DeleteChatResponse)
@@ -699,6 +711,7 @@ type ChatServiceServer interface {
 	EditMessage(context.Context, *EditMessageRequest) (*EditMessageResponse, error)
 	UpdateChatName(context.Context, *UpdateChatNameRequest) (*UpdateChatNameResponse, error)
 	UpdateChatAvatar(context.Context, *UpdateChatAvatarRequest) (*UpdateChatAvatarResponse, error)
+	UpdateChatSettings(context.Context, *UpdateChatSettingsRequest) (*UpdateChatSettingsResponse, error)
 	DeleteChat(context.Context, *DeleteChatRequest) (*DeleteChatResponse, error)
 	DeleteProfile(context.Context, *DeleteProfileRequest) (*DeleteProfileResponse, error)
 	AddContact(context.Context, *AddContactRequest) (*AddContactResponse, error)
@@ -814,6 +827,9 @@ func (UnimplementedChatServiceServer) UpdateChatName(context.Context, *UpdateCha
 }
 func (UnimplementedChatServiceServer) UpdateChatAvatar(context.Context, *UpdateChatAvatarRequest) (*UpdateChatAvatarResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method UpdateChatAvatar not implemented")
+}
+func (UnimplementedChatServiceServer) UpdateChatSettings(context.Context, *UpdateChatSettingsRequest) (*UpdateChatSettingsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateChatSettings not implemented")
 }
 func (UnimplementedChatServiceServer) DeleteChat(context.Context, *DeleteChatRequest) (*DeleteChatResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteChat not implemented")
@@ -1360,6 +1376,24 @@ func _ChatService_UpdateChatAvatar_Handler(srv interface{}, ctx context.Context,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ChatServiceServer).UpdateChatAvatar(ctx, req.(*UpdateChatAvatarRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_UpdateChatSettings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateChatSettingsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).UpdateChatSettings(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_UpdateChatSettings_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).UpdateChatSettings(ctx, req.(*UpdateChatSettingsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1916,6 +1950,10 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateChatAvatar",
 			Handler:    _ChatService_UpdateChatAvatar_Handler,
+		},
+		{
+			MethodName: "UpdateChatSettings",
+			Handler:    _ChatService_UpdateChatSettings_Handler,
 		},
 		{
 			MethodName: "DeleteChat",
