@@ -81,7 +81,20 @@ func ConnectDB() (*DB, error) {
 			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='chats' AND column_name='allow_members_to_add') THEN
 				ALTER TABLE chats ADD COLUMN allow_members_to_add BOOLEAN DEFAULT FALSE;
 			END IF;
+			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='chats' AND column_name='is_secret') THEN
+				ALTER TABLE chats ADD COLUMN is_secret BOOLEAN DEFAULT FALSE;
+			END IF;
+			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='chats' AND column_name='public_key_a') THEN
+				ALTER TABLE chats ADD COLUMN public_key_a TEXT DEFAULT '';
+			END IF;
+			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='chats' AND column_name='public_key_b') THEN
+				ALTER TABLE chats ADD COLUMN public_key_b TEXT DEFAULT '';
+			END IF;
+			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='chats' AND column_name='e2ee_ready') THEN
+				ALTER TABLE chats ADD COLUMN e2ee_ready BOOLEAN DEFAULT FALSE;
+			END IF;
 		END $$;`,
+		`CREATE TABLE IF NOT EXISTS secret_chat_keys (chat_id VARCHAR(255) NOT NULL REFERENCES chats(id) ON DELETE CASCADE, user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE, public_key TEXT NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT NOW(), PRIMARY KEY (chat_id, user_id))`,
 		`CREATE TABLE IF NOT EXISTS reactions (id SERIAL PRIMARY KEY, message_id VARCHAR(255) NOT NULL REFERENCES messages(message_id) ON DELETE CASCADE, username VARCHAR(255) NOT NULL, emoji VARCHAR(50) NOT NULL)`,
 		`CREATE TABLE IF NOT EXISTS user_chat_metadata (username VARCHAR(255) NOT NULL, room_id VARCHAR(255) NOT NULL, last_read_at TIMESTAMP NOT NULL DEFAULT NOW(), PRIMARY KEY (username, room_id))`,
 		`CREATE TABLE IF NOT EXISTS user_tokens (username VARCHAR(255) PRIMARY KEY, fcm_token TEXT NOT NULL, updated_at TIMESTAMP NOT NULL, push_enabled BOOLEAN DEFAULT TRUE)`,
@@ -1068,4 +1081,75 @@ func (db *DB) GetCallDuration(callID string) (int, error) {
 	var duration float64
 	err := db.QueryRow(`SELECT EXTRACT(EPOCH FROM (ended_at - started_at)) FROM calls WHERE id = $1::uuid AND started_at IS NOT NULL AND ended_at IS NOT NULL`, callID).Scan(&duration)
 	return int(duration), err
+}
+
+// ======= Secret Chat Methods =======
+
+func (db *DB) CreateSecretChat(id, name, creator string, participants []string) error {
+	participantsJSON, _ := json.Marshal(participants)
+	_, err := db.Exec(`INSERT INTO chats (id, name, type, participants, creator_username, is_secret) VALUES ($1, $2, 'secret', $3, $4, TRUE)`, id, name, string(participantsJSON), creator)
+	if err == nil {
+		_ = db.IncrementParticipantsChatListVersion(id)
+	}
+	return err
+}
+
+func (db *DB) GetSecretChat(chatID string) (struct {
+	ID            string
+	Name          string
+	Type          string
+	Participants  string
+	Creator       string
+	IsSecret      bool
+	PublicKeyA    string
+	PublicKeyB    string
+	E2EEReady     bool
+	CreatedAt     time.Time
+}, error) {
+	var c struct {
+		ID            string
+		Name          string
+		Type          string
+		Participants  string
+		Creator       string
+		IsSecret      bool
+		PublicKeyA    string
+		PublicKeyB    string
+		E2EEReady     bool
+		CreatedAt     time.Time
+	}
+	err := db.QueryRow(`SELECT id, name, type, participants, COALESCE(creator_username, ''), COALESCE(is_secret, FALSE), COALESCE(public_key_a, ''), COALESCE(public_key_b, ''), COALESCE(e2ee_ready, FALSE), created_at FROM chats WHERE id=$1`, chatID).Scan(&c.ID, &c.Name, &c.Type, &c.Participants, &c.Creator, &c.IsSecret, &c.PublicKeyA, &c.PublicKeyB, &c.E2EEReady, &c.CreatedAt)
+	return c, err
+}
+
+func (db *DB) StoreSecretChatKey(chatID, userID, publicKey string) error {
+	_, err := db.Exec(`INSERT INTO secret_chat_keys (chat_id, user_id, public_key) VALUES ($1, $2::uuid, $3) ON CONFLICT (chat_id, user_id) DO UPDATE SET public_key = EXCLUDED.public_key, created_at = NOW()`, chatID, userID, publicKey)
+	return err
+}
+
+func (db *DB) GetSecretChatKey(chatID, userID string) (string, error) {
+	var publicKey string
+	err := db.QueryRow(`SELECT public_key FROM secret_chat_keys WHERE chat_id=$1 AND user_id=$2::uuid`, chatID, userID).Scan(&publicKey)
+	return publicKey, err
+}
+
+func (db *DB) GetAllSecretChatKeys(chatID string) (map[string]string, error) {
+	rows, err := db.Query(`SELECT user_id::text, public_key FROM secret_chat_keys WHERE chat_id=$1`, chatID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	keys := make(map[string]string)
+	for rows.Next() {
+		var userID, publicKey string
+		if err := rows.Scan(&userID, &publicKey); err == nil {
+			keys[userID] = publicKey
+		}
+	}
+	return keys, nil
+}
+
+func (db *DB) SetSecretChatE2EEReady(chatID string, ready bool) error {
+	_, err := db.Exec(`UPDATE chats SET e2ee_ready=$1 WHERE id=$2`, ready, chatID)
+	return err
 }

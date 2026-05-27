@@ -130,6 +130,8 @@ type Message struct {
 	DeviceId           string                 `protobuf:"bytes,21,opt,name=device_id,json=deviceId,proto3" json:"device_id,omitempty"`                // Device ID for tracking active sessions
 	DeviceName         string                 `protobuf:"bytes,22,opt,name=device_name,json=deviceName,proto3" json:"device_name,omitempty"`          // Device name for displaying in settings
 	UserId             string                 `protobuf:"bytes,23,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`                      // Stable user ID (UUID)
+	IsE2Ee             bool                   `protobuf:"varint,24,opt,name=is_e2ee,json=isE2ee,proto3" json:"is_e2ee,omitempty"`                     // Message is E2EE-encrypted
+	E2EePayload        string                 `protobuf:"bytes,25,opt,name=e2ee_payload,json=e2eePayload,proto3" json:"e2ee_payload,omitempty"`       // Base64-encoded encrypted data
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -321,6 +323,20 @@ func (x *Message) GetDeviceName() string {
 func (x *Message) GetUserId() string {
 	if x != nil {
 		return x.UserId
+	}
+	return ""
+}
+
+func (x *Message) GetIsE2Ee() bool {
+	if x != nil {
+		return x.IsE2Ee
+	}
+	return false
+}
+
+func (x *Message) GetE2EePayload() string {
+	if x != nil {
+		return x.E2EePayload
 	}
 	return ""
 }
@@ -1161,6 +1177,9 @@ type ChatInfo struct {
 	LastMessageUsername string                 `protobuf:"bytes,12,opt,name=last_message_username,json=lastMessageUsername,proto3" json:"last_message_username,omitempty"`
 	LastMessageHasImage bool                   `protobuf:"varint,13,opt,name=last_message_has_image,json=lastMessageHasImage,proto3" json:"last_message_has_image,omitempty"`
 	AllowMembersToAdd   bool                   `protobuf:"varint,14,opt,name=allow_members_to_add,json=allowMembersToAdd,proto3" json:"allow_members_to_add,omitempty"`
+	IsSecret            bool                   `protobuf:"varint,15,opt,name=is_secret,json=isSecret,proto3" json:"is_secret,omitempty"`
+	PeerPublicKey       string                 `protobuf:"bytes,16,opt,name=peer_public_key,json=peerPublicKey,proto3" json:"peer_public_key,omitempty"`
+	E2EeReady           bool                   `protobuf:"varint,17,opt,name=e2ee_ready,json=e2eeReady,proto3" json:"e2ee_ready,omitempty"`
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache
 }
@@ -1289,6 +1308,27 @@ func (x *ChatInfo) GetLastMessageHasImage() bool {
 func (x *ChatInfo) GetAllowMembersToAdd() bool {
 	if x != nil {
 		return x.AllowMembersToAdd
+	}
+	return false
+}
+
+func (x *ChatInfo) GetIsSecret() bool {
+	if x != nil {
+		return x.IsSecret
+	}
+	return false
+}
+
+func (x *ChatInfo) GetPeerPublicKey() string {
+	if x != nil {
+		return x.PeerPublicKey
+	}
+	return ""
+}
+
+func (x *ChatInfo) GetE2EeReady() bool {
+	if x != nil {
+		return x.E2EeReady
 	}
 	return false
 }
@@ -6261,11 +6301,355 @@ func (x *CallMessage) GetPayload() string {
 	return ""
 }
 
+type CreateSecretChatRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	TargetUsername string                 `protobuf:"bytes,1,opt,name=target_username,json=targetUsername,proto3" json:"target_username,omitempty"`
+	TargetUserId   string                 `protobuf:"bytes,2,opt,name=target_user_id,json=targetUserId,proto3" json:"target_user_id,omitempty"`
+	PublicKey      string                 `protobuf:"bytes,3,opt,name=public_key,json=publicKey,proto3" json:"public_key,omitempty"`
+	ClientVersion  string                 `protobuf:"bytes,4,opt,name=client_version,json=clientVersion,proto3" json:"client_version,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *CreateSecretChatRequest) Reset() {
+	*x = CreateSecretChatRequest{}
+	mi := &file_messenger_proto_msgTypes[107]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateSecretChatRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateSecretChatRequest) ProtoMessage() {}
+
+func (x *CreateSecretChatRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_messenger_proto_msgTypes[107]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateSecretChatRequest.ProtoReflect.Descriptor instead.
+func (*CreateSecretChatRequest) Descriptor() ([]byte, []int) {
+	return file_messenger_proto_rawDescGZIP(), []int{107}
+}
+
+func (x *CreateSecretChatRequest) GetTargetUsername() string {
+	if x != nil {
+		return x.TargetUsername
+	}
+	return ""
+}
+
+func (x *CreateSecretChatRequest) GetTargetUserId() string {
+	if x != nil {
+		return x.TargetUserId
+	}
+	return ""
+}
+
+func (x *CreateSecretChatRequest) GetPublicKey() string {
+	if x != nil {
+		return x.PublicKey
+	}
+	return ""
+}
+
+func (x *CreateSecretChatRequest) GetClientVersion() string {
+	if x != nil {
+		return x.ClientVersion
+	}
+	return ""
+}
+
+type CreateSecretChatResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ChatId        string                 `protobuf:"bytes,1,opt,name=chat_id,json=chatId,proto3" json:"chat_id,omitempty"`
+	Success       bool                   `protobuf:"varint,2,opt,name=success,proto3" json:"success,omitempty"`
+	Message       string                 `protobuf:"bytes,3,opt,name=message,proto3" json:"message,omitempty"`
+	PeerPublicKey string                 `protobuf:"bytes,4,opt,name=peer_public_key,json=peerPublicKey,proto3" json:"peer_public_key,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateSecretChatResponse) Reset() {
+	*x = CreateSecretChatResponse{}
+	mi := &file_messenger_proto_msgTypes[108]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateSecretChatResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateSecretChatResponse) ProtoMessage() {}
+
+func (x *CreateSecretChatResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_messenger_proto_msgTypes[108]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateSecretChatResponse.ProtoReflect.Descriptor instead.
+func (*CreateSecretChatResponse) Descriptor() ([]byte, []int) {
+	return file_messenger_proto_rawDescGZIP(), []int{108}
+}
+
+func (x *CreateSecretChatResponse) GetChatId() string {
+	if x != nil {
+		return x.ChatId
+	}
+	return ""
+}
+
+func (x *CreateSecretChatResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *CreateSecretChatResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *CreateSecretChatResponse) GetPeerPublicKey() string {
+	if x != nil {
+		return x.PeerPublicKey
+	}
+	return ""
+}
+
+type ExchangeSecretKeyRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ChatId        string                 `protobuf:"bytes,1,opt,name=chat_id,json=chatId,proto3" json:"chat_id,omitempty"`
+	PublicKey     string                 `protobuf:"bytes,2,opt,name=public_key,json=publicKey,proto3" json:"public_key,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ExchangeSecretKeyRequest) Reset() {
+	*x = ExchangeSecretKeyRequest{}
+	mi := &file_messenger_proto_msgTypes[109]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ExchangeSecretKeyRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExchangeSecretKeyRequest) ProtoMessage() {}
+
+func (x *ExchangeSecretKeyRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_messenger_proto_msgTypes[109]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ExchangeSecretKeyRequest.ProtoReflect.Descriptor instead.
+func (*ExchangeSecretKeyRequest) Descriptor() ([]byte, []int) {
+	return file_messenger_proto_rawDescGZIP(), []int{109}
+}
+
+func (x *ExchangeSecretKeyRequest) GetChatId() string {
+	if x != nil {
+		return x.ChatId
+	}
+	return ""
+}
+
+func (x *ExchangeSecretKeyRequest) GetPublicKey() string {
+	if x != nil {
+		return x.PublicKey
+	}
+	return ""
+}
+
+type ExchangeSecretKeyResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	PeerPublicKey string                 `protobuf:"bytes,2,opt,name=peer_public_key,json=peerPublicKey,proto3" json:"peer_public_key,omitempty"`
+	PeerHasKey    bool                   `protobuf:"varint,3,opt,name=peer_has_key,json=peerHasKey,proto3" json:"peer_has_key,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ExchangeSecretKeyResponse) Reset() {
+	*x = ExchangeSecretKeyResponse{}
+	mi := &file_messenger_proto_msgTypes[110]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ExchangeSecretKeyResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExchangeSecretKeyResponse) ProtoMessage() {}
+
+func (x *ExchangeSecretKeyResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_messenger_proto_msgTypes[110]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ExchangeSecretKeyResponse.ProtoReflect.Descriptor instead.
+func (*ExchangeSecretKeyResponse) Descriptor() ([]byte, []int) {
+	return file_messenger_proto_rawDescGZIP(), []int{110}
+}
+
+func (x *ExchangeSecretKeyResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *ExchangeSecretKeyResponse) GetPeerPublicKey() string {
+	if x != nil {
+		return x.PeerPublicKey
+	}
+	return ""
+}
+
+func (x *ExchangeSecretKeyResponse) GetPeerHasKey() bool {
+	if x != nil {
+		return x.PeerHasKey
+	}
+	return false
+}
+
+type GetSecretChatKeyRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ChatId        string                 `protobuf:"bytes,1,opt,name=chat_id,json=chatId,proto3" json:"chat_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetSecretChatKeyRequest) Reset() {
+	*x = GetSecretChatKeyRequest{}
+	mi := &file_messenger_proto_msgTypes[111]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetSecretChatKeyRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetSecretChatKeyRequest) ProtoMessage() {}
+
+func (x *GetSecretChatKeyRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_messenger_proto_msgTypes[111]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetSecretChatKeyRequest.ProtoReflect.Descriptor instead.
+func (*GetSecretChatKeyRequest) Descriptor() ([]byte, []int) {
+	return file_messenger_proto_rawDescGZIP(), []int{111}
+}
+
+func (x *GetSecretChatKeyRequest) GetChatId() string {
+	if x != nil {
+		return x.ChatId
+	}
+	return ""
+}
+
+type GetSecretChatKeyResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	PeerPublicKey string                 `protobuf:"bytes,1,opt,name=peer_public_key,json=peerPublicKey,proto3" json:"peer_public_key,omitempty"`
+	PeerHasKey    bool                   `protobuf:"varint,2,opt,name=peer_has_key,json=peerHasKey,proto3" json:"peer_has_key,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetSecretChatKeyResponse) Reset() {
+	*x = GetSecretChatKeyResponse{}
+	mi := &file_messenger_proto_msgTypes[112]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetSecretChatKeyResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetSecretChatKeyResponse) ProtoMessage() {}
+
+func (x *GetSecretChatKeyResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_messenger_proto_msgTypes[112]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetSecretChatKeyResponse.ProtoReflect.Descriptor instead.
+func (*GetSecretChatKeyResponse) Descriptor() ([]byte, []int) {
+	return file_messenger_proto_rawDescGZIP(), []int{112}
+}
+
+func (x *GetSecretChatKeyResponse) GetPeerPublicKey() string {
+	if x != nil {
+		return x.PeerPublicKey
+	}
+	return ""
+}
+
+func (x *GetSecretChatKeyResponse) GetPeerHasKey() bool {
+	if x != nil {
+		return x.PeerHasKey
+	}
+	return false
+}
+
 var File_messenger_proto protoreflect.FileDescriptor
 
 const file_messenger_proto_rawDesc = "" +
 	"\n" +
-	"\x0fmessenger.proto\x12\tmessenger\x1a\x1fgoogle/protobuf/timestamp.proto\"\xec\x05\n" +
+	"\x0fmessenger.proto\x12\tmessenger\x1a\x1fgoogle/protobuf/timestamp.proto\"\xa8\x06\n" +
 	"\aMessage\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04user\x18\x02 \x01(\tR\x04user\x12\x12\n" +
@@ -6294,7 +6678,9 @@ const file_messenger_proto_rawDesc = "" +
 	"\tdevice_id\x18\x15 \x01(\tR\bdeviceId\x12\x1f\n" +
 	"\vdevice_name\x18\x16 \x01(\tR\n" +
 	"deviceName\x12\x17\n" +
-	"\auser_id\x18\x17 \x01(\tR\x06userId\"4\n" +
+	"\auser_id\x18\x17 \x01(\tR\x06userId\x12\x17\n" +
+	"\ais_e2ee\x18\x18 \x01(\bR\x06isE2ee\x12!\n" +
+	"\fe2ee_payload\x18\x19 \x01(\tR\ve2eePayload\"4\n" +
 	"\bReaction\x12\x12\n" +
 	"\x04user\x18\x01 \x01(\tR\x04user\x12\x14\n" +
 	"\x05emoji\x18\x02 \x01(\tR\x05emoji\"a\n" +
@@ -6341,7 +6727,7 @@ const file_messenger_proto_rawDesc = "" +
 	"\fpush_enabled\x18\x03 \x01(\bR\vpushEnabled\x12\x17\n" +
 	"\auser_id\x18\x04 \x01(\tR\x06userId\")\n" +
 	"\rTokenResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess\"\xb3\x04\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\"\x97\x05\n" +
 	"\bChatInfo\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
@@ -6359,7 +6745,11 @@ const file_messenger_proto_rawDesc = "" +
 	"\x0ffull_avatar_url\x18\v \x01(\tR\rfullAvatarUrl\x122\n" +
 	"\x15last_message_username\x18\f \x01(\tR\x13lastMessageUsername\x123\n" +
 	"\x16last_message_has_image\x18\r \x01(\bR\x13lastMessageHasImage\x12/\n" +
-	"\x14allow_members_to_add\x18\x0e \x01(\bR\x11allowMembersToAdd\"F\n" +
+	"\x14allow_members_to_add\x18\x0e \x01(\bR\x11allowMembersToAdd\x12\x1b\n" +
+	"\tis_secret\x18\x0f \x01(\bR\bisSecret\x12&\n" +
+	"\x0fpeer_public_key\x18\x10 \x01(\tR\rpeerPublicKey\x12\x1d\n" +
+	"\n" +
+	"e2ee_ready\x18\x11 \x01(\bR\te2eeReady\"F\n" +
 	"\x0fGetChatsRequest\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12\x17\n" +
 	"\auser_id\x18\x02 \x01(\tR\x06userId\"=\n" +
@@ -6710,7 +7100,33 @@ const file_messenger_proto_rawDesc = "" +
 	"\x0eEND_CONFERENCE\x10\r\x12\x18\n" +
 	"\x14INVITE_TO_CONFERENCE\x10\x0e\x12\x1a\n" +
 	"\x16REMOVE_FROM_CONFERENCE\x10\x0f\x12\x15\n" +
-	"\x11UPDATE_CONFERENCE\x10\x102\xc6!\n" +
+	"\x11UPDATE_CONFERENCE\x10\x10\"\xae\x01\n" +
+	"\x17CreateSecretChatRequest\x12'\n" +
+	"\x0ftarget_username\x18\x01 \x01(\tR\x0etargetUsername\x12$\n" +
+	"\x0etarget_user_id\x18\x02 \x01(\tR\ftargetUserId\x12\x1d\n" +
+	"\n" +
+	"public_key\x18\x03 \x01(\tR\tpublicKey\x12%\n" +
+	"\x0eclient_version\x18\x04 \x01(\tR\rclientVersion\"\x8f\x01\n" +
+	"\x18CreateSecretChatResponse\x12\x17\n" +
+	"\achat_id\x18\x01 \x01(\tR\x06chatId\x12\x18\n" +
+	"\asuccess\x18\x02 \x01(\bR\asuccess\x12\x18\n" +
+	"\amessage\x18\x03 \x01(\tR\amessage\x12&\n" +
+	"\x0fpeer_public_key\x18\x04 \x01(\tR\rpeerPublicKey\"R\n" +
+	"\x18ExchangeSecretKeyRequest\x12\x17\n" +
+	"\achat_id\x18\x01 \x01(\tR\x06chatId\x12\x1d\n" +
+	"\n" +
+	"public_key\x18\x02 \x01(\tR\tpublicKey\"\x7f\n" +
+	"\x19ExchangeSecretKeyResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12&\n" +
+	"\x0fpeer_public_key\x18\x02 \x01(\tR\rpeerPublicKey\x12 \n" +
+	"\fpeer_has_key\x18\x03 \x01(\bR\n" +
+	"peerHasKey\"2\n" +
+	"\x17GetSecretChatKeyRequest\x12\x17\n" +
+	"\achat_id\x18\x01 \x01(\tR\x06chatId\"d\n" +
+	"\x18GetSecretChatKeyResponse\x12&\n" +
+	"\x0fpeer_public_key\x18\x01 \x01(\tR\rpeerPublicKey\x12 \n" +
+	"\fpeer_has_key\x18\x02 \x01(\bR\n" +
+	"peerHasKey2\xe0#\n" +
 	"\vChatService\x122\n" +
 	"\x04Chat\x12\x12.messenger.Message\x1a\x12.messenger.Message(\x010\x01\x12?\n" +
 	"\x06Typing\x12\x18.messenger.TypingRequest\x1a\x17.messenger.TypingSignal(\x010\x01\x12A\n" +
@@ -6770,7 +7186,10 @@ const file_messenger_proto_rawDesc = "" +
 	"\fDeleteDevice\x12\x1e.messenger.DeleteDeviceRequest\x1a\x1f.messenger.DeleteDeviceResponse\x12U\n" +
 	"\x12DeleteOtherDevices\x12\x1e.messenger.DeleteDeviceRequest\x1a\x1f.messenger.DeleteDeviceResponse\x12g\n" +
 	"\x14RequestPasswordReset\x12&.messenger.RequestPasswordResetRequest\x1a'.messenger.RequestPasswordResetResponse\x12R\n" +
-	"\rResetPassword\x12\x1f.messenger.ResetPasswordRequest\x1a .messenger.ResetPasswordResponseB\aZ\x05./genb\x06proto3"
+	"\rResetPassword\x12\x1f.messenger.ResetPasswordRequest\x1a .messenger.ResetPasswordResponse\x12[\n" +
+	"\x10CreateSecretChat\x12\".messenger.CreateSecretChatRequest\x1a#.messenger.CreateSecretChatResponse\x12^\n" +
+	"\x11ExchangeSecretKey\x12#.messenger.ExchangeSecretKeyRequest\x1a$.messenger.ExchangeSecretKeyResponse\x12[\n" +
+	"\x10GetSecretChatKey\x12\".messenger.GetSecretChatKeyRequest\x1a#.messenger.GetSecretChatKeyResponseB\aZ\x05./genb\x06proto3"
 
 var (
 	file_messenger_proto_rawDescOnce sync.Once
@@ -6785,7 +7204,7 @@ func file_messenger_proto_rawDescGZIP() []byte {
 }
 
 var file_messenger_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_messenger_proto_msgTypes = make([]protoimpl.MessageInfo, 107)
+var file_messenger_proto_msgTypes = make([]protoimpl.MessageInfo, 113)
 var file_messenger_proto_goTypes = []any{
 	(CallMessage_Type)(0),                // 0: messenger.CallMessage.Type
 	(*Message)(nil),                      // 1: messenger.Message
@@ -6895,27 +7314,33 @@ var file_messenger_proto_goTypes = []any{
 	(*ResetPasswordRequest)(nil),         // 105: messenger.ResetPasswordRequest
 	(*ResetPasswordResponse)(nil),        // 106: messenger.ResetPasswordResponse
 	(*CallMessage)(nil),                  // 107: messenger.CallMessage
-	(*timestamppb.Timestamp)(nil),        // 108: google.protobuf.Timestamp
+	(*CreateSecretChatRequest)(nil),      // 108: messenger.CreateSecretChatRequest
+	(*CreateSecretChatResponse)(nil),     // 109: messenger.CreateSecretChatResponse
+	(*ExchangeSecretKeyRequest)(nil),     // 110: messenger.ExchangeSecretKeyRequest
+	(*ExchangeSecretKeyResponse)(nil),    // 111: messenger.ExchangeSecretKeyResponse
+	(*GetSecretChatKeyRequest)(nil),      // 112: messenger.GetSecretChatKeyRequest
+	(*GetSecretChatKeyResponse)(nil),     // 113: messenger.GetSecretChatKeyResponse
+	(*timestamppb.Timestamp)(nil),        // 114: google.protobuf.Timestamp
 }
 var file_messenger_proto_depIdxs = []int32{
-	108, // 0: messenger.Message.created_at:type_name -> google.protobuf.Timestamp
+	114, // 0: messenger.Message.created_at:type_name -> google.protobuf.Timestamp
 	2,   // 1: messenger.Message.reactions:type_name -> messenger.Reaction
 	2,   // 2: messenger.ReactionRequest.reaction:type_name -> messenger.Reaction
-	108, // 3: messenger.UserInfo.last_seen_at:type_name -> google.protobuf.Timestamp
+	114, // 3: messenger.UserInfo.last_seen_at:type_name -> google.protobuf.Timestamp
 	8,   // 4: messenger.GetAllUsersResponse.users:type_name -> messenger.UserInfo
-	108, // 5: messenger.GetAllUsersResponse.server_time:type_name -> google.protobuf.Timestamp
+	114, // 5: messenger.GetAllUsersResponse.server_time:type_name -> google.protobuf.Timestamp
 	19,  // 6: messenger.GetAllChatsResponse.chats:type_name -> messenger.ChatInfo
 	1,   // 7: messenger.GetHistoryResponse.messages:type_name -> messenger.Message
 	1,   // 8: messenger.DeleteMessagesRequest.messages:type_name -> messenger.Message
-	108, // 9: messenger.ChatInfo.created_at:type_name -> google.protobuf.Timestamp
-	108, // 10: messenger.ChatInfo.last_message_time:type_name -> google.protobuf.Timestamp
+	114, // 9: messenger.ChatInfo.created_at:type_name -> google.protobuf.Timestamp
+	114, // 10: messenger.ChatInfo.last_message_time:type_name -> google.protobuf.Timestamp
 	19,  // 11: messenger.GetChatsResponse.chats:type_name -> messenger.ChatInfo
-	108, // 12: messenger.GetUserProfileResponse.last_seen_at:type_name -> google.protobuf.Timestamp
+	114, // 12: messenger.GetUserProfileResponse.last_seen_at:type_name -> google.protobuf.Timestamp
 	60,  // 13: messenger.GetThemesResponse.custom_themes:type_name -> messenger.CustomTheme
 	60,  // 14: messenger.SaveThemeRequest.theme:type_name -> messenger.CustomTheme
 	76,  // 15: messenger.GetFCMLogsResponse.logs:type_name -> messenger.FCMLogEntry
 	1,   // 16: messenger.GetFavoritesResponse.messages:type_name -> messenger.Message
-	108, // 17: messenger.DeviceInfo.last_seen_at:type_name -> google.protobuf.Timestamp
+	114, // 17: messenger.DeviceInfo.last_seen_at:type_name -> google.protobuf.Timestamp
 	98,  // 18: messenger.GetDevicesResponse.devices:type_name -> messenger.DeviceInfo
 	0,   // 19: messenger.CallMessage.type:type_name -> messenger.CallMessage.Type
 	1,   // 20: messenger.ChatService.Chat:input_type -> messenger.Message
@@ -6971,61 +7396,67 @@ var file_messenger_proto_depIdxs = []int32{
 	101, // 70: messenger.ChatService.DeleteOtherDevices:input_type -> messenger.DeleteDeviceRequest
 	103, // 71: messenger.ChatService.RequestPasswordReset:input_type -> messenger.RequestPasswordResetRequest
 	105, // 72: messenger.ChatService.ResetPassword:input_type -> messenger.ResetPasswordRequest
-	1,   // 73: messenger.ChatService.Chat:output_type -> messenger.Message
-	97,  // 74: messenger.ChatService.Typing:output_type -> messenger.TypingSignal
-	107, // 75: messenger.ChatService.CallSession:output_type -> messenger.CallMessage
-	6,   // 76: messenger.ChatService.GetClients:output_type -> messenger.ClientListResponse
-	9,   // 77: messenger.ChatService.GetAllUsers:output_type -> messenger.GetAllUsersResponse
-	11,  // 78: messenger.ChatService.GetAllChats:output_type -> messenger.GetAllChatsResponse
-	14,  // 79: messenger.ChatService.GetHistory:output_type -> messenger.GetHistoryResponse
-	4,   // 80: messenger.ChatService.SetReaction:output_type -> messenger.ReactionResponse
-	16,  // 81: messenger.ChatService.DeleteMessages:output_type -> messenger.DeleteMessagesResponse
-	18,  // 82: messenger.ChatService.RegisterToken:output_type -> messenger.TokenResponse
-	21,  // 83: messenger.ChatService.GetChats:output_type -> messenger.GetChatsResponse
-	59,  // 84: messenger.ChatService.GetChatListVersion:output_type -> messenger.GetChatListVersionResponse
-	23,  // 85: messenger.ChatService.CreateDirectChat:output_type -> messenger.CreateDirectChatResponse
-	25,  // 86: messenger.ChatService.CreateGroupChat:output_type -> messenger.CreateGroupChatResponse
-	27,  // 87: messenger.ChatService.UpdateUsername:output_type -> messenger.UpdateUsernameResponse
-	29,  // 88: messenger.ChatService.UpdatePassword:output_type -> messenger.UpdatePasswordResponse
-	31,  // 89: messenger.ChatService.AdminUpdatePassword:output_type -> messenger.AdminUpdatePasswordResponse
-	33,  // 90: messenger.ChatService.MarkRead:output_type -> messenger.MarkReadResponse
-	35,  // 91: messenger.ChatService.UpdateAvatar:output_type -> messenger.UpdateAvatarResponse
-	37,  // 92: messenger.ChatService.UpdateProfile:output_type -> messenger.UpdateProfileResponse
-	39,  // 93: messenger.ChatService.GetUserProfile:output_type -> messenger.GetUserProfileResponse
-	41,  // 94: messenger.ChatService.GetUserAvatar:output_type -> messenger.GetUserAvatarResponse
-	43,  // 95: messenger.ChatService.AddParticipant:output_type -> messenger.AddParticipantResponse
-	45,  // 96: messenger.ChatService.RemoveParticipant:output_type -> messenger.RemoveParticipantResponse
-	47,  // 97: messenger.ChatService.EditMessage:output_type -> messenger.EditMessageResponse
-	70,  // 98: messenger.ChatService.UpdateChatName:output_type -> messenger.UpdateChatNameResponse
-	72,  // 99: messenger.ChatService.UpdateChatAvatar:output_type -> messenger.UpdateChatAvatarResponse
-	74,  // 100: messenger.ChatService.UpdateChatSettings:output_type -> messenger.UpdateChatSettingsResponse
-	49,  // 101: messenger.ChatService.DeleteChat:output_type -> messenger.DeleteChatResponse
-	51,  // 102: messenger.ChatService.DeleteProfile:output_type -> messenger.DeleteProfileResponse
-	53,  // 103: messenger.ChatService.AddContact:output_type -> messenger.AddContactResponse
-	55,  // 104: messenger.ChatService.RemoveContact:output_type -> messenger.RemoveContactResponse
-	57,  // 105: messenger.ChatService.GetContacts:output_type -> messenger.GetContactsResponse
-	62,  // 106: messenger.ChatService.GetThemes:output_type -> messenger.GetThemesResponse
-	64,  // 107: messenger.ChatService.SaveTheme:output_type -> messenger.SaveThemeResponse
-	66,  // 108: messenger.ChatService.SetCurrentTheme:output_type -> messenger.SetCurrentThemeResponse
-	68,  // 109: messenger.ChatService.DeleteTheme:output_type -> messenger.DeleteThemeResponse
-	77,  // 110: messenger.ChatService.GetFCMLogs:output_type -> messenger.GetFCMLogsResponse
-	79,  // 111: messenger.ChatService.SaveDraft:output_type -> messenger.SaveDraftResponse
-	81,  // 112: messenger.ChatService.GetDraft:output_type -> messenger.GetDraftResponse
-	83,  // 113: messenger.ChatService.DeleteDraft:output_type -> messenger.DeleteDraftResponse
-	85,  // 114: messenger.ChatService.GetMutedChats:output_type -> messenger.GetMutedChatsResponse
-	87,  // 115: messenger.ChatService.SetMutedChat:output_type -> messenger.SetMutedChatResponse
-	89,  // 116: messenger.ChatService.GetUserId:output_type -> messenger.GetUserIdResponse
-	91,  // 117: messenger.ChatService.AddFavorite:output_type -> messenger.AddFavoriteResponse
-	93,  // 118: messenger.ChatService.RemoveFavorite:output_type -> messenger.RemoveFavoriteResponse
-	95,  // 119: messenger.ChatService.GetFavorites:output_type -> messenger.GetFavoritesResponse
-	91,  // 120: messenger.ChatService.SaveFavoriteMessage:output_type -> messenger.AddFavoriteResponse
-	100, // 121: messenger.ChatService.GetDevices:output_type -> messenger.GetDevicesResponse
-	102, // 122: messenger.ChatService.DeleteDevice:output_type -> messenger.DeleteDeviceResponse
-	102, // 123: messenger.ChatService.DeleteOtherDevices:output_type -> messenger.DeleteDeviceResponse
-	104, // 124: messenger.ChatService.RequestPasswordReset:output_type -> messenger.RequestPasswordResetResponse
-	106, // 125: messenger.ChatService.ResetPassword:output_type -> messenger.ResetPasswordResponse
-	73,  // [73:126] is the sub-list for method output_type
-	20,  // [20:73] is the sub-list for method input_type
+	108, // 73: messenger.ChatService.CreateSecretChat:input_type -> messenger.CreateSecretChatRequest
+	110, // 74: messenger.ChatService.ExchangeSecretKey:input_type -> messenger.ExchangeSecretKeyRequest
+	112, // 75: messenger.ChatService.GetSecretChatKey:input_type -> messenger.GetSecretChatKeyRequest
+	1,   // 76: messenger.ChatService.Chat:output_type -> messenger.Message
+	97,  // 77: messenger.ChatService.Typing:output_type -> messenger.TypingSignal
+	107, // 78: messenger.ChatService.CallSession:output_type -> messenger.CallMessage
+	6,   // 79: messenger.ChatService.GetClients:output_type -> messenger.ClientListResponse
+	9,   // 80: messenger.ChatService.GetAllUsers:output_type -> messenger.GetAllUsersResponse
+	11,  // 81: messenger.ChatService.GetAllChats:output_type -> messenger.GetAllChatsResponse
+	14,  // 82: messenger.ChatService.GetHistory:output_type -> messenger.GetHistoryResponse
+	4,   // 83: messenger.ChatService.SetReaction:output_type -> messenger.ReactionResponse
+	16,  // 84: messenger.ChatService.DeleteMessages:output_type -> messenger.DeleteMessagesResponse
+	18,  // 85: messenger.ChatService.RegisterToken:output_type -> messenger.TokenResponse
+	21,  // 86: messenger.ChatService.GetChats:output_type -> messenger.GetChatsResponse
+	59,  // 87: messenger.ChatService.GetChatListVersion:output_type -> messenger.GetChatListVersionResponse
+	23,  // 88: messenger.ChatService.CreateDirectChat:output_type -> messenger.CreateDirectChatResponse
+	25,  // 89: messenger.ChatService.CreateGroupChat:output_type -> messenger.CreateGroupChatResponse
+	27,  // 90: messenger.ChatService.UpdateUsername:output_type -> messenger.UpdateUsernameResponse
+	29,  // 91: messenger.ChatService.UpdatePassword:output_type -> messenger.UpdatePasswordResponse
+	31,  // 92: messenger.ChatService.AdminUpdatePassword:output_type -> messenger.AdminUpdatePasswordResponse
+	33,  // 93: messenger.ChatService.MarkRead:output_type -> messenger.MarkReadResponse
+	35,  // 94: messenger.ChatService.UpdateAvatar:output_type -> messenger.UpdateAvatarResponse
+	37,  // 95: messenger.ChatService.UpdateProfile:output_type -> messenger.UpdateProfileResponse
+	39,  // 96: messenger.ChatService.GetUserProfile:output_type -> messenger.GetUserProfileResponse
+	41,  // 97: messenger.ChatService.GetUserAvatar:output_type -> messenger.GetUserAvatarResponse
+	43,  // 98: messenger.ChatService.AddParticipant:output_type -> messenger.AddParticipantResponse
+	45,  // 99: messenger.ChatService.RemoveParticipant:output_type -> messenger.RemoveParticipantResponse
+	47,  // 100: messenger.ChatService.EditMessage:output_type -> messenger.EditMessageResponse
+	70,  // 101: messenger.ChatService.UpdateChatName:output_type -> messenger.UpdateChatNameResponse
+	72,  // 102: messenger.ChatService.UpdateChatAvatar:output_type -> messenger.UpdateChatAvatarResponse
+	74,  // 103: messenger.ChatService.UpdateChatSettings:output_type -> messenger.UpdateChatSettingsResponse
+	49,  // 104: messenger.ChatService.DeleteChat:output_type -> messenger.DeleteChatResponse
+	51,  // 105: messenger.ChatService.DeleteProfile:output_type -> messenger.DeleteProfileResponse
+	53,  // 106: messenger.ChatService.AddContact:output_type -> messenger.AddContactResponse
+	55,  // 107: messenger.ChatService.RemoveContact:output_type -> messenger.RemoveContactResponse
+	57,  // 108: messenger.ChatService.GetContacts:output_type -> messenger.GetContactsResponse
+	62,  // 109: messenger.ChatService.GetThemes:output_type -> messenger.GetThemesResponse
+	64,  // 110: messenger.ChatService.SaveTheme:output_type -> messenger.SaveThemeResponse
+	66,  // 111: messenger.ChatService.SetCurrentTheme:output_type -> messenger.SetCurrentThemeResponse
+	68,  // 112: messenger.ChatService.DeleteTheme:output_type -> messenger.DeleteThemeResponse
+	77,  // 113: messenger.ChatService.GetFCMLogs:output_type -> messenger.GetFCMLogsResponse
+	79,  // 114: messenger.ChatService.SaveDraft:output_type -> messenger.SaveDraftResponse
+	81,  // 115: messenger.ChatService.GetDraft:output_type -> messenger.GetDraftResponse
+	83,  // 116: messenger.ChatService.DeleteDraft:output_type -> messenger.DeleteDraftResponse
+	85,  // 117: messenger.ChatService.GetMutedChats:output_type -> messenger.GetMutedChatsResponse
+	87,  // 118: messenger.ChatService.SetMutedChat:output_type -> messenger.SetMutedChatResponse
+	89,  // 119: messenger.ChatService.GetUserId:output_type -> messenger.GetUserIdResponse
+	91,  // 120: messenger.ChatService.AddFavorite:output_type -> messenger.AddFavoriteResponse
+	93,  // 121: messenger.ChatService.RemoveFavorite:output_type -> messenger.RemoveFavoriteResponse
+	95,  // 122: messenger.ChatService.GetFavorites:output_type -> messenger.GetFavoritesResponse
+	91,  // 123: messenger.ChatService.SaveFavoriteMessage:output_type -> messenger.AddFavoriteResponse
+	100, // 124: messenger.ChatService.GetDevices:output_type -> messenger.GetDevicesResponse
+	102, // 125: messenger.ChatService.DeleteDevice:output_type -> messenger.DeleteDeviceResponse
+	102, // 126: messenger.ChatService.DeleteOtherDevices:output_type -> messenger.DeleteDeviceResponse
+	104, // 127: messenger.ChatService.RequestPasswordReset:output_type -> messenger.RequestPasswordResetResponse
+	106, // 128: messenger.ChatService.ResetPassword:output_type -> messenger.ResetPasswordResponse
+	109, // 129: messenger.ChatService.CreateSecretChat:output_type -> messenger.CreateSecretChatResponse
+	111, // 130: messenger.ChatService.ExchangeSecretKey:output_type -> messenger.ExchangeSecretKeyResponse
+	113, // 131: messenger.ChatService.GetSecretChatKey:output_type -> messenger.GetSecretChatKeyResponse
+	76,  // [76:132] is the sub-list for method output_type
+	20,  // [20:76] is the sub-list for method input_type
 	20,  // [20:20] is the sub-list for extension type_name
 	20,  // [20:20] is the sub-list for extension extendee
 	0,   // [0:20] is the sub-list for field type_name
@@ -7042,7 +7473,7 @@ func file_messenger_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_messenger_proto_rawDesc), len(file_messenger_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   107,
+			NumMessages:   113,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

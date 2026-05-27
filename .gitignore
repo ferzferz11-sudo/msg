@@ -29,10 +29,9 @@ go.work.sum
 .env
 
 # Editor/IDE
-# .idea/
-# .vscode/
+.idea/
+.vscode/
+.DS_Store
 
 # Android client - separate git repository
-client/android/
-
-.idea/
+#client/android/

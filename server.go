@@ -2689,3 +2689,152 @@ func (s *server) ResetPassword(_ context.Context, req *gen.ResetPasswordRequest)
 	log.Printf("Password reset successful for user: %s", username)
 	return &gen.ResetPasswordResponse{Success: true, Message: "Password reset successfully"}, nil
 }
+
+// getCallerUsername получает имя вызывающего клиента из хаба
+func (s *server) getCallerUsername(stream interface{}) string {
+	s.hub.mu.RLock()
+	defer s.hub.mu.RUnlock()
+	if name, ok := s.hub.clients[stream.(gen.ChatService_ChatServer)]; ok {
+		return name
+	}
+	for _, name := range s.hub.clients {
+		if name != "Anonymous" && name != "" {
+			return name
+		}
+	}
+	return ""
+}
+
+func (s *server) CreateSecretChat(ctx context.Context, req *gen.CreateSecretChatRequest) (*gen.CreateSecretChatResponse, error) {
+	targetUser := req.TargetUsername
+	if req.TargetUserId != "" {
+		if resolved := s.resolveUsername(req.TargetUserId); resolved != "" {
+			targetUser = resolved
+		}
+	}
+
+	var callerUsername string
+	if peer, ok := peer.FromContext(ctx); ok {
+		_ = peer
+		s.hub.mu.RLock()
+		for _, name := range s.hub.clients {
+			if name != "Anonymous" && name != "" {
+				callerUsername = name
+				break
+			}
+		}
+		s.hub.mu.RUnlock()
+	}
+
+	if callerUsername == "" {
+		return &gen.CreateSecretChatResponse{Success: false, Message: "Not authenticated"}, fmt.Errorf("not authenticated")
+	}
+
+	chatID := "secret_" + uuid.New().String()
+	participants := []string{callerUsername, targetUser}
+	err := s.db.CreateSecretChat(chatID, callerUsername+" 🔒 "+targetUser, callerUsername, participants)
+	if err != nil {
+		log.Printf("Failed to create secret chat: %v", err)
+		return &gen.CreateSecretChatResponse{Success: false, Message: "Failed to create secret chat"}, err
+	}
+
+	userId, _ := s.db.GetUserIdByUsername(callerUsername)
+	if req.PublicKey != "" && userId != "" {
+		_ = s.db.StoreSecretChatKey(chatID, userId, req.PublicKey)
+	}
+
+	log.Printf("Secret chat created: %s (creator: %s, peer: %s)", chatID, callerUsername, targetUser)
+	return &gen.CreateSecretChatResponse{
+		ChatId:  chatID,
+		Success: true,
+		Message: "Secret chat created",
+	}, nil
+}
+
+func (s *server) ExchangeSecretKey(ctx context.Context, req *gen.ExchangeSecretKeyRequest) (*gen.ExchangeSecretKeyResponse, error) {
+	var callerUsername string
+	s.hub.mu.RLock()
+	for _, name := range s.hub.clients {
+		if name != "Anonymous" && name != "" {
+			callerUsername = name
+			break
+		}
+	}
+	s.hub.mu.RUnlock()
+
+	if callerUsername == "" {
+		return &gen.ExchangeSecretKeyResponse{Success: false}, fmt.Errorf("not authenticated")
+	}
+
+	userId, _ := s.db.GetUserIdByUsername(callerUsername)
+	if req.PublicKey != "" && userId != "" {
+		if err := s.db.StoreSecretChatKey(req.ChatId, userId, req.PublicKey); err != nil {
+			log.Printf("Failed to store secret chat key: %v", err)
+			return &gen.ExchangeSecretKeyResponse{Success: false}, err
+		}
+	}
+
+	keys, err := s.db.GetAllSecretChatKeys(req.ChatId)
+	if err != nil {
+		return &gen.ExchangeSecretKeyResponse{Success: true, PeerHasKey: false}, nil
+	}
+
+	var peerKey string
+	found := false
+	for uid, key := range keys {
+		if uid != userId {
+			peerKey = key
+			found = true
+			break
+		}
+	}
+
+	if found && len(keys) >= 2 {
+		_ = s.db.SetSecretChatE2EEReady(req.ChatId, true)
+		log.Printf("E2EE ready for secret chat: %s", req.ChatId)
+	}
+
+	log.Printf("Secret key exchanged for chat: %s (user: %s, peer_found: %v)", req.ChatId, callerUsername, found)
+	return &gen.ExchangeSecretKeyResponse{
+		Success:       true,
+		PeerPublicKey: peerKey,
+		PeerHasKey:    found,
+	}, nil
+}
+
+func (s *server) GetSecretChatKey(ctx context.Context, req *gen.GetSecretChatKeyRequest) (*gen.GetSecretChatKeyResponse, error) {
+	var callerUsername string
+	s.hub.mu.RLock()
+	for _, name := range s.hub.clients {
+		if name != "Anonymous" && name != "" {
+			callerUsername = name
+			break
+		}
+	}
+	s.hub.mu.RUnlock()
+
+	if callerUsername == "" {
+		return &gen.GetSecretChatKeyResponse{PeerHasKey: false}, fmt.Errorf("not authenticated")
+	}
+
+	userId, _ := s.db.GetUserIdByUsername(callerUsername)
+	keys, err := s.db.GetAllSecretChatKeys(req.ChatId)
+	if err != nil {
+		return &gen.GetSecretChatKeyResponse{PeerHasKey: false}, nil
+	}
+
+	var peerKey string
+	found := false
+	for uid, key := range keys {
+		if uid != userId {
+			peerKey = key
+			found = true
+			break
+		}
+	}
+
+	return &gen.GetSecretChatKeyResponse{
+		PeerPublicKey: peerKey,
+		PeerHasKey:    found,
+	}, nil
+}

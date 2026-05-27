@@ -72,6 +72,9 @@ const (
 	ChatService_DeleteOtherDevices_FullMethodName   = "/messenger.ChatService/DeleteOtherDevices"
 	ChatService_RequestPasswordReset_FullMethodName = "/messenger.ChatService/RequestPasswordReset"
 	ChatService_ResetPassword_FullMethodName        = "/messenger.ChatService/ResetPassword"
+	ChatService_CreateSecretChat_FullMethodName     = "/messenger.ChatService/CreateSecretChat"
+	ChatService_ExchangeSecretKey_FullMethodName    = "/messenger.ChatService/ExchangeSecretKey"
+	ChatService_GetSecretChatKey_FullMethodName     = "/messenger.ChatService/GetSecretChatKey"
 )
 
 // ChatServiceClient is the client API for ChatService service.
@@ -131,6 +134,10 @@ type ChatServiceClient interface {
 	DeleteOtherDevices(ctx context.Context, in *DeleteDeviceRequest, opts ...grpc.CallOption) (*DeleteDeviceResponse, error)
 	RequestPasswordReset(ctx context.Context, in *RequestPasswordResetRequest, opts ...grpc.CallOption) (*RequestPasswordResetResponse, error)
 	ResetPassword(ctx context.Context, in *ResetPasswordRequest, opts ...grpc.CallOption) (*ResetPasswordResponse, error)
+	// Secret Chats (E2EE)
+	CreateSecretChat(ctx context.Context, in *CreateSecretChatRequest, opts ...grpc.CallOption) (*CreateSecretChatResponse, error)
+	ExchangeSecretKey(ctx context.Context, in *ExchangeSecretKeyRequest, opts ...grpc.CallOption) (*ExchangeSecretKeyResponse, error)
+	GetSecretChatKey(ctx context.Context, in *GetSecretChatKeyRequest, opts ...grpc.CallOption) (*GetSecretChatKeyResponse, error)
 }
 
 type chatServiceClient struct {
@@ -680,6 +687,36 @@ func (c *chatServiceClient) ResetPassword(ctx context.Context, in *ResetPassword
 	return out, nil
 }
 
+func (c *chatServiceClient) CreateSecretChat(ctx context.Context, in *CreateSecretChatRequest, opts ...grpc.CallOption) (*CreateSecretChatResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateSecretChatResponse)
+	err := c.cc.Invoke(ctx, ChatService_CreateSecretChat_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) ExchangeSecretKey(ctx context.Context, in *ExchangeSecretKeyRequest, opts ...grpc.CallOption) (*ExchangeSecretKeyResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ExchangeSecretKeyResponse)
+	err := c.cc.Invoke(ctx, ChatService_ExchangeSecretKey_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) GetSecretChatKey(ctx context.Context, in *GetSecretChatKeyRequest, opts ...grpc.CallOption) (*GetSecretChatKeyResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetSecretChatKeyResponse)
+	err := c.cc.Invoke(ctx, ChatService_GetSecretChatKey_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ChatServiceServer is the server API for ChatService service.
 // All implementations must embed UnimplementedChatServiceServer
 // for forward compatibility.
@@ -737,6 +774,10 @@ type ChatServiceServer interface {
 	DeleteOtherDevices(context.Context, *DeleteDeviceRequest) (*DeleteDeviceResponse, error)
 	RequestPasswordReset(context.Context, *RequestPasswordResetRequest) (*RequestPasswordResetResponse, error)
 	ResetPassword(context.Context, *ResetPasswordRequest) (*ResetPasswordResponse, error)
+	// Secret Chats (E2EE)
+	CreateSecretChat(context.Context, *CreateSecretChatRequest) (*CreateSecretChatResponse, error)
+	ExchangeSecretKey(context.Context, *ExchangeSecretKeyRequest) (*ExchangeSecretKeyResponse, error)
+	GetSecretChatKey(context.Context, *GetSecretChatKeyRequest) (*GetSecretChatKeyResponse, error)
 	mustEmbedUnimplementedChatServiceServer()
 }
 
@@ -905,6 +946,15 @@ func (UnimplementedChatServiceServer) RequestPasswordReset(context.Context, *Req
 }
 func (UnimplementedChatServiceServer) ResetPassword(context.Context, *ResetPasswordRequest) (*ResetPasswordResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ResetPassword not implemented")
+}
+func (UnimplementedChatServiceServer) CreateSecretChat(context.Context, *CreateSecretChatRequest) (*CreateSecretChatResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateSecretChat not implemented")
+}
+func (UnimplementedChatServiceServer) ExchangeSecretKey(context.Context, *ExchangeSecretKeyRequest) (*ExchangeSecretKeyResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ExchangeSecretKey not implemented")
+}
+func (UnimplementedChatServiceServer) GetSecretChatKey(context.Context, *GetSecretChatKeyRequest) (*GetSecretChatKeyResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetSecretChatKey not implemented")
 }
 func (UnimplementedChatServiceServer) mustEmbedUnimplementedChatServiceServer() {}
 func (UnimplementedChatServiceServer) testEmbeddedByValue()                     {}
@@ -1848,6 +1898,60 @@ func _ChatService_ResetPassword_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ChatService_CreateSecretChat_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateSecretChatRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).CreateSecretChat(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_CreateSecretChat_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).CreateSecretChat(ctx, req.(*CreateSecretChatRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_ExchangeSecretKey_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ExchangeSecretKeyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).ExchangeSecretKey(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_ExchangeSecretKey_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).ExchangeSecretKey(ctx, req.(*ExchangeSecretKeyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_GetSecretChatKey_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetSecretChatKeyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).GetSecretChatKey(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_GetSecretChatKey_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).GetSecretChatKey(ctx, req.(*GetSecretChatKeyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ChatService_ServiceDesc is the grpc.ServiceDesc for ChatService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -2054,6 +2158,18 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ResetPassword",
 			Handler:    _ChatService_ResetPassword_Handler,
+		},
+		{
+			MethodName: "CreateSecretChat",
+			Handler:    _ChatService_CreateSecretChat_Handler,
+		},
+		{
+			MethodName: "ExchangeSecretKey",
+			Handler:    _ChatService_ExchangeSecretKey_Handler,
+		},
+		{
+			MethodName: "GetSecretChatKey",
+			Handler:    _ChatService_GetSecretChatKey_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
