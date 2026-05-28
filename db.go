@@ -79,7 +79,7 @@ func ConnectDB() (*DB, error) {
 		`CREATE TABLE IF NOT EXISTS chats (id VARCHAR(255) PRIMARY KEY, name VARCHAR(255) NOT NULL, type VARCHAR(50) NOT NULL, participants TEXT NOT NULL, creator_username VARCHAR(255), created_at TIMESTAMP NOT NULL DEFAULT NOW(), avatar_url TEXT DEFAULT '', full_avatar_url TEXT DEFAULT '')`,
 		`DO $$ BEGIN
 			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='chats' AND column_name='creator_id') THEN
-				ALTER TABLE chats ADD COLUMN creator_id VARCHAR(255);
+				ALTER TABLE chats ADD COLUMN creator_id UUID;
 			END IF;
 			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='chats' AND column_name='allow_members_to_add') THEN
 				ALTER TABLE chats ADD COLUMN allow_members_to_add BOOLEAN DEFAULT FALSE;
@@ -389,7 +389,7 @@ func (db *DB) GetChat(id string) (struct {
 		AllowMembersToAdd                             bool
 		IsSecret                                      bool
 	}
-	err := db.QueryRow(`SELECT id, name, type, participants, COALESCE(creator_username, ''), created_at, COALESCE(creator_id, ''), COALESCE(allow_members_to_add, FALSE), COALESCE(is_secret, FALSE) FROM chats WHERE id=$1`, id).Scan(&c.ID, &c.Name, &c.Type, &c.Participants, &c.CreatorUsername, &c.CreatedAt, &c.CreatorId, &c.AllowMembersToAdd, &c.IsSecret)
+	err := db.QueryRow(`SELECT id, name, type, participants, COALESCE(creator_username, ''), COALESCE(creator_id::text, ''), created_at, COALESCE(allow_members_to_add, FALSE), COALESCE(is_secret, FALSE) FROM chats WHERE id=$1`, id).Scan(&c.ID, &c.Name, &c.Type, &c.Participants, &c.CreatorUsername, &c.CreatorId, &c.CreatedAt, &c.AllowMembersToAdd, &c.IsSecret)
 	return c, err
 }
 
@@ -570,8 +570,8 @@ func (db *DB) MarkReadAndCheck(room, user string) (bool, error) {
 	return affected > 0, err
 }
 
-func (db *DB) CreateChat(id, name, t, p, c string, creatorId string) error {
-	_, err := db.Exec(`INSERT INTO chats (id, name, type, participants, creator_username, creator_id) VALUES ($1, $2, $3, $4, $5, $6)`, id, name, t, p, c, creatorId)
+func (db *DB) CreateChat(id, name, t, p, creatorUsername, creatorId string) error {
+	_, err := db.Exec(`INSERT INTO chats (id, name, type, participants, creator_username, creator_id) VALUES ($1, $2, $3, $4, $5, $6)`, id, name, t, p, creatorUsername, creatorId)
 	if err == nil {
 		_ = db.IncrementParticipantsChatListVersion(id)
 	}
