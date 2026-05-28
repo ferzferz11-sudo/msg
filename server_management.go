@@ -17,6 +17,49 @@ type serverServiceServer struct {
 	db *DB
 }
 
+// ======= Public (no auth) =======
+
+func (s *serverServiceServer) ListServers(ctx context.Context, req *gen.ListServersRequest) (*gen.ListServersResponse, error) {
+	servers, err := s.db.GetAllServers()
+	if err != nil {
+		return &gen.ListServersResponse{}, err
+	}
+
+	var result []*gen.ServerInfo
+	for _, srv := range servers {
+		result = append(result, &gen.ServerInfo{
+			Id:        srv.ID,
+			Name:      srv.Name,
+			Host:      srv.Host,
+			Port:      int32(srv.Port),
+			IsDefault: srv.IsDefault,
+			CreatedAt: timestamppb.New(srv.CreatedAt),
+		})
+	}
+
+	return &gen.ListServersResponse{Servers: result}, nil
+}
+
+func (s *serverServiceServer) GetDefaultServer(ctx context.Context, req *gen.GetDefaultServerRequest) (*gen.GetDefaultServerResponse, error) {
+	srv, err := s.db.GetDefaultServer()
+	if err != nil {
+		return &gen.GetDefaultServerResponse{Success: false, Message: "No default server configured"}, nil
+	}
+
+	return &gen.GetDefaultServerResponse{
+		Success: true,
+		Message: "OK",
+		Server: &gen.ServerInfo{
+			Id:   srv.ID,
+			Name: srv.Name,
+			Host: srv.Host,
+			Port: int32(srv.Port),
+		},
+	}, nil
+}
+
+// ======= Super Admin only =======
+
 func (s *serverServiceServer) getAdminUsername(reqAdminUsername, reqAdminUserId string) string {
 	if reqAdminUsername != "" {
 		return reqAdminUsername
@@ -39,31 +82,6 @@ func (s *serverServiceServer) checkSuperAdmin(reqAdminUsername, reqAdminUserId s
 		return fmt.Errorf("super admin required")
 	}
 	return nil
-}
-
-func (s *serverServiceServer) ListServers(ctx context.Context, req *gen.ServerListRequest) (*gen.ServerListResponse, error) {
-	if err := s.checkSuperAdmin(req.GetAuth().GetAdminUsername(), req.GetAuth().GetAdminUserId()); err != nil {
-		return &gen.ServerListResponse{}, err
-	}
-
-	servers, err := s.db.GetAllServers()
-	if err != nil {
-		return &gen.ServerListResponse{}, err
-	}
-
-	var result []*gen.ServerInfo
-	for _, srv := range servers {
-		result = append(result, &gen.ServerInfo{
-			Id:        srv.ID,
-			Name:      srv.Name,
-			Host:      srv.Host,
-			Port:      int32(srv.Port),
-			IsDefault: srv.IsDefault,
-			CreatedAt: timestamppb.New(srv.CreatedAt),
-		})
-	}
-
-	return &gen.ServerListResponse{Servers: result}, nil
 }
 
 func (s *serverServiceServer) AddServer(ctx context.Context, req *gen.AddServerRequest) (*gen.AddServerResponse, error) {
@@ -140,45 +158,6 @@ func (s *serverServiceServer) SetDefaultServer(ctx context.Context, req *gen.Set
 
 	log.Printf("Default server set: %s", req.Id)
 	return &gen.SetDefaultServerResponse{Success: true, Message: "Default server set"}, nil
-}
-
-func (s *serverServiceServer) GetServers(ctx context.Context, req *gen.GetServersRequest) (*gen.GetServersResponse, error) {
-	servers, err := s.db.GetAllServers()
-	if err != nil {
-		return &gen.GetServersResponse{}, err
-	}
-
-	var result []*gen.ServerInfo
-	for _, srv := range servers {
-		result = append(result, &gen.ServerInfo{
-			Id:        srv.ID,
-			Name:      srv.Name,
-			Host:      srv.Host,
-			Port:      int32(srv.Port),
-			IsDefault: srv.IsDefault,
-			CreatedAt: timestamppb.New(srv.CreatedAt),
-		})
-	}
-
-	return &gen.GetServersResponse{Servers: result}, nil
-}
-
-func (s *serverServiceServer) GetDefaultServer(ctx context.Context, req *gen.GetDefaultServerRequest) (*gen.GetDefaultServerResponse, error) {
-	srv, err := s.db.GetDefaultServer()
-	if err != nil {
-		return &gen.GetDefaultServerResponse{Success: false, Message: "No default server configured"}, nil
-	}
-
-	return &gen.GetDefaultServerResponse{
-		Success: true,
-		Message: "OK",
-		Server: &gen.ServerInfo{
-			Id:   srv.ID,
-			Name: srv.Name,
-			Host: srv.Host,
-			Port: int32(srv.Port),
-		},
-	}, nil
 }
 
 // resolveUsername resolves user_id to username using DB

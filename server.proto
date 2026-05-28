@@ -4,8 +4,6 @@ option go_package = "./gen";
 
 import "google/protobuf/timestamp.proto";
 
-// ======= Server Management (Super Admin only) =======
-
 message ServerInfo {
   string id = 1;
   string name = 2;
@@ -15,19 +13,29 @@ message ServerInfo {
   google.protobuf.Timestamp created_at = 6;
 }
 
-// AdminAuth is embedded in every server management request
+// AdminAuth is embedded in server management requests (super admin)
 message AdminAuth {
   string admin_username = 1;
-  string admin_user_id = 2; // optional, will resolve to username if provided
+  string admin_user_id = 2; // optional, resolved to username
 }
 
-message ServerListRequest {
-  AdminAuth auth = 1;
-}
+// ======= Public (no auth required) =======
 
-message ServerListResponse {
+message ListServersRequest {}
+
+message ListServersResponse {
   repeated ServerInfo servers = 1;
 }
+
+message GetDefaultServerRequest {}
+
+message GetDefaultServerResponse {
+  bool success = 1;
+  string message = 2;
+  ServerInfo server = 3;
+}
+
+// ======= Super Admin only =======
 
 message AddServerRequest {
   AdminAuth auth = 1;
@@ -75,28 +83,11 @@ message SetDefaultServerResponse {
   string message = 2;
 }
 
-message GetDefaultServerRequest {}
-
-message GetDefaultServerResponse {
-  ServerInfo server = 1;
-  bool success = 2;
-  string message = 3;
-}
-
-// ======= Client-facing (no auth) =======
-
-message GetServersRequest {}
-
-message GetServersResponse {
-  repeated ServerInfo servers = 1;
-}
-
 service ServerService {
-  rpc ListServers(ServerListRequest) returns (ServerListResponse);       // admin only
+  rpc ListServers(ListServersRequest) returns (ListServersResponse);           // public
+  rpc GetDefaultServer(GetDefaultServerRequest) returns (GetDefaultServerResponse); // public
   rpc AddServer(AddServerRequest) returns (AddServerResponse);
   rpc UpdateServer(UpdateServerRequest) returns (UpdateServerResponse);
   rpc DeleteServer(DeleteServerRequest) returns (DeleteServerResponse);
   rpc SetDefaultServer(SetDefaultServerRequest) returns (SetDefaultServerResponse);
-  rpc GetDefaultServer(GetDefaultServerRequest) returns (GetDefaultServerResponse);
-  rpc GetServers(GetServersRequest) returns (GetServersResponse);        // public
 }

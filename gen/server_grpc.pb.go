@@ -20,25 +20,23 @@ const _ = grpc.SupportPackageIsVersion9
 
 const (
 	ServerService_ListServers_FullMethodName      = "/messenger.ServerService/ListServers"
+	ServerService_GetDefaultServer_FullMethodName = "/messenger.ServerService/GetDefaultServer"
 	ServerService_AddServer_FullMethodName        = "/messenger.ServerService/AddServer"
 	ServerService_UpdateServer_FullMethodName     = "/messenger.ServerService/UpdateServer"
 	ServerService_DeleteServer_FullMethodName     = "/messenger.ServerService/DeleteServer"
 	ServerService_SetDefaultServer_FullMethodName = "/messenger.ServerService/SetDefaultServer"
-	ServerService_GetDefaultServer_FullMethodName = "/messenger.ServerService/GetDefaultServer"
-	ServerService_GetServers_FullMethodName       = "/messenger.ServerService/GetServers"
 )
 
 // ServerServiceClient is the client API for ServerService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ServerServiceClient interface {
-	ListServers(ctx context.Context, in *ServerListRequest, opts ...grpc.CallOption) (*ServerListResponse, error)
+	ListServers(ctx context.Context, in *ListServersRequest, opts ...grpc.CallOption) (*ListServersResponse, error)
+	GetDefaultServer(ctx context.Context, in *GetDefaultServerRequest, opts ...grpc.CallOption) (*GetDefaultServerResponse, error)
 	AddServer(ctx context.Context, in *AddServerRequest, opts ...grpc.CallOption) (*AddServerResponse, error)
 	UpdateServer(ctx context.Context, in *UpdateServerRequest, opts ...grpc.CallOption) (*UpdateServerResponse, error)
 	DeleteServer(ctx context.Context, in *DeleteServerRequest, opts ...grpc.CallOption) (*DeleteServerResponse, error)
 	SetDefaultServer(ctx context.Context, in *SetDefaultServerRequest, opts ...grpc.CallOption) (*SetDefaultServerResponse, error)
-	GetDefaultServer(ctx context.Context, in *GetDefaultServerRequest, opts ...grpc.CallOption) (*GetDefaultServerResponse, error)
-	GetServers(ctx context.Context, in *GetServersRequest, opts ...grpc.CallOption) (*GetServersResponse, error)
 }
 
 type serverServiceClient struct {
@@ -49,10 +47,20 @@ func NewServerServiceClient(cc grpc.ClientConnInterface) ServerServiceClient {
 	return &serverServiceClient{cc}
 }
 
-func (c *serverServiceClient) ListServers(ctx context.Context, in *ServerListRequest, opts ...grpc.CallOption) (*ServerListResponse, error) {
+func (c *serverServiceClient) ListServers(ctx context.Context, in *ListServersRequest, opts ...grpc.CallOption) (*ListServersResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ServerListResponse)
+	out := new(ListServersResponse)
 	err := c.cc.Invoke(ctx, ServerService_ListServers_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *serverServiceClient) GetDefaultServer(ctx context.Context, in *GetDefaultServerRequest, opts ...grpc.CallOption) (*GetDefaultServerResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetDefaultServerResponse)
+	err := c.cc.Invoke(ctx, ServerService_GetDefaultServer_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -99,37 +107,16 @@ func (c *serverServiceClient) SetDefaultServer(ctx context.Context, in *SetDefau
 	return out, nil
 }
 
-func (c *serverServiceClient) GetDefaultServer(ctx context.Context, in *GetDefaultServerRequest, opts ...grpc.CallOption) (*GetDefaultServerResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetDefaultServerResponse)
-	err := c.cc.Invoke(ctx, ServerService_GetDefaultServer_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *serverServiceClient) GetServers(ctx context.Context, in *GetServersRequest, opts ...grpc.CallOption) (*GetServersResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetServersResponse)
-	err := c.cc.Invoke(ctx, ServerService_GetServers_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // ServerServiceServer is the server API for ServerService service.
 // All implementations must embed UnimplementedServerServiceServer
 // for forward compatibility.
 type ServerServiceServer interface {
-	ListServers(context.Context, *ServerListRequest) (*ServerListResponse, error)
+	ListServers(context.Context, *ListServersRequest) (*ListServersResponse, error)
+	GetDefaultServer(context.Context, *GetDefaultServerRequest) (*GetDefaultServerResponse, error)
 	AddServer(context.Context, *AddServerRequest) (*AddServerResponse, error)
 	UpdateServer(context.Context, *UpdateServerRequest) (*UpdateServerResponse, error)
 	DeleteServer(context.Context, *DeleteServerRequest) (*DeleteServerResponse, error)
 	SetDefaultServer(context.Context, *SetDefaultServerRequest) (*SetDefaultServerResponse, error)
-	GetDefaultServer(context.Context, *GetDefaultServerRequest) (*GetDefaultServerResponse, error)
-	GetServers(context.Context, *GetServersRequest) (*GetServersResponse, error)
 	mustEmbedUnimplementedServerServiceServer()
 }
 
@@ -140,8 +127,11 @@ type ServerServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedServerServiceServer struct{}
 
-func (UnimplementedServerServiceServer) ListServers(context.Context, *ServerListRequest) (*ServerListResponse, error) {
+func (UnimplementedServerServiceServer) ListServers(context.Context, *ListServersRequest) (*ListServersResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListServers not implemented")
+}
+func (UnimplementedServerServiceServer) GetDefaultServer(context.Context, *GetDefaultServerRequest) (*GetDefaultServerResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetDefaultServer not implemented")
 }
 func (UnimplementedServerServiceServer) AddServer(context.Context, *AddServerRequest) (*AddServerResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddServer not implemented")
@@ -154,12 +144,6 @@ func (UnimplementedServerServiceServer) DeleteServer(context.Context, *DeleteSer
 }
 func (UnimplementedServerServiceServer) SetDefaultServer(context.Context, *SetDefaultServerRequest) (*SetDefaultServerResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetDefaultServer not implemented")
-}
-func (UnimplementedServerServiceServer) GetDefaultServer(context.Context, *GetDefaultServerRequest) (*GetDefaultServerResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetDefaultServer not implemented")
-}
-func (UnimplementedServerServiceServer) GetServers(context.Context, *GetServersRequest) (*GetServersResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetServers not implemented")
 }
 func (UnimplementedServerServiceServer) mustEmbedUnimplementedServerServiceServer() {}
 func (UnimplementedServerServiceServer) testEmbeddedByValue()                       {}
@@ -183,7 +167,7 @@ func RegisterServerServiceServer(s grpc.ServiceRegistrar, srv ServerServiceServe
 }
 
 func _ServerService_ListServers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ServerListRequest)
+	in := new(ListServersRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -195,7 +179,25 @@ func _ServerService_ListServers_Handler(srv interface{}, ctx context.Context, de
 		FullMethod: ServerService_ListServers_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ServerServiceServer).ListServers(ctx, req.(*ServerListRequest))
+		return srv.(ServerServiceServer).ListServers(ctx, req.(*ListServersRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ServerService_GetDefaultServer_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetDefaultServerRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ServerServiceServer).GetDefaultServer(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ServerService_GetDefaultServer_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ServerServiceServer).GetDefaultServer(ctx, req.(*GetDefaultServerRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -272,42 +274,6 @@ func _ServerService_SetDefaultServer_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ServerService_GetDefaultServer_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetDefaultServerRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ServerServiceServer).GetDefaultServer(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ServerService_GetDefaultServer_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ServerServiceServer).GetDefaultServer(ctx, req.(*GetDefaultServerRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _ServerService_GetServers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetServersRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ServerServiceServer).GetServers(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ServerService_GetServers_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ServerServiceServer).GetServers(ctx, req.(*GetServersRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 // ServerService_ServiceDesc is the grpc.ServiceDesc for ServerService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -318,6 +284,10 @@ var ServerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListServers",
 			Handler:    _ServerService_ListServers_Handler,
+		},
+		{
+			MethodName: "GetDefaultServer",
+			Handler:    _ServerService_GetDefaultServer_Handler,
 		},
 		{
 			MethodName: "AddServer",
@@ -334,14 +304,6 @@ var ServerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SetDefaultServer",
 			Handler:    _ServerService_SetDefaultServer_Handler,
-		},
-		{
-			MethodName: "GetDefaultServer",
-			Handler:    _ServerService_GetDefaultServer_Handler,
-		},
-		{
-			MethodName: "GetServers",
-			Handler:    _ServerService_GetServers_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
