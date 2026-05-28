@@ -1,3 +1,5 @@
+//go:build ignore
+
 // Lavender Messenger - A secure messaging application
 // Author: Pavel Davydov (ferz)
 //
