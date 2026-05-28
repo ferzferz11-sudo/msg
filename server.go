@@ -394,7 +394,12 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 
 				// Send push notification to all users in the room
 				log.Printf("Push sent: %s", user.Username)
-				s.sendPushNotification(user.Username, msg.User, msg.Text, roomID)
+				// For secret chats, don't leak message content in push
+				pushText := msg.Text
+				if chat.IsSecret {
+					pushText = "New encrypted message"
+				}
+				s.sendPushNotification(user.Username, msg.User, pushText, roomID)
 			}
 		}
 	}

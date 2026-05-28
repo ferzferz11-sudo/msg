@@ -375,13 +375,15 @@ func (db *DB) GetChat(id string) (struct {
 	ID, Name, Type, Participants, CreatorUsername string
 	CreatedAt                                     time.Time
 	AllowMembersToAdd                             bool
+	IsSecret                                      bool
 }, error) {
 	var c struct {
 		ID, Name, Type, Participants, CreatorUsername string
 		CreatedAt                                     time.Time
 		AllowMembersToAdd                             bool
+		IsSecret                                      bool
 	}
-	err := db.QueryRow(`SELECT id, name, type, participants, COALESCE(creator_username, ''), created_at, COALESCE(allow_members_to_add, FALSE) FROM chats WHERE id=$1`, id).Scan(&c.ID, &c.Name, &c.Type, &c.Participants, &c.CreatorUsername, &c.CreatedAt, &c.AllowMembersToAdd)
+	err := db.QueryRow(`SELECT id, name, type, participants, COALESCE(creator_username, ''), created_at, COALESCE(allow_members_to_add, FALSE), COALESCE(is_secret, FALSE) FROM chats WHERE id=$1`, id).Scan(&c.ID, &c.Name, &c.Type, &c.Participants, &c.CreatorUsername, &c.CreatedAt, &c.AllowMembersToAdd, &c.IsSecret)
 	return c, err
 }
 
