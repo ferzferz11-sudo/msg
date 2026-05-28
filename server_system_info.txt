@@ -1,0 +1,67 @@
+# Lavender Messenger — Server Connection System Analysis
+# Date: 2026-05-28
+# Version: 1.0.7.1
+
+## Текущее состояние
+
+### Хранение серверов
+- В БД НЕТ таблицы серверов
+- Адрес сервера хранится в SharedPreferences (Android) как строка "host:port"
+- Ключ: "server_address"
+- Значение по умолчанию: "159.195.38.145:50051" (хардкод в ChatListActivity:160)
+
+### Android клиент
+- CredentialStore.kt — хранит server_address в EncryptedSharedPreferences
+- SplashActivity — читает server_address из prefs, передаёт в Intent
+- ChatListActivity — использует CredentialStore.getServerAddress() или fallback "159.195.38.145:50051"
+- NewChatActivity — получает SERVER_ADDRESS из Intent или prefs, вызывает grpcClient.connect(host, port)
+- GrpcClient.connect(serverAddress, useTls, port, context) — вот точка подключения
+
+### UI для серверов
+- bottom_sheet_additional_settings.xml — есть кнопка "actionServers" (видна только для супер-админа)
+- dialog_join_chat.xml — есть server_address_label + serverAddressSpinner
+- ChatListActivity:1743-1751 — обработчик кнопки "Серверы" показывает AlertDialog с текущим сервером и надписью "Under development"
+- ServersActivity — НЕ существует (ещё не создана)
+
+### Серверная часть
+- server.go — НЕТ endpoint'а для получения списка серверов
+- db.go — НЕТ таблицы серверов
+- messenger.proto — НЕТ сообщений для серверов
+- main.go — SERVER_ADDRESS читается из env SERVER_ADDRESS или default ":50051"
+
+### Подключение к серверу (текущий поток)
+1. SplashActivity → читает server_address из CredentialStore/prefs
+2. Передаёт в ChatListActivity через Intent
+3. ChatListActivity → grpcClient.connect(host, port)
+4. RealGrpcClient.connect() → OkHttpChannelBuilder.forAddress(serverAddress, port)
+5. gRPC bidirectional stream устанавливается
+
+### Проблемы текущей реализации
+1. Хардкод адреса сервера в коде ("159.195.38.145:50051")
+2. Нет списка серверов в БД
+3. Нет UI для выбора/добавления серверов
+4. K button "Серверы" показывает только текущий адрес
+5. Нет возможности переключаться между серверами
+
+## Что нужно сделать
+
+### Серверная сторона
+1. Создать таблицу servers в БД (id, name, host, port, is_default, created_at)
+2. Добавить CRUD endpoints для серверов (GetServers, AddServer, UpdateServer, DeleteServer, SetDefaultServer)
+3. Расширить proto серверными сообщениями
+4. Добавить миграцию
+
+### Клиентская сторона (Android)
+1. Создать ServersActivity — список серверов с возможностью добавления/удаления
+2. Создать ServerAdapter для RecyclerView
+3. Создать dialog для добавления/редактирования сервера
+4. Обновить CredentialStore для хранения текущего server_id
+5. Обновить ChatListActivity — кнопка "Серверы" → ServersActivity
+6. Обновить NewChatActivity — при подключении использовать server_id
+7. Добавить gRPC calls для серверов
+8. Добавить строки локализации
+
+### Обратная совместимость
+- Старая логика (один сервер) должна работать по умолчанию
+- При первом запуске создать default сервер из текущего server_address
+- GRPC endpoints — новые, не ломают старых клиентов
