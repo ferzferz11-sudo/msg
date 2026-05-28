@@ -2,6 +2,19 @@
 
 **Author:** Pavel Davydov (ferz)
 
+## [1.0.7.1] - 2026-05-28
+- **Secret Chats (E2EE) — Server Infrastructure**
+  - **New RPC handlers:** `CreateSecretChat`, `ExchangeSecretKey`, `GetSecretChatKey` for E2EE key management
+  - **New database table:** `secret_chat_keys` for storing Curve25519 public keys per user per chat
+  - **Extended `chats` table:** Added `is_secret`, `public_key_a`, `public_key_b`, `e2ee_ready` columns
+  - **Extended proto:** Added `is_secret`, `peer_public_key`, `e2ee_ready` to ChatInfo; `is_e2ee`, `e2ee_payload` to Message
+  - **Client version check:** Secret chat creation requires client >= 1.0.7.1 (`compareVersions` helper)
+  - **Push notification fix:** Secret chat pushes show "New encrypted message" instead of plaintext
+  - **Server-side encryption skip:** E2EE messages stored as-is (client-encrypted payload), no double-encryption
+  - **Backward compatibility:** Old clients (< 1.0.7.1) ignore new fields — no breakage
+  - **Refactoring:** Secret chat handlers extracted to `secret_chat.go` (server.go reduced from 2840 to 2704 lines)
+  - Server version: 1.0.7.1
+
 ## [1.0.6.27] - 2026-05-25
 - **Advanced Conference Setup & Audio UX**
   - **Android Client:**
