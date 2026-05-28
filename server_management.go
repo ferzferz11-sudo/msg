@@ -142,6 +142,27 @@ func (s *serverServiceServer) SetDefaultServer(ctx context.Context, req *gen.Set
 	return &gen.SetDefaultServerResponse{Success: true, Message: "Default server set"}, nil
 }
 
+func (s *serverServiceServer) GetServers(ctx context.Context, req *gen.GetServersRequest) (*gen.GetServersResponse, error) {
+	servers, err := s.db.GetAllServers()
+	if err != nil {
+		return &gen.GetServersResponse{}, err
+	}
+
+	var result []*gen.ServerInfo
+	for _, srv := range servers {
+		result = append(result, &gen.ServerInfo{
+			Id:        srv.ID,
+			Name:      srv.Name,
+			Host:      srv.Host,
+			Port:      int32(srv.Port),
+			IsDefault: srv.IsDefault,
+			CreatedAt: timestamppb.New(srv.CreatedAt),
+		})
+	}
+
+	return &gen.GetServersResponse{Servers: result}, nil
+}
+
 func (s *serverServiceServer) GetDefaultServer(ctx context.Context, req *gen.GetDefaultServerRequest) (*gen.GetDefaultServerResponse, error) {
 	srv, err := s.db.GetDefaultServer()
 	if err != nil {

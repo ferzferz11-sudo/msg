@@ -83,11 +83,20 @@ message GetDefaultServerResponse {
   string message = 3;
 }
 
+// ======= Client-facing (no auth) =======
+
+message GetServersRequest {}
+
+message GetServersResponse {
+  repeated ServerInfo servers = 1;
+}
+
 service ServerService {
-  rpc ListServers(ServerListRequest) returns (ServerListResponse);
+  rpc ListServers(ServerListRequest) returns (ServerListResponse);       // admin only
   rpc AddServer(AddServerRequest) returns (AddServerResponse);
   rpc UpdateServer(UpdateServerRequest) returns (UpdateServerResponse);
   rpc DeleteServer(DeleteServerRequest) returns (DeleteServerResponse);
   rpc SetDefaultServer(SetDefaultServerRequest) returns (SetDefaultServerResponse);
   rpc GetDefaultServer(GetDefaultServerRequest) returns (GetDefaultServerResponse);
+  rpc GetServers(GetServersRequest) returns (GetServersResponse);        // public
 }
