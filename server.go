@@ -312,11 +312,18 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 			// Still broadcast but don't save to DB
 			log.Printf("Skipping join message from DB save: %s", msg.Text)
 		} else {
-			// Encrypt message text before saving to database
-			encryptedText, err := encrypt(msg.Text)
-			if err != nil {
-				log.Printf("Failed to encrypt message: %v", err)
-				continue
+			// For E2EE messages, client already encrypted the payload
+			// Don't double-encrypt with server key
+			var encryptedText []byte
+			if msg.IsE2Ee {
+				encryptedText = []byte(msg.E2EePayload)
+			} else {
+				var err error
+				encryptedText, err = encrypt(msg.Text)
+				if err != nil {
+					log.Printf("Failed to encrypt message: %v", err)
+					continue
+				}
 			}
 
 			// Save encrypted message to database with UUID
