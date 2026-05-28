@@ -1028,7 +1028,7 @@ func (s *server) CreateGroupChat(_ context.Context, req *gen.CreateGroupChatRequ
 	}
 	participants += "]"
 
-	err := s.db.CreateChat(chatID, req.Name, "group", participants, creator)
+	err := s.db.CreateChat(chatID, req.Name, "group", participants, creator, req.CreatorId)
 	if err != nil {
 		log.Printf("Failed to create group chat in DB: %v", err)
 		return &gen.CreateGroupChatResponse{Success: false}, err

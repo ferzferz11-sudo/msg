@@ -1,9 +1,32 @@
 # Lavender Messenger — Skills & Commands
 # Created: 2026-05-28
 
+## Пути
+
+### Сервер (удалённый)
+- Директория: `/root/msg`
+- IP: `13.140.25.249`
+- Ветка: `main` (production), `feat/remove-username-compat` (новый сервер)
+
+### Сервер (локальный у Павла)
+- Директория: `/Users/paveld/GolandProjects/LavenderMessenger`
+
+### Клиент Android (локальный у Павла)
+- Директория: `/Users/paveld/GolandProjects/LavenderMessenger/client/android`
+- Отдельный git-репозиторий: `ferzferz11-sudo/msg.client.android`
+
 ## Git команды
 
-### Сервер
+### Сервер (удалённый)
+```bash
+cd /root/msg
+git status
+git add -A
+git commit -m "message"
+git push
+```
+
+### Сервер (локальный)
 ```bash
 cd /Users/paveld/GolandProjects/LavenderMessenger
 git status
@@ -24,13 +47,13 @@ git push
 ### Важно: директория
 - Всегда проверяй `pwd` перед git командами!
 - Сервер и клиент — ОТДЕЛЬНЫЕ репозитории
-- `client/android/` находится ВНУТРИ серверной директории, но это отдельный git
+- `client/android/` находится ВНУТРИ серверной директории локально, но это отдельный git
 
 ## Сборка и тестирование
 
 ### Сервер
 ```bash
-cd /Users/paveld/GolandProjects/LavenderMessenger
+cd /root/msg                    # или локально
 go build -o /dev/null . && echo "build OK"
 go vet ./... && echo "vet OK"
 go test . && echo "test OK"
@@ -45,7 +68,7 @@ cd /Users/paveld/GolandProjects/LavenderMessenger/client/android
 
 ### Генерация proto
 ```bash
-cd /Users/paveld/GolandProjects/LavenderMessenger
+cd /root/msg                    # или локально
 protoc --go_out=gen --go_opt=paths=source_relative --go-grpc_out=gen --go-grpc_opt=paths=source_relative messenger.proto
 ```
 
@@ -130,7 +153,7 @@ protoc --go_out=gen --go_opt=paths=source_relative --go-grpc_out=gen --go-grpc_o
 ### Проверка что всё работает
 ```bash
 # Сервер
-cd /Users/paveld/GolandProjects/LavenderMessenger
+cd /root/msg
 go build . && go vet . && go test .
 
 # Клиент
@@ -140,9 +163,8 @@ cd /Users/paveld/GolandProjects/LavenderMessenger/client/android
 
 ### Проверка git status
 ```bash
-cd /Users/paveld/GolandProjects/LavenderMessenger
-git status
-cd client/android && git status
+cd /root/msg && git status
+cd /Users/paveld/GolandProjects/LavenderMessenger/client/android && git status
 ```
 
 ### Proto regeneration (после изменения messenger.proto)
@@ -152,8 +174,9 @@ protoc --go_out=gen --go_opt=paths=source_relative --go-grpc_out=gen --go-grpc_o
 
 ## Контакты и URL
 
-### Сервер
-- Production: `159.195.38.145:50051`
+### Серверы
+- Production (старый): `159.195.38.145:50051`
+- New (текущий): `13.140.25.249:50051`
 - Local: `192.168.1.135:50051`
 
 ### APK download
@@ -170,3 +193,4 @@ protoc --go_out=gen --go_opt=paths=source_relative --go-grpc_out=gen --go-grpc_o
 3. Версия сервера в server.go: `const ServerVersion = "X.X.X.X"`
 4. Версия клиента в version.txt
 5. Proto регенерировать после каждого изменения messenger.proto
+6. Ветка `feat/remove-username-compat` — для нового сервера 13.140.25.249, без обратной совместимости username→user_id
