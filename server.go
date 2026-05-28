@@ -2742,6 +2742,12 @@ func (s *server) CreateSecretChat(ctx context.Context, req *gen.CreateSecretChat
 		return &gen.CreateSecretChatResponse{Success: false, Message: "Not authenticated"}, fmt.Errorf("not authenticated")
 	}
 
+	// Version check: secret chats require client >= 1.0.7.1
+	if req.ClientVersion != "" && compareVersions(req.ClientVersion, "1.0.7.1") < 0 {
+		log.Printf("Secret chat rejected: client %s is too old (need >= 1.0.7.1)", req.ClientVersion)
+		return &gen.CreateSecretChatResponse{Success: false, Message: "Secret chats require client version 1.0.7.1 or higher"}, fmt.Errorf("client version too old")
+	}
+
 	chatID := "secret_" + uuid.New().String()
 	participants := []string{callerUsername, targetUser}
 	err := s.db.CreateSecretChat(chatID, callerUsername+" 🔒 "+targetUser, callerUsername, participants)
@@ -2849,4 +2855,31 @@ func (s *server) GetSecretChatKey(ctx context.Context, req *gen.GetSecretChatKey
 		PeerPublicKey: peerKey,
 		PeerHasKey:    found,
 	}, nil
+}
+
+// compareVersions compares two semantic version strings (e.g. "1.0.7.1" vs "1.0.6.34")
+// Returns -1 if a < b, 0 if a == b, 1 if a > b
+func compareVersions(a, b string) int {
+	partsA := strings.Split(a, ".")
+	partsB := strings.Split(b, ".")
+	maxLen := len(partsA)
+	if len(partsB) > maxLen {
+		maxLen = len(partsB)
+	}
+	for i := 0; i < maxLen; i++ {
+		var va, vb int
+		if i < len(partsA) {
+			fmt.Sscanf(partsA[i], "%d", &va)
+		}
+		if i < len(partsB) {
+			fmt.Sscanf(partsB[i], "%d", &vb)
+		}
+		if va < vb {
+			return -1
+		}
+		if va > vb {
+			return 1
+		}
+	}
+	return 0
 }
