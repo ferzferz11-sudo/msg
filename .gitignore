@@ -34,4 +34,8 @@ go.work.sum
 .DS_Store
 
 # Android client - separate git repository
-#client/android/
+client/android/
+
+# Other clients (macos, console)
+client/macos/
+client/console/
