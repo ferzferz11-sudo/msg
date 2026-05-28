@@ -123,6 +123,7 @@ func ConnectDB() (*DB, error) {
 		)`,
 		`CREATE INDEX IF NOT EXISTS idx_calls_caller ON calls(caller_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_calls_receiver ON calls(receiver_id)`,
+		`CREATE TABLE IF NOT EXISTS servers (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), name VARCHAR(255) NOT NULL, host VARCHAR(255) NOT NULL, port INTEGER NOT NULL DEFAULT 50051, is_default BOOLEAN DEFAULT FALSE, created_at TIMESTAMP NOT NULL DEFAULT NOW())`,
 	}
 
 	for _, q := range queries {
@@ -1097,28 +1098,28 @@ func (db *DB) CreateSecretChat(id, name, creator string, participants []string) 
 }
 
 func (db *DB) GetSecretChat(chatID string) (struct {
-	ID            string
-	Name          string
-	Type          string
-	Participants  string
-	Creator       string
-	IsSecret      bool
-	PublicKeyA    string
-	PublicKeyB    string
-	E2EEReady     bool
-	CreatedAt     time.Time
+	ID           string
+	Name         string
+	Type         string
+	Participants string
+	Creator      string
+	IsSecret     bool
+	PublicKeyA   string
+	PublicKeyB   string
+	E2EEReady    bool
+	CreatedAt    time.Time
 }, error) {
 	var c struct {
-		ID            string
-		Name          string
-		Type          string
-		Participants  string
-		Creator       string
-		IsSecret      bool
-		PublicKeyA    string
-		PublicKeyB    string
-		E2EEReady     bool
-		CreatedAt     time.Time
+		ID           string
+		Name         string
+		Type         string
+		Participants string
+		Creator      string
+		IsSecret     bool
+		PublicKeyA   string
+		PublicKeyB   string
+		E2EEReady    bool
+		CreatedAt    time.Time
 	}
 	err := db.QueryRow(`SELECT id, name, type, participants, COALESCE(creator_username, ''), COALESCE(is_secret, FALSE), COALESCE(public_key_a, ''), COALESCE(public_key_b, ''), COALESCE(e2ee_ready, FALSE), created_at FROM chats WHERE id=$1`, chatID).Scan(&c.ID, &c.Name, &c.Type, &c.Participants, &c.Creator, &c.IsSecret, &c.PublicKeyA, &c.PublicKeyB, &c.E2EEReady, &c.CreatedAt)
 	return c, err
@@ -1153,5 +1154,98 @@ func (db *DB) GetAllSecretChatKeys(chatID string) (map[string]string, error) {
 
 func (db *DB) SetSecretChatE2EEReady(chatID string, ready bool) error {
 	_, err := db.Exec(`UPDATE chats SET e2ee_ready=$1 WHERE id=$2`, ready, chatID)
+	return err
+}
+
+// ======= Server Methods =======
+
+func (db *DB) CreateServer(name, host string, port int, isDefault bool) (string, error) {
+	var id string
+	err := db.QueryRow(`INSERT INTO servers (name, host, port, is_default) VALUES ($1, $2, $3, $4) RETURNING id`, name, host, port, isDefault).Scan(&id)
+	return id, err
+}
+
+func (db *DB) GetAllServers() ([]struct {
+	ID        string
+	Name      string
+	Host      string
+	Port      int
+	IsDefault bool
+	CreatedAt time.Time
+}, error) {
+	rows, err := db.Query(`SELECT id, name, host, port, is_default, created_at FROM servers ORDER BY is_default DESC, created_at ASC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var res []struct {
+		ID        string
+		Name      string
+		Host      string
+		Port      int
+		IsDefault bool
+		CreatedAt time.Time
+	}
+	for rows.Next() {
+		var s struct {
+			ID        string
+			Name      string
+			Host      string
+			Port      int
+			IsDefault bool
+			CreatedAt time.Time
+		}
+		rows.Scan(&s.ID, &s.Name, &s.Host, &s.Port, &s.IsDefault, &s.CreatedAt)
+		res = append(res, s)
+	}
+	return res, nil
+}
+
+func (db *DB) GetDefaultServer() (struct {
+	ID   string
+	Name string
+	Host string
+	Port int
+}, error) {
+	var s struct {
+		ID   string
+		Name string
+		Host string
+		Port int
+	}
+	err := db.QueryRow(`SELECT id, name, host, port FROM servers WHERE is_default = TRUE LIMIT 1`).Scan(&s.ID, &s.Name, &s.Host, &s.Port)
+	return s, err
+}
+
+func (db *DB) UpdateServer(id, name, host string, port int) error {
+	_, err := db.Exec(`UPDATE servers SET name=$1, host=$2, port=$3 WHERE id=$4`, name, host, port, id)
+	return err
+}
+
+func (db *DB) SetDefaultServer(id string) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if _, err := tx.Exec(`UPDATE servers SET is_default = FALSE`); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`UPDATE servers SET is_default = TRUE WHERE id = $1`, id); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func (db *DB) DeleteServer(id string) error {
+	var isDefault bool
+	err := db.QueryRow(`SELECT is_default FROM servers WHERE id = $1`, id).Scan(&isDefault)
+	if err != nil {
+		return err
+	}
+	if isDefault {
+		return fmt.Errorf("cannot delete default server")
+	}
+	_, err = db.Exec(`DELETE FROM servers WHERE id = $1`, id)
 	return err
 }

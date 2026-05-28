@@ -1,0 +1,64 @@
+syntax = "proto3";
+package messenger;
+option go_package = "./gen";
+
+import "google/protobuf/timestamp.proto";
+
+// ======= Server Management (Super Admin only) =======
+
+message ServerInfo {
+  string id = 1;
+  string name = 2;
+  string host = 3;
+  int32 port = 4;
+  bool is_default = 5;
+  google.protobuf.Timestamp created_at = 6;
+}
+
+message ServerListRequest {}
+
+message ServerListResponse {
+  repeated ServerInfo servers = 1;
+}
+
+message AddServerRequest {
+  string name = 1;
+  string host = 2;
+  int32 port = 3;
+}
+
+message AddServerResponse {
+  bool success = 1;
+  string message = 2;
+  string server_id = 3;
+}
+
+message UpdateServerRequest {
+  string id = 1;
+  string name = 2;
+  string host = 3;
+  int32 port = 4;
+}
+
+message UpdateServerResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message DeleteServerRequest {
+  string id = 1;
+}
+
+message DeleteServerResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message SetDefaultServerRequest {
+  string id = 1;
+}
+
+message SetDefaultServerResponse {
+  bool success = 1;
+  string message = 2;
+}
