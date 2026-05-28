@@ -15,16 +15,25 @@ message ServerInfo {
   google.protobuf.Timestamp created_at = 6;
 }
 
-message ServerListRequest {}
+// AdminAuth is embedded in every server management request
+message AdminAuth {
+  string admin_username = 1;
+  string admin_user_id = 2; // optional, will resolve to username if provided
+}
+
+message ServerListRequest {
+  AdminAuth auth = 1;
+}
 
 message ServerListResponse {
   repeated ServerInfo servers = 1;
 }
 
 message AddServerRequest {
-  string name = 1;
-  string host = 2;
-  int32 port = 3;
+  AdminAuth auth = 1;
+  string name = 2;
+  string host = 3;
+  int32 port = 4;
 }
 
 message AddServerResponse {
@@ -34,10 +43,11 @@ message AddServerResponse {
 }
 
 message UpdateServerRequest {
-  string id = 1;
-  string name = 2;
-  string host = 3;
-  int32 port = 4;
+  AdminAuth auth = 1;
+  string id = 2;
+  string name = 3;
+  string host = 4;
+  int32 port = 5;
 }
 
 message UpdateServerResponse {
@@ -46,7 +56,8 @@ message UpdateServerResponse {
 }
 
 message DeleteServerRequest {
-  string id = 1;
+  AdminAuth auth = 1;
+  string id = 2;
 }
 
 message DeleteServerResponse {
@@ -55,10 +66,28 @@ message DeleteServerResponse {
 }
 
 message SetDefaultServerRequest {
-  string id = 1;
+  AdminAuth auth = 1;
+  string id = 2;
 }
 
 message SetDefaultServerResponse {
   bool success = 1;
   string message = 2;
+}
+
+message GetDefaultServerRequest {}
+
+message GetDefaultServerResponse {
+  ServerInfo server = 1;
+  bool success = 2;
+  string message = 3;
+}
+
+service ServerService {
+  rpc ListServers(ServerListRequest) returns (ServerListResponse);
+  rpc AddServer(AddServerRequest) returns (AddServerResponse);
+  rpc UpdateServer(UpdateServerRequest) returns (UpdateServerResponse);
+  rpc DeleteServer(DeleteServerRequest) returns (DeleteServerResponse);
+  rpc SetDefaultServer(SetDefaultServerRequest) returns (SetDefaultServerResponse);
+  rpc GetDefaultServer(GetDefaultServerRequest) returns (GetDefaultServerResponse);
 }

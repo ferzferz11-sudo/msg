@@ -124,8 +124,11 @@ func main() {
 	srv.hub = NewHub(srv.broadcastOnlineUsers) // Hub manages all active client connections
 
 	// Register our chat service with the gRPC server
-	// This makes the service available to clients
 	gen.RegisterChatServiceServer(s, srv)
+
+	// Register server management service (super admin only)
+	srvMgmt := &serverServiceServer{db: db}
+	gen.RegisterServerServiceServer(s, srvMgmt)
 
 	// Log server startup information
 	log.Printf("Listening clients at %v", lis.Addr())
