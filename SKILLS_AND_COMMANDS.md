@@ -69,8 +69,12 @@ cd /Users/paveld/GolandProjects/LavenderMessenger/client/android
 ### Генерация proto
 ```bash
 cd /root/msg                    # или локально
+export PATH=$PATH:/root/go/bin
 protoc --go_out=gen --go_opt=paths=source_relative --go-grpc_out=gen --go-grpc_opt=paths=source_relative messenger.proto
+protoc --go_out=gen --go_opt=paths=source_relative --go-grpc_out=gen --go-grpc_opt=paths=source_relative server.proto
 ```
+
+**ОБЯЗАТЕЛЬНО:** после каждого изменения .proto файлов — перегенерировать обе команды!
 
 ## Деплой
 
