@@ -1,38 +1,29 @@
 #!/bin/bash
-# deploy_server.sh — Build & deploy Lavender Messenger server to 13.140.25.249
-# Run from server repo root: ./scripts/deploy_server.sh
-
+# deploy_server.sh — Build & deploy Lavender Messenger server (run from repo root)
 set -euo pipefail
 
-REMOTE_HOST="13.140.25.249"
-REMOTE_USER="root"
 REMOTE_DIR="/root/LavenderMessenger/run"
-LOCAL_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
 echo "🔨 Building server..."
-cd "$LOCAL_DIR"
+cd "$SCRIPT_DIR"
 go build -o lavender-server .
-go vet ./... 2>&1 || true
 
-echo "📦 Uploading to ${REMOTE_HOST}..."
-rsync -avz --delete \
-    --exclude '.git' \
-    --exclude '.env' \
-    --exclude '.idea' \
-    --exclude 'client' \
-    --exclude 'scripts' \
-    --exclude '*.apk' \
-    --exclude 'index.html' \
-    --exclude 'changelog.txt' \
-    --exclude 'version.txt' \
-    -e "ssh -o StrictHostKeyChecking=no" \
-    "$LOCAL_DIR/" "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_DIR}/"
+echo "📦 Deploying to ${REMOTE_DIR}..."
+cp -f lavender-server "$REMOTE_DIR/"
+cp -f server *.go *.proto go.mod go.sum "$REMOTE_DIR/" 2>/dev/null || true
+cp -f scripts/*.sh "$REMOTE_DIR/../scripts/" 2>/dev/null || true
 
-echo "🔄 Restarting server on ${REMOTE_HOST}..."
-ssh -o StrictHostKeyChecking=no "${REMOTE_USER}@${REMOTE_HOST}" "
-    systemctl restart lavender-server
-    sleep 2
-    systemctl is-active lavender-server && echo '✅ Server running' || echo '❌ Server failed'
-"
+echo "🔄 Restarting server..."
+systemctl restart lavender-server
+sleep 2
+
+if systemctl is-active lavender-server >/dev/null 2>&1; then
+    echo "✅ Server running"
+else
+    echo "❌ Server failed!"
+    journalctl -u lavender-server --no-pager -n 20
+    exit 1
+fi
 
 echo "🚀 Deploy complete!"
