@@ -2,7 +2,18 @@
 
 **Author:** Pavel Davydov (ferz)
 
-## [1.0.7.1] - 2026-05-28
+## [1.1.0.1] - 2026-05-30
+- **Android Client:**
+  - **Server management screen:** New "Servers" screen accessible from Additional Settings for all users (not just admins)
+  - **Add/Remove servers:** Users can add custom servers with name, host, port; swipe or button to delete with confirmation
+  - **Server selection:** Tap to select a server, long press to set as default
+  - **Auto-reconnect:** App automatically reconnects with saved credentials when switching servers
+  - **Visual feedback:** Currently selected server highlighted with a colored stroke, default server shown with a badge
+  - **Validation:** Port must be 1-65535, name and host are required
+- **Server:**
+  - Bumped server version to 1.1.0.1
+
+## [1.1.0.0] - 2026-05-28
 - **Secret Chats (E2EE) — Server Infrastructure**
   - **New RPC handlers:** `CreateSecretChat`, `ExchangeSecretKey`, `GetSecretChatKey` for E2EE key management
   - **New database table:** `secret_chat_keys` for storing Curve25519 public keys per user per chat
