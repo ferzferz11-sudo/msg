@@ -148,13 +148,6 @@ func main() {
 	}
 	go StartHTTPServer(httpPort)
 
-	// Start HTTP server for APK updates in a goroutine
-	apkPort := os.Getenv("APK_PORT")
-	if apkPort == "" {
-		apkPort = "8081"
-	}
-	go StartAPKServer(apkPort)
-
 	// Start the gRPC server and begin serving client requests
 	// This is a blocking call that runs until the application is terminated
 	if err := s.Serve(lis); err != nil {
