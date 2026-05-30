@@ -2,6 +2,21 @@
 
 **Author:** Pavel Davydov (ferz)
 
+## [1.1.0.2] - 2026-05-30
+- **Server:**
+  - **MarkReadAndCheck fix**: Fixed SQL error 25P02 — incorrect INSERT into `user_chat_metadata` (removed non-existent `user_id` column), added error check for INSERT
+  - **Port 8082**: Opened in iptables for file uploads, voice messages, and media
+- **Android Client:**
+  - **Version**: 1.1.0.2
+  - **Spinner theming**: Removed white outline on server dropdown in login/register sheets — uses `ColorDrawable(primaryColor)`
+  - **ServersActivity toolbar**: Title now uses `onPrimaryColor`
+  - **Default servers**: Auto-added on first launch (prod 50051, dev 50052)
+  - **Server protection**: Default server cannot be deleted (delete button hidden)
+  - **Server ordering**: New servers added to end of list
+  - **Gradle heap**: Increased to 2g for D8 dexer
+  - **Release keystore**: Fixed path to `release.keystore` (project root)
+  - **Build script**: Removed `GRADLE_OPT` override
+
 ## [1.1.0.1] - 2026-05-30
 - **Android Client:**
   - **Server management screen:** New "Servers" screen accessible from Additional Settings for all users (not just admins)

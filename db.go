@@ -551,9 +551,12 @@ func (db *DB) MarkReadAndCheck(room, user string) (bool, error) {
 	defer tx.Rollback()
 
 	// Update last_read_at in metadata to clear unread count in chat list
-	tx.Exec(`INSERT INTO user_chat_metadata (username, room_id, last_read_at, user_id)
-	          VALUES ($1::text, $2, NOW(), (SELECT id FROM users WHERE username=$1::text))
+	_, err = tx.Exec(`INSERT INTO user_chat_metadata (username, room_id, last_read_at)
+	          VALUES ($1, $2, NOW())
 	          ON CONFLICT (username, room_id) DO UPDATE SET last_read_at=NOW()`, user, room)
+	if err != nil {
+		return false, err
+	}
 
 	// Mark messages as read in the room
 	res, err := tx.Exec(`UPDATE messages SET is_read=TRUE WHERE room_id=$1 AND username!=$2 AND is_read=FALSE`, room, user)
