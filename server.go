@@ -27,7 +27,7 @@ import (
 	"firebase.google.com/go/v4/messaging"
 )
 
-const ServerVersion = "1.1.0.1"
+const ServerVersion = "1.1.0.2-owl"
 
 // server implements the gRPC ChatService interface
 type server struct {
@@ -2702,3 +2702,58 @@ func (s *server) ResetPassword(_ context.Context, req *gen.ResetPasswordRequest)
 	return &gen.ResetPasswordResponse{Success: true, Message: "Password reset successfully"}, nil
 }
 
+// ChatWithOWL handles streaming AI chat via OpenRouter
+func (s *server) ChatWithOWL(req *gen.OWLRequest, stream gen.ChatService_ChatWithOWLServer) error {
+	userID := req.UserId
+	if userID == "" {
+		return fmt.Errorf("user_id is required")
+	}
+
+	// Rate limit check
+	if !owlRateLimiter.allow(userID) {
+		return fmt.Errorf("rate limit exceeded: max 10 requests per minute")
+	}
+
+	// System prompt
+	systemPrompt := `Вы — AI-ассистент OWL в мессенджере Lavender. Отвечайте кратко и по делу на русском языке. 
+Вы можете помочь с вопросами о приложении Lavender, настройками, темами, функциями.
+Будьте дружелюбны, но лаконичны. Не выдавайте себя за человека.`
+
+	// Add user message to session history
+	owlSessions.addMessage(userID, "user", req.Message)
+
+	// Build context from session history
+	history := owlSessions.getHistory(userID)
+
+	log.Printf("OWL: user=%s, msg=%q, history_len=%d", userID, req.Message, len(history))
+
+	// Call OpenRouter
+	response, err := callOpenRouter(systemPrompt, history)
+	if err != nil {
+		log.Printf("OWL: OpenRouter error for user %s: %v", userID, err)
+		return fmt.Errorf("AI service error: %w", err)
+	}
+
+	// Add assistant response to session history
+	owlSessions.addMessage(userID, "assistant", response)
+
+	// Stream response in chunks (word by word for typing effect)
+	words := strings.Fields(response)
+	for i, word := range words {
+		chunk := word
+		if i < len(words)-1 {
+			chunk += " "
+		}
+		isLast := i == len(words)-1
+		if err := stream.Send(&gen.OWLResponse{
+			Text:     chunk,
+			Finished: isLast,
+		}); err != nil {
+			log.Printf("OWL: stream send error for user %s: %v", userID, err)
+			return err
+		}
+		time.Sleep(30 * time.Millisecond) // Small delay for typing effect
+	}
+
+	return nil
+}

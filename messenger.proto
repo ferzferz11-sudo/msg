@@ -693,6 +693,9 @@ service ChatService {
   rpc CreateSecretChat(CreateSecretChatRequest) returns (CreateSecretChatResponse);
   rpc ExchangeSecretKey(ExchangeSecretKeyRequest) returns (ExchangeSecretKeyResponse);
   rpc GetSecretChatKey(GetSecretChatKeyRequest) returns (GetSecretChatKeyResponse);
+
+  // OWL AI Assistant
+  rpc ChatWithOWL(OWLRequest) returns (stream OWLResponse);
 }
 
 // ======= Secret Chat Messages =======
@@ -729,4 +732,18 @@ message GetSecretChatKeyRequest {
 message GetSecretChatKeyResponse {
   string peer_public_key = 1;
   bool peer_has_key = 2;
+}
+
+// ======= OWL AI Assistant =======
+
+message OWLRequest {
+  string user_id = 1;
+  string message = 2;
+  string session_id = 3;
+}
+
+message OWLResponse {
+  string text = 1;
+  bool finished = 2;
+  string error = 3;
 }
