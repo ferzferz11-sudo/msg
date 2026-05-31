@@ -126,6 +126,8 @@ func main() {
 	srv := &server{
 		db:          db,          // Database connection for storing messages
 		firebaseApp: firebaseApp, // Firebase Admin SDK instance
+		owlModel:    os.Getenv("OPENROUTER_MODEL"),
+		owlApiKey:   os.Getenv("OPENROUTER_API_KEY"),
 	}
 	srv.hub = NewHub(srv.broadcastOnlineUsers) // Hub manages all active client connections
 

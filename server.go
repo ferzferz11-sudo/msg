@@ -40,6 +40,7 @@ type server struct {
 	fcmLogs      []*gen.FCMLogEntry
 	fcmLogsMu    sync.Mutex
 	owlModel     string        // Default OWL model
+	owlApiKey    string        // Default OpenRouter API key
 }
 
 func (s *server) logErrorOnce(key string, format string, v ...interface{}) {
@@ -975,6 +976,25 @@ func (s *server) GetChats(_ context.Context, req *gen.GetChatsRequest) (*gen.Get
 			AllowMembersToAdd:   c.AllowMembersToAdd,
 		})
 	}
+
+	// Add OWL AI virtual chat at the beginning
+	owlVirtualChat := &gen.ChatInfo{
+		Id:                  "owl-" + queryIdentifier,
+		Name:                "🤖 Чат с AI",
+		Type:                "direct",
+		Participants:        queryIdentifier,
+		CreatedAt:           timestamppb.Now(),
+		UnreadCount:         0,
+		LastMessageTime:     timestamppb.Now(),
+		Creator:             "system",
+		LastMessageText:     "",
+		AvatarUrl:           "",
+		FullAvatarUrl:       "",
+		LastMessageUsername: "",
+		LastMessageHasImage: false,
+		AllowMembersToAdd:   false,
+	}
+	chatInfos = append([]*gen.ChatInfo{owlVirtualChat}, chatInfos...)
 
 	return &gen.GetChatsResponse{Chats: chatInfos}, nil
 }
@@ -2732,10 +2752,16 @@ func (s *server) ChatWithOWL(req *gen.OWLRequest, stream gen.ChatService_ChatWit
 		model = s.owlModel
 	}
 
-	log.Printf("OWL: user=%s, msg=%q, history_len=%d, model=%s", userID, req.Message, len(history), model)
+	// Use API key from request or fall back to server default
+	apiKey := req.ApiKey
+	if apiKey == "" {
+		apiKey = s.owlApiKey
+	}
+
+	log.Printf("OWL: user=%s, msg=%q, history_len=%d, model=%s, custom_key=%t", userID, req.Message, len(history), model, req.ApiKey != "")
 
 	// Call OpenRouter
-	response, err := callOpenRouter(model, systemPrompt, history)
+	response, err := callOpenRouter(apiKey, model, systemPrompt, history)
 	if err != nil {
 		log.Printf("OWL: OpenRouter error for user %s: %v", userID, err)
 		return fmt.Errorf("AI service error: %w", err)

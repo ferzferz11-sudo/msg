@@ -741,6 +741,7 @@ message OWLRequest {
   string message = 2;
   string session_id = 3;
   string model = 4;
+  string api_key = 5;
 }
 
 message OWLResponse {

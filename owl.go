@@ -21,16 +21,18 @@ type oll struct {
 }
 
 // CallOpenRouter sends a message to OpenRouter and returns the response
-func callOpenRouter(model string, systemPrompt string, messages []map[string]string) (string, error) {
-	apiKey := os.Getenv("OPENROUTER_API_KEY")
+func callOpenRouter(apiKey string, model string, systemPrompt string, messages []map[string]string) (string, error) {
 	if apiKey == "" {
-		return "", fmt.Errorf("OPENROUTER_API_KEY not set")
+		apiKey = os.Getenv("OPENROUTER_API_KEY")
+	}
+	if apiKey == "" {
+		return "", fmt.Errorf("OpenRouter API key not configured")
 	}
 
 	if model == "" {
 		model = os.Getenv("OPENROUTER_MODEL")
 		if model == "" {
-			model = "openrouter/owl-alpha"
+			model = "openrouter/auto"
 		}
 	}
 
