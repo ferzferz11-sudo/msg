@@ -979,23 +979,17 @@ func (s *server) GetChats(_ context.Context, req *gen.GetChatsRequest) (*gen.Get
 
 	// Add OWL AI chats from database
 	owlUsername := req.Username
-	log.Printf("GetChats: OWL lookup req.Username=%q queryIdentifier=%q", req.Username, queryIdentifier)
-	// If username is empty but we have userId, look up username
 	if owlUsername == "" && queryIdentifier != "" && queryIdentifier != "00000000-0000-0000-0000-000000000000" {
 		if uname, err := s.db.GetUsernameByID(queryIdentifier); err == nil && uname != "" {
 			owlUsername = uname
 		}
 	}
-	log.Printf("GetChats: OWL resolved username=%q", owlUsername)
 	if owlUsername != "" {
 		owlRows, err := s.db.Query(
 			"SELECT id, name, type, participants, created_at, creator_username, last_message_text FROM chats WHERE type = 'owl' AND creator_username = $1 ORDER BY created_at ASC",
 			owlUsername,
 		)
-		if err != nil {
-			log.Printf("GetChats: OWL query error: %v", err)
-		} else {
-			owlCount := 0
+		if err == nil {
 			for owlRows.Next() {
 				var c gen.ChatInfo
 				var createdAt time.Time
@@ -1007,14 +1001,10 @@ func (s *server) GetChats(_ context.Context, req *gen.GetChatsRequest) (*gen.Get
 						c.LastMessageText = lastMsg.String
 					}
 					chatInfos = append(chatInfos, &c)
-					owlCount++
 				}
 			}
 			owlRows.Close()
-			log.Printf("GetChats: found %d OWL chats for user %q", owlCount, owlUsername)
 		}
-	} else {
-		log.Printf("GetChats: cannot determine OWL username for user %s", req.Username)
 	}
 
 	// Prepend OWL chats at the beginning
