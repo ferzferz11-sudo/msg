@@ -978,25 +978,36 @@ func (s *server) GetChats(_ context.Context, req *gen.GetChatsRequest) (*gen.Get
 	}
 
 	// Add OWL AI chats from database
-	owlRows, err := s.db.Query(
-		"SELECT id, name, type, participants, created_at, creator_username, last_message_text FROM chats WHERE type = 'owl' AND creator_username = $1 ORDER BY created_at ASC",
-		queryIdentifier,
-	)
-	if err == nil {
-		for owlRows.Next() {
-			var c gen.ChatInfo
-			var createdAt time.Time
-			var lastMsg sql.NullString
-			if err := owlRows.Scan(&c.Id, &c.Name, &c.Type, &c.Participants, &createdAt, &c.Creator, &lastMsg); err == nil {
-				c.CreatedAt = timestamppb.New(createdAt)
-				c.LastMessageTime = timestamppb.New(createdAt)
-				if lastMsg.Valid {
-					c.LastMessageText = lastMsg.String
-				}
-				chatInfos = append(chatInfos, &c)
-			}
+	owlUsername := req.Username
+	// If username is empty but we have userId, look up username
+	if owlUsername == "" && queryIdentifier != "" && queryIdentifier != "00000000-0000-0000-0000-000000000000" {
+		if uname, err := s.db.GetUsernameByID(queryIdentifier); err == nil && uname != "" {
+			owlUsername = uname
 		}
-		owlRows.Close()
+	}
+	if owlUsername != "" {
+		owlRows, err := s.db.Query(
+			"SELECT id, name, type, participants, created_at, creator_username, last_message_text FROM chats WHERE type = 'owl' AND creator_username = $1 ORDER BY created_at ASC",
+			owlUsername,
+		)
+		if err == nil {
+			for owlRows.Next() {
+				var c gen.ChatInfo
+				var createdAt time.Time
+				var lastMsg sql.NullString
+				if err := owlRows.Scan(&c.Id, &c.Name, &c.Type, &c.Participants, &createdAt, &c.Creator, &lastMsg); err == nil {
+					c.CreatedAt = timestamppb.New(createdAt)
+					c.LastMessageTime = timestamppb.New(createdAt)
+					if lastMsg.Valid {
+						c.LastMessageText = lastMsg.String
+					}
+					chatInfos = append(chatInfos, &c)
+				}
+			}
+			owlRows.Close()
+		}
+	} else {
+		log.Printf("GetChats: cannot determine OWL username for user %s", req.Username)
 	}
 
 	// Prepend OWL chats at the beginning
