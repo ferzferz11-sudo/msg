@@ -2,6 +2,7 @@
 
 **Author:** Pavel Davydov (ferz)
 
+
 ## [1.1.0.3] - 2026-05-31
 - **Server:**
   - **AI-assistant OWL**: AI-ассистент в чате через OpenRouter — поддерживает стриминговые ответы
@@ -87,27 +88,6 @@
     - **Bug Fixes:** Resolved an issue where multiple system messages would appear with inconsistent timestamps and fixed incorrect view selection in message long-press mode.
   - Android version: 1.0.6.25
 
-## [1.0.6.19] - 2026-05-25
-- **Live Conference Status & Database Reliability**
-  - **Server:**
-    - Implemented **Live Conference Status Messages**: System notifications in group chats now update in real-time with participant counts (e.g., "📹 Конференция: 3 участников").
-    - Optimized message storage: Unified system messages for conferences using stable IDs and `ON CONFLICT` updates to prevent chat history spam.
-    - Fixed gRPC signal routing for conferences to ensure all group members receive join/leave notifications immediately.
-    - Updated `server.go` with version constant 1.0.6.19.
-  - **Database:**
-    - Added `ON CONFLICT` support to `SaveMessage` in `db.go` for efficient message editing and state updates.
-  - Server version: 1.0.6.19
-
-## [1.0.6.25] - 2026-05-25
-- **Group Conferences & Call Experience Overhaul**
-  - **Android Client:**
-    - **Meet-Style Conferences:** Implemented instant entry into conferences. Users now see their own video preview immediately upon joining, with camera and microphone enabled by default.
-    - **Live Call Timer:** Added a real-time call duration timer to the call screen, visible during both 1-on-1 calls and group conferences.
-    - **Screen Persistence:** Integrated `keepScreenOn` to prevent the device screen from dimming or turning off during active video calls.
-    - **Interactive System Messages:** Improved system notifications in chat — tapping the live conference status now instantly joins the active call.
-    - **Bug Fixes:** Resolved an issue where multiple system messages would appear with inconsistent timestamps and fixed incorrect view selection in message long-press mode.
-  - Android version: 1.0.6.25
-
 ## [1.0.6.24] - 2026-05-25
 - **Critical Stability & UI Refinement**
   - **Android Client:**
@@ -147,6 +127,17 @@
     - **Theming Fixes:** Corrected UI color inconsistencies in "About", "Edit Profile", and "Contacts" activities to respect the current theme's primary palette.
     - **Identity Stability:** Completed migration to stable User IDs (UUIDs) for all account and profile operations.
   - Android version: 1.0.6.21
+
+## [1.0.6.19] - 2026-05-25
+- **Live Conference Status & Database Reliability**
+  - **Server:**
+    - Implemented **Live Conference Status Messages**: System notifications in group chats now update in real-time with participant counts (e.g., "📹 Конференция: 3 участников").
+    - Optimized message storage: Unified system messages for conferences using stable IDs and `ON CONFLICT` updates to prevent chat history spam.
+    - Fixed gRPC signal routing for conferences to ensure all group members receive join/leave notifications immediately.
+    - Updated `server.go` with version constant 1.0.6.19.
+  - **Database:**
+    - Added `ON CONFLICT` support to `SaveMessage` in `db.go` for efficient message editing and state updates.
+  - Server version: 1.0.6.19
 
 ## [1.0.6.18] - 2026-05-25
 - **Profile Management & Avatar Cleanup**
@@ -311,6 +302,7 @@
 - **Server: Chat Management**
   - fixed reactions after server optimizations 
   - Server version: 1.0.2.12
+
 ## [1.0.2.11] - 2026-10-14
 - **Server: Chat Management & Performance**
   - Optimized `GetChats` RPC to use a single SQL query for chat data and last message, significantly reducing database load.
@@ -502,13 +494,6 @@
     - Fixed Go package name conflicts by cleaning up duplicate proto-generated files in the root directory.
   - Server version: 1.0.1.58
 
-## [1.0.1.51] - 2026-04-25
-- **Server: Session Stability & Persistent Streams**
-  - Improved session handling: navigating between rooms no longer causes client disconnection.
-  - Added support for lightweight "room switch" signals within a single gRPC stream.
-  - Corrected versioning synchronization.
-  - Server version: 1.0.1.51
-
 ## [1.0.1.50] - 2026-04-25
 - **Server: Database Migration Fix**
   - Fixed SQL syntax error in chat creator migration: replaced invalid subscripting with `->>0` operator.
@@ -682,91 +667,6 @@
     - No more flickering or missing avatars
   - **Android Version:** 1.0.1.28
 
-## [0.1.5] - 2026-04-20
-- **GetAllUsers RPC Implementation**
-  - **Proto Files:**
-    - Added GetAllUsersRequest and GetAllUsersResponse messages
-    - Added GetAllUsers RPC method to ChatService
-    - Successfully generated Go code using protoc with --go_out=gen parameter
-  - **Go Server:**
-    - Implemented GetAllUsers RPC handler in server.go
-    - Implemented GetAllUsers DB method in db.go to query users table
-    - Build version: 0.1.5
-  - **macOS Client:**
-    - Updated showAllUsersList to use GetAllUsers RPC instead of GetClients
-    - Client version: 1.0.0 (build 0.1.5)
-  - **Android Client:**
-    - Build version: 0.1.5
-  - **gRPC Generated Files:**
-    - Updated gen/messenger.pb.go with new message types
-    - Updated gen/messenger_grpc.pb.go with new RPC method
-
-## [0.1.4] - 2026-04-20
-- **macOS Client Toolbar UI Improvements**
-  - **macOS Client:**
-    - Removed server address display from toolbar (shown in status after connection)
-    - Added third button "Все" for showing all registered users
-    - Renamed users button to "Онлайн" for clarity
-    - Implemented showAllUsersList function (currently uses GetClients, needs GetAllUsers RPC)
-    - Client version: 1.0.0 (build 0.1.4)
-  - **Android Client:**
-    - Build version: 0.1.4
-  - **Go Server:**
-    - Build version: 0.1.4
-
-## [0.1.3] - 2026-04-20
-- **macOS Client Chat List and Users List**
-  - **macOS Client:**
-    - Added "Chats" button in toolbar to show chat list
-    - Added "Users" button in toolbar to show online users
-    - Implemented showUsersList function to display online users
-    - Implemented createDirectChat function to create direct chats with users
-    - Implemented switchToChat function to switch between chats
-    - Added global variables for chatBox and connectToServer
-    - Client version: 1.0.0 (build 0.1.3)
-  - **Android Client:**
-    - Build version: 0.1.3
-  - **Go Server:**
-    - Build version: 0.1.3
-
-## [0.1.2] - 2026-04-20
-- **macOS Client Message History and Room Support**
-  - **macOS Client:**
-    - Added loadHistory function to retrieve message history from server
-    - Implemented room_id support in messages for proper room filtering
-    - Fixed config loading order to check main.go directory first
-    - Added server address display in toolbar (italic)
-    - Updated toolbar layout with status indicator, status, and server address
-    - Client version: 1.0.0 (build 0.1.2)
-  - **Android Client:**
-    - Build version: 0.1.2
-  - **Go Server:**
-    - Build version: 0.1.2
-
-## [0.1.1] - 2026-04-20
-- **Server Address Configuration and macOS Client Update**
-  - **Android Client:**
-    - Moved server address to string resources (server_address, server_address_local)
-    - Updated MainActivity server list: ["159.195.38.145:50051", "192.168.1.135:50051"]
-    - Removed "10.0.2.2:50051" and "localhost:50051" from server list
-    - Updated ChatActivity to use string resource for server address
-    - Updated ChatListActivity to parse server address from string resource
-    - Updated ServerConnectivityTest with new address list
-    - Fixed username intent key from "USERNAME" to "username"
-    - Added logging for loadHistory calls
-    - Build version: 0.1.1
-  - **macOS Client:**
-    - Added password field to login dialog
-    - Added password persistence in config (LastPassword)
-    - Implemented GetChats RPC call for retrieving user's chats
-    - Added chat list dialog for selecting chat room
-    - Smart navigation: auto-open general chat if no chats exist
-    - Password sent with auth/join message
-    - Client version: 1.0.0 (build 0.1.1)
-    - Synced version with Android client and server
-  - **Go Server:**
-    - Build version: 0.1.1 (synced with clients)
-
 ## [1.0.0] - 2026-04-20
 - **Major Release: Private Messaging System**
   - **Android Client:**
@@ -864,3 +764,88 @@
       - `macos/` - macOS client application
         - `main.go` - macOS client entry point with UI and messaging logic
         - `config.yaml` - macOS client configuration file
+
+## [0.1.5] - 2026-04-20
+- **GetAllUsers RPC Implementation**
+  - **Proto Files:**
+    - Added GetAllUsersRequest and GetAllUsersResponse messages
+    - Added GetAllUsers RPC method to ChatService
+    - Successfully generated Go code using protoc with --go_out=gen parameter
+  - **Go Server:**
+    - Implemented GetAllUsers RPC handler in server.go
+    - Implemented GetAllUsers DB method in db.go to query users table
+    - Build version: 0.1.5
+  - **macOS Client:**
+    - Updated showAllUsersList to use GetAllUsers RPC instead of GetClients
+    - Client version: 1.0.0 (build 0.1.5)
+  - **Android Client:**
+    - Build version: 0.1.5
+  - **gRPC Generated Files:**
+    - Updated gen/messenger.pb.go with new message types
+    - Updated gen/messenger_grpc.pb.go with new RPC method
+
+## [0.1.4] - 2026-04-20
+- **macOS Client Toolbar UI Improvements**
+  - **macOS Client:**
+    - Removed server address display from toolbar (shown in status after connection)
+    - Added third button "Все" for showing all registered users
+    - Renamed users button to "Онлайн" for clarity
+    - Implemented showAllUsersList function (currently uses GetClients, needs GetAllUsers RPC)
+    - Client version: 1.0.0 (build 0.1.4)
+  - **Android Client:**
+    - Build version: 0.1.4
+  - **Go Server:**
+    - Build version: 0.1.4
+
+## [0.1.3] - 2026-04-20
+- **macOS Client Chat List and Users List**
+  - **macOS Client:**
+    - Added "Chats" button in toolbar to show chat list
+    - Added "Users" button in toolbar to show online users
+    - Implemented showUsersList function to display online users
+    - Implemented createDirectChat function to create direct chats with users
+    - Implemented switchToChat function to switch between chats
+    - Added global variables for chatBox and connectToServer
+    - Client version: 1.0.0 (build 0.1.3)
+  - **Android Client:**
+    - Build version: 0.1.3
+  - **Go Server:**
+    - Build version: 0.1.3
+
+## [0.1.2] - 2026-04-20
+- **macOS Client Message History and Room Support**
+  - **macOS Client:**
+    - Added loadHistory function to retrieve message history from server
+    - Implemented room_id support in messages for proper room filtering
+    - Fixed config loading order to check main.go directory first
+    - Added server address display in toolbar (italic)
+    - Updated toolbar layout with status indicator, status, and server address
+    - Client version: 1.0.0 (build 0.1.2)
+  - **Android Client:**
+    - Build version: 0.1.2
+  - **Go Server:**
+    - Build version: 0.1.2
+
+## [0.1.1] - 2026-04-20
+- **Server Address Configuration and macOS Client Update**
+  - **Android Client:**
+    - Moved server address to string resources (server_address, server_address_local)
+    - Updated MainActivity server list: ["159.195.38.145:50051", "192.168.1.135:50051"]
+    - Removed "10.0.2.2:50051" and "localhost:50051" from server list
+    - Updated ChatActivity to use string resource for server address
+    - Updated ChatListActivity to parse server address from string resource
+    - Updated ServerConnectivityTest with new address list
+    - Fixed username intent key from "USERNAME" to "username"
+    - Added logging for loadHistory calls
+    - Build version: 0.1.1
+  - **macOS Client:**
+    - Added password field to login dialog
+    - Added password persistence in config (LastPassword)
+    - Implemented GetChats RPC call for retrieving user's chats
+    - Added chat list dialog for selecting chat room
+    - Smart navigation: auto-open general chat if no chats exist
+    - Password sent with auth/join message
+    - Client version: 1.0.0 (build 0.1.1)
+    - Synced version with Android client and server
+  - **Go Server:**
+    - Build version: 0.1.1 (synced with clients)
