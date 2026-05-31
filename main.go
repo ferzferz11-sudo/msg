@@ -29,8 +29,8 @@ var firebaseApp *firebase.App
 
 // OWL AI assistant globals
 var (
-	owlRateLimiter *rateLimiter
-	owlSessions    *owlSession
+owlRateLimiter *rateLimiter
+owlSessions    *owlSessionManager
 )
 
 // main is the entry point of the Lavender messaging server application
@@ -133,8 +133,8 @@ func main() {
 
 	// Initialize OWL (AI assistant)
 	owlRateLimiter = newRateLimiter(10, time.Minute)
-	owlSessions = newOwlSession(20)
-	log.Println("OWL AI assistant initialized (rate limit: 10 req/min, history: 20 msgs)")
+	owlSessions = newOwlSessionManager(db.DB, 50)
+	log.Println("OWL AI assistant initialized (rate limit: 10 req/min, history: 50 msgs, DB-backed)")
 
 	// Register our chat service with the gRPC server
 	gen.RegisterChatServiceServer(s, srv)

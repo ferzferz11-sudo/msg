@@ -2,9 +2,11 @@ package main
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"sync"
@@ -20,7 +22,115 @@ type oll struct {
 	} `json:"choices"`
 }
 
-// CallOpenRouter sends a message to OpenRouter and returns the response
+// owlMessage represents a stored OWL chat message
+type owlMessage struct {
+	ID        int       `json:"id"`
+	ChatID    string    `json:"chat_id"`
+	Role      string    `json:"role"`
+	Content   string    `json:"content"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// owlChatSettings stores per-chat user settings
+type owlChatSettings struct {
+	ChatID    string `json:"chat_id"`
+	UserAPIKey string `json:"user_api_key"`
+	Model     string `json:"model"`
+}
+
+// owlSessionManager replaces in-memory storage with DB-backed storage
+type owlSessionManager struct {
+	mu      sync.Mutex
+	db      *sql.DB
+	maxHist int
+}
+
+func newOwlSessionManager(db *sql.DB, maxHist int) *owlSessionManager {
+	return &owlSessionManager{
+		db:      db,
+		maxHist: maxHist,
+	}
+}
+
+func (s *owlSessionManager) getHistory(chatID string) []map[string]string {
+	rows, err := s.db.Query(
+		"SELECT role, content FROM owl_messages WHERE chat_id = $1 ORDER BY created_at ASC",
+		chatID,
+	)
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+
+	var history []map[string]string
+	for rows.Next() {
+		var role, content string
+		if err := rows.Scan(&role, &content); err == nil {
+			history = append(history, map[string]string{"role": role, "content": content})
+		}
+	}
+	return history
+}
+
+func (s *owlSessionManager) addMessage(chatID, role, content string) {
+	_, err := s.db.Exec(
+		"INSERT INTO owl_messages (chat_id, role, content) VALUES ($1, $2, $3)",
+		chatID, role, content,
+	)
+	if err != nil {
+		log.Printf("owlSessionManager: failed to save message: %v", err)
+	}
+}
+
+func (s *owlSessionManager) clear(chatID string) {
+	_, _ = s.db.Exec("DELETE FROM owl_messages WHERE chat_id = $1", chatID)
+}
+
+func (s *owlSessionManager) getSettings(chatID string) owlChatSettings {
+	var settings owlChatSettings
+	err := s.db.QueryRow(
+		"SELECT chat_id, COALESCE(user_api_key, ''), COALESCE(model, '') FROM owl_chat_settings WHERE chat_id = $1",
+		chatID,
+	).Scan(&settings.ChatID, &settings.UserAPIKey, &settings.Model)
+	if err != nil {
+		return owlChatSettings{ChatID: chatID}
+	}
+	return settings
+}
+
+func (s *owlSessionManager) saveSettings(chatID, apiKey, model string) {
+	_, err := s.db.Exec(
+		`INSERT INTO owl_chat_settings (chat_id, user_api_key, model, updated_at) 
+		 VALUES ($1, $2, $3, NOW()) 
+		 ON CONFLICT (chat_id) DO UPDATE SET user_api_key=$2, model=$3, updated_at=NOW()`,
+		chatID, apiKey, model,
+	)
+	if err != nil {
+		log.Printf("owlSessionManager: failed to save settings: %v", err)
+	}
+}
+
+func (s *owlSessionManager) getOwlChats(userID string) []string {
+	rows, err := s.db.Query(
+		"SELECT id FROM chats WHERE id LIKE $1 AND type = 'owl' ORDER BY created_at DESC",
+		"owl-"+userID+"-%",
+	)
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+
+	var chats []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err == nil {
+			chats = append(chats, id)
+		}
+	}
+	return chats
+}
+
+// callOpenRouter sends a message to OpenRouter and returns the response
 func callOpenRouter(apiKey string, model string, systemPrompt string, messages []map[string]string) (string, error) {
 	if apiKey == "" {
 		apiKey = os.Getenv("OPENROUTER_API_KEY")
@@ -106,7 +216,6 @@ func (rl *rateLimiter) allow(userID string) bool {
 	now := time.Now()
 	cutoff := now.Add(-rl.window)
 
-	// Filter old requests
 	var valid []time.Time
 	for _, t := range rl.requests[userID] {
 		if t.After(cutoff) {
@@ -121,45 +230,4 @@ func (rl *rateLimiter) allow(userID string) bool {
 
 	rl.requests[userID] = append(valid, now)
 	return true
-}
-
-// OWL session context stored in memory (can be moved to DB later)
-type owlSession struct {
-	mu       sync.Mutex
-	contexts map[string][]map[string]string // userID -> message history
-	maxHist  int
-}
-
-func newOwlSession(maxHist int) *owlSession {
-	return &owlSession{
-		contexts: make(map[string][]map[string]string),
-		maxHist:  maxHist,
-	}
-}
-
-func (s *owlSession) getHistory(userID string) []map[string]string {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.contexts[userID]
-}
-
-func (s *owlSession) addMessage(userID, role, content string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	history := s.contexts[userID]
-	history = append(history, map[string]string{"role": role, "content": content})
-
-	// Keep only last maxHist messages
-	if len(history) > s.maxHist {
-		history = history[len(history)-s.maxHist:]
-	}
-
-	s.contexts[userID] = history
-}
-
-func (s *owlSession) clear(userID string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	delete(s.contexts, userID)
 }

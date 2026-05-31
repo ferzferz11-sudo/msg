@@ -696,6 +696,10 @@ service ChatService {
 
   // OWL AI Assistant
   rpc ChatWithOWL(OWLRequest) returns (stream OWLResponse);
+  rpc CreateOwlChat(CreateOwlChatRequest) returns (CreateOwlChatResponse);
+  rpc DeleteOwlChat(DeleteOwlChatRequest) returns (DeleteOwlChatResponse);
+  rpc GetOwlHistory(GetOwlHistoryRequest) returns (GetOwlHistoryResponse);
+  rpc UpdateOwlSettings(UpdateOwlSettingsRequest) returns (UpdateOwlSettingsResponse);
 }
 
 // ======= Secret Chat Messages =======
@@ -735,6 +739,54 @@ message GetSecretChatKeyResponse {
 }
 
 // ======= OWL AI Assistant =======
+
+message CreateOwlChatRequest {
+  string user_id = 1;
+  string name = 2;
+}
+
+message CreateOwlChatResponse {
+  string chat_id = 1;
+  bool success = 2;
+  string message = 3;
+}
+
+message DeleteOwlChatRequest {
+  string chat_id = 1;
+  string user_id = 2;
+}
+
+message DeleteOwlChatResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message GetOwlHistoryRequest {
+  string chat_id = 1;
+  string user_id = 2;
+}
+
+message OwlHistoryMessage {
+  string role = 1;
+  string content = 2;
+  string created_at = 3;
+}
+
+message GetOwlHistoryResponse {
+  repeated OwlHistoryMessage messages = 1;
+}
+
+message UpdateOwlSettingsRequest {
+  string chat_id = 1;
+  string user_id = 2;
+  string api_key = 3;
+  string model = 4;
+}
+
+message UpdateOwlSettingsResponse {
+  bool success = 1;
+  string message = 2;
+}
 
 message OWLRequest {
   string user_id = 1;

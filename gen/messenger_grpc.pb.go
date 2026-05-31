@@ -76,6 +76,10 @@ const (
 	ChatService_ExchangeSecretKey_FullMethodName    = "/messenger.ChatService/ExchangeSecretKey"
 	ChatService_GetSecretChatKey_FullMethodName     = "/messenger.ChatService/GetSecretChatKey"
 	ChatService_ChatWithOWL_FullMethodName          = "/messenger.ChatService/ChatWithOWL"
+	ChatService_CreateOwlChat_FullMethodName        = "/messenger.ChatService/CreateOwlChat"
+	ChatService_DeleteOwlChat_FullMethodName        = "/messenger.ChatService/DeleteOwlChat"
+	ChatService_GetOwlHistory_FullMethodName        = "/messenger.ChatService/GetOwlHistory"
+	ChatService_UpdateOwlSettings_FullMethodName    = "/messenger.ChatService/UpdateOwlSettings"
 )
 
 // ChatServiceClient is the client API for ChatService service.
@@ -141,6 +145,10 @@ type ChatServiceClient interface {
 	GetSecretChatKey(ctx context.Context, in *GetSecretChatKeyRequest, opts ...grpc.CallOption) (*GetSecretChatKeyResponse, error)
 	// OWL AI Assistant
 	ChatWithOWL(ctx context.Context, in *OWLRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[OWLResponse], error)
+	CreateOwlChat(ctx context.Context, in *CreateOwlChatRequest, opts ...grpc.CallOption) (*CreateOwlChatResponse, error)
+	DeleteOwlChat(ctx context.Context, in *DeleteOwlChatRequest, opts ...grpc.CallOption) (*DeleteOwlChatResponse, error)
+	GetOwlHistory(ctx context.Context, in *GetOwlHistoryRequest, opts ...grpc.CallOption) (*GetOwlHistoryResponse, error)
+	UpdateOwlSettings(ctx context.Context, in *UpdateOwlSettingsRequest, opts ...grpc.CallOption) (*UpdateOwlSettingsResponse, error)
 }
 
 type chatServiceClient struct {
@@ -739,6 +747,46 @@ func (c *chatServiceClient) ChatWithOWL(ctx context.Context, in *OWLRequest, opt
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type ChatService_ChatWithOWLClient = grpc.ServerStreamingClient[OWLResponse]
 
+func (c *chatServiceClient) CreateOwlChat(ctx context.Context, in *CreateOwlChatRequest, opts ...grpc.CallOption) (*CreateOwlChatResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateOwlChatResponse)
+	err := c.cc.Invoke(ctx, ChatService_CreateOwlChat_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) DeleteOwlChat(ctx context.Context, in *DeleteOwlChatRequest, opts ...grpc.CallOption) (*DeleteOwlChatResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteOwlChatResponse)
+	err := c.cc.Invoke(ctx, ChatService_DeleteOwlChat_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) GetOwlHistory(ctx context.Context, in *GetOwlHistoryRequest, opts ...grpc.CallOption) (*GetOwlHistoryResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetOwlHistoryResponse)
+	err := c.cc.Invoke(ctx, ChatService_GetOwlHistory_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) UpdateOwlSettings(ctx context.Context, in *UpdateOwlSettingsRequest, opts ...grpc.CallOption) (*UpdateOwlSettingsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateOwlSettingsResponse)
+	err := c.cc.Invoke(ctx, ChatService_UpdateOwlSettings_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ChatServiceServer is the server API for ChatService service.
 // All implementations must embed UnimplementedChatServiceServer
 // for forward compatibility.
@@ -802,6 +850,10 @@ type ChatServiceServer interface {
 	GetSecretChatKey(context.Context, *GetSecretChatKeyRequest) (*GetSecretChatKeyResponse, error)
 	// OWL AI Assistant
 	ChatWithOWL(*OWLRequest, grpc.ServerStreamingServer[OWLResponse]) error
+	CreateOwlChat(context.Context, *CreateOwlChatRequest) (*CreateOwlChatResponse, error)
+	DeleteOwlChat(context.Context, *DeleteOwlChatRequest) (*DeleteOwlChatResponse, error)
+	GetOwlHistory(context.Context, *GetOwlHistoryRequest) (*GetOwlHistoryResponse, error)
+	UpdateOwlSettings(context.Context, *UpdateOwlSettingsRequest) (*UpdateOwlSettingsResponse, error)
 	mustEmbedUnimplementedChatServiceServer()
 }
 
@@ -982,6 +1034,18 @@ func (UnimplementedChatServiceServer) GetSecretChatKey(context.Context, *GetSecr
 }
 func (UnimplementedChatServiceServer) ChatWithOWL(*OWLRequest, grpc.ServerStreamingServer[OWLResponse]) error {
 	return status.Error(codes.Unimplemented, "method ChatWithOWL not implemented")
+}
+func (UnimplementedChatServiceServer) CreateOwlChat(context.Context, *CreateOwlChatRequest) (*CreateOwlChatResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateOwlChat not implemented")
+}
+func (UnimplementedChatServiceServer) DeleteOwlChat(context.Context, *DeleteOwlChatRequest) (*DeleteOwlChatResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteOwlChat not implemented")
+}
+func (UnimplementedChatServiceServer) GetOwlHistory(context.Context, *GetOwlHistoryRequest) (*GetOwlHistoryResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetOwlHistory not implemented")
+}
+func (UnimplementedChatServiceServer) UpdateOwlSettings(context.Context, *UpdateOwlSettingsRequest) (*UpdateOwlSettingsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateOwlSettings not implemented")
 }
 func (UnimplementedChatServiceServer) mustEmbedUnimplementedChatServiceServer() {}
 func (UnimplementedChatServiceServer) testEmbeddedByValue()                     {}
@@ -1990,6 +2054,78 @@ func _ChatService_ChatWithOWL_Handler(srv interface{}, stream grpc.ServerStream)
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type ChatService_ChatWithOWLServer = grpc.ServerStreamingServer[OWLResponse]
 
+func _ChatService_CreateOwlChat_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateOwlChatRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).CreateOwlChat(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_CreateOwlChat_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).CreateOwlChat(ctx, req.(*CreateOwlChatRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_DeleteOwlChat_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteOwlChatRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).DeleteOwlChat(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_DeleteOwlChat_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).DeleteOwlChat(ctx, req.(*DeleteOwlChatRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_GetOwlHistory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetOwlHistoryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).GetOwlHistory(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_GetOwlHistory_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).GetOwlHistory(ctx, req.(*GetOwlHistoryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_UpdateOwlSettings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateOwlSettingsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).UpdateOwlSettings(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_UpdateOwlSettings_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).UpdateOwlSettings(ctx, req.(*UpdateOwlSettingsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ChatService_ServiceDesc is the grpc.ServiceDesc for ChatService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -2208,6 +2344,22 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetSecretChatKey",
 			Handler:    _ChatService_GetSecretChatKey_Handler,
+		},
+		{
+			MethodName: "CreateOwlChat",
+			Handler:    _ChatService_CreateOwlChat_Handler,
+		},
+		{
+			MethodName: "DeleteOwlChat",
+			Handler:    _ChatService_DeleteOwlChat_Handler,
+		},
+		{
+			MethodName: "GetOwlHistory",
+			Handler:    _ChatService_GetOwlHistory_Handler,
+		},
+		{
+			MethodName: "UpdateOwlSettings",
+			Handler:    _ChatService_UpdateOwlSettings_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

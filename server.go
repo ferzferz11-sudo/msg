@@ -977,24 +977,41 @@ func (s *server) GetChats(_ context.Context, req *gen.GetChatsRequest) (*gen.Get
 		})
 	}
 
-	// Add OWL AI virtual chat at the beginning
-	owlVirtualChat := &gen.ChatInfo{
-		Id:                  "owl-" + queryIdentifier,
-		Name:                "🤖 Чат с AI",
-		Type:                "direct",
-		Participants:        queryIdentifier,
-		CreatedAt:           timestamppb.Now(),
-		UnreadCount:         0,
-		LastMessageTime:     timestamppb.Now(),
-		Creator:             "system",
-		LastMessageText:     "",
-		AvatarUrl:           "",
-		FullAvatarUrl:       "",
-		LastMessageUsername: "",
-		LastMessageHasImage: false,
-		AllowMembersToAdd:   false,
+	// Add OWL AI chats from database
+	owlRows, err := s.db.Query(
+		"SELECT id, name, type, participants, created_at, creator_username, last_message_text FROM chats WHERE type = 'owl' AND creator_username = $1 ORDER BY created_at ASC",
+		queryIdentifier,
+	)
+	if err == nil {
+		for owlRows.Next() {
+			var c gen.ChatInfo
+			var createdAt time.Time
+			var lastMsg sql.NullString
+			if err := owlRows.Scan(&c.Id, &c.Name, &c.Type, &c.Participants, &createdAt, &c.Creator, &lastMsg); err == nil {
+				c.CreatedAt = timestamppb.New(createdAt)
+				c.LastMessageTime = timestamppb.New(createdAt)
+				if lastMsg.Valid {
+					c.LastMessageText = lastMsg.String
+				}
+				chatInfos = append(chatInfos, &c)
+			}
+		}
+		owlRows.Close()
 	}
-	chatInfos = append([]*gen.ChatInfo{owlVirtualChat}, chatInfos...)
+
+	// Prepend OWL chats at the beginning
+	// (owl chats are already in chatInfos from the DB query above,
+	//  but we want them before regular chats — rebuild the slice)
+	owlChats := make([]*gen.ChatInfo, 0)
+	regularChats := make([]*gen.ChatInfo, 0)
+	for _, c := range chatInfos {
+		if c.Type == "owl" {
+			owlChats = append(owlChats, c)
+		} else {
+			regularChats = append(regularChats, c)
+		}
+	}
+	chatInfos = append(owlChats, regularChats...)
 
 	return &gen.GetChatsResponse{Chats: chatInfos}, nil
 }
@@ -2730,47 +2747,67 @@ func (s *server) ChatWithOWL(req *gen.OWLRequest, stream gen.ChatService_ChatWit
 		return fmt.Errorf("user_id is required")
 	}
 
+	chatID := req.SessionId
+	if chatID == "" {
+		// Fallback for old clients
+		chatID = "owl-" + userID
+	}
+
 	// Rate limit check
 	if !owlRateLimiter.allow(userID) {
 		return fmt.Errorf("rate limit exceeded: max 10 requests per minute")
 	}
 
 	// System prompt
-	systemPrompt := `Вы — AI-ассистент OWL в мессенджере Lavender. Отвечайте кратко и по делу на русском языке. 
+	systemPrompt := `Вы — AI-ассистент OWL в мессенджере Lavender. Отвечайте кратко и по делу на русском языке.
 Вы можете помочь с вопросами о приложении Lavender, настройками, темами, функциями.
 Будьте дружелюбны, но лаконичны. Не выдавайте себя за человека.`
 
-	// Add user message to session history
-	owlSessions.addMessage(userID, "user", req.Message)
+	// Add user message to history
+	owlSessions.addMessage(chatID, "user", req.Message)
 
-	// Build context from session history
-	history := owlSessions.getHistory(userID)
+	// Build context from history
+	history := owlSessions.getHistory(chatID)
 
-	// Use model from request or default
+	// Get per-chat settings from DB
+	settings := owlSessions.getSettings(chatID)
+
+	// Use model from request, then per-chat setting, then server default
 	model := req.Model
+	if model == "" {
+		model = settings.Model
+	}
 	if model == "" {
 		model = s.owlModel
 	}
 
-	// Use API key from request or fall back to server default
+	// Use API key from request, then per-chat setting, then server default
 	apiKey := req.ApiKey
+	if apiKey == "" {
+		apiKey = settings.UserAPIKey
+	}
 	if apiKey == "" {
 		apiKey = s.owlApiKey
 	}
 
-	log.Printf("OWL: user=%s, msg=%q, history_len=%d, model=%s, custom_key=%t", userID, req.Message, len(history), model, req.ApiKey != "")
+	log.Printf("OWL: chat=%s, user=%s, msg=%q, history_len=%d, model=%s, custom_key=%t",
+		chatID, userID, req.Message, len(history), model, req.ApiKey != "" || settings.UserAPIKey != "")
 
 	// Call OpenRouter
 	response, err := callOpenRouter(apiKey, model, systemPrompt, history)
 	if err != nil {
-		log.Printf("OWL: OpenRouter error for user %s: %v", userID, err)
+		log.Printf("OWL: OpenRouter error for chat %s: %v", chatID, err)
 		return fmt.Errorf("AI service error: %w", err)
 	}
 
-	// Add assistant response to session history
-	owlSessions.addMessage(userID, "assistant", response)
+	// Add assistant response to history
+	owlSessions.addMessage(chatID, "assistant", response)
 
-	// Stream response in chunks (word by word for typing effect)
+	// Update chat last message
+	_, _ = s.db.Exec("UPDATE chats SET last_message_text=$1, last_message_time=NOW() WHERE id=$2",
+		truncateString(response, 100), chatID)
+
+	// Stream response in chunks
 	words := strings.Fields(response)
 	for i, word := range words {
 		chunk := word
@@ -2782,11 +2819,130 @@ func (s *server) ChatWithOWL(req *gen.OWLRequest, stream gen.ChatService_ChatWit
 			Text:     chunk,
 			Finished: isLast,
 		}); err != nil {
-			log.Printf("OWL: stream send error for user %s: %v", userID, err)
+			log.Printf("OWL: stream send error for chat %s: %v", chatID, err)
 			return err
 		}
-		time.Sleep(30 * time.Millisecond) // Small delay for typing effect
+		time.Sleep(30 * time.Millisecond)
 	}
 
 	return nil
+}
+
+// CreateOwlChat creates a new OWL AI chat for the user
+func (s *server) CreateOwlChat(_ context.Context, req *gen.CreateOwlChatRequest) (*gen.CreateOwlChatResponse, error) {
+	if req.UserId == "" {
+		return &gen.CreateOwlChatResponse{Success: false, Message: "user_id is required"}, nil
+	}
+
+	name := req.Name
+	if name == "" {
+		name = "🤖 Чат с AI"
+	}
+
+	chatID := "owl-" + req.UserId + "-" + uuid.New().String()[:8]
+
+	_, err := s.db.Exec(
+		"INSERT INTO chats (id, name, type, participants, creator_username) VALUES ($1, $2, 'owl', $3, $4)",
+		chatID, name, req.UserId, req.UserId,
+	)
+	if err != nil {
+		return &gen.CreateOwlChatResponse{Success: false, Message: "failed to create chat: " + err.Error()}, nil
+	}
+
+	return &gen.CreateOwlChatResponse{
+		ChatId:  chatID,
+		Success: true,
+		Message: "OK",
+	}, nil
+}
+
+// DeleteOwlChat deletes an OWL AI chat and its messages
+func (s *server) DeleteOwlChat(_ context.Context, req *gen.DeleteOwlChatRequest) (*gen.DeleteOwlChatResponse, error) {
+	if req.ChatId == "" {
+		return &gen.DeleteOwlChatResponse{Success: false, Message: "chat_id is required"}, nil
+	}
+	if req.UserId == "" {
+		return &gen.DeleteOwlChatResponse{Success: false, Message: "user_id is required"}, nil
+	}
+
+	var creator string
+	err := s.db.QueryRow("SELECT creator_username FROM chats WHERE id = $1 AND type = 'owl'", req.ChatId).Scan(&creator)
+	if err != nil {
+		return &gen.DeleteOwlChatResponse{Success: false, Message: "chat not found"}, nil
+	}
+	if creator != req.UserId {
+		return &gen.DeleteOwlChatResponse{Success: false, Message: "not your chat"}, nil
+	}
+
+	_, _ = s.db.Exec("DELETE FROM owl_messages WHERE chat_id = $1", req.ChatId)
+	_, _ = s.db.Exec("DELETE FROM owl_chat_settings WHERE chat_id = $1", req.ChatId)
+	_, err = s.db.Exec("DELETE FROM chats WHERE id = $1", req.ChatId)
+	if err != nil {
+		return &gen.DeleteOwlChatResponse{Success: false, Message: "delete failed: " + err.Error()}, nil
+	}
+
+	return &gen.DeleteOwlChatResponse{Success: true, Message: "OK"}, nil
+}
+
+// GetOwlHistory returns the message history for an OWL chat
+func (s *server) GetOwlHistory(_ context.Context, req *gen.GetOwlHistoryRequest) (*gen.GetOwlHistoryResponse, error) {
+	if req.ChatId == "" {
+		return &gen.GetOwlHistoryResponse{}, nil
+	}
+
+	// Verify ownership
+	var creator string
+	_ = s.db.QueryRow("SELECT creator_username FROM chats WHERE id = $1 AND type = 'owl'", req.ChatId).Scan(&creator)
+	if creator != req.UserId {
+		return &gen.GetOwlHistoryResponse{}, nil
+	}
+
+	rows, err := s.db.Query(
+		"SELECT role, content, created_at FROM owl_messages WHERE chat_id = $1 ORDER BY created_at ASC",
+		req.ChatId,
+	)
+	if err != nil {
+		return &gen.GetOwlHistoryResponse{}, nil
+	}
+	defer rows.Close()
+
+	var messages []*gen.OwlHistoryMessage
+	for rows.Next() {
+		var role, content string
+		var createdAt time.Time
+		if err := rows.Scan(&role, &content, &createdAt); err == nil {
+			messages = append(messages, &gen.OwlHistoryMessage{
+				Role:      role,
+				Content:   content,
+				CreatedAt: createdAt.Format(time.RFC3339),
+			})
+		}
+	}
+
+	return &gen.GetOwlHistoryResponse{Messages: messages}, nil
+}
+
+// UpdateOwlSettings updates per-chat settings (API key, model)
+func (s *server) UpdateOwlSettings(_ context.Context, req *gen.UpdateOwlSettingsRequest) (*gen.UpdateOwlSettingsResponse, error) {
+	if req.ChatId == "" || req.UserId == "" {
+		return &gen.UpdateOwlSettingsResponse{Success: false, Message: "chat_id and user_id required"}, nil
+	}
+
+	// Verify ownership
+	var creator string
+	err := s.db.QueryRow("SELECT creator_username FROM chats WHERE id = $1 AND type = 'owl'", req.ChatId).Scan(&creator)
+	if err != nil || creator != req.UserId {
+		return &gen.UpdateOwlSettingsResponse{Success: false, Message: "not your chat"}, nil
+	}
+
+	owlSessions.saveSettings(req.ChatId, req.ApiKey, req.Model)
+	return &gen.UpdateOwlSettingsResponse{Success: true, Message: "OK"}, nil
+}
+
+// truncateString truncates a string to maxLen characters, adding "..." if truncated
+func truncateString(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	return s[:maxLen] + "..."
 }
