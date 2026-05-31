@@ -27,7 +27,7 @@ import (
 	"firebase.google.com/go/v4/messaging"
 )
 
-const ServerVersion = "1.1.0.2-owl"
+const ServerVersion = "1.0.1.0"
 
 // server implements the gRPC ChatService interface
 type server struct {

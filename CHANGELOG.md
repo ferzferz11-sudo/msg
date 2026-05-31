@@ -2,6 +2,13 @@
 
 **Author:** Pavel Davydov (ferz)
 
+## [1.0.1.0] - 2026-05-31
+- **Server:**
+  - **AI-assistant OWL**: AI-ассистент в чате через OpenRouter — поддерживает стриминговые ответы
+  - **ChatWithOWL**: Новый gRPC метод для общения с AI
+  - **Rate limiter**: Защита от злоупотреблений OpenRouter API
+  - **Конфигурация**: Ключ OpenRouter через `OPENROUTER_API_KEY` в `.env`
+
 ## [1.1.0.2] - 2026-05-30
 - **Server:**
   - **MarkReadAndCheck fix**: Fixed SQL error 25P02 — incorrect INSERT into `user_chat_metadata` (removed non-existent `user_id` column), added error check for INSERT
