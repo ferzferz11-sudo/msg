@@ -8,6 +8,8 @@
   - **Исправлено**: колонка `last_message_text` добавлена обратно в таблицу `chats`
   - **Исправлено**: `CreateOwlChat` корректно резолвит `username` по `user_id` из БД
   - **Исправлено**: убрана лишняя проверка `creator == userId` в `GetOwlHistory`
+  - **Исправлено**: `DeleteChat` — убран парсинг participants для OWL чатов (не требуется)
+  - **Исправлено**: формат participants в БД — все OWL чаты хранят JSON массив `["username"]`
 
 ## [1.1.0.3] - 2026-05-31
 - **Server:**
