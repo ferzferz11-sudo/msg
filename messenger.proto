@@ -740,6 +740,7 @@ message OWLRequest {
   string user_id = 1;
   string message = 2;
   string session_id = 3;
+  string model = 4;
 }
 
 message OWLResponse {

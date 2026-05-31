@@ -21,15 +21,17 @@ type oll struct {
 }
 
 // CallOpenRouter sends a message to OpenRouter and returns the response
-func callOpenRouter(systemPrompt string, messages []map[string]string) (string, error) {
+func callOpenRouter(model string, systemPrompt string, messages []map[string]string) (string, error) {
 	apiKey := os.Getenv("OPENROUTER_API_KEY")
 	if apiKey == "" {
 		return "", fmt.Errorf("OPENROUTER_API_KEY not set")
 	}
 
-	model := os.Getenv("OPENROUTER_MODEL")
 	if model == "" {
-		model = "openrouter/owl-alpha"
+		model = os.Getenv("OPENROUTER_MODEL")
+		if model == "" {
+			model = "openrouter/owl-alpha"
+		}
 	}
 
 	payload := map[string]interface{}{

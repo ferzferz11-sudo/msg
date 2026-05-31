@@ -39,6 +39,7 @@ type server struct {
 	recentErrors sync.Map      // map[string]time.Time to prevent duplicate error logs
 	fcmLogs      []*gen.FCMLogEntry
 	fcmLogsMu    sync.Mutex
+	owlModel     string        // Default OWL model
 }
 
 func (s *server) logErrorOnce(key string, format string, v ...interface{}) {
@@ -2725,10 +2726,16 @@ func (s *server) ChatWithOWL(req *gen.OWLRequest, stream gen.ChatService_ChatWit
 	// Build context from session history
 	history := owlSessions.getHistory(userID)
 
-	log.Printf("OWL: user=%s, msg=%q, history_len=%d", userID, req.Message, len(history))
+	// Use model from request or default
+	model := req.Model
+	if model == "" {
+		model = s.owlModel
+	}
+
+	log.Printf("OWL: user=%s, msg=%q, history_len=%d, model=%s", userID, req.Message, len(history), model)
 
 	// Call OpenRouter
-	response, err := callOpenRouter(systemPrompt, history)
+	response, err := callOpenRouter(model, systemPrompt, history)
 	if err != nil {
 		log.Printf("OWL: OpenRouter error for user %s: %v", userID, err)
 		return fmt.Errorf("AI service error: %w", err)

@@ -6650,6 +6650,7 @@ type OWLRequest struct {
 	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
 	SessionId     string                 `protobuf:"bytes,3,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	Model         string                 `protobuf:"bytes,4,opt,name=model,proto3" json:"model,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -6701,6 +6702,13 @@ func (x *OWLRequest) GetMessage() string {
 func (x *OWLRequest) GetSessionId() string {
 	if x != nil {
 		return x.SessionId
+	}
+	return ""
+}
+
+func (x *OWLRequest) GetModel() string {
+	if x != nil {
+		return x.Model
 	}
 	return ""
 }
@@ -7246,13 +7254,14 @@ const file_messenger_proto_rawDesc = "" +
 	"\x18GetSecretChatKeyResponse\x12&\n" +
 	"\x0fpeer_public_key\x18\x01 \x01(\tR\rpeerPublicKey\x12 \n" +
 	"\fpeer_has_key\x18\x02 \x01(\bR\n" +
-	"peerHasKey\"^\n" +
+	"peerHasKey\"t\n" +
 	"\n" +
 	"OWLRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x18\n" +
 	"\amessage\x18\x02 \x01(\tR\amessage\x12\x1d\n" +
 	"\n" +
-	"session_id\x18\x03 \x01(\tR\tsessionId\"S\n" +
+	"session_id\x18\x03 \x01(\tR\tsessionId\x12\x14\n" +
+	"\x05model\x18\x04 \x01(\tR\x05model\"S\n" +
 	"\vOWLResponse\x12\x12\n" +
 	"\x04text\x18\x01 \x01(\tR\x04text\x12\x1a\n" +
 	"\bfinished\x18\x02 \x01(\bR\bfinished\x12\x14\n" +
