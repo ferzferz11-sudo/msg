@@ -2780,6 +2780,10 @@ func (s *server) ChatWithOWL(req *gen.OWLRequest, stream gen.ChatService_ChatWit
 	if model == "" {
 		model = s.owlModel
 	}
+	// Strip OpenRouter alias prefix
+	if strings.HasPrefix(model, "~") {
+		model = model[1:]
+	}
 
 	// Use API key from request, then per-chat setting, then server default
 	apiKey := req.ApiKey
