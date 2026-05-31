@@ -989,7 +989,7 @@ func (s *server) GetChats(_ context.Context, req *gen.GetChatsRequest) (*gen.Get
 	log.Printf("GetChats: OWL resolved username=%q", owlUsername)
 	if owlUsername != "" {
 		owlRows, err := s.db.Query(
-			"SELECT id, name, type, participants, created_at, creator_username FROM chats WHERE type = 'owl' AND creator_username = $1 ORDER BY created_at ASC",
+			"SELECT id, name, type, participants, created_at, creator_username, last_message_text FROM chats WHERE type = 'owl' AND creator_username = $1 ORDER BY created_at ASC",
 			owlUsername,
 		)
 		if err != nil {
@@ -999,9 +999,13 @@ func (s *server) GetChats(_ context.Context, req *gen.GetChatsRequest) (*gen.Get
 			for owlRows.Next() {
 				var c gen.ChatInfo
 				var createdAt time.Time
-				if err := owlRows.Scan(&c.Id, &c.Name, &c.Type, &c.Participants, &createdAt, &c.Creator); err == nil {
+				var lastMsg sql.NullString
+				if err := owlRows.Scan(&c.Id, &c.Name, &c.Type, &c.Participants, &createdAt, &c.Creator, &lastMsg); err == nil {
 					c.CreatedAt = timestamppb.New(createdAt)
 					c.LastMessageTime = timestamppb.New(createdAt)
+					if lastMsg.Valid {
+						c.LastMessageText = lastMsg.String
+					}
 					chatInfos = append(chatInfos, &c)
 					owlCount++
 				}
