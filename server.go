@@ -2906,13 +2906,6 @@ func (s *server) GetOwlHistory(_ context.Context, req *gen.GetOwlHistoryRequest)
 		return &gen.GetOwlHistoryResponse{}, nil
 	}
 
-	// Verify ownership
-	var creator string
-	_ = s.db.QueryRow("SELECT creator_username FROM chats WHERE id = $1 AND type = 'owl'", req.ChatId).Scan(&creator)
-	if creator != req.UserId {
-		return &gen.GetOwlHistoryResponse{}, nil
-	}
-
 	rows, err := s.db.Query(
 		"SELECT role, content, created_at FROM owl_messages WHERE chat_id = $1 ORDER BY created_at ASC",
 		req.ChatId,
