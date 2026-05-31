@@ -2847,7 +2847,7 @@ func (s *server) CreateOwlChat(_ context.Context, req *gen.CreateOwlChatRequest)
 
 	_, err := s.db.Exec(
 		"INSERT INTO chats (id, name, type, participants, creator_username) VALUES ($1, $2, 'owl', $3, $4)",
-		chatID, name, req.UserId, req.UserId,
+		chatID, name, "["+req.UserId+"]", req.UserId,
 	)
 	if err != nil {
 		return &gen.CreateOwlChatResponse{Success: false, Message: "failed to create chat: " + err.Error()}, nil
