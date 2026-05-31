@@ -991,6 +991,7 @@ func (s *server) GetChats(_ context.Context, req *gen.GetChatsRequest) (*gen.Get
 			owlUsername,
 		)
 		if err == nil {
+			owlCount := 0
 			for owlRows.Next() {
 				var c gen.ChatInfo
 				var createdAt time.Time
@@ -1002,9 +1003,13 @@ func (s *server) GetChats(_ context.Context, req *gen.GetChatsRequest) (*gen.Get
 						c.LastMessageText = lastMsg.String
 					}
 					chatInfos = append(chatInfos, &c)
+					owlCount++
 				}
 			}
 			owlRows.Close()
+			if owlCount > 0 {
+				log.Printf("GetChats: found %d OWL chats for user %s", owlCount, owlUsername)
+			}
 		}
 	} else {
 		log.Printf("GetChats: cannot determine OWL username for user %s", req.Username)
