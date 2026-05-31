@@ -2855,11 +2855,17 @@ func (s *server) CreateOwlChat(_ context.Context, req *gen.CreateOwlChatRequest)
 		name = "🤖 Чат с AI"
 	}
 
-	chatID := "owl-" + req.UserId + "-" + uuid.New().String()[:8]
+	// Look up username from users table by user_id
+	username := req.UserId
+	if uname, err := s.db.GetUsernameByID(req.UserId); err == nil && uname != "" {
+		username = uname
+	}
+
+	chatID := "owl-" + username + "-" + uuid.New().String()[:8]
 
 	_, err := s.db.Exec(
 		"INSERT INTO chats (id, name, type, participants, creator_username) VALUES ($1, $2, 'owl', $3, $4)",
-		chatID, name, "["+req.UserId+"]", req.UserId,
+		chatID, name, "["+username+"]", username,
 	)
 	if err != nil {
 		return &gen.CreateOwlChatResponse{Success: false, Message: "failed to create chat: " + err.Error()}, nil
