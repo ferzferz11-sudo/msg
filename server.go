@@ -2846,7 +2846,9 @@ func (s *server) ChatWithOWL(req *gen.OWLRequest, stream gen.ChatService_ChatWit
 
 // CreateOwlChat creates a new OWL AI chat for the user
 func (s *server) CreateOwlChat(_ context.Context, req *gen.CreateOwlChatRequest) (*gen.CreateOwlChatResponse, error) {
+	log.Printf("CreateOwlChat: called user_id=%q name=%q", req.UserId, req.Name)
 	if req.UserId == "" {
+		log.Printf("CreateOwlChat: ERROR empty user_id")
 		return &gen.CreateOwlChatResponse{Success: false, Message: "user_id is required"}, nil
 	}
 
@@ -2860,17 +2862,21 @@ func (s *server) CreateOwlChat(_ context.Context, req *gen.CreateOwlChatRequest)
 	if uname, err := s.db.GetUsernameByID(req.UserId); err == nil && uname != "" {
 		username = uname
 	}
+	log.Printf("CreateOwlChat: resolved username=%q for user_id=%q", username, req.UserId)
 
 	chatID := "owl-" + username + "-" + uuid.New().String()[:8]
+	log.Printf("CreateOwlChat: creating chat %q for user %q", chatID, username)
 
 	_, err := s.db.Exec(
 		"INSERT INTO chats (id, name, type, participants, creator_username) VALUES ($1, $2, 'owl', $3, $4)",
 		chatID, name, "["+username+"]", username,
 	)
 	if err != nil {
+		log.Printf("CreateOwlChat: DB error: %v", err)
 		return &gen.CreateOwlChatResponse{Success: false, Message: "failed to create chat: " + err.Error()}, nil
 	}
 
+	log.Printf("CreateOwlChat: SUCCESS chat_id=%q user=%q", chatID, username)
 	return &gen.CreateOwlChatResponse{
 		ChatId:  chatID,
 		Success: true,
