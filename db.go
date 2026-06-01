@@ -97,6 +97,10 @@ func ConnectDB() (*DB, error) {
 				ALTER TABLE chats ADD COLUMN e2ee_ready BOOLEAN DEFAULT FALSE;
 			END IF;
 		END $$;`,
+		`DO $$ BEGIN
+			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='chats' AND column_name='last_message_text') THEN ALTER TABLE chats ADD COLUMN last_message_text TEXT DEFAULT ''; END IF;
+			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='chats' AND column_name='last_message_time') THEN ALTER TABLE chats ADD COLUMN last_message_time TIMESTAMP; END IF;
+		END $$;`,
 		`CREATE TABLE IF NOT EXISTS secret_chat_keys (chat_id VARCHAR(255) NOT NULL REFERENCES chats(id) ON DELETE CASCADE, user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE, public_key TEXT NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT NOW(), PRIMARY KEY (chat_id, user_id))`,
 		`CREATE TABLE IF NOT EXISTS reactions (id SERIAL PRIMARY KEY, message_id VARCHAR(255) NOT NULL REFERENCES messages(message_id) ON DELETE CASCADE, username VARCHAR(255) NOT NULL, emoji VARCHAR(50) NOT NULL)`,
 		`CREATE TABLE IF NOT EXISTS user_chat_metadata (username VARCHAR(255) NOT NULL, room_id VARCHAR(255) NOT NULL, last_read_at TIMESTAMP NOT NULL DEFAULT NOW(), PRIMARY KEY (username, room_id))`,
