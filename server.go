@@ -2819,6 +2819,7 @@ func (s *server) ChatWithOWL(req *gen.OWLRequest, stream gen.ChatService_ChatWit
 	// Update chat last message
 	_, _ = s.db.Exec("UPDATE chats SET last_message_text=$1, last_message_time=NOW() WHERE id=$2",
 		truncateString(response, 100), chatID)
+	log.Printf("OWL: updated last_message_text for chat %s: %q", chatID, truncateString(response, 100))
 
 	// Stream response in chunks
 	words := strings.Fields(response)
