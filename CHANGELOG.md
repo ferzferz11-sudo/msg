@@ -3,6 +3,22 @@
 **Author:** Pavel Davydov (ferz)
 
 
+## [1.1.0.6] - 2026-06-02
+- **Android Client:**
+  - **Исправлено**: warnings `suspendCancellableCoroutine.resume()` deprecated — заменены на `resume(value) { }` overload
+  - **Исправлено**: список чатов загружается мгновенно из кэша + обновление с сервера в одном проходе
+  - **Исправлено**: мерцание списка — `DiffUtil` вместо `clear()+addAll()`
+  - **Исправлено**: дублирование загрузки — `isChatsLoaded` flag + debounce 500ms
+  - **Исправлено**: сортировка OWL чатов по `lastMessageTime`
+  - **Исправлено**: отображение "🤖 OWL AI:" префикса для последнего сообщения OWL чата
+  - **Исправлено**: аватарка пользователя загружается при старте (SessionManager.login + onResume)
+  - **Исправлено**: кнопки записи голоса — отмена слева, запись справа, 50% прозрачность
+  - **Исправлено**: краш "Already resumed" — gRPC callbacks теперь idempotent
+- **Server:**
+  - Добавлена колонка `last_message_time` в таблицу `chats`
+  - Добавлено логирование OWL AI ответов и UPDATE запросов
+  - Версия обновлена до 1.1.0.6
+
 ## [1.1.0.5] - 2026-06-02
 - **Android Client:**
   - **Исправлено**: поле ввода текста в OWL чате перекрыто клавиатурой/навигационной панелью — заменён подход с `translationY` на `bottomMargin` (`updateLayoutParams`), аналогично рабочему решению в `NewChatActivity`
