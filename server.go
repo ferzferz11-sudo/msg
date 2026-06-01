@@ -2807,11 +2807,13 @@ func (s *server) ChatWithOWL(req *gen.OWLRequest, stream gen.ChatService_ChatWit
 		chatID, userID, req.Message, len(history), model, req.ApiKey != "" || settings.UserAPIKey != "")
 
 	// Call OpenRouter
+	log.Printf("OWL: calling OpenRouter for chat %s, model=%s, history_len=%d", chatID, model, len(history))
 	response, err := callOpenRouter(apiKey, model, systemPrompt, history)
 	if err != nil {
 		log.Printf("OWL: OpenRouter error for chat %s: %v", chatID, err)
 		return fmt.Errorf("AI service error: %w", err)
 	}
+	log.Printf("OWL: OpenRouter response for chat %s: %q (len=%d)", chatID, response, len(response))
 
 	// Add assistant response to history
 	owlSessions.addMessage(chatID, "assistant", response)
