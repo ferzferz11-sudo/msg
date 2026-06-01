@@ -1786,11 +1786,68 @@ func (s *server) saveCallSystemMessage(u1, u2, icon, text, senderName, senderId 
 }
 
 func (s *server) handleAbruptDisconnect(userId string) {
-	// Send HANGUP signal to any potential partners
-	// In a real production app, we would query the 'calls' table for 'active' calls involving this user
-	// For now, we'll broadcast a system-level hangup to clear the UI on the other side
-	// if they were waiting for this user.
 	log.Printf("[CALL] Handling abrupt disconnect for %s", userId)
+
+	// Resolve userId to UUID if it's a username
+	resolvedUserId := s.resolveUserId(userId)
+
+	// Find all active/pending calls for this user
+	activeCalls, err := s.db.GetActiveCallsByUser(resolvedUserId)
+	if err != nil {
+		log.Printf("[CALL] Failed to get active calls for %s: %v", userId, err)
+		return
+	}
+
+	for _, call := range activeCalls {
+		// Determine the other party
+		otherPartyId := call.CallerID
+		if call.CallerID == resolvedUserId {
+			otherPartyId = call.ReceiverID
+		}
+
+		// Mark call as completed (ended due to disconnect)
+		_ = s.db.UpdateCallStatus(call.CallID, "completed")
+
+		// Send HANGUP signal to the other party via call stream
+		hangupSignal := &gen.CallMessage{
+			CallId:     call.CallID,
+			SenderId:   resolvedUserId,
+			ReceiverId: otherPartyId,
+			Type:       gen.CallMessage_HANGUP,
+		}
+
+		// Try to deliver via hub to the receiver's call stream
+		delivered := s.hub.BroadcastCall(hangupSignal)
+		if !delivered {
+			log.Printf("[CALL] HANGUP not delivered to %s for call %s (receiver offline)", otherPartyId, call.CallID)
+		} else {
+			log.Printf("[CALL] HANGUP sent to %s for call %s", otherPartyId, call.CallID)
+		}
+
+		// Also try to resolve username and send via their chat stream as system message
+		otherUsername := s.resolveUsername(otherPartyId)
+		if otherUsername != "" {
+			// Send HANGUP back to the disconnected user too (in case they have multiple streams)
+			hangupToSender := &gen.CallMessage{
+				CallId:     call.CallID,
+				SenderId:   otherPartyId,
+				ReceiverId: resolvedUserId,
+				Type:       gen.CallMessage_HANGUP,
+			}
+			s.hub.BroadcastCall(hangupToSender)
+
+			// Save system message to chat
+			senderName := s.resolveUsername(resolvedUserId)
+			duration, _ := s.db.GetCallDuration(call.CallID)
+			durationText := ""
+			if duration > 0 {
+				minutes := duration / 60
+				seconds := duration % 60
+				durationText = fmt.Sprintf(" (%d:%02d)", minutes, seconds)
+			}
+			s.saveCallSystemMessage(senderName, otherUsername, "📞↘️", "Соединение потеряно"+durationText, senderName, resolvedUserId)
+		}
+	}
 }
 
 func (s *server) sendCallPushNotification(receiverId, senderName, callId string) {

@@ -1100,6 +1100,38 @@ func (db *DB) GetCallDuration(callID string) (int, error) {
 	return int(duration), err
 }
 
+// GetActiveCallsByUser returns all active/pending calls where user is caller or receiver
+func (db *DB) GetActiveCallsByUser(userID string) ([]struct {
+	CallID    string
+	CallerID  string
+	ReceiverID string
+	RoomID    string
+}, error) {
+	rows, err := db.Query(`SELECT id, caller_id::text, receiver_id::text, COALESCE(room_id, '') FROM calls WHERE (caller_id = $1::uuid OR receiver_id = $1::uuid) AND status IN ('pending', 'active')`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var calls []struct {
+		CallID    string
+		CallerID  string
+		ReceiverID string
+		RoomID    string
+	}
+	for rows.Next() {
+		var c struct {
+			CallID    string
+			CallerID  string
+			ReceiverID string
+			RoomID    string
+		}
+		if err := rows.Scan(&c.CallID, &c.CallerID, &c.ReceiverID, &c.RoomID); err == nil {
+			calls = append(calls, c)
+		}
+	}
+	return calls, nil
+}
+
 // ======= Secret Chat Methods =======
 
 func (db *DB) CreateSecretChat(id, name, creator string, participants []string) error {

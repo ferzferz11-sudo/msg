@@ -227,7 +227,8 @@ func (h *Hub) BroadcastCall(signal *gen.CallMessage) bool {
 
 	delivered := false
 	for stream, username := range h.callStreams {
-		if username == signal.ReceiverId {
+		// Match by UUID or username (backward compatibility)
+		if username == signal.ReceiverId || username == signal.ReceiverName {
 			err := stream.Send(signal)
 			if err == nil {
 				delivered = true
