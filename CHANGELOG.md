@@ -3,6 +3,22 @@
 **Author:** Pavel Davydov (ferz)
 
 
+## [1.1.0.7] - 2026-06-03
+- **Android Client:**
+  - **Secret Chat (E2EE)**: AES-256-GCM + ECDH end-to-end encryption
+  - **Secret Chat**: Автоматический обмен ключами ECDH при открытии чата
+  - **Secret Chat**: Кнопка видео звонка скрыта для секретных чатов
+  - **OWL AI**: Исправлен порядок сообщений (currentResponseIndex tracking)
+  - **OWL AI**: Индикатор "Печатает..." в тулбаре вместо отдельного элемента
+  - **OWL AI**: Шторка действий через StandardBottomSheet (темы)
+  - **OWL AI**: Реакции как в обычном чате (👍 💯 🔥 ✅ ❤️ 😂 😮 😢 🙏)
+  - **OWL AI**: Выбор сообщений, свайп для ответа, превью ответа
+- **Server:**
+  - Новые gRPC методы: `CreateSecretChat`, `ExchangeSecretKey`, `GetSecretChatKey`
+  - Новая таблица: `secret_chat_keys` (chat_id, user_id, public_key)
+  - Новые колонки: `is_secret`, `peer_public_key`, `e2ee_ready` в таблице `chats`
+  - Версия обновлена до 1.1.0.7
+
 ## [1.1.0.6] - 2026-06-02
 - **Android Client:**
   - **Исправлено**: warnings `suspendCancellableCoroutine.resume()` deprecated — заменены на `resume(value) { }` overload
