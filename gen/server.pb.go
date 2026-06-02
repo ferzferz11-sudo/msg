@@ -29,6 +29,7 @@ type ServerInfo struct {
 	Host          string                 `protobuf:"bytes,3,opt,name=host,proto3" json:"host,omitempty"`
 	Port          int32                  `protobuf:"varint,4,opt,name=port,proto3" json:"port,omitempty"`
 	IsDefault     bool                   `protobuf:"varint,5,opt,name=is_default,json=isDefault,proto3" json:"is_default,omitempty"`
+	IsProtected   bool                   `protobuf:"varint,7,opt,name=is_protected,json=isProtected,proto3" json:"is_protected,omitempty"`
 	CreatedAt     *timestamp.Timestamp   `protobuf:"bytes,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -95,6 +96,13 @@ func (x *ServerInfo) GetPort() int32 {
 func (x *ServerInfo) GetIsDefault() bool {
 	if x != nil {
 		return x.IsDefault
+	}
+	return false
+}
+
+func (x *ServerInfo) GetIsProtected() bool {
+	if x != nil {
+		return x.IsProtected
 	}
 	return false
 }

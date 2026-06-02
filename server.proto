@@ -10,6 +10,7 @@ message ServerInfo {
   string host = 3;
   int32 port = 4;
   bool is_default = 5;
+  bool is_protected = 7;
   google.protobuf.Timestamp created_at = 6;
 }
 

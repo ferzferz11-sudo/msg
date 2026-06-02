@@ -1229,36 +1229,39 @@ func (db *DB) CreateServer(name, host string, port int, isDefault bool) (string,
 }
 
 func (db *DB) GetAllServers() ([]struct {
-	ID        string
-	Name      string
-	Host      string
-	Port      int
-	IsDefault bool
-	CreatedAt time.Time
+	ID          string
+	Name        string
+	Host        string
+	Port        int
+	IsDefault   bool
+	IsProtected bool
+	CreatedAt   time.Time
 }, error) {
-	rows, err := db.Query(`SELECT id, name, host, port, is_default, created_at FROM servers ORDER BY is_default DESC, created_at ASC`)
+	rows, err := db.Query(`SELECT id, name, host, port, is_default, COALESCE(is_protected, FALSE), created_at FROM servers ORDER BY is_default DESC, created_at ASC`)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	var res []struct {
-		ID        string
-		Name      string
-		Host      string
-		Port      int
-		IsDefault bool
-		CreatedAt time.Time
+		ID          string
+		Name        string
+		Host        string
+		Port        int
+		IsDefault   bool
+		IsProtected bool
+		CreatedAt   time.Time
 	}
 	for rows.Next() {
 		var s struct {
-			ID        string
-			Name      string
-			Host      string
-			Port      int
-			IsDefault bool
-			CreatedAt time.Time
+			ID          string
+			Name        string
+			Host        string
+			Port        int
+			IsDefault   bool
+			IsProtected bool
+			CreatedAt   time.Time
 		}
-		rows.Scan(&s.ID, &s.Name, &s.Host, &s.Port, &s.IsDefault, &s.CreatedAt)
+		rows.Scan(&s.ID, &s.Name, &s.Host, &s.Port, &s.IsDefault, &s.IsProtected, &s.CreatedAt)
 		res = append(res, s)
 	}
 	return res, nil

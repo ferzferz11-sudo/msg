@@ -28,12 +28,13 @@ func (s *serverServiceServer) ListServers(ctx context.Context, req *gen.ListServ
 	var result []*gen.ServerInfo
 	for _, srv := range servers {
 		result = append(result, &gen.ServerInfo{
-			Id:        srv.ID,
-			Name:      srv.Name,
-			Host:      srv.Host,
-			Port:      int32(srv.Port),
-			IsDefault: srv.IsDefault,
-			CreatedAt: timestamppb.New(srv.CreatedAt),
+			Id:          srv.ID,
+			Name:        srv.Name,
+			Host:        srv.Host,
+			Port:        int32(srv.Port),
+			IsDefault:   srv.IsDefault,
+			IsProtected: srv.IsProtected,
+			CreatedAt:   timestamppb.New(srv.CreatedAt),
 		})
 	}
 
