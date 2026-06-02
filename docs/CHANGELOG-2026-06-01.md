@@ -1,11 +1,61 @@
 # Lavender Messenger — Журнал изменений
 
-**Дата:** 2026-06-01
+**Дата:** 2026-06-02
 **Ветка:** feat/1.1.0.x
+**Версия:** 1.1.0.9
 
 ---
 
 ## Сервер (Go)
+
+### Добавлено
+
+#### TURN сервер (coturn) для WebRTC
+- Установлен и настроен coturn на сервере
+- Порт 3478 (TCP/UDP), relay порты 10000-20000 (UDP)
+- HMAC-based временные креденшалы черезTURN REST API
+- Endpoint `/turn-credentials` на HTTP порту — выдаёт iceServers с username/password
+- Конфиг: `/etc/turnserver.conf`
+
+#### HTTP server — /turn-credentials endpoint
+- GET `/turn-credentials` возвращает `{ iceServers: [{ urls, username, credential }] }`
+- Username = timestamp + TTL (24h), password = HMAC-SHA1(username, secret)
+- **Файл:** `http_server.go`
+
+### Исправлено
+
+#### OpenRouter API ключ
+- Обновлён ключ в `.env` — исправлена ошибка 401 (User not found)
+- OWL AI снова работает
+
+---
+
+## Android клиент (Kotlin)
+
+### Исправлено
+
+#### WebRtcClient — убран дубликат PeerConnection.Observer
+- **Было:** Дубликат `PeerConnection.Observer` в `initPeerConnection` — код вне метода
+- **Стало:** Убраны 24 строки дублирования
+- **Результат:** Исправлены ошибки компиляции (Unresolved reference: iceCandidateQueue, peerConnection)
+
+#### CallActivity — получение TURN креденшалов
+- Добавлен `fetchTurnCredentials()` — асинхронный GET запрос к `/turn-credentials`
+- `initPeerConnection()` теперь принимает динамические ICE серверы (TURN + STUN)
+- Fallback на STUN при недоступности TURN
+- **Файл:** `CallActivity.kt`
+
+---
+
+## Известные проблемы (остаются)
+
+1. ~~**FCM сломан**~~ → ✅ Исправлен (обновлён firebase key)
+2. ~~**Нет TURN сервера**~~ → ✅ Установлен coturn
+3. **ChangelogActivity белый экран** — требует logcat для диагностики
+
+---
+
+## Предыдущие изменения (2026-06-01)
 
 ### Исправлено
 
