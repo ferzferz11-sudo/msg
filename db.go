@@ -1301,13 +1301,16 @@ func (db *DB) SetDefaultServer(id string) error {
 }
 
 func (db *DB) DeleteServer(id string) error {
-	var isDefault bool
-	err := db.QueryRow(`SELECT is_default FROM servers WHERE id = $1`, id).Scan(&isDefault)
+	var isDefault, isProtected bool
+	err := db.QueryRow(`SELECT is_default, COALESCE(is_protected, FALSE) FROM servers WHERE id = $1`, id).Scan(&isDefault, &isProtected)
 	if err != nil {
 		return err
 	}
 	if isDefault {
 		return fmt.Errorf("cannot delete default server")
+	}
+	if isProtected {
+		return fmt.Errorf("cannot delete protected server")
 	}
 	_, err = db.Exec(`DELETE FROM servers WHERE id = $1`, id)
 	return err
