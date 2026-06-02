@@ -10,6 +10,7 @@ import (
 	"LavenderMessenger/gen"
 	"context"
 	"database/sql"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -350,7 +351,7 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 			}
 			voiceURL := msg.VoiceUrl
 			duration := msg.Duration
-			err = s.db.SaveMessage(msg.Id, msg.User, msg.UserId, encryptedText, msg.CreatedAt.AsTime(), msg.RepliedToMessageId, msg.RepliedToUser, msg.RepliedToText, roomID, imageURL, imageURLsJSON, voiceURL, duration)
+			err = s.db.SaveMessage(msg.Id, msg.User, msg.UserId, encryptedText, msg.CreatedAt.AsTime(), msg.RepliedToMessageId, msg.RepliedToUser, msg.RepliedToText, roomID, imageURL, imageURLsJSON, voiceURL, duration, msg.IsE2Ee)
 			if err != nil {
 				log.Printf("Failed to save msg: %v", err)
 			} else {
@@ -768,7 +769,7 @@ func (s *server) GetHistory(_ context.Context, req *gen.GetHistoryRequest) (*gen
 		return nil, err
 	}
 
-	// Check if this is a secret (E2EE) chat — if so, don't try server-side decryption
+	// Check if this is a secret chat (for backward compat with old messages without is_e2ee flag)
 	chat, chatErr := s.db.GetChat(roomID)
 	isSecretChat := chatErr == nil && chat.IsSecret
 
@@ -783,9 +784,11 @@ func (s *server) GetHistory(_ context.Context, req *gen.GetHistoryRequest) (*gen
 			continue // Skip messages with no encrypted data
 		}
 
-		// For E2EE chats, skip server-side decryption — client handles it
+		// For E2EE messages, skip server-side decryption — client handles it
+		// Use per-message flag if set, otherwise fall back to chat-level check for old messages
+		msgIsE2EE := m.IsE2EE || isSecretChat
 		var decryptedText string
-		if isSecretChat {
+		if msgIsE2EE {
 			// Server cannot decrypt E2EE messages, client handles decryption
 			decryptedText = ""
 		} else {
@@ -807,7 +810,7 @@ func (s *server) GetHistory(_ context.Context, req *gen.GetHistoryRequest) (*gen
 		}
 
 		// Check if decrypted text is empty (skip ONLY if NO media and NOT E2EE)
-		if decryptedText == "" && m.ImageURL == "" && m.VoiceURL == "" && !isSecretChat {
+		if decryptedText == "" && m.ImageURL == "" && m.VoiceURL == "" && !msgIsE2EE {
 			log.Printf("Warning: message %s decrypted to empty string, skipping", m.MessageID)
 			continue
 		}
@@ -845,8 +848,8 @@ func (s *server) GetHistory(_ context.Context, req *gen.GetHistoryRequest) (*gen
 			Edited:             m.Edited,
 			VoiceUrl:           m.VoiceURL,
 			Duration:           m.Duration,
-			IsE2Ee:             isSecretChat,
-			E2EePayload:        string(m.Encrypted),
+			IsE2Ee:             msgIsE2EE,
+			E2EePayload:        base64.StdEncoding.EncodeToString(m.Encrypted),
 		})
 	}
 
@@ -894,8 +897,14 @@ func (s *server) SetReaction(_ context.Context, req *gen.ReactionRequest) (*gen.
 	// 1. Get the full message from DB
 	if m.MessageID != "" { // m is already fetched above
 		// 2. Decrypt text (skip for E2EE — client handles it)
+		decryptIsE2EE := m.IsE2EE
+		if !decryptIsE2EE && m.RoomID != "" {
+			if chat, chatErr := s.db.GetChat(m.RoomID); chatErr == nil && chat.IsSecret {
+				decryptIsE2EE = true
+			}
+		}
 		var decryptedText string
-		if isSecretMsg {
+		if decryptIsE2EE {
 			decryptedText = string(m.Encrypted)
 		} else {
 			decryptedText, _ = decrypt(m.Encrypted)
