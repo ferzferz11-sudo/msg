@@ -4,8 +4,12 @@
 package main
 
 import (
+	"crypto/hmac"
 	"crypto/md5"
+	"crypto/sha1"
+	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -13,6 +17,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 const (
@@ -23,6 +28,11 @@ const (
 	backgroundsPath = "./uploads/background"
 	audioPath       = "./uploads/audio"
 	defaultHTTPPort = "8082"
+
+	// TURN server credentials
+	turnServerHost   = "13.140.25.249:3478"
+	turnSharedSecret = "b4fae0***c858"
+	turnTTL          = 86400 // 24 hours
 )
 
 func closeFile(file io.ReadCloser) {
@@ -44,6 +54,9 @@ func StartHTTPServer(port string) {
 	http.HandleFunc("/upload-file", uploadFileHandler)
 	http.HandleFunc("/upload-background", uploadBackgroundHandler)
 	http.HandleFunc("/upload-audio", uploadAudioHandler)
+
+	// TURN credentials endpoint
+	http.HandleFunc("/turn-credentials", turnCredentialsHandler)
 
 	http.HandleFunc("/avatars/", func(w http.ResponseWriter, r *http.Request) {
 		serveFileHandler(w, r, "/avatars/", avatarsPath)
@@ -400,4 +413,40 @@ func DeleteImageFile(imageURL string) error {
 
 	log.Printf("🗑️ Successfully deleted file from disk: %s", filePath)
 	return nil
+}
+
+// turnCredentialsHandler generates temporary TURN credentials using HMAC
+// Client sends GET /turn-credentials and receives JSON with iceServers array
+func turnCredentialsHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Generate timestamp-based username (valid for TTL)
+	timestamp := time.Now().Unix() + int64(turnTTL)
+	username := fmt.Sprintf("%d", timestamp)
+
+	// HMAC-SHA1 password using shared secret
+	mac := hmac.New(sha1.New, []byte(turnSharedSecret))
+	mac.Write([]byte(username))
+	password := base64.StdEncoding.EncodeToString(mac.Sum(nil))
+
+	// Build ICE servers response
+	servers := map[string]interface{}{
+		"iceServers": []map[string]interface{}{
+			{
+				"urls": []string{
+					"stun:stun.l.google.com:19302",
+					fmt.Sprintf("turn:%s?transport=udp", turnServerHost),
+					fmt.Sprintf("turn:%s?transport=tcp", turnServerHost),
+				},
+				"username":   username,
+				"credential": password,
+			},
+		},
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(servers)
 }
