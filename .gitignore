@@ -44,3 +44,5 @@ client/console/
 run/
 lavender-server
 *-firebase-adminsdk-*.json
+*.env
+*.env.dev
