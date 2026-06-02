@@ -294,14 +294,27 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 			continue
 		}
 
-		if len(msg.ImageUrls) > 0 {
-			log.Printf("[%s] in %s: %s (ImageURLs: %v)", msg.User, roomID, msg.Text, msg.ImageUrls)
-		} else if msg.ImageUrl != "" {
-			log.Printf("[%s] in %s: %s (ImageURL: %s)", msg.User, roomID, msg.Text, msg.ImageUrl)
-		} else if msg.VoiceUrl != "" {
-			log.Printf("[%s] in %s: Voice message (%d seconds) - %s", msg.User, roomID, msg.Duration, msg.VoiceUrl)
+		// Log message — for E2EE/secret chats, never log message text
+		if msg.IsE2Ee {
+			if len(msg.ImageUrls) > 0 {
+				log.Printf("[%s] in %s: [E2EE image] (ImageURLs: %v)", msg.User, roomID, msg.ImageUrls)
+			} else if msg.ImageUrl != "" {
+				log.Printf("[%s] in %s: [E2EE image] (ImageURL: %s)", msg.User, roomID, msg.ImageUrl)
+			} else if msg.VoiceUrl != "" {
+				log.Printf("[%s] in %s: [E2EE voice] (%d seconds)", msg.User, roomID, msg.Duration)
+			} else {
+				log.Printf("[%s] in %s: [E2EE encrypted message]", msg.User, roomID)
+			}
 		} else {
-			log.Printf("[%s] in %s: %s", msg.User, roomID, msg.Text)
+			if len(msg.ImageUrls) > 0 {
+				log.Printf("[%s] in %s: %s (ImageURLs: %v)", msg.User, roomID, msg.Text, msg.ImageUrls)
+			} else if msg.ImageUrl != "" {
+				log.Printf("[%s] in %s: %s (ImageURL: %s)", msg.User, roomID, msg.Text, msg.ImageUrl)
+			} else if msg.VoiceUrl != "" {
+				log.Printf("[%s] in %s: Voice message (%d seconds) - %s", msg.User, roomID, msg.Duration, msg.VoiceUrl)
+			} else {
+				log.Printf("[%s] in %s: %s", msg.User, roomID, msg.Text)
+			}
 		}
 
 		if roomID == "" {
@@ -755,6 +768,10 @@ func (s *server) GetHistory(_ context.Context, req *gen.GetHistoryRequest) (*gen
 		return nil, err
 	}
 
+	// Check if this is a secret (E2EE) chat — if so, don't try server-side decryption
+	chat, chatErr := s.db.GetChat(roomID)
+	isSecretChat := chatErr == nil && chat.IsSecret
+
 	var messages []*gen.Message
 	// Проходим в обратном порядке, чтобы сообщения были от старых к новым
 	for i := len(rawMessages) - 1; i >= 0; i-- {
@@ -766,19 +783,27 @@ func (s *server) GetHistory(_ context.Context, req *gen.GetHistoryRequest) (*gen
 			continue // Skip messages with no encrypted data
 		}
 
-		// Расшифровываем текст из базы
-		decryptedText, err := decrypt(m.Encrypted)
-		if err != nil {
-			msgType := "text"
-			if m.VoiceURL != "" {
-				msgType = "voice"
-			} else if m.ImageURL != "" {
-				msgType = "image"
-			}
-			log.Printf("Failed to decrypt %s message %s (User: %s, Room: %s): %v", msgType, m.MessageID, m.Username, m.RoomID, err)
+		// For E2EE chats, skip server-side decryption — client handles it
+		var decryptedText string
+		if isSecretChat {
+			// Server cannot decrypt E2EE messages, send raw encrypted payload
+			decryptedText = string(m.Encrypted)
+		} else {
+			// Расшифровываем текст из базы
+			var err error
+			decryptedText, err = decrypt(m.Encrypted)
+			if err != nil {
+				msgType := "text"
+				if m.VoiceURL != "" {
+					msgType = "voice"
+				} else if m.ImageURL != "" {
+					msgType = "image"
+				}
+				log.Printf("Failed to decrypt %s message %s (User: %s, Room: %s): %v", msgType, m.MessageID, m.Username, m.RoomID, err)
 
-			// Show user-friendly error in the chat
-			decryptedText = "не удалось расшифровать"
+				// Show user-friendly error in the chat
+				decryptedText = "не удалось расшифровать"
+			}
 		}
 
 		// Check if decrypted text is empty (skip ONLY if NO media at all)
@@ -820,6 +845,8 @@ func (s *server) GetHistory(_ context.Context, req *gen.GetHistoryRequest) (*gen
 			Edited:             m.Edited,
 			VoiceUrl:           m.VoiceURL,
 			Duration:           m.Duration,
+			IsE2Ee:             isSecretChat,
+			E2EePayload:        string(m.Encrypted),
 		})
 	}
 
@@ -832,15 +859,26 @@ func (s *server) GetHistory(_ context.Context, req *gen.GetHistoryRequest) (*gen
 func (s *server) SetReaction(_ context.Context, req *gen.ReactionRequest) (*gen.ReactionResponse, error) {
 	// Получаем оригинальное сообщение для логирования текста
 	var msgText string = "..."
+	var isSecretMsg bool
 	m, err := s.db.GetMessageByUUID(req.MessageId)
 	if err == nil {
-		decryptedText, err := decrypt(m.Encrypted)
-		if err == nil {
-			if len(decryptedText) > 15 {
-				msgText = decryptedText[:15] + "..."
-			} else {
-				msgText = decryptedText
+		// Check if message is in a secret chat — don't try to decrypt E2EE messages
+		if m.RoomID != "" {
+			if chat, chatErr := s.db.GetChat(m.RoomID); chatErr == nil && chat.IsSecret {
+				isSecretMsg = true
 			}
+		}
+		if !isSecretMsg {
+			decryptedText, err := decrypt(m.Encrypted)
+			if err == nil {
+				if len(decryptedText) > 15 {
+					msgText = decryptedText[:15] + "..."
+				} else {
+					msgText = decryptedText
+				}
+			}
+		} else {
+			msgText = "[E2EE]"
 		}
 	}
 
@@ -855,8 +893,13 @@ func (s *server) SetReaction(_ context.Context, req *gen.ReactionRequest) (*gen.
 	// Broadcast the updated message to all clients in the room
 	// 1. Get the full message from DB
 	if m.MessageID != "" { // m is already fetched above
-		// 2. Decrypt text
-		decryptedText, _ := decrypt(m.Encrypted)
+		// 2. Decrypt text (skip for E2EE — client handles it)
+		var decryptedText string
+		if isSecretMsg {
+			decryptedText = string(m.Encrypted)
+		} else {
+			decryptedText, _ = decrypt(m.Encrypted)
+		}
 
 		// 3. Get all reactions
 		rawReactions, _ := s.db.GetReactionsForMessage(m.MessageID)
@@ -2617,6 +2660,8 @@ func (s *server) GetFavorites(ctx context.Context, req *gen.GetFavoritesRequest)
 			Edited:             m.Edited,
 			VoiceUrl:           m.VoiceURL,
 			Duration:           m.Duration,
+			IsE2Ee:             false,
+			E2EePayload:        "",
 		})
 	}
 
