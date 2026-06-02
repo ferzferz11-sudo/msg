@@ -1,8 +1,8 @@
 # Lavender Messenger — Известные проблемы и задачи в работе
 
-**Последнее обновление:** 2026-06-01
+**Последнее обновление:** 2026-06-02
 **Ветка:** feat/1.1.0.x
-**Версия:** 1.1.0.4
+**Версия:** 1.1.0.9
 
 ---
 
@@ -26,41 +26,50 @@
 - **Клиент:** автоматический reconnect в `onClose` RealGrpcClient
 - **Файлы:** `RealGrpcClient.kt`
 
-### 3. OWL чат: /key команда не работает при использовании серверного ключа
-- **Статус:** исправлено
-- **Описание:** Команда `/key` не показывалась в приветственном сообщении
-- **Исправлено:** добавлена в `showWelcomeMessage()` и в `/help`
-- **Файлы:** `OwlActivity.kt`
-
 ---
 
 ## ✅ Исправлено
 
-### 1. Ветки переименованы
-- `feat/1.2.0.owl` → `feat/1.1.0.x`
-- Версия: 1.1.0.4
+### 1. Favorites: сообщения не отображались (empty encrypted data)
+- **Статус:** ✅ исправлено (e0d5dd5)
+- **Симптом:** При открытии favorites — 9 ошибок "empty encrypted data", сообщения не отображались
+- **Причина:** Дубликат `COALESCE(m.is_e2ee, false)` в SQL запросе `GetMessages` для favorites (db.go:187) → 17 полей в SELECT вместо 16 → смещение в `Scan()` → `m.Encrypted` получал пустое значение
+- **Исправление:** Убран дубликат, сервер пересобран и перезапущено
+- **Проверка:** После перезапуска — ошибок нет, сообщения отображаются
 
-### 2. OWL чаты в списке после возврата
+### 2. E2EE: is_e2ee column + обработка
+- **Статус:** ✅ исправлено (613f305)
+- Добавлена колонка `is_e2ee` в messages
+- `E2EePayload = base64(m.Encrypted)` вместо `string(m.Encrypted)`
+- Combined detection: `m.IsE2EE || isSecretChat`
+- GrpcClient: GlobalScope → scope
+
+### 3. OWL чаты в списке после возврата
 - Исправлен `CreateOwlChat` — резолвит username из DB
 - Убран `creator == userId` check в `GetOwlHistory`
 - Восстановлена колонка `last_message_text` в `chats`
 
-### 3. Поле ввода в OWL чате
+### 4. Поле ввода в OWL чате
 - Исправлен `textInputType` — убран невалидный `textUri`
-- Добавлены потолстевшие импорты
 
-### 4. Дублирующиеся сообщения при стриминге  OWL
+### 5. Дублирующиеся сообщения при стриминге OWL
 - Заменён `addMessage` на `updateLastAssistantMessage` для стриминга
 - Убран дубль `finished=true` из `onClose`
 
-### 5. Темы в OWL чате
+### 6. Темы в OWL чате
 - Добавлен `ThemeUi.bind(this, userId)` в `onCreate`
-- Layout приведён к виду `activity_new_chat.xml`
 
-### 6. Удаление OWL чатов
+### 7. Удаление OWL чатов
 - **Было:** `Failed to parse participants: invalid character 'e' in literal false`
 - **Причина:** старый формат participants `[ferz]` вместо `["ferz"]`
 - **Исправлено:** обновлены данные в БД
+
+### 8. /key команда в OWL
+- Добавлена в `showWelcomeMessage()` и в `/help`
+
+### 9. Ветки переименованы
+- `feat/1.2.0.owl` → `feat/1.1.0.x`
+- Версия: 1.1.0.9
 
 ---
 
@@ -68,7 +77,6 @@
 
 ### Высокий приоритет
 - [ ] Секретный чат — заглушка "not implemented in this build"
-- [ ] Медленная загрузка "Избранное" при переключении стрима
 
 ### Средний приоритет
 - [ ] Mac session logout issue — не исследовано
@@ -89,6 +97,7 @@
 | `ThemeUi.bind()` для тем | Единообразие с остальным приложением |
 | `adjustResize` + `translationY` | Edge-to-edge конфликт с adjustResize |
 | `CoroutineScope` вместо `lifecycleScope` для `loadHistory()` | Предотвращает отмену корутины при смене activity |
+| Favorites: сообщения хранятся в messages с `room_id='favorites_*'` | Единая таблица сообщений, favorites — виртуальная комната |
 
 ---
 
@@ -96,14 +105,15 @@
 
 | Файл | Назначение |
 |------|------------|
-| `/root/msg/server.go` | Сервер, версия 1.1.0.4 |
-| `/root/msg/server/owl.go` | OWL сессии и БД |
+| `/root/msg/server.go` | Сервер, версия 1.1.0.9 |
+| `/root/msg/db.go` | БД запросы, миграции, favorites |
+| `/root/msg/crypto.go` | AES-256-GCM, E2EE |
+| `/root/msg/hub.go` | Менеджер соединений |
+| `/root/msg/http_server.go` | HTTP сервер (порт 8082) |
+| `/root/msg/owl.go` | OWL AI ассистент |
 | `/root/msg/messenger.proto` | gRPC определения |
+| `FavoritesActivity.kt` | Экран избранного |
 | `OwlActivity.kt` | OWL чат UI |
-| `OwlGrpc.kt` | gRPC вызовы OWL |
 | `RealGrpcClient.kt` | gRPC канал и reconnect |
-| `GrpcClient.kt` | Фасад для gRPC |
-| `ChatListActivity.kt` | Список чатов, `createNewOwlChat()` |
-| `ThemeApplier.kt` | Применение тем, `enableEdgeToEdge()` |
-| `activity_owl.xml` | Layout OWL чата |
-| `AndroidManifest.xml` | `windowSoftInputMode` для OWL |
+| `ChatListActivity.kt` | Список чатов |
+| `ThemeApplier.kt` | Применение тем |

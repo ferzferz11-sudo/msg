@@ -3,6 +3,34 @@
 **Author:** Pavel Davydov (ferz)
 
 
+## [Unreleased] - 2026-06-02
+- **Server:**
+  - **Исправлено**: Favorites — сообщения не отображались (9 ошибок "empty encrypted data")
+  - **Причина**: дубликат `COALESCE(m.is_e2ee, false)` в SQL запросе `GetMessages` для favorites → смещение в `Scan()` → `m.Encrypted` пустой
+  - Убран дубликат, сервер пересобран и перезапущен (e0d5dd5)
+
+## [1.1.0.9] - 2026-06-02
+- **Server:**
+  - Версия обновлена до 1.1.0.9
+  - **E2EE**: добавлена колонка `is_e2ee` в таблицу `messages`
+  - **E2EE**: `E2EePayload = base64(m.Encrypted)` вместо `string(m.Encrypted)` — raw bytes не ломают gRPC UTF-8
+  - **E2EE**: combined detection `m.IsE2EE || isSecretChat` для обратной совместимости
+  - **E2EE**: убран дубликат `PeerConnection.Observer` в WebRtcClient
+  - **TURN**: добавлен `/turn-credentials` endpoint для WebRTC TURN сервера (coturn на :3478)
+  - **TURN**: HMAC-based временные креденшалы, TTL 24h
+  - **TURN**: CallActivity — `fetchTurnCredentials()` + fallback STUN
+  - Звонки работают из разных сетей через TURN
+
+## [1.1.0.8] - 2026-06-02
+- **Server:**
+  - Версия обновлена до 1.1.0.8
+  - **Исправлено**: HANGUP при abrupt disconnect звонка
+  - **Исправлено**: BroadcastCall fallback при ошибке
+  - **Исправлено**: GetActiveCallsByUser — корректный возврат активных звонков
+  - **Рефакторинг**: реорганизация scripts/docs, удаление дубликатов
+  - **Логи**: log-monitor на порту 8090, фильтрация 24h/100 строк, /clear endpoint
+  - **БД**: GRANT ALL для lavender на все таблицы и sequences
+
 ## [1.1.0.7] - 2026-06-03
 - **Android Client:**
   - **Secret Chat (E2EE)**: AES-256-GCM + ECDH end-to-end encryption

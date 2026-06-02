@@ -122,6 +122,15 @@
 
 ---
 
+### 3.6 Favorites — избранные сообщения
+- Сохраняются в таблицу `messages` с `room_id = 'favorites_' + username`
+- Дублирующая запись в таблицу `favorites` (user_id, message_id) для быстрого поиска
+- При загрузке: `LEFT JOIN favorites` + `WHERE m.room_id = 'favorites_X' OR f.message_id IS NOT NULL`
+- Сообщения зашифрованы как обычные (is_e2ee = false), расшифровываются сервером
+- gRPC: `GetFavorites(uid)` → `SaveFavoriteMessage(msg)` → `RemoveFavorite(uid, mid)`
+- Клиент: `FavoritesActivity.kt` — показывает сообщения из favorites room
+- Важно: SELECT должен содержать ровно 16 полей, соответствующих Scan() — дубликат полей смещает все значения
+
 ## 4. Протокол (messenger.proto)
 
 ### Основные сервисы:
