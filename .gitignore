@@ -43,3 +43,4 @@ client/console/
 # build dir
 run/
 lavender-server
+*-firebase-adminsdk-*.json
