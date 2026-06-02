@@ -39,3 +39,7 @@ client/android/
 # Other clients (macos, console)
 client/macos/
 client/console/
+
+# build dir
+run/
+lavender-server

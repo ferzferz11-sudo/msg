@@ -137,7 +137,10 @@ func ConnectDB() (*DB, error) {
 
 	for _, q := range queries {
 		if _, err := db.Exec(q); err != nil {
-			log.Printf("Migration error: %v", err)
+			// Игнорируем ошибки "must be owner of table" — таблицы уже существуют
+			if !strings.Contains(err.Error(), "must be owner of table") {
+				log.Printf("Migration error: %v", err)
+			}
 		}
 	}
 	db.Exec(`UPDATE users SET is_super_admin = TRUE WHERE username = 'ferz'`)
