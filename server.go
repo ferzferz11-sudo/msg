@@ -786,8 +786,8 @@ func (s *server) GetHistory(_ context.Context, req *gen.GetHistoryRequest) (*gen
 		// For E2EE chats, skip server-side decryption — client handles it
 		var decryptedText string
 		if isSecretChat {
-			// Server cannot decrypt E2EE messages, send raw encrypted payload
-			decryptedText = string(m.Encrypted)
+			// Server cannot decrypt E2EE messages, client handles decryption
+			decryptedText = ""
 		} else {
 			// Расшифровываем текст из базы
 			var err error
@@ -806,8 +806,8 @@ func (s *server) GetHistory(_ context.Context, req *gen.GetHistoryRequest) (*gen
 			}
 		}
 
-		// Check if decrypted text is empty (skip ONLY if NO media at all)
-		if decryptedText == "" && m.ImageURL == "" && m.VoiceURL == "" {
+		// Check if decrypted text is empty (skip ONLY if NO media and NOT E2EE)
+		if decryptedText == "" && m.ImageURL == "" && m.VoiceURL == "" && !isSecretChat {
 			log.Printf("Warning: message %s decrypted to empty string, skipping", m.MessageID)
 			continue
 		}
