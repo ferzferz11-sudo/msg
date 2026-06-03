@@ -3,6 +3,16 @@
 **Author:** Pavel Davydov (ferz)
 
 
+## [Unreleased] - 2026-06-03
+- **Server (dev):**
+  - **Исправлено**: Welcome message — добавлен `Finished: true` для корректного завершения стрима на Android
+  - **Исправлено**: Создание сессий — fallback `name = "Hermes"` если Android не отправляет name
+  - **Исправлено**: Сессия оркестратора теперь сохраняется в БД при создании
+  - Dev сервер пересобран и перезапущен (753c1a5)
+- **Android:**
+  - ⚠️ gRPC соединение нестабильно — Android клиент рвёт соединение. Требуется диагностика и исправление на стороне Android (keepalive, usePlaintext)
+  - ⚠️ AgentSettingsBottomSheet — нужно привязать тап по тулбару/аватарке
+
 ## [Unreleased] - 2026-06-02
 - **Server:**
   - **Исправлено**: Favorites — сообщения не отображались (9 ошибок "empty encrypted data")
