@@ -69,6 +69,15 @@ func (o *Orchestrator) getOrCreateSession(userID string) *OrchestratorSession {
 		LastActivity: time.Now(),
 	}
 	o.sessions[userID] = s
+
+	// Persist session to DB
+	if o.db != nil {
+		_, _ = o.db.Exec(
+			"INSERT INTO hermes_sessions (id, user_id, name) VALUES ($1, $2, $3) ON CONFLICT (id) DO UPDATE SET updated_at = NOW()",
+			"hermes-"+userID, userID, "Hermes",
+		)
+	}
+
 	return s
 }
 

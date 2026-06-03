@@ -3111,7 +3111,8 @@ func (s *server) ChatWithOrchestrator(req *gen.OrchestratorRequest, stream gen.C
 	if isNewSession {
 		welcomeMsg := s.buildWelcomeMessage()
 		if err := stream.Send(&gen.OrchestratorResponse{
-			Token: welcomeMsg,
+			Token:    welcomeMsg,
+			Finished: true,
 		}); err != nil {
 			return err
 		}
@@ -3397,9 +3398,14 @@ func (s *server) CreateHermesSession(_ context.Context, req *gen.CreateHermesSes
 
 	sessionID := "hermes-" + userID + "-" + uuid.New().String()[:8]
 
+	name := req.Name
+	if name == "" {
+		name = "Hermes"
+	}
+
 	_, err := s.db.Exec(
 		"INSERT INTO hermes_sessions (id, user_id, name) VALUES ($1, $2, $3)",
-		sessionID, userID, req.Name,
+		sessionID, userID, name,
 	)
 	if err != nil {
 		return &gen.CreateHermesSessionResponse{Success: false, Error: err.Error()}, nil
