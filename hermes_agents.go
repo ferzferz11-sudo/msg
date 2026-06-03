@@ -25,6 +25,7 @@ type AgentDefinition struct {
 	MaxTokens    int    // Максимум токенов ответа
 	IsPreset     bool   // true = системный пресет, false = кастомный
 	CreatedBy    string // user_id создателя (пусто = системный)
+	Icon         string // Иконка для UI (emoji)
 }
 
 // AgentPreset — шаблон для быстрого создания агента
@@ -225,6 +226,7 @@ func (r *HermesAgentRegistry) registerPresetAgents() {
 			MaxTokens:    p.MaxTokens,
 			IsPreset:     true,
 			CreatedBy:    "",
+			Icon:         p.Icon,
 		})
 	}
 }
@@ -280,6 +282,73 @@ func (r *HermesAgentRegistry) GetAll() []*AgentDefinition {
 		result = append(result, a)
 	}
 	return result
+}
+
+// GetPresets возвращает все пресет-агенты (для ListAgentPresets RPC)
+func (r *HermesAgentRegistry) GetPresets() []*AgentDefinition {
+	result := make([]*AgentDefinition, 0)
+	for _, a := range r.agents {
+		if a.IsPreset {
+			result = append(result, a)
+		}
+	}
+	return result
+}
+
+// LoadCustomAgents загружает кастомных агентов из БД и добавляет в реестр
+func (r *HermesAgentRegistry) LoadCustomAgents(db *sql.DB) {
+	if db == nil {
+		return
+	}
+	rows, err := db.Query(
+		"SELECT id, user_id, preset_id, name, COALESCE(system_prompt, ''), COALESCE(model, ''), COALESCE(max_tokens, 2048) FROM hermes_custom_agents ORDER BY created_at ASC")
+	if err != nil {
+		log.Printf("[Hermes] LoadCustomAgents DB error: %v", err)
+		return
+	}
+	defer rows.Close()
+
+	count := 0
+	for rows.Next() {
+		var agentID, userID, presetID, name, prompt, model string
+		var maxTokens int
+		if err := rows.Scan(&agentID, &userID, &presetID, &name, &prompt, &model, &maxTokens); err != nil {
+			continue
+		}
+		// Get preset as base
+		preset := GetPresetByID(presetID)
+		if preset == nil {
+			preset = GetPresetByID("preset-custom")
+		}
+		if prompt == "" {
+			preset = GetPresetByID(presetID)
+			if preset != nil {
+				prompt = preset.SystemPrompt
+			}
+		}
+		if model == "" {
+			model = preset.Model
+		}
+		if maxTokens <= 0 {
+			maxTokens = preset.MaxTokens
+		}
+
+		r.agents[agentID] = &AgentDefinition{
+			ID:           agentID,
+			Name:         name,
+			Role:         preset.Role,
+			Description:  preset.Description,
+			SystemPrompt: prompt,
+			Model:        model,
+			MaxTokens:    maxTokens,
+			IsPreset:     false,
+			CreatedBy:    userID,
+		}
+		count++
+	}
+	if count > 0 {
+		log.Printf("[Hermes] loaded %d custom agents from DB", count)
+	}
 }
 
 // GetByUserID возвращает агентов пользователя (кастомные + пресеты)

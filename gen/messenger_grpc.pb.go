@@ -19,67 +19,80 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	ChatService_Chat_FullMethodName                 = "/messenger.ChatService/Chat"
-	ChatService_Typing_FullMethodName               = "/messenger.ChatService/Typing"
-	ChatService_CallSession_FullMethodName          = "/messenger.ChatService/CallSession"
-	ChatService_GetClients_FullMethodName           = "/messenger.ChatService/GetClients"
-	ChatService_GetAllUsers_FullMethodName          = "/messenger.ChatService/GetAllUsers"
-	ChatService_GetAllChats_FullMethodName          = "/messenger.ChatService/GetAllChats"
-	ChatService_GetHistory_FullMethodName           = "/messenger.ChatService/GetHistory"
-	ChatService_SetReaction_FullMethodName          = "/messenger.ChatService/SetReaction"
-	ChatService_DeleteMessages_FullMethodName       = "/messenger.ChatService/DeleteMessages"
-	ChatService_RegisterToken_FullMethodName        = "/messenger.ChatService/RegisterToken"
-	ChatService_GetChats_FullMethodName             = "/messenger.ChatService/GetChats"
-	ChatService_GetChatListVersion_FullMethodName   = "/messenger.ChatService/GetChatListVersion"
-	ChatService_CreateDirectChat_FullMethodName     = "/messenger.ChatService/CreateDirectChat"
-	ChatService_CreateGroupChat_FullMethodName      = "/messenger.ChatService/CreateGroupChat"
-	ChatService_UpdateUsername_FullMethodName       = "/messenger.ChatService/UpdateUsername"
-	ChatService_UpdatePassword_FullMethodName       = "/messenger.ChatService/UpdatePassword"
-	ChatService_AdminUpdatePassword_FullMethodName  = "/messenger.ChatService/AdminUpdatePassword"
-	ChatService_MarkRead_FullMethodName             = "/messenger.ChatService/MarkRead"
-	ChatService_UpdateAvatar_FullMethodName         = "/messenger.ChatService/UpdateAvatar"
-	ChatService_UpdateProfile_FullMethodName        = "/messenger.ChatService/UpdateProfile"
-	ChatService_GetUserProfile_FullMethodName       = "/messenger.ChatService/GetUserProfile"
-	ChatService_GetUserAvatar_FullMethodName        = "/messenger.ChatService/GetUserAvatar"
-	ChatService_AddParticipant_FullMethodName       = "/messenger.ChatService/AddParticipant"
-	ChatService_RemoveParticipant_FullMethodName    = "/messenger.ChatService/RemoveParticipant"
-	ChatService_EditMessage_FullMethodName          = "/messenger.ChatService/EditMessage"
-	ChatService_UpdateChatName_FullMethodName       = "/messenger.ChatService/UpdateChatName"
-	ChatService_UpdateChatAvatar_FullMethodName     = "/messenger.ChatService/UpdateChatAvatar"
-	ChatService_UpdateChatSettings_FullMethodName   = "/messenger.ChatService/UpdateChatSettings"
-	ChatService_DeleteChat_FullMethodName           = "/messenger.ChatService/DeleteChat"
-	ChatService_DeleteProfile_FullMethodName        = "/messenger.ChatService/DeleteProfile"
-	ChatService_AddContact_FullMethodName           = "/messenger.ChatService/AddContact"
-	ChatService_RemoveContact_FullMethodName        = "/messenger.ChatService/RemoveContact"
-	ChatService_GetContacts_FullMethodName          = "/messenger.ChatService/GetContacts"
-	ChatService_GetThemes_FullMethodName            = "/messenger.ChatService/GetThemes"
-	ChatService_SaveTheme_FullMethodName            = "/messenger.ChatService/SaveTheme"
-	ChatService_SetCurrentTheme_FullMethodName      = "/messenger.ChatService/SetCurrentTheme"
-	ChatService_DeleteTheme_FullMethodName          = "/messenger.ChatService/DeleteTheme"
-	ChatService_GetFCMLogs_FullMethodName           = "/messenger.ChatService/GetFCMLogs"
-	ChatService_SaveDraft_FullMethodName            = "/messenger.ChatService/SaveDraft"
-	ChatService_GetDraft_FullMethodName             = "/messenger.ChatService/GetDraft"
-	ChatService_DeleteDraft_FullMethodName          = "/messenger.ChatService/DeleteDraft"
-	ChatService_GetMutedChats_FullMethodName        = "/messenger.ChatService/GetMutedChats"
-	ChatService_SetMutedChat_FullMethodName         = "/messenger.ChatService/SetMutedChat"
-	ChatService_GetUserId_FullMethodName            = "/messenger.ChatService/GetUserId"
-	ChatService_AddFavorite_FullMethodName          = "/messenger.ChatService/AddFavorite"
-	ChatService_RemoveFavorite_FullMethodName       = "/messenger.ChatService/RemoveFavorite"
-	ChatService_GetFavorites_FullMethodName         = "/messenger.ChatService/GetFavorites"
-	ChatService_SaveFavoriteMessage_FullMethodName  = "/messenger.ChatService/SaveFavoriteMessage"
-	ChatService_GetDevices_FullMethodName           = "/messenger.ChatService/GetDevices"
-	ChatService_DeleteDevice_FullMethodName         = "/messenger.ChatService/DeleteDevice"
-	ChatService_DeleteOtherDevices_FullMethodName   = "/messenger.ChatService/DeleteOtherDevices"
-	ChatService_RequestPasswordReset_FullMethodName = "/messenger.ChatService/RequestPasswordReset"
-	ChatService_ResetPassword_FullMethodName        = "/messenger.ChatService/ResetPassword"
-	ChatService_CreateSecretChat_FullMethodName     = "/messenger.ChatService/CreateSecretChat"
-	ChatService_ExchangeSecretKey_FullMethodName    = "/messenger.ChatService/ExchangeSecretKey"
-	ChatService_GetSecretChatKey_FullMethodName     = "/messenger.ChatService/GetSecretChatKey"
-	ChatService_ChatWithOWL_FullMethodName          = "/messenger.ChatService/ChatWithOWL"
-	ChatService_CreateOwlChat_FullMethodName        = "/messenger.ChatService/CreateOwlChat"
-	ChatService_DeleteOwlChat_FullMethodName        = "/messenger.ChatService/DeleteOwlChat"
-	ChatService_GetOwlHistory_FullMethodName        = "/messenger.ChatService/GetOwlHistory"
-	ChatService_UpdateOwlSettings_FullMethodName    = "/messenger.ChatService/UpdateOwlSettings"
+	ChatService_Chat_FullMethodName                   = "/messenger.ChatService/Chat"
+	ChatService_Typing_FullMethodName                 = "/messenger.ChatService/Typing"
+	ChatService_CallSession_FullMethodName            = "/messenger.ChatService/CallSession"
+	ChatService_GetClients_FullMethodName             = "/messenger.ChatService/GetClients"
+	ChatService_GetAllUsers_FullMethodName            = "/messenger.ChatService/GetAllUsers"
+	ChatService_GetAllChats_FullMethodName            = "/messenger.ChatService/GetAllChats"
+	ChatService_GetHistory_FullMethodName             = "/messenger.ChatService/GetHistory"
+	ChatService_SetReaction_FullMethodName            = "/messenger.ChatService/SetReaction"
+	ChatService_DeleteMessages_FullMethodName         = "/messenger.ChatService/DeleteMessages"
+	ChatService_RegisterToken_FullMethodName          = "/messenger.ChatService/RegisterToken"
+	ChatService_GetChats_FullMethodName               = "/messenger.ChatService/GetChats"
+	ChatService_GetChatListVersion_FullMethodName     = "/messenger.ChatService/GetChatListVersion"
+	ChatService_CreateDirectChat_FullMethodName       = "/messenger.ChatService/CreateDirectChat"
+	ChatService_CreateGroupChat_FullMethodName        = "/messenger.ChatService/CreateGroupChat"
+	ChatService_UpdateUsername_FullMethodName         = "/messenger.ChatService/UpdateUsername"
+	ChatService_UpdatePassword_FullMethodName         = "/messenger.ChatService/UpdatePassword"
+	ChatService_AdminUpdatePassword_FullMethodName    = "/messenger.ChatService/AdminUpdatePassword"
+	ChatService_MarkRead_FullMethodName               = "/messenger.ChatService/MarkRead"
+	ChatService_UpdateAvatar_FullMethodName           = "/messenger.ChatService/UpdateAvatar"
+	ChatService_UpdateProfile_FullMethodName          = "/messenger.ChatService/UpdateProfile"
+	ChatService_GetUserProfile_FullMethodName         = "/messenger.ChatService/GetUserProfile"
+	ChatService_GetUserAvatar_FullMethodName          = "/messenger.ChatService/GetUserAvatar"
+	ChatService_AddParticipant_FullMethodName         = "/messenger.ChatService/AddParticipant"
+	ChatService_RemoveParticipant_FullMethodName      = "/messenger.ChatService/RemoveParticipant"
+	ChatService_EditMessage_FullMethodName            = "/messenger.ChatService/EditMessage"
+	ChatService_UpdateChatName_FullMethodName         = "/messenger.ChatService/UpdateChatName"
+	ChatService_UpdateChatAvatar_FullMethodName       = "/messenger.ChatService/UpdateChatAvatar"
+	ChatService_UpdateChatSettings_FullMethodName     = "/messenger.ChatService/UpdateChatSettings"
+	ChatService_DeleteChat_FullMethodName             = "/messenger.ChatService/DeleteChat"
+	ChatService_DeleteProfile_FullMethodName          = "/messenger.ChatService/DeleteProfile"
+	ChatService_AddContact_FullMethodName             = "/messenger.ChatService/AddContact"
+	ChatService_RemoveContact_FullMethodName          = "/messenger.ChatService/RemoveContact"
+	ChatService_GetContacts_FullMethodName            = "/messenger.ChatService/GetContacts"
+	ChatService_GetThemes_FullMethodName              = "/messenger.ChatService/GetThemes"
+	ChatService_SaveTheme_FullMethodName              = "/messenger.ChatService/SaveTheme"
+	ChatService_SetCurrentTheme_FullMethodName        = "/messenger.ChatService/SetCurrentTheme"
+	ChatService_DeleteTheme_FullMethodName            = "/messenger.ChatService/DeleteTheme"
+	ChatService_GetFCMLogs_FullMethodName             = "/messenger.ChatService/GetFCMLogs"
+	ChatService_SaveDraft_FullMethodName              = "/messenger.ChatService/SaveDraft"
+	ChatService_GetDraft_FullMethodName               = "/messenger.ChatService/GetDraft"
+	ChatService_DeleteDraft_FullMethodName            = "/messenger.ChatService/DeleteDraft"
+	ChatService_GetMutedChats_FullMethodName          = "/messenger.ChatService/GetMutedChats"
+	ChatService_SetMutedChat_FullMethodName           = "/messenger.ChatService/SetMutedChat"
+	ChatService_GetUserId_FullMethodName              = "/messenger.ChatService/GetUserId"
+	ChatService_AddFavorite_FullMethodName            = "/messenger.ChatService/AddFavorite"
+	ChatService_RemoveFavorite_FullMethodName         = "/messenger.ChatService/RemoveFavorite"
+	ChatService_GetFavorites_FullMethodName           = "/messenger.ChatService/GetFavorites"
+	ChatService_SaveFavoriteMessage_FullMethodName    = "/messenger.ChatService/SaveFavoriteMessage"
+	ChatService_GetDevices_FullMethodName             = "/messenger.ChatService/GetDevices"
+	ChatService_DeleteDevice_FullMethodName           = "/messenger.ChatService/DeleteDevice"
+	ChatService_DeleteOtherDevices_FullMethodName     = "/messenger.ChatService/DeleteOtherDevices"
+	ChatService_RequestPasswordReset_FullMethodName   = "/messenger.ChatService/RequestPasswordReset"
+	ChatService_ResetPassword_FullMethodName          = "/messenger.ChatService/ResetPassword"
+	ChatService_CreateSecretChat_FullMethodName       = "/messenger.ChatService/CreateSecretChat"
+	ChatService_ExchangeSecretKey_FullMethodName      = "/messenger.ChatService/ExchangeSecretKey"
+	ChatService_GetSecretChatKey_FullMethodName       = "/messenger.ChatService/GetSecretChatKey"
+	ChatService_ChatWithOWL_FullMethodName            = "/messenger.ChatService/ChatWithOWL"
+	ChatService_CreateOwlChat_FullMethodName          = "/messenger.ChatService/CreateOwlChat"
+	ChatService_DeleteOwlChat_FullMethodName          = "/messenger.ChatService/DeleteOwlChat"
+	ChatService_GetOwlHistory_FullMethodName          = "/messenger.ChatService/GetOwlHistory"
+	ChatService_UpdateOwlSettings_FullMethodName      = "/messenger.ChatService/UpdateOwlSettings"
+	ChatService_ChatWithOrchestrator_FullMethodName   = "/messenger.ChatService/ChatWithOrchestrator"
+	ChatService_GetOrchestratorHistory_FullMethodName = "/messenger.ChatService/GetOrchestratorHistory"
+	ChatService_ListAgents_FullMethodName             = "/messenger.ChatService/ListAgents"
+	ChatService_ListAgentPresets_FullMethodName       = "/messenger.ChatService/ListAgentPresets"
+	ChatService_CreateAgent_FullMethodName            = "/messenger.ChatService/CreateAgent"
+	ChatService_UpdateAgent_FullMethodName            = "/messenger.ChatService/UpdateAgent"
+	ChatService_DeleteAgent_FullMethodName            = "/messenger.ChatService/DeleteAgent"
+	ChatService_ListUserAgents_FullMethodName         = "/messenger.ChatService/ListUserAgents"
+	ChatService_CreateHermesSession_FullMethodName    = "/messenger.ChatService/CreateHermesSession"
+	ChatService_DeleteHermesSession_FullMethodName    = "/messenger.ChatService/DeleteHermesSession"
+	ChatService_ListRemoteAgents_FullMethodName       = "/messenger.ChatService/ListRemoteAgents"
+	ChatService_DeployAgentTask_FullMethodName        = "/messenger.ChatService/DeployAgentTask"
+	ChatService_GetRemoteAgentStatus_FullMethodName   = "/messenger.ChatService/GetRemoteAgentStatus"
 )
 
 // ChatServiceClient is the client API for ChatService service.
@@ -149,6 +162,20 @@ type ChatServiceClient interface {
 	DeleteOwlChat(ctx context.Context, in *DeleteOwlChatRequest, opts ...grpc.CallOption) (*DeleteOwlChatResponse, error)
 	GetOwlHistory(ctx context.Context, in *GetOwlHistoryRequest, opts ...grpc.CallOption) (*GetOwlHistoryResponse, error)
 	UpdateOwlSettings(ctx context.Context, in *UpdateOwlSettingsRequest, opts ...grpc.CallOption) (*UpdateOwlSettingsResponse, error)
+	// Hermes Multi-Agent Orchestrator
+	ChatWithOrchestrator(ctx context.Context, in *OrchestratorRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[OrchestratorResponse], error)
+	GetOrchestratorHistory(ctx context.Context, in *GetOrchestratorHistoryRequest, opts ...grpc.CallOption) (*GetOrchestratorHistoryResponse, error)
+	ListAgents(ctx context.Context, in *ListAgentsRequest, opts ...grpc.CallOption) (*ListAgentsResponse, error)
+	ListAgentPresets(ctx context.Context, in *ListAgentPresetsRequest, opts ...grpc.CallOption) (*ListAgentPresetsResponse, error)
+	CreateAgent(ctx context.Context, in *CreateAgentRequest, opts ...grpc.CallOption) (*CreateAgentResponse, error)
+	UpdateAgent(ctx context.Context, in *UpdateAgentRequest, opts ...grpc.CallOption) (*UpdateAgentResponse, error)
+	DeleteAgent(ctx context.Context, in *DeleteAgentRequest, opts ...grpc.CallOption) (*DeleteAgentResponse, error)
+	ListUserAgents(ctx context.Context, in *ListUserAgentsRequest, opts ...grpc.CallOption) (*ListUserAgentsResponse, error)
+	CreateHermesSession(ctx context.Context, in *CreateHermesSessionRequest, opts ...grpc.CallOption) (*CreateHermesSessionResponse, error)
+	DeleteHermesSession(ctx context.Context, in *DeleteHermesSessionRequest, opts ...grpc.CallOption) (*DeleteHermesSessionResponse, error)
+	ListRemoteAgents(ctx context.Context, in *ListRemoteAgentsRequest, opts ...grpc.CallOption) (*ListRemoteAgentsResponse, error)
+	DeployAgentTask(ctx context.Context, in *DeployAgentTaskRequest, opts ...grpc.CallOption) (*DeployAgentTaskResponse, error)
+	GetRemoteAgentStatus(ctx context.Context, in *GetRemoteAgentStatusRequest, opts ...grpc.CallOption) (*GetRemoteAgentStatusResponse, error)
 }
 
 type chatServiceClient struct {
@@ -787,6 +814,145 @@ func (c *chatServiceClient) UpdateOwlSettings(ctx context.Context, in *UpdateOwl
 	return out, nil
 }
 
+func (c *chatServiceClient) ChatWithOrchestrator(ctx context.Context, in *OrchestratorRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[OrchestratorResponse], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &ChatService_ServiceDesc.Streams[4], ChatService_ChatWithOrchestrator_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[OrchestratorRequest, OrchestratorResponse]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type ChatService_ChatWithOrchestratorClient = grpc.ServerStreamingClient[OrchestratorResponse]
+
+func (c *chatServiceClient) GetOrchestratorHistory(ctx context.Context, in *GetOrchestratorHistoryRequest, opts ...grpc.CallOption) (*GetOrchestratorHistoryResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetOrchestratorHistoryResponse)
+	err := c.cc.Invoke(ctx, ChatService_GetOrchestratorHistory_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) ListAgents(ctx context.Context, in *ListAgentsRequest, opts ...grpc.CallOption) (*ListAgentsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListAgentsResponse)
+	err := c.cc.Invoke(ctx, ChatService_ListAgents_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) ListAgentPresets(ctx context.Context, in *ListAgentPresetsRequest, opts ...grpc.CallOption) (*ListAgentPresetsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListAgentPresetsResponse)
+	err := c.cc.Invoke(ctx, ChatService_ListAgentPresets_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) CreateAgent(ctx context.Context, in *CreateAgentRequest, opts ...grpc.CallOption) (*CreateAgentResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateAgentResponse)
+	err := c.cc.Invoke(ctx, ChatService_CreateAgent_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) UpdateAgent(ctx context.Context, in *UpdateAgentRequest, opts ...grpc.CallOption) (*UpdateAgentResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateAgentResponse)
+	err := c.cc.Invoke(ctx, ChatService_UpdateAgent_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) DeleteAgent(ctx context.Context, in *DeleteAgentRequest, opts ...grpc.CallOption) (*DeleteAgentResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteAgentResponse)
+	err := c.cc.Invoke(ctx, ChatService_DeleteAgent_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) ListUserAgents(ctx context.Context, in *ListUserAgentsRequest, opts ...grpc.CallOption) (*ListUserAgentsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListUserAgentsResponse)
+	err := c.cc.Invoke(ctx, ChatService_ListUserAgents_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) CreateHermesSession(ctx context.Context, in *CreateHermesSessionRequest, opts ...grpc.CallOption) (*CreateHermesSessionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateHermesSessionResponse)
+	err := c.cc.Invoke(ctx, ChatService_CreateHermesSession_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) DeleteHermesSession(ctx context.Context, in *DeleteHermesSessionRequest, opts ...grpc.CallOption) (*DeleteHermesSessionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteHermesSessionResponse)
+	err := c.cc.Invoke(ctx, ChatService_DeleteHermesSession_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) ListRemoteAgents(ctx context.Context, in *ListRemoteAgentsRequest, opts ...grpc.CallOption) (*ListRemoteAgentsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListRemoteAgentsResponse)
+	err := c.cc.Invoke(ctx, ChatService_ListRemoteAgents_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) DeployAgentTask(ctx context.Context, in *DeployAgentTaskRequest, opts ...grpc.CallOption) (*DeployAgentTaskResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeployAgentTaskResponse)
+	err := c.cc.Invoke(ctx, ChatService_DeployAgentTask_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) GetRemoteAgentStatus(ctx context.Context, in *GetRemoteAgentStatusRequest, opts ...grpc.CallOption) (*GetRemoteAgentStatusResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetRemoteAgentStatusResponse)
+	err := c.cc.Invoke(ctx, ChatService_GetRemoteAgentStatus_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ChatServiceServer is the server API for ChatService service.
 // All implementations must embed UnimplementedChatServiceServer
 // for forward compatibility.
@@ -854,6 +1020,20 @@ type ChatServiceServer interface {
 	DeleteOwlChat(context.Context, *DeleteOwlChatRequest) (*DeleteOwlChatResponse, error)
 	GetOwlHistory(context.Context, *GetOwlHistoryRequest) (*GetOwlHistoryResponse, error)
 	UpdateOwlSettings(context.Context, *UpdateOwlSettingsRequest) (*UpdateOwlSettingsResponse, error)
+	// Hermes Multi-Agent Orchestrator
+	ChatWithOrchestrator(*OrchestratorRequest, grpc.ServerStreamingServer[OrchestratorResponse]) error
+	GetOrchestratorHistory(context.Context, *GetOrchestratorHistoryRequest) (*GetOrchestratorHistoryResponse, error)
+	ListAgents(context.Context, *ListAgentsRequest) (*ListAgentsResponse, error)
+	ListAgentPresets(context.Context, *ListAgentPresetsRequest) (*ListAgentPresetsResponse, error)
+	CreateAgent(context.Context, *CreateAgentRequest) (*CreateAgentResponse, error)
+	UpdateAgent(context.Context, *UpdateAgentRequest) (*UpdateAgentResponse, error)
+	DeleteAgent(context.Context, *DeleteAgentRequest) (*DeleteAgentResponse, error)
+	ListUserAgents(context.Context, *ListUserAgentsRequest) (*ListUserAgentsResponse, error)
+	CreateHermesSession(context.Context, *CreateHermesSessionRequest) (*CreateHermesSessionResponse, error)
+	DeleteHermesSession(context.Context, *DeleteHermesSessionRequest) (*DeleteHermesSessionResponse, error)
+	ListRemoteAgents(context.Context, *ListRemoteAgentsRequest) (*ListRemoteAgentsResponse, error)
+	DeployAgentTask(context.Context, *DeployAgentTaskRequest) (*DeployAgentTaskResponse, error)
+	GetRemoteAgentStatus(context.Context, *GetRemoteAgentStatusRequest) (*GetRemoteAgentStatusResponse, error)
 	mustEmbedUnimplementedChatServiceServer()
 }
 
@@ -1046,6 +1226,45 @@ func (UnimplementedChatServiceServer) GetOwlHistory(context.Context, *GetOwlHist
 }
 func (UnimplementedChatServiceServer) UpdateOwlSettings(context.Context, *UpdateOwlSettingsRequest) (*UpdateOwlSettingsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method UpdateOwlSettings not implemented")
+}
+func (UnimplementedChatServiceServer) ChatWithOrchestrator(*OrchestratorRequest, grpc.ServerStreamingServer[OrchestratorResponse]) error {
+	return status.Error(codes.Unimplemented, "method ChatWithOrchestrator not implemented")
+}
+func (UnimplementedChatServiceServer) GetOrchestratorHistory(context.Context, *GetOrchestratorHistoryRequest) (*GetOrchestratorHistoryResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetOrchestratorHistory not implemented")
+}
+func (UnimplementedChatServiceServer) ListAgents(context.Context, *ListAgentsRequest) (*ListAgentsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListAgents not implemented")
+}
+func (UnimplementedChatServiceServer) ListAgentPresets(context.Context, *ListAgentPresetsRequest) (*ListAgentPresetsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListAgentPresets not implemented")
+}
+func (UnimplementedChatServiceServer) CreateAgent(context.Context, *CreateAgentRequest) (*CreateAgentResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateAgent not implemented")
+}
+func (UnimplementedChatServiceServer) UpdateAgent(context.Context, *UpdateAgentRequest) (*UpdateAgentResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateAgent not implemented")
+}
+func (UnimplementedChatServiceServer) DeleteAgent(context.Context, *DeleteAgentRequest) (*DeleteAgentResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteAgent not implemented")
+}
+func (UnimplementedChatServiceServer) ListUserAgents(context.Context, *ListUserAgentsRequest) (*ListUserAgentsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListUserAgents not implemented")
+}
+func (UnimplementedChatServiceServer) CreateHermesSession(context.Context, *CreateHermesSessionRequest) (*CreateHermesSessionResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateHermesSession not implemented")
+}
+func (UnimplementedChatServiceServer) DeleteHermesSession(context.Context, *DeleteHermesSessionRequest) (*DeleteHermesSessionResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteHermesSession not implemented")
+}
+func (UnimplementedChatServiceServer) ListRemoteAgents(context.Context, *ListRemoteAgentsRequest) (*ListRemoteAgentsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListRemoteAgents not implemented")
+}
+func (UnimplementedChatServiceServer) DeployAgentTask(context.Context, *DeployAgentTaskRequest) (*DeployAgentTaskResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeployAgentTask not implemented")
+}
+func (UnimplementedChatServiceServer) GetRemoteAgentStatus(context.Context, *GetRemoteAgentStatusRequest) (*GetRemoteAgentStatusResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetRemoteAgentStatus not implemented")
 }
 func (UnimplementedChatServiceServer) mustEmbedUnimplementedChatServiceServer() {}
 func (UnimplementedChatServiceServer) testEmbeddedByValue()                     {}
@@ -2126,6 +2345,233 @@ func _ChatService_UpdateOwlSettings_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ChatService_ChatWithOrchestrator_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(OrchestratorRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(ChatServiceServer).ChatWithOrchestrator(m, &grpc.GenericServerStream[OrchestratorRequest, OrchestratorResponse]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type ChatService_ChatWithOrchestratorServer = grpc.ServerStreamingServer[OrchestratorResponse]
+
+func _ChatService_GetOrchestratorHistory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetOrchestratorHistoryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).GetOrchestratorHistory(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_GetOrchestratorHistory_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).GetOrchestratorHistory(ctx, req.(*GetOrchestratorHistoryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_ListAgents_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListAgentsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).ListAgents(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_ListAgents_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).ListAgents(ctx, req.(*ListAgentsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_ListAgentPresets_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListAgentPresetsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).ListAgentPresets(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_ListAgentPresets_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).ListAgentPresets(ctx, req.(*ListAgentPresetsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_CreateAgent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateAgentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).CreateAgent(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_CreateAgent_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).CreateAgent(ctx, req.(*CreateAgentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_UpdateAgent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateAgentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).UpdateAgent(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_UpdateAgent_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).UpdateAgent(ctx, req.(*UpdateAgentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_DeleteAgent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteAgentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).DeleteAgent(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_DeleteAgent_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).DeleteAgent(ctx, req.(*DeleteAgentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_ListUserAgents_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListUserAgentsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).ListUserAgents(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_ListUserAgents_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).ListUserAgents(ctx, req.(*ListUserAgentsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_CreateHermesSession_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateHermesSessionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).CreateHermesSession(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_CreateHermesSession_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).CreateHermesSession(ctx, req.(*CreateHermesSessionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_DeleteHermesSession_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteHermesSessionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).DeleteHermesSession(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_DeleteHermesSession_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).DeleteHermesSession(ctx, req.(*DeleteHermesSessionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_ListRemoteAgents_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListRemoteAgentsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).ListRemoteAgents(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_ListRemoteAgents_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).ListRemoteAgents(ctx, req.(*ListRemoteAgentsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_DeployAgentTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeployAgentTaskRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).DeployAgentTask(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_DeployAgentTask_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).DeployAgentTask(ctx, req.(*DeployAgentTaskRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_GetRemoteAgentStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetRemoteAgentStatusRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).GetRemoteAgentStatus(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_GetRemoteAgentStatus_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).GetRemoteAgentStatus(ctx, req.(*GetRemoteAgentStatusRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ChatService_ServiceDesc is the grpc.ServiceDesc for ChatService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -2361,6 +2807,54 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "UpdateOwlSettings",
 			Handler:    _ChatService_UpdateOwlSettings_Handler,
 		},
+		{
+			MethodName: "GetOrchestratorHistory",
+			Handler:    _ChatService_GetOrchestratorHistory_Handler,
+		},
+		{
+			MethodName: "ListAgents",
+			Handler:    _ChatService_ListAgents_Handler,
+		},
+		{
+			MethodName: "ListAgentPresets",
+			Handler:    _ChatService_ListAgentPresets_Handler,
+		},
+		{
+			MethodName: "CreateAgent",
+			Handler:    _ChatService_CreateAgent_Handler,
+		},
+		{
+			MethodName: "UpdateAgent",
+			Handler:    _ChatService_UpdateAgent_Handler,
+		},
+		{
+			MethodName: "DeleteAgent",
+			Handler:    _ChatService_DeleteAgent_Handler,
+		},
+		{
+			MethodName: "ListUserAgents",
+			Handler:    _ChatService_ListUserAgents_Handler,
+		},
+		{
+			MethodName: "CreateHermesSession",
+			Handler:    _ChatService_CreateHermesSession_Handler,
+		},
+		{
+			MethodName: "DeleteHermesSession",
+			Handler:    _ChatService_DeleteHermesSession_Handler,
+		},
+		{
+			MethodName: "ListRemoteAgents",
+			Handler:    _ChatService_ListRemoteAgents_Handler,
+		},
+		{
+			MethodName: "DeployAgentTask",
+			Handler:    _ChatService_DeployAgentTask_Handler,
+		},
+		{
+			MethodName: "GetRemoteAgentStatus",
+			Handler:    _ChatService_GetRemoteAgentStatus_Handler,
+		},
 	},
 	Streams: []grpc.StreamDesc{
 		{
@@ -2384,6 +2878,11 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "ChatWithOWL",
 			Handler:       _ChatService_ChatWithOWL_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "ChatWithOrchestrator",
+			Handler:       _ChatService_ChatWithOrchestrator_Handler,
 			ServerStreams: true,
 		},
 	},

@@ -224,51 +224,27 @@ func (o *Orchestrator) runSingleAgent(ctx context.Context, session *Orchestrator
 		return err
 	}
 
-	// Вызываем агента через streamOpenRouter
+	// Вызываем агента через streamOpenRouter с callback
 	model := agent.Model
 	if model == "" {
 		model = o.model
 	}
-
-	// Формируем историю для агента
 	agentHistory := o.buildAgentHistory(session)
 
-	streamResult := streamOpenRouter(ctx, o.apiKey, model, agent.SystemPrompt, agentHistory)
-
 	var fullResponse strings.Builder
-	for {
-		select {
-		case <-ctx.Done():
+	err := streamOpenRouter(ctx, o.apiKey, model, agent.SystemPrompt, agentHistory, func(token string, finished bool) error {
+		if finished {
 			if fullResponse.Len() > 0 {
 				o.saveAgentMessage(session, agentID, fullResponse.String())
 			}
 			return nil
-
-		case err, ok := <-streamResult.Err:
-			if ok && err != nil {
-				return fmt.Errorf("agent %s error: %w", agentID, err)
-			}
-
-		case token, ok := <-streamResult.Tokens:
-			if !ok {
-				goto done
-			}
-			fullResponse.WriteString(token)
-			if sendErr := streamFn(token, false); sendErr != nil {
-				return nil
-			}
-
-		case full, ok := <-streamResult.Done:
-			if !ok {
-				goto done
-			}
-			o.saveAgentMessage(session, agentID, full)
-			_ = streamFn("", true)
-			return nil
 		}
+		fullResponse.WriteString(token)
+		return streamFn(token, false)
+	})
+	if err != nil {
+		return fmt.Errorf("agent %s error: %w", agentID, err)
 	}
-
-done:
 	if fullResponse.Len() > 0 {
 		o.saveAgentMessage(session, agentID, fullResponse.String())
 		_ = streamFn("", true)
@@ -305,34 +281,18 @@ func (o *Orchestrator) runParallelAgents(ctx context.Context, session *Orchestra
 			}
 
 			agentHistory := o.buildAgentHistory(session)
-			streamResult := streamOpenRouter(ctx, o.apiKey, model, agent.SystemPrompt, agentHistory)
-
 			var full strings.Builder
-			for {
-				select {
-				case <-ctx.Done():
-					results[idx] = agentResult{AgentID: id, Response: full.String()}
-					return
-				case err, ok := <-streamResult.Err:
-					if ok && err != nil {
-						results[idx] = agentResult{AgentID: id, Error: err, Response: full.String()}
-						return
-					}
-				case token, ok := <-streamResult.Tokens:
-					if !ok {
-						results[idx] = agentResult{AgentID: id, Response: full.String()}
-						return
-					}
-					full.WriteString(token)
-				case done, ok := <-streamResult.Done:
-					if !ok {
-						results[idx] = agentResult{AgentID: id, Response: full.String()}
-						return
-					}
-					results[idx] = agentResult{AgentID: id, Response: done}
-					return
+			if err := streamOpenRouter(ctx, o.apiKey, model, agent.SystemPrompt, agentHistory, func(token string, finished bool) error {
+				if finished {
+					return nil
 				}
+				full.WriteString(token)
+				return nil
+			}); err != nil {
+				results[idx] = agentResult{AgentID: id, Error: err, Response: full.String()}
+				return
 			}
+			results[idx] = agentResult{AgentID: id, Response: full.String()}
 		}(i, agentID)
 	}
 
@@ -400,36 +360,17 @@ func (o *Orchestrator) runPipelineAgents(ctx context.Context, session *Orchestra
 			{"role": "user", "content": currentInput},
 		}
 
-		streamResult := streamOpenRouter(ctx, o.apiKey, model, agent.SystemPrompt, agentHistory)
-
 		var full strings.Builder
-		for {
-			select {
-			case <-ctx.Done():
+		err := streamOpenRouter(ctx, o.apiKey, model, agent.SystemPrompt, agentHistory, func(token string, finished bool) error {
+			if finished {
 				return nil
-			case err, ok := <-streamResult.Err:
-				if ok && err != nil {
-					return fmt.Errorf("pipeline agent %s error: %w", agentID, err)
-				}
-			case token, ok := <-streamResult.Tokens:
-				if !ok {
-					goto pipelineNext
-				}
-				full.WriteString(token)
-				if sendErr := streamFn(token, false); sendErr != nil {
-					return nil
-				}
-			case done, ok := <-streamResult.Done:
-				if !ok {
-					goto pipelineNext
-				}
-				o.saveAgentMessage(session, agentID, done)
-				currentInput = done // Output → input следующего
-				goto pipelineNext
 			}
+			full.WriteString(token)
+			return streamFn(token, false)
+		})
+		if err != nil {
+			return fmt.Errorf("pipeline agent %s error: %w", agentID, err)
 		}
-
-	pipelineNext:
 		if full.Len() > 0 {
 			o.saveAgentMessage(session, agentID, full.String())
 			currentInput = full.String()

@@ -158,6 +158,21 @@ func ConnectDB() (*DB, error) {
 
 func (db *DB) Close() error { return db.DB.Close() }
 
+// Query — прокси к sql.DB.Query
+func (db *DB) Query(query string, args ...interface{}) (*sql.Rows, error) {
+	return db.DB.Query(query, args...)
+}
+
+// QueryRow — прокси к sql.DB.QueryRow
+func (db *DB) QueryRow(query string, args ...interface{}) *sql.Row {
+	return db.DB.QueryRow(query, args...)
+}
+
+// Exec — прокси к sql.DB.Exec
+func (db *DB) Exec(query string, args ...interface{}) (sql.Result, error) {
+	return db.DB.Exec(query, args...)
+}
+
 func (db *DB) SaveMessage(mid, user, uid string, enc []byte, created time.Time, rmid, ruser, rtext, room, img, imgUrls, voice string, dur int32, isE2EE ...bool) error {
 	// Favorites messages are to self, so mark as read immediately
 	isRead := strings.HasPrefix(room, "favorites_")

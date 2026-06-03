@@ -7273,6 +7273,1750 @@ func (x *OWLResponse) GetError() string {
 	return ""
 }
 
+type OrchestratorRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	SessionId     string                 `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	Message       string                 `protobuf:"bytes,3,opt,name=message,proto3" json:"message,omitempty"`
+	AgentId       string                 `protobuf:"bytes,4,opt,name=agent_id,json=agentId,proto3" json:"agent_id,omitempty"` // Optional: force specific agent
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *OrchestratorRequest) Reset() {
+	*x = OrchestratorRequest{}
+	mi := &file_messenger_proto_msgTypes[124]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *OrchestratorRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OrchestratorRequest) ProtoMessage() {}
+
+func (x *OrchestratorRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_messenger_proto_msgTypes[124]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OrchestratorRequest.ProtoReflect.Descriptor instead.
+func (*OrchestratorRequest) Descriptor() ([]byte, []int) {
+	return file_messenger_proto_rawDescGZIP(), []int{124}
+}
+
+func (x *OrchestratorRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *OrchestratorRequest) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+func (x *OrchestratorRequest) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *OrchestratorRequest) GetAgentId() string {
+	if x != nil {
+		return x.AgentId
+	}
+	return ""
+}
+
+type OrchestratorResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Token         string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
+	Finished      bool                   `protobuf:"varint,2,opt,name=finished,proto3" json:"finished,omitempty"`
+	Error         string                 `protobuf:"bytes,3,opt,name=error,proto3" json:"error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *OrchestratorResponse) Reset() {
+	*x = OrchestratorResponse{}
+	mi := &file_messenger_proto_msgTypes[125]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *OrchestratorResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OrchestratorResponse) ProtoMessage() {}
+
+func (x *OrchestratorResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_messenger_proto_msgTypes[125]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OrchestratorResponse.ProtoReflect.Descriptor instead.
+func (*OrchestratorResponse) Descriptor() ([]byte, []int) {
+	return file_messenger_proto_rawDescGZIP(), []int{125}
+}
+
+func (x *OrchestratorResponse) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
+func (x *OrchestratorResponse) GetFinished() bool {
+	if x != nil {
+		return x.Finished
+	}
+	return false
+}
+
+func (x *OrchestratorResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+type HermesChatMessage struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Role          string                 `protobuf:"bytes,1,opt,name=role,proto3" json:"role,omitempty"` // "user", "assistant", "system"
+	Content       string                 `protobuf:"bytes,2,opt,name=content,proto3" json:"content,omitempty"`
+	CreatedAt     string                 `protobuf:"bytes,3,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *HermesChatMessage) Reset() {
+	*x = HermesChatMessage{}
+	mi := &file_messenger_proto_msgTypes[126]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *HermesChatMessage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*HermesChatMessage) ProtoMessage() {}
+
+func (x *HermesChatMessage) ProtoReflect() protoreflect.Message {
+	mi := &file_messenger_proto_msgTypes[126]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use HermesChatMessage.ProtoReflect.Descriptor instead.
+func (*HermesChatMessage) Descriptor() ([]byte, []int) {
+	return file_messenger_proto_rawDescGZIP(), []int{126}
+}
+
+func (x *HermesChatMessage) GetRole() string {
+	if x != nil {
+		return x.Role
+	}
+	return ""
+}
+
+func (x *HermesChatMessage) GetContent() string {
+	if x != nil {
+		return x.Content
+	}
+	return ""
+}
+
+func (x *HermesChatMessage) GetCreatedAt() string {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return ""
+}
+
+type GetOrchestratorHistoryRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	SessionId     string                 `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetOrchestratorHistoryRequest) Reset() {
+	*x = GetOrchestratorHistoryRequest{}
+	mi := &file_messenger_proto_msgTypes[127]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetOrchestratorHistoryRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetOrchestratorHistoryRequest) ProtoMessage() {}
+
+func (x *GetOrchestratorHistoryRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_messenger_proto_msgTypes[127]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetOrchestratorHistoryRequest.ProtoReflect.Descriptor instead.
+func (*GetOrchestratorHistoryRequest) Descriptor() ([]byte, []int) {
+	return file_messenger_proto_rawDescGZIP(), []int{127}
+}
+
+func (x *GetOrchestratorHistoryRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *GetOrchestratorHistoryRequest) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+type GetOrchestratorHistoryResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Messages      []*HermesChatMessage   `protobuf:"bytes,1,rep,name=messages,proto3" json:"messages,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetOrchestratorHistoryResponse) Reset() {
+	*x = GetOrchestratorHistoryResponse{}
+	mi := &file_messenger_proto_msgTypes[128]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetOrchestratorHistoryResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetOrchestratorHistoryResponse) ProtoMessage() {}
+
+func (x *GetOrchestratorHistoryResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_messenger_proto_msgTypes[128]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetOrchestratorHistoryResponse.ProtoReflect.Descriptor instead.
+func (*GetOrchestratorHistoryResponse) Descriptor() ([]byte, []int) {
+	return file_messenger_proto_rawDescGZIP(), []int{128}
+}
+
+func (x *GetOrchestratorHistoryResponse) GetMessages() []*HermesChatMessage {
+	if x != nil {
+		return x.Messages
+	}
+	return nil
+}
+
+type AgentInfo struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Description   string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	IsPreset      bool                   `protobuf:"varint,4,opt,name=is_preset,json=isPreset,proto3" json:"is_preset,omitempty"`
+	SystemPrompt  string                 `protobuf:"bytes,5,opt,name=system_prompt,json=systemPrompt,proto3" json:"system_prompt,omitempty"`
+	Model         string                 `protobuf:"bytes,6,opt,name=model,proto3" json:"model,omitempty"`
+	MaxTokens     int32                  `protobuf:"varint,7,opt,name=max_tokens,json=maxTokens,proto3" json:"max_tokens,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AgentInfo) Reset() {
+	*x = AgentInfo{}
+	mi := &file_messenger_proto_msgTypes[129]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AgentInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AgentInfo) ProtoMessage() {}
+
+func (x *AgentInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_messenger_proto_msgTypes[129]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AgentInfo.ProtoReflect.Descriptor instead.
+func (*AgentInfo) Descriptor() ([]byte, []int) {
+	return file_messenger_proto_rawDescGZIP(), []int{129}
+}
+
+func (x *AgentInfo) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *AgentInfo) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *AgentInfo) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *AgentInfo) GetIsPreset() bool {
+	if x != nil {
+		return x.IsPreset
+	}
+	return false
+}
+
+func (x *AgentInfo) GetSystemPrompt() string {
+	if x != nil {
+		return x.SystemPrompt
+	}
+	return ""
+}
+
+func (x *AgentInfo) GetModel() string {
+	if x != nil {
+		return x.Model
+	}
+	return ""
+}
+
+func (x *AgentInfo) GetMaxTokens() int32 {
+	if x != nil {
+		return x.MaxTokens
+	}
+	return 0
+}
+
+type AgentPresetInfo struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Role          string                 `protobuf:"bytes,3,opt,name=role,proto3" json:"role,omitempty"`
+	Description   string                 `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
+	Icon          string                 `protobuf:"bytes,5,opt,name=icon,proto3" json:"icon,omitempty"` // emoji
+	MaxTokens     int32                  `protobuf:"varint,6,opt,name=max_tokens,json=maxTokens,proto3" json:"max_tokens,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AgentPresetInfo) Reset() {
+	*x = AgentPresetInfo{}
+	mi := &file_messenger_proto_msgTypes[130]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AgentPresetInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AgentPresetInfo) ProtoMessage() {}
+
+func (x *AgentPresetInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_messenger_proto_msgTypes[130]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AgentPresetInfo.ProtoReflect.Descriptor instead.
+func (*AgentPresetInfo) Descriptor() ([]byte, []int) {
+	return file_messenger_proto_rawDescGZIP(), []int{130}
+}
+
+func (x *AgentPresetInfo) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *AgentPresetInfo) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *AgentPresetInfo) GetRole() string {
+	if x != nil {
+		return x.Role
+	}
+	return ""
+}
+
+func (x *AgentPresetInfo) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *AgentPresetInfo) GetIcon() string {
+	if x != nil {
+		return x.Icon
+	}
+	return ""
+}
+
+func (x *AgentPresetInfo) GetMaxTokens() int32 {
+	if x != nil {
+		return x.MaxTokens
+	}
+	return 0
+}
+
+type ListAgentsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListAgentsRequest) Reset() {
+	*x = ListAgentsRequest{}
+	mi := &file_messenger_proto_msgTypes[131]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListAgentsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListAgentsRequest) ProtoMessage() {}
+
+func (x *ListAgentsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_messenger_proto_msgTypes[131]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListAgentsRequest.ProtoReflect.Descriptor instead.
+func (*ListAgentsRequest) Descriptor() ([]byte, []int) {
+	return file_messenger_proto_rawDescGZIP(), []int{131}
+}
+
+func (x *ListAgentsRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+type ListAgentsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Agents        []*AgentInfo           `protobuf:"bytes,1,rep,name=agents,proto3" json:"agents,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListAgentsResponse) Reset() {
+	*x = ListAgentsResponse{}
+	mi := &file_messenger_proto_msgTypes[132]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListAgentsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListAgentsResponse) ProtoMessage() {}
+
+func (x *ListAgentsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_messenger_proto_msgTypes[132]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListAgentsResponse.ProtoReflect.Descriptor instead.
+func (*ListAgentsResponse) Descriptor() ([]byte, []int) {
+	return file_messenger_proto_rawDescGZIP(), []int{132}
+}
+
+func (x *ListAgentsResponse) GetAgents() []*AgentInfo {
+	if x != nil {
+		return x.Agents
+	}
+	return nil
+}
+
+type ListAgentPresetsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListAgentPresetsRequest) Reset() {
+	*x = ListAgentPresetsRequest{}
+	mi := &file_messenger_proto_msgTypes[133]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListAgentPresetsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListAgentPresetsRequest) ProtoMessage() {}
+
+func (x *ListAgentPresetsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_messenger_proto_msgTypes[133]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListAgentPresetsRequest.ProtoReflect.Descriptor instead.
+func (*ListAgentPresetsRequest) Descriptor() ([]byte, []int) {
+	return file_messenger_proto_rawDescGZIP(), []int{133}
+}
+
+type ListAgentPresetsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Presets       []*AgentPresetInfo     `protobuf:"bytes,1,rep,name=presets,proto3" json:"presets,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListAgentPresetsResponse) Reset() {
+	*x = ListAgentPresetsResponse{}
+	mi := &file_messenger_proto_msgTypes[134]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListAgentPresetsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListAgentPresetsResponse) ProtoMessage() {}
+
+func (x *ListAgentPresetsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_messenger_proto_msgTypes[134]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListAgentPresetsResponse.ProtoReflect.Descriptor instead.
+func (*ListAgentPresetsResponse) Descriptor() ([]byte, []int) {
+	return file_messenger_proto_rawDescGZIP(), []int{134}
+}
+
+func (x *ListAgentPresetsResponse) GetPresets() []*AgentPresetInfo {
+	if x != nil {
+		return x.Presets
+	}
+	return nil
+}
+
+type CreateAgentRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	PresetId      string                 `protobuf:"bytes,2,opt,name=preset_id,json=presetId,proto3" json:"preset_id,omitempty"`
+	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	SystemPrompt  string                 `protobuf:"bytes,4,opt,name=system_prompt,json=systemPrompt,proto3" json:"system_prompt,omitempty"`
+	Model         string                 `protobuf:"bytes,5,opt,name=model,proto3" json:"model,omitempty"`
+	MaxTokens     int32                  `protobuf:"varint,6,opt,name=max_tokens,json=maxTokens,proto3" json:"max_tokens,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateAgentRequest) Reset() {
+	*x = CreateAgentRequest{}
+	mi := &file_messenger_proto_msgTypes[135]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateAgentRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateAgentRequest) ProtoMessage() {}
+
+func (x *CreateAgentRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_messenger_proto_msgTypes[135]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateAgentRequest.ProtoReflect.Descriptor instead.
+func (*CreateAgentRequest) Descriptor() ([]byte, []int) {
+	return file_messenger_proto_rawDescGZIP(), []int{135}
+}
+
+func (x *CreateAgentRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *CreateAgentRequest) GetPresetId() string {
+	if x != nil {
+		return x.PresetId
+	}
+	return ""
+}
+
+func (x *CreateAgentRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *CreateAgentRequest) GetSystemPrompt() string {
+	if x != nil {
+		return x.SystemPrompt
+	}
+	return ""
+}
+
+func (x *CreateAgentRequest) GetModel() string {
+	if x != nil {
+		return x.Model
+	}
+	return ""
+}
+
+func (x *CreateAgentRequest) GetMaxTokens() int32 {
+	if x != nil {
+		return x.MaxTokens
+	}
+	return 0
+}
+
+type CreateAgentResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	AgentId       string                 `protobuf:"bytes,2,opt,name=agent_id,json=agentId,proto3" json:"agent_id,omitempty"`
+	Error         string                 `protobuf:"bytes,3,opt,name=error,proto3" json:"error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateAgentResponse) Reset() {
+	*x = CreateAgentResponse{}
+	mi := &file_messenger_proto_msgTypes[136]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateAgentResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateAgentResponse) ProtoMessage() {}
+
+func (x *CreateAgentResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_messenger_proto_msgTypes[136]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateAgentResponse.ProtoReflect.Descriptor instead.
+func (*CreateAgentResponse) Descriptor() ([]byte, []int) {
+	return file_messenger_proto_rawDescGZIP(), []int{136}
+}
+
+func (x *CreateAgentResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *CreateAgentResponse) GetAgentId() string {
+	if x != nil {
+		return x.AgentId
+	}
+	return ""
+}
+
+func (x *CreateAgentResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+type UpdateAgentRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AgentId       string                 `protobuf:"bytes,1,opt,name=agent_id,json=agentId,proto3" json:"agent_id,omitempty"`
+	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	SystemPrompt  string                 `protobuf:"bytes,4,opt,name=system_prompt,json=systemPrompt,proto3" json:"system_prompt,omitempty"`
+	Model         string                 `protobuf:"bytes,5,opt,name=model,proto3" json:"model,omitempty"`
+	MaxTokens     int32                  `protobuf:"varint,6,opt,name=max_tokens,json=maxTokens,proto3" json:"max_tokens,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateAgentRequest) Reset() {
+	*x = UpdateAgentRequest{}
+	mi := &file_messenger_proto_msgTypes[137]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateAgentRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateAgentRequest) ProtoMessage() {}
+
+func (x *UpdateAgentRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_messenger_proto_msgTypes[137]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateAgentRequest.ProtoReflect.Descriptor instead.
+func (*UpdateAgentRequest) Descriptor() ([]byte, []int) {
+	return file_messenger_proto_rawDescGZIP(), []int{137}
+}
+
+func (x *UpdateAgentRequest) GetAgentId() string {
+	if x != nil {
+		return x.AgentId
+	}
+	return ""
+}
+
+func (x *UpdateAgentRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *UpdateAgentRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *UpdateAgentRequest) GetSystemPrompt() string {
+	if x != nil {
+		return x.SystemPrompt
+	}
+	return ""
+}
+
+func (x *UpdateAgentRequest) GetModel() string {
+	if x != nil {
+		return x.Model
+	}
+	return ""
+}
+
+func (x *UpdateAgentRequest) GetMaxTokens() int32 {
+	if x != nil {
+		return x.MaxTokens
+	}
+	return 0
+}
+
+type UpdateAgentResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	Error         string                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateAgentResponse) Reset() {
+	*x = UpdateAgentResponse{}
+	mi := &file_messenger_proto_msgTypes[138]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateAgentResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateAgentResponse) ProtoMessage() {}
+
+func (x *UpdateAgentResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_messenger_proto_msgTypes[138]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateAgentResponse.ProtoReflect.Descriptor instead.
+func (*UpdateAgentResponse) Descriptor() ([]byte, []int) {
+	return file_messenger_proto_rawDescGZIP(), []int{138}
+}
+
+func (x *UpdateAgentResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *UpdateAgentResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+type DeleteAgentRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AgentId       string                 `protobuf:"bytes,1,opt,name=agent_id,json=agentId,proto3" json:"agent_id,omitempty"`
+	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteAgentRequest) Reset() {
+	*x = DeleteAgentRequest{}
+	mi := &file_messenger_proto_msgTypes[139]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteAgentRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteAgentRequest) ProtoMessage() {}
+
+func (x *DeleteAgentRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_messenger_proto_msgTypes[139]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteAgentRequest.ProtoReflect.Descriptor instead.
+func (*DeleteAgentRequest) Descriptor() ([]byte, []int) {
+	return file_messenger_proto_rawDescGZIP(), []int{139}
+}
+
+func (x *DeleteAgentRequest) GetAgentId() string {
+	if x != nil {
+		return x.AgentId
+	}
+	return ""
+}
+
+func (x *DeleteAgentRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+type DeleteAgentResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	Error         string                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteAgentResponse) Reset() {
+	*x = DeleteAgentResponse{}
+	mi := &file_messenger_proto_msgTypes[140]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteAgentResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteAgentResponse) ProtoMessage() {}
+
+func (x *DeleteAgentResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_messenger_proto_msgTypes[140]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteAgentResponse.ProtoReflect.Descriptor instead.
+func (*DeleteAgentResponse) Descriptor() ([]byte, []int) {
+	return file_messenger_proto_rawDescGZIP(), []int{140}
+}
+
+func (x *DeleteAgentResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *DeleteAgentResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+type ListUserAgentsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListUserAgentsRequest) Reset() {
+	*x = ListUserAgentsRequest{}
+	mi := &file_messenger_proto_msgTypes[141]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListUserAgentsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListUserAgentsRequest) ProtoMessage() {}
+
+func (x *ListUserAgentsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_messenger_proto_msgTypes[141]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListUserAgentsRequest.ProtoReflect.Descriptor instead.
+func (*ListUserAgentsRequest) Descriptor() ([]byte, []int) {
+	return file_messenger_proto_rawDescGZIP(), []int{141}
+}
+
+func (x *ListUserAgentsRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+type ListUserAgentsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Agents        []*AgentInfo           `protobuf:"bytes,1,rep,name=agents,proto3" json:"agents,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListUserAgentsResponse) Reset() {
+	*x = ListUserAgentsResponse{}
+	mi := &file_messenger_proto_msgTypes[142]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListUserAgentsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListUserAgentsResponse) ProtoMessage() {}
+
+func (x *ListUserAgentsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_messenger_proto_msgTypes[142]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListUserAgentsResponse.ProtoReflect.Descriptor instead.
+func (*ListUserAgentsResponse) Descriptor() ([]byte, []int) {
+	return file_messenger_proto_rawDescGZIP(), []int{142}
+}
+
+func (x *ListUserAgentsResponse) GetAgents() []*AgentInfo {
+	if x != nil {
+		return x.Agents
+	}
+	return nil
+}
+
+type CreateHermesSessionRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateHermesSessionRequest) Reset() {
+	*x = CreateHermesSessionRequest{}
+	mi := &file_messenger_proto_msgTypes[143]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateHermesSessionRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateHermesSessionRequest) ProtoMessage() {}
+
+func (x *CreateHermesSessionRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_messenger_proto_msgTypes[143]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateHermesSessionRequest.ProtoReflect.Descriptor instead.
+func (*CreateHermesSessionRequest) Descriptor() ([]byte, []int) {
+	return file_messenger_proto_rawDescGZIP(), []int{143}
+}
+
+func (x *CreateHermesSessionRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *CreateHermesSessionRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+type CreateHermesSessionResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	SessionId     string                 `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	Error         string                 `protobuf:"bytes,3,opt,name=error,proto3" json:"error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateHermesSessionResponse) Reset() {
+	*x = CreateHermesSessionResponse{}
+	mi := &file_messenger_proto_msgTypes[144]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateHermesSessionResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateHermesSessionResponse) ProtoMessage() {}
+
+func (x *CreateHermesSessionResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_messenger_proto_msgTypes[144]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateHermesSessionResponse.ProtoReflect.Descriptor instead.
+func (*CreateHermesSessionResponse) Descriptor() ([]byte, []int) {
+	return file_messenger_proto_rawDescGZIP(), []int{144}
+}
+
+func (x *CreateHermesSessionResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *CreateHermesSessionResponse) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+func (x *CreateHermesSessionResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+type DeleteHermesSessionRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteHermesSessionRequest) Reset() {
+	*x = DeleteHermesSessionRequest{}
+	mi := &file_messenger_proto_msgTypes[145]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteHermesSessionRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteHermesSessionRequest) ProtoMessage() {}
+
+func (x *DeleteHermesSessionRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_messenger_proto_msgTypes[145]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteHermesSessionRequest.ProtoReflect.Descriptor instead.
+func (*DeleteHermesSessionRequest) Descriptor() ([]byte, []int) {
+	return file_messenger_proto_rawDescGZIP(), []int{145}
+}
+
+func (x *DeleteHermesSessionRequest) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+func (x *DeleteHermesSessionRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+type DeleteHermesSessionResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	Error         string                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteHermesSessionResponse) Reset() {
+	*x = DeleteHermesSessionResponse{}
+	mi := &file_messenger_proto_msgTypes[146]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteHermesSessionResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteHermesSessionResponse) ProtoMessage() {}
+
+func (x *DeleteHermesSessionResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_messenger_proto_msgTypes[146]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteHermesSessionResponse.ProtoReflect.Descriptor instead.
+func (*DeleteHermesSessionResponse) Descriptor() ([]byte, []int) {
+	return file_messenger_proto_rawDescGZIP(), []int{146}
+}
+
+func (x *DeleteHermesSessionResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *DeleteHermesSessionResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+type RemoteAgentInfo struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Host          string                 `protobuf:"bytes,3,opt,name=host,proto3" json:"host,omitempty"`
+	IpAddress     string                 `protobuf:"bytes,4,opt,name=ip_address,json=ipAddress,proto3" json:"ip_address,omitempty"`
+	Os            string                 `protobuf:"bytes,5,opt,name=os,proto3" json:"os,omitempty"`
+	Status        string                 `protobuf:"bytes,6,opt,name=status,proto3" json:"status,omitempty"`
+	Capabilities  []string               `protobuf:"bytes,7,rep,name=capabilities,proto3" json:"capabilities,omitempty"`
+	ActiveTasks   int32                  `protobuf:"varint,8,opt,name=active_tasks,json=activeTasks,proto3" json:"active_tasks,omitempty"`
+	LastHeartbeat string                 `protobuf:"bytes,9,opt,name=last_heartbeat,json=lastHeartbeat,proto3" json:"last_heartbeat,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RemoteAgentInfo) Reset() {
+	*x = RemoteAgentInfo{}
+	mi := &file_messenger_proto_msgTypes[147]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RemoteAgentInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RemoteAgentInfo) ProtoMessage() {}
+
+func (x *RemoteAgentInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_messenger_proto_msgTypes[147]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RemoteAgentInfo.ProtoReflect.Descriptor instead.
+func (*RemoteAgentInfo) Descriptor() ([]byte, []int) {
+	return file_messenger_proto_rawDescGZIP(), []int{147}
+}
+
+func (x *RemoteAgentInfo) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *RemoteAgentInfo) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *RemoteAgentInfo) GetHost() string {
+	if x != nil {
+		return x.Host
+	}
+	return ""
+}
+
+func (x *RemoteAgentInfo) GetIpAddress() string {
+	if x != nil {
+		return x.IpAddress
+	}
+	return ""
+}
+
+func (x *RemoteAgentInfo) GetOs() string {
+	if x != nil {
+		return x.Os
+	}
+	return ""
+}
+
+func (x *RemoteAgentInfo) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *RemoteAgentInfo) GetCapabilities() []string {
+	if x != nil {
+		return x.Capabilities
+	}
+	return nil
+}
+
+func (x *RemoteAgentInfo) GetActiveTasks() int32 {
+	if x != nil {
+		return x.ActiveTasks
+	}
+	return 0
+}
+
+func (x *RemoteAgentInfo) GetLastHeartbeat() string {
+	if x != nil {
+		return x.LastHeartbeat
+	}
+	return ""
+}
+
+type ListRemoteAgentsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListRemoteAgentsRequest) Reset() {
+	*x = ListRemoteAgentsRequest{}
+	mi := &file_messenger_proto_msgTypes[148]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListRemoteAgentsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListRemoteAgentsRequest) ProtoMessage() {}
+
+func (x *ListRemoteAgentsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_messenger_proto_msgTypes[148]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListRemoteAgentsRequest.ProtoReflect.Descriptor instead.
+func (*ListRemoteAgentsRequest) Descriptor() ([]byte, []int) {
+	return file_messenger_proto_rawDescGZIP(), []int{148}
+}
+
+type ListRemoteAgentsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Agents        []*RemoteAgentInfo     `protobuf:"bytes,1,rep,name=agents,proto3" json:"agents,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListRemoteAgentsResponse) Reset() {
+	*x = ListRemoteAgentsResponse{}
+	mi := &file_messenger_proto_msgTypes[149]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListRemoteAgentsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListRemoteAgentsResponse) ProtoMessage() {}
+
+func (x *ListRemoteAgentsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_messenger_proto_msgTypes[149]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListRemoteAgentsResponse.ProtoReflect.Descriptor instead.
+func (*ListRemoteAgentsResponse) Descriptor() ([]byte, []int) {
+	return file_messenger_proto_rawDescGZIP(), []int{149}
+}
+
+func (x *ListRemoteAgentsResponse) GetAgents() []*RemoteAgentInfo {
+	if x != nil {
+		return x.Agents
+	}
+	return nil
+}
+
+type DeployAgentTaskRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AgentId       string                 `protobuf:"bytes,1,opt,name=agent_id,json=agentId,proto3" json:"agent_id,omitempty"`
+	TaskType      string                 `protobuf:"bytes,2,opt,name=task_type,json=taskType,proto3" json:"task_type,omitempty"`
+	Params        map[string]string      `protobuf:"bytes,3,rep,name=params,proto3" json:"params,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	WorkingDir    string                 `protobuf:"bytes,4,opt,name=working_dir,json=workingDir,proto3" json:"working_dir,omitempty"`
+	TimeoutSec    int32                  `protobuf:"varint,5,opt,name=timeout_sec,json=timeoutSec,proto3" json:"timeout_sec,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeployAgentTaskRequest) Reset() {
+	*x = DeployAgentTaskRequest{}
+	mi := &file_messenger_proto_msgTypes[150]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeployAgentTaskRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeployAgentTaskRequest) ProtoMessage() {}
+
+func (x *DeployAgentTaskRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_messenger_proto_msgTypes[150]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeployAgentTaskRequest.ProtoReflect.Descriptor instead.
+func (*DeployAgentTaskRequest) Descriptor() ([]byte, []int) {
+	return file_messenger_proto_rawDescGZIP(), []int{150}
+}
+
+func (x *DeployAgentTaskRequest) GetAgentId() string {
+	if x != nil {
+		return x.AgentId
+	}
+	return ""
+}
+
+func (x *DeployAgentTaskRequest) GetTaskType() string {
+	if x != nil {
+		return x.TaskType
+	}
+	return ""
+}
+
+func (x *DeployAgentTaskRequest) GetParams() map[string]string {
+	if x != nil {
+		return x.Params
+	}
+	return nil
+}
+
+func (x *DeployAgentTaskRequest) GetWorkingDir() string {
+	if x != nil {
+		return x.WorkingDir
+	}
+	return ""
+}
+
+func (x *DeployAgentTaskRequest) GetTimeoutSec() int32 {
+	if x != nil {
+		return x.TimeoutSec
+	}
+	return 0
+}
+
+type DeployAgentTaskResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	TaskId        string                 `protobuf:"bytes,2,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
+	Error         string                 `protobuf:"bytes,3,opt,name=error,proto3" json:"error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeployAgentTaskResponse) Reset() {
+	*x = DeployAgentTaskResponse{}
+	mi := &file_messenger_proto_msgTypes[151]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeployAgentTaskResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeployAgentTaskResponse) ProtoMessage() {}
+
+func (x *DeployAgentTaskResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_messenger_proto_msgTypes[151]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeployAgentTaskResponse.ProtoReflect.Descriptor instead.
+func (*DeployAgentTaskResponse) Descriptor() ([]byte, []int) {
+	return file_messenger_proto_rawDescGZIP(), []int{151}
+}
+
+func (x *DeployAgentTaskResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *DeployAgentTaskResponse) GetTaskId() string {
+	if x != nil {
+		return x.TaskId
+	}
+	return ""
+}
+
+func (x *DeployAgentTaskResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+type GetRemoteAgentStatusRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AgentId       string                 `protobuf:"bytes,1,opt,name=agent_id,json=agentId,proto3" json:"agent_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetRemoteAgentStatusRequest) Reset() {
+	*x = GetRemoteAgentStatusRequest{}
+	mi := &file_messenger_proto_msgTypes[152]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetRemoteAgentStatusRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetRemoteAgentStatusRequest) ProtoMessage() {}
+
+func (x *GetRemoteAgentStatusRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_messenger_proto_msgTypes[152]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetRemoteAgentStatusRequest.ProtoReflect.Descriptor instead.
+func (*GetRemoteAgentStatusRequest) Descriptor() ([]byte, []int) {
+	return file_messenger_proto_rawDescGZIP(), []int{152}
+}
+
+func (x *GetRemoteAgentStatusRequest) GetAgentId() string {
+	if x != nil {
+		return x.AgentId
+	}
+	return ""
+}
+
+type GetRemoteAgentStatusResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Status        string                 `protobuf:"bytes,1,opt,name=status,proto3" json:"status,omitempty"`
+	ActiveTasks   int32                  `protobuf:"varint,2,opt,name=active_tasks,json=activeTasks,proto3" json:"active_tasks,omitempty"`
+	LastHeartbeat string                 `protobuf:"bytes,3,opt,name=last_heartbeat,json=lastHeartbeat,proto3" json:"last_heartbeat,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetRemoteAgentStatusResponse) Reset() {
+	*x = GetRemoteAgentStatusResponse{}
+	mi := &file_messenger_proto_msgTypes[153]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetRemoteAgentStatusResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetRemoteAgentStatusResponse) ProtoMessage() {}
+
+func (x *GetRemoteAgentStatusResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_messenger_proto_msgTypes[153]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetRemoteAgentStatusResponse.ProtoReflect.Descriptor instead.
+func (*GetRemoteAgentStatusResponse) Descriptor() ([]byte, []int) {
+	return file_messenger_proto_rawDescGZIP(), []int{153}
+}
+
+func (x *GetRemoteAgentStatusResponse) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *GetRemoteAgentStatusResponse) GetActiveTasks() int32 {
+	if x != nil {
+		return x.ActiveTasks
+	}
+	return 0
+}
+
+func (x *GetRemoteAgentStatusResponse) GetLastHeartbeat() string {
+	if x != nil {
+		return x.LastHeartbeat
+	}
+	return ""
+}
+
 var File_messenger_proto protoreflect.FileDescriptor
 
 const file_messenger_proto_rawDesc = "" +
@@ -7797,7 +9541,135 @@ const file_messenger_proto_rawDesc = "" +
 	"\vOWLResponse\x12\x12\n" +
 	"\x04text\x18\x01 \x01(\tR\x04text\x12\x1a\n" +
 	"\bfinished\x18\x02 \x01(\bR\bfinished\x12\x14\n" +
-	"\x05error\x18\x03 \x01(\tR\x05error2\xfc&\n" +
+	"\x05error\x18\x03 \x01(\tR\x05error\"\x82\x01\n" +
+	"\x13OrchestratorRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\x02 \x01(\tR\tsessionId\x12\x18\n" +
+	"\amessage\x18\x03 \x01(\tR\amessage\x12\x19\n" +
+	"\bagent_id\x18\x04 \x01(\tR\aagentId\"^\n" +
+	"\x14OrchestratorResponse\x12\x14\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token\x12\x1a\n" +
+	"\bfinished\x18\x02 \x01(\bR\bfinished\x12\x14\n" +
+	"\x05error\x18\x03 \x01(\tR\x05error\"`\n" +
+	"\x11HermesChatMessage\x12\x12\n" +
+	"\x04role\x18\x01 \x01(\tR\x04role\x12\x18\n" +
+	"\acontent\x18\x02 \x01(\tR\acontent\x12\x1d\n" +
+	"\n" +
+	"created_at\x18\x03 \x01(\tR\tcreatedAt\"W\n" +
+	"\x1dGetOrchestratorHistoryRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\x02 \x01(\tR\tsessionId\"Z\n" +
+	"\x1eGetOrchestratorHistoryResponse\x128\n" +
+	"\bmessages\x18\x01 \x03(\v2\x1c.messenger.HermesChatMessageR\bmessages\"\xc8\x01\n" +
+	"\tAgentInfo\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
+	"\vdescription\x18\x03 \x01(\tR\vdescription\x12\x1b\n" +
+	"\tis_preset\x18\x04 \x01(\bR\bisPreset\x12#\n" +
+	"\rsystem_prompt\x18\x05 \x01(\tR\fsystemPrompt\x12\x14\n" +
+	"\x05model\x18\x06 \x01(\tR\x05model\x12\x1d\n" +
+	"\n" +
+	"max_tokens\x18\a \x01(\x05R\tmaxTokens\"\x9e\x01\n" +
+	"\x0fAgentPresetInfo\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
+	"\x04role\x18\x03 \x01(\tR\x04role\x12 \n" +
+	"\vdescription\x18\x04 \x01(\tR\vdescription\x12\x12\n" +
+	"\x04icon\x18\x05 \x01(\tR\x04icon\x12\x1d\n" +
+	"\n" +
+	"max_tokens\x18\x06 \x01(\x05R\tmaxTokens\",\n" +
+	"\x11ListAgentsRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\"B\n" +
+	"\x12ListAgentsResponse\x12,\n" +
+	"\x06agents\x18\x01 \x03(\v2\x14.messenger.AgentInfoR\x06agents\"\x19\n" +
+	"\x17ListAgentPresetsRequest\"P\n" +
+	"\x18ListAgentPresetsResponse\x124\n" +
+	"\apresets\x18\x01 \x03(\v2\x1a.messenger.AgentPresetInfoR\apresets\"\xb8\x01\n" +
+	"\x12CreateAgentRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1b\n" +
+	"\tpreset_id\x18\x02 \x01(\tR\bpresetId\x12\x12\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\x12#\n" +
+	"\rsystem_prompt\x18\x04 \x01(\tR\fsystemPrompt\x12\x14\n" +
+	"\x05model\x18\x05 \x01(\tR\x05model\x12\x1d\n" +
+	"\n" +
+	"max_tokens\x18\x06 \x01(\x05R\tmaxTokens\"`\n" +
+	"\x13CreateAgentResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x19\n" +
+	"\bagent_id\x18\x02 \x01(\tR\aagentId\x12\x14\n" +
+	"\x05error\x18\x03 \x01(\tR\x05error\"\xb6\x01\n" +
+	"\x12UpdateAgentRequest\x12\x19\n" +
+	"\bagent_id\x18\x01 \x01(\tR\aagentId\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\x12\x12\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\x12#\n" +
+	"\rsystem_prompt\x18\x04 \x01(\tR\fsystemPrompt\x12\x14\n" +
+	"\x05model\x18\x05 \x01(\tR\x05model\x12\x1d\n" +
+	"\n" +
+	"max_tokens\x18\x06 \x01(\x05R\tmaxTokens\"E\n" +
+	"\x13UpdateAgentResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x14\n" +
+	"\x05error\x18\x02 \x01(\tR\x05error\"H\n" +
+	"\x12DeleteAgentRequest\x12\x19\n" +
+	"\bagent_id\x18\x01 \x01(\tR\aagentId\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\"E\n" +
+	"\x13DeleteAgentResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x14\n" +
+	"\x05error\x18\x02 \x01(\tR\x05error\"0\n" +
+	"\x15ListUserAgentsRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\"F\n" +
+	"\x16ListUserAgentsResponse\x12,\n" +
+	"\x06agents\x18\x01 \x03(\v2\x14.messenger.AgentInfoR\x06agents\"I\n" +
+	"\x1aCreateHermesSessionRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\"l\n" +
+	"\x1bCreateHermesSessionResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\x02 \x01(\tR\tsessionId\x12\x14\n" +
+	"\x05error\x18\x03 \x01(\tR\x05error\"T\n" +
+	"\x1aDeleteHermesSessionRequest\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\"M\n" +
+	"\x1bDeleteHermesSessionResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x14\n" +
+	"\x05error\x18\x02 \x01(\tR\x05error\"\xfe\x01\n" +
+	"\x0fRemoteAgentInfo\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
+	"\x04host\x18\x03 \x01(\tR\x04host\x12\x1d\n" +
+	"\n" +
+	"ip_address\x18\x04 \x01(\tR\tipAddress\x12\x0e\n" +
+	"\x02os\x18\x05 \x01(\tR\x02os\x12\x16\n" +
+	"\x06status\x18\x06 \x01(\tR\x06status\x12\"\n" +
+	"\fcapabilities\x18\a \x03(\tR\fcapabilities\x12!\n" +
+	"\factive_tasks\x18\b \x01(\x05R\vactiveTasks\x12%\n" +
+	"\x0elast_heartbeat\x18\t \x01(\tR\rlastHeartbeat\"\x19\n" +
+	"\x17ListRemoteAgentsRequest\"N\n" +
+	"\x18ListRemoteAgentsResponse\x122\n" +
+	"\x06agents\x18\x01 \x03(\v2\x1a.messenger.RemoteAgentInfoR\x06agents\"\x94\x02\n" +
+	"\x16DeployAgentTaskRequest\x12\x19\n" +
+	"\bagent_id\x18\x01 \x01(\tR\aagentId\x12\x1b\n" +
+	"\ttask_type\x18\x02 \x01(\tR\btaskType\x12E\n" +
+	"\x06params\x18\x03 \x03(\v2-.messenger.DeployAgentTaskRequest.ParamsEntryR\x06params\x12\x1f\n" +
+	"\vworking_dir\x18\x04 \x01(\tR\n" +
+	"workingDir\x12\x1f\n" +
+	"\vtimeout_sec\x18\x05 \x01(\x05R\n" +
+	"timeoutSec\x1a9\n" +
+	"\vParamsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"b\n" +
+	"\x17DeployAgentTaskResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x17\n" +
+	"\atask_id\x18\x02 \x01(\tR\x06taskId\x12\x14\n" +
+	"\x05error\x18\x03 \x01(\tR\x05error\"8\n" +
+	"\x1bGetRemoteAgentStatusRequest\x12\x19\n" +
+	"\bagent_id\x18\x01 \x01(\tR\aagentId\"\x80\x01\n" +
+	"\x1cGetRemoteAgentStatusResponse\x12\x16\n" +
+	"\x06status\x18\x01 \x01(\tR\x06status\x12!\n" +
+	"\factive_tasks\x18\x02 \x01(\x05R\vactiveTasks\x12%\n" +
+	"\x0elast_heartbeat\x18\x03 \x01(\tR\rlastHeartbeat2\x9b0\n" +
 	"\vChatService\x122\n" +
 	"\x04Chat\x12\x12.messenger.Message\x1a\x12.messenger.Message(\x010\x01\x12?\n" +
 	"\x06Typing\x12\x18.messenger.TypingRequest\x1a\x17.messenger.TypingSignal(\x010\x01\x12A\n" +
@@ -7865,7 +9737,21 @@ const file_messenger_proto_rawDesc = "" +
 	"\rCreateOwlChat\x12\x1f.messenger.CreateOwlChatRequest\x1a .messenger.CreateOwlChatResponse\x12R\n" +
 	"\rDeleteOwlChat\x12\x1f.messenger.DeleteOwlChatRequest\x1a .messenger.DeleteOwlChatResponse\x12R\n" +
 	"\rGetOwlHistory\x12\x1f.messenger.GetOwlHistoryRequest\x1a .messenger.GetOwlHistoryResponse\x12^\n" +
-	"\x11UpdateOwlSettings\x12#.messenger.UpdateOwlSettingsRequest\x1a$.messenger.UpdateOwlSettingsResponseB\aZ\x05./genb\x06proto3"
+	"\x11UpdateOwlSettings\x12#.messenger.UpdateOwlSettingsRequest\x1a$.messenger.UpdateOwlSettingsResponse\x12Y\n" +
+	"\x14ChatWithOrchestrator\x12\x1e.messenger.OrchestratorRequest\x1a\x1f.messenger.OrchestratorResponse0\x01\x12m\n" +
+	"\x16GetOrchestratorHistory\x12(.messenger.GetOrchestratorHistoryRequest\x1a).messenger.GetOrchestratorHistoryResponse\x12I\n" +
+	"\n" +
+	"ListAgents\x12\x1c.messenger.ListAgentsRequest\x1a\x1d.messenger.ListAgentsResponse\x12[\n" +
+	"\x10ListAgentPresets\x12\".messenger.ListAgentPresetsRequest\x1a#.messenger.ListAgentPresetsResponse\x12L\n" +
+	"\vCreateAgent\x12\x1d.messenger.CreateAgentRequest\x1a\x1e.messenger.CreateAgentResponse\x12L\n" +
+	"\vUpdateAgent\x12\x1d.messenger.UpdateAgentRequest\x1a\x1e.messenger.UpdateAgentResponse\x12L\n" +
+	"\vDeleteAgent\x12\x1d.messenger.DeleteAgentRequest\x1a\x1e.messenger.DeleteAgentResponse\x12U\n" +
+	"\x0eListUserAgents\x12 .messenger.ListUserAgentsRequest\x1a!.messenger.ListUserAgentsResponse\x12d\n" +
+	"\x13CreateHermesSession\x12%.messenger.CreateHermesSessionRequest\x1a&.messenger.CreateHermesSessionResponse\x12d\n" +
+	"\x13DeleteHermesSession\x12%.messenger.DeleteHermesSessionRequest\x1a&.messenger.DeleteHermesSessionResponse\x12[\n" +
+	"\x10ListRemoteAgents\x12\".messenger.ListRemoteAgentsRequest\x1a#.messenger.ListRemoteAgentsResponse\x12X\n" +
+	"\x0fDeployAgentTask\x12!.messenger.DeployAgentTaskRequest\x1a\".messenger.DeployAgentTaskResponse\x12g\n" +
+	"\x14GetRemoteAgentStatus\x12&.messenger.GetRemoteAgentStatusRequest\x1a'.messenger.GetRemoteAgentStatusResponseB\aZ\x05./genb\x06proto3"
 
 var (
 	file_messenger_proto_rawDescOnce sync.Once
@@ -7880,284 +9766,347 @@ func file_messenger_proto_rawDescGZIP() []byte {
 }
 
 var file_messenger_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_messenger_proto_msgTypes = make([]protoimpl.MessageInfo, 124)
+var file_messenger_proto_msgTypes = make([]protoimpl.MessageInfo, 155)
 var file_messenger_proto_goTypes = []any{
-	(CallMessage_Type)(0),                // 0: messenger.CallMessage.Type
-	(*Message)(nil),                      // 1: messenger.Message
-	(*Reaction)(nil),                     // 2: messenger.Reaction
-	(*ReactionRequest)(nil),              // 3: messenger.ReactionRequest
-	(*ReactionResponse)(nil),             // 4: messenger.ReactionResponse
-	(*ClientListRequest)(nil),            // 5: messenger.ClientListRequest
-	(*ClientListResponse)(nil),           // 6: messenger.ClientListResponse
-	(*GetAllUsersRequest)(nil),           // 7: messenger.GetAllUsersRequest
-	(*UserInfo)(nil),                     // 8: messenger.UserInfo
-	(*GetAllUsersResponse)(nil),          // 9: messenger.GetAllUsersResponse
-	(*GetAllChatsRequest)(nil),           // 10: messenger.GetAllChatsRequest
-	(*GetAllChatsResponse)(nil),          // 11: messenger.GetAllChatsResponse
-	(*CreateChatRequest)(nil),            // 12: messenger.CreateChatRequest
-	(*GetHistoryRequest)(nil),            // 13: messenger.GetHistoryRequest
-	(*GetHistoryResponse)(nil),           // 14: messenger.GetHistoryResponse
-	(*DeleteMessagesRequest)(nil),        // 15: messenger.DeleteMessagesRequest
-	(*DeleteMessagesResponse)(nil),       // 16: messenger.DeleteMessagesResponse
-	(*TokenRequest)(nil),                 // 17: messenger.TokenRequest
-	(*TokenResponse)(nil),                // 18: messenger.TokenResponse
-	(*ChatInfo)(nil),                     // 19: messenger.ChatInfo
-	(*GetChatsRequest)(nil),              // 20: messenger.GetChatsRequest
-	(*GetChatsResponse)(nil),             // 21: messenger.GetChatsResponse
-	(*CreateDirectChatRequest)(nil),      // 22: messenger.CreateDirectChatRequest
-	(*CreateDirectChatResponse)(nil),     // 23: messenger.CreateDirectChatResponse
-	(*CreateGroupChatRequest)(nil),       // 24: messenger.CreateGroupChatRequest
-	(*CreateGroupChatResponse)(nil),      // 25: messenger.CreateGroupChatResponse
-	(*UpdateUsernameRequest)(nil),        // 26: messenger.UpdateUsernameRequest
-	(*UpdateUsernameResponse)(nil),       // 27: messenger.UpdateUsernameResponse
-	(*UpdatePasswordRequest)(nil),        // 28: messenger.UpdatePasswordRequest
-	(*UpdatePasswordResponse)(nil),       // 29: messenger.UpdatePasswordResponse
-	(*AdminUpdatePasswordRequest)(nil),   // 30: messenger.AdminUpdatePasswordRequest
-	(*AdminUpdatePasswordResponse)(nil),  // 31: messenger.AdminUpdatePasswordResponse
-	(*MarkReadRequest)(nil),              // 32: messenger.MarkReadRequest
-	(*MarkReadResponse)(nil),             // 33: messenger.MarkReadResponse
-	(*UpdateAvatarRequest)(nil),          // 34: messenger.UpdateAvatarRequest
-	(*UpdateAvatarResponse)(nil),         // 35: messenger.UpdateAvatarResponse
-	(*UpdateProfileRequest)(nil),         // 36: messenger.UpdateProfileRequest
-	(*UpdateProfileResponse)(nil),        // 37: messenger.UpdateProfileResponse
-	(*GetUserProfileRequest)(nil),        // 38: messenger.GetUserProfileRequest
-	(*GetUserProfileResponse)(nil),       // 39: messenger.GetUserProfileResponse
-	(*GetUserAvatarRequest)(nil),         // 40: messenger.GetUserAvatarRequest
-	(*GetUserAvatarResponse)(nil),        // 41: messenger.GetUserAvatarResponse
-	(*AddParticipantRequest)(nil),        // 42: messenger.AddParticipantRequest
-	(*AddParticipantResponse)(nil),       // 43: messenger.AddParticipantResponse
-	(*RemoveParticipantRequest)(nil),     // 44: messenger.RemoveParticipantRequest
-	(*RemoveParticipantResponse)(nil),    // 45: messenger.RemoveParticipantResponse
-	(*EditMessageRequest)(nil),           // 46: messenger.EditMessageRequest
-	(*EditMessageResponse)(nil),          // 47: messenger.EditMessageResponse
-	(*DeleteChatRequest)(nil),            // 48: messenger.DeleteChatRequest
-	(*DeleteChatResponse)(nil),           // 49: messenger.DeleteChatResponse
-	(*DeleteProfileRequest)(nil),         // 50: messenger.DeleteProfileRequest
-	(*DeleteProfileResponse)(nil),        // 51: messenger.DeleteProfileResponse
-	(*AddContactRequest)(nil),            // 52: messenger.AddContactRequest
-	(*AddContactResponse)(nil),           // 53: messenger.AddContactResponse
-	(*RemoveContactRequest)(nil),         // 54: messenger.RemoveContactRequest
-	(*RemoveContactResponse)(nil),        // 55: messenger.RemoveContactResponse
-	(*GetContactsRequest)(nil),           // 56: messenger.GetContactsRequest
-	(*GetContactsResponse)(nil),          // 57: messenger.GetContactsResponse
-	(*GetChatListVersionRequest)(nil),    // 58: messenger.GetChatListVersionRequest
-	(*GetChatListVersionResponse)(nil),   // 59: messenger.GetChatListVersionResponse
-	(*CustomTheme)(nil),                  // 60: messenger.CustomTheme
-	(*GetThemesRequest)(nil),             // 61: messenger.GetThemesRequest
-	(*GetThemesResponse)(nil),            // 62: messenger.GetThemesResponse
-	(*SaveThemeRequest)(nil),             // 63: messenger.SaveThemeRequest
-	(*SaveThemeResponse)(nil),            // 64: messenger.SaveThemeResponse
-	(*SetCurrentThemeRequest)(nil),       // 65: messenger.SetCurrentThemeRequest
-	(*SetCurrentThemeResponse)(nil),      // 66: messenger.SetCurrentThemeResponse
-	(*DeleteThemeRequest)(nil),           // 67: messenger.DeleteThemeRequest
-	(*DeleteThemeResponse)(nil),          // 68: messenger.DeleteThemeResponse
-	(*UpdateChatNameRequest)(nil),        // 69: messenger.UpdateChatNameRequest
-	(*UpdateChatNameResponse)(nil),       // 70: messenger.UpdateChatNameResponse
-	(*UpdateChatAvatarRequest)(nil),      // 71: messenger.UpdateChatAvatarRequest
-	(*UpdateChatAvatarResponse)(nil),     // 72: messenger.UpdateChatAvatarResponse
-	(*UpdateChatSettingsRequest)(nil),    // 73: messenger.UpdateChatSettingsRequest
-	(*UpdateChatSettingsResponse)(nil),   // 74: messenger.UpdateChatSettingsResponse
-	(*GetFCMLogsRequest)(nil),            // 75: messenger.GetFCMLogsRequest
-	(*FCMLogEntry)(nil),                  // 76: messenger.FCMLogEntry
-	(*GetFCMLogsResponse)(nil),           // 77: messenger.GetFCMLogsResponse
-	(*SaveDraftRequest)(nil),             // 78: messenger.SaveDraftRequest
-	(*SaveDraftResponse)(nil),            // 79: messenger.SaveDraftResponse
-	(*GetDraftRequest)(nil),              // 80: messenger.GetDraftRequest
-	(*GetDraftResponse)(nil),             // 81: messenger.GetDraftResponse
-	(*DeleteDraftRequest)(nil),           // 82: messenger.DeleteDraftRequest
-	(*DeleteDraftResponse)(nil),          // 83: messenger.DeleteDraftResponse
-	(*GetMutedChatsRequest)(nil),         // 84: messenger.GetMutedChatsRequest
-	(*GetMutedChatsResponse)(nil),        // 85: messenger.GetMutedChatsResponse
-	(*SetMutedChatRequest)(nil),          // 86: messenger.SetMutedChatRequest
-	(*SetMutedChatResponse)(nil),         // 87: messenger.SetMutedChatResponse
-	(*GetUserIdRequest)(nil),             // 88: messenger.GetUserIdRequest
-	(*GetUserIdResponse)(nil),            // 89: messenger.GetUserIdResponse
-	(*AddFavoriteRequest)(nil),           // 90: messenger.AddFavoriteRequest
-	(*AddFavoriteResponse)(nil),          // 91: messenger.AddFavoriteResponse
-	(*RemoveFavoriteRequest)(nil),        // 92: messenger.RemoveFavoriteRequest
-	(*RemoveFavoriteResponse)(nil),       // 93: messenger.RemoveFavoriteResponse
-	(*GetFavoritesRequest)(nil),          // 94: messenger.GetFavoritesRequest
-	(*GetFavoritesResponse)(nil),         // 95: messenger.GetFavoritesResponse
-	(*TypingRequest)(nil),                // 96: messenger.TypingRequest
-	(*TypingSignal)(nil),                 // 97: messenger.TypingSignal
-	(*DeviceInfo)(nil),                   // 98: messenger.DeviceInfo
-	(*GetDevicesRequest)(nil),            // 99: messenger.GetDevicesRequest
-	(*GetDevicesResponse)(nil),           // 100: messenger.GetDevicesResponse
-	(*DeleteDeviceRequest)(nil),          // 101: messenger.DeleteDeviceRequest
-	(*DeleteDeviceResponse)(nil),         // 102: messenger.DeleteDeviceResponse
-	(*RequestPasswordResetRequest)(nil),  // 103: messenger.RequestPasswordResetRequest
-	(*RequestPasswordResetResponse)(nil), // 104: messenger.RequestPasswordResetResponse
-	(*ResetPasswordRequest)(nil),         // 105: messenger.ResetPasswordRequest
-	(*ResetPasswordResponse)(nil),        // 106: messenger.ResetPasswordResponse
-	(*CallMessage)(nil),                  // 107: messenger.CallMessage
-	(*CreateSecretChatRequest)(nil),      // 108: messenger.CreateSecretChatRequest
-	(*CreateSecretChatResponse)(nil),     // 109: messenger.CreateSecretChatResponse
-	(*ExchangeSecretKeyRequest)(nil),     // 110: messenger.ExchangeSecretKeyRequest
-	(*ExchangeSecretKeyResponse)(nil),    // 111: messenger.ExchangeSecretKeyResponse
-	(*GetSecretChatKeyRequest)(nil),      // 112: messenger.GetSecretChatKeyRequest
-	(*GetSecretChatKeyResponse)(nil),     // 113: messenger.GetSecretChatKeyResponse
-	(*CreateOwlChatRequest)(nil),         // 114: messenger.CreateOwlChatRequest
-	(*CreateOwlChatResponse)(nil),        // 115: messenger.CreateOwlChatResponse
-	(*DeleteOwlChatRequest)(nil),         // 116: messenger.DeleteOwlChatRequest
-	(*DeleteOwlChatResponse)(nil),        // 117: messenger.DeleteOwlChatResponse
-	(*GetOwlHistoryRequest)(nil),         // 118: messenger.GetOwlHistoryRequest
-	(*OwlHistoryMessage)(nil),            // 119: messenger.OwlHistoryMessage
-	(*GetOwlHistoryResponse)(nil),        // 120: messenger.GetOwlHistoryResponse
-	(*UpdateOwlSettingsRequest)(nil),     // 121: messenger.UpdateOwlSettingsRequest
-	(*UpdateOwlSettingsResponse)(nil),    // 122: messenger.UpdateOwlSettingsResponse
-	(*OWLRequest)(nil),                   // 123: messenger.OWLRequest
-	(*OWLResponse)(nil),                  // 124: messenger.OWLResponse
-	(*timestamp.Timestamp)(nil),          // 125: google.protobuf.Timestamp
+	(CallMessage_Type)(0),                  // 0: messenger.CallMessage.Type
+	(*Message)(nil),                        // 1: messenger.Message
+	(*Reaction)(nil),                       // 2: messenger.Reaction
+	(*ReactionRequest)(nil),                // 3: messenger.ReactionRequest
+	(*ReactionResponse)(nil),               // 4: messenger.ReactionResponse
+	(*ClientListRequest)(nil),              // 5: messenger.ClientListRequest
+	(*ClientListResponse)(nil),             // 6: messenger.ClientListResponse
+	(*GetAllUsersRequest)(nil),             // 7: messenger.GetAllUsersRequest
+	(*UserInfo)(nil),                       // 8: messenger.UserInfo
+	(*GetAllUsersResponse)(nil),            // 9: messenger.GetAllUsersResponse
+	(*GetAllChatsRequest)(nil),             // 10: messenger.GetAllChatsRequest
+	(*GetAllChatsResponse)(nil),            // 11: messenger.GetAllChatsResponse
+	(*CreateChatRequest)(nil),              // 12: messenger.CreateChatRequest
+	(*GetHistoryRequest)(nil),              // 13: messenger.GetHistoryRequest
+	(*GetHistoryResponse)(nil),             // 14: messenger.GetHistoryResponse
+	(*DeleteMessagesRequest)(nil),          // 15: messenger.DeleteMessagesRequest
+	(*DeleteMessagesResponse)(nil),         // 16: messenger.DeleteMessagesResponse
+	(*TokenRequest)(nil),                   // 17: messenger.TokenRequest
+	(*TokenResponse)(nil),                  // 18: messenger.TokenResponse
+	(*ChatInfo)(nil),                       // 19: messenger.ChatInfo
+	(*GetChatsRequest)(nil),                // 20: messenger.GetChatsRequest
+	(*GetChatsResponse)(nil),               // 21: messenger.GetChatsResponse
+	(*CreateDirectChatRequest)(nil),        // 22: messenger.CreateDirectChatRequest
+	(*CreateDirectChatResponse)(nil),       // 23: messenger.CreateDirectChatResponse
+	(*CreateGroupChatRequest)(nil),         // 24: messenger.CreateGroupChatRequest
+	(*CreateGroupChatResponse)(nil),        // 25: messenger.CreateGroupChatResponse
+	(*UpdateUsernameRequest)(nil),          // 26: messenger.UpdateUsernameRequest
+	(*UpdateUsernameResponse)(nil),         // 27: messenger.UpdateUsernameResponse
+	(*UpdatePasswordRequest)(nil),          // 28: messenger.UpdatePasswordRequest
+	(*UpdatePasswordResponse)(nil),         // 29: messenger.UpdatePasswordResponse
+	(*AdminUpdatePasswordRequest)(nil),     // 30: messenger.AdminUpdatePasswordRequest
+	(*AdminUpdatePasswordResponse)(nil),    // 31: messenger.AdminUpdatePasswordResponse
+	(*MarkReadRequest)(nil),                // 32: messenger.MarkReadRequest
+	(*MarkReadResponse)(nil),               // 33: messenger.MarkReadResponse
+	(*UpdateAvatarRequest)(nil),            // 34: messenger.UpdateAvatarRequest
+	(*UpdateAvatarResponse)(nil),           // 35: messenger.UpdateAvatarResponse
+	(*UpdateProfileRequest)(nil),           // 36: messenger.UpdateProfileRequest
+	(*UpdateProfileResponse)(nil),          // 37: messenger.UpdateProfileResponse
+	(*GetUserProfileRequest)(nil),          // 38: messenger.GetUserProfileRequest
+	(*GetUserProfileResponse)(nil),         // 39: messenger.GetUserProfileResponse
+	(*GetUserAvatarRequest)(nil),           // 40: messenger.GetUserAvatarRequest
+	(*GetUserAvatarResponse)(nil),          // 41: messenger.GetUserAvatarResponse
+	(*AddParticipantRequest)(nil),          // 42: messenger.AddParticipantRequest
+	(*AddParticipantResponse)(nil),         // 43: messenger.AddParticipantResponse
+	(*RemoveParticipantRequest)(nil),       // 44: messenger.RemoveParticipantRequest
+	(*RemoveParticipantResponse)(nil),      // 45: messenger.RemoveParticipantResponse
+	(*EditMessageRequest)(nil),             // 46: messenger.EditMessageRequest
+	(*EditMessageResponse)(nil),            // 47: messenger.EditMessageResponse
+	(*DeleteChatRequest)(nil),              // 48: messenger.DeleteChatRequest
+	(*DeleteChatResponse)(nil),             // 49: messenger.DeleteChatResponse
+	(*DeleteProfileRequest)(nil),           // 50: messenger.DeleteProfileRequest
+	(*DeleteProfileResponse)(nil),          // 51: messenger.DeleteProfileResponse
+	(*AddContactRequest)(nil),              // 52: messenger.AddContactRequest
+	(*AddContactResponse)(nil),             // 53: messenger.AddContactResponse
+	(*RemoveContactRequest)(nil),           // 54: messenger.RemoveContactRequest
+	(*RemoveContactResponse)(nil),          // 55: messenger.RemoveContactResponse
+	(*GetContactsRequest)(nil),             // 56: messenger.GetContactsRequest
+	(*GetContactsResponse)(nil),            // 57: messenger.GetContactsResponse
+	(*GetChatListVersionRequest)(nil),      // 58: messenger.GetChatListVersionRequest
+	(*GetChatListVersionResponse)(nil),     // 59: messenger.GetChatListVersionResponse
+	(*CustomTheme)(nil),                    // 60: messenger.CustomTheme
+	(*GetThemesRequest)(nil),               // 61: messenger.GetThemesRequest
+	(*GetThemesResponse)(nil),              // 62: messenger.GetThemesResponse
+	(*SaveThemeRequest)(nil),               // 63: messenger.SaveThemeRequest
+	(*SaveThemeResponse)(nil),              // 64: messenger.SaveThemeResponse
+	(*SetCurrentThemeRequest)(nil),         // 65: messenger.SetCurrentThemeRequest
+	(*SetCurrentThemeResponse)(nil),        // 66: messenger.SetCurrentThemeResponse
+	(*DeleteThemeRequest)(nil),             // 67: messenger.DeleteThemeRequest
+	(*DeleteThemeResponse)(nil),            // 68: messenger.DeleteThemeResponse
+	(*UpdateChatNameRequest)(nil),          // 69: messenger.UpdateChatNameRequest
+	(*UpdateChatNameResponse)(nil),         // 70: messenger.UpdateChatNameResponse
+	(*UpdateChatAvatarRequest)(nil),        // 71: messenger.UpdateChatAvatarRequest
+	(*UpdateChatAvatarResponse)(nil),       // 72: messenger.UpdateChatAvatarResponse
+	(*UpdateChatSettingsRequest)(nil),      // 73: messenger.UpdateChatSettingsRequest
+	(*UpdateChatSettingsResponse)(nil),     // 74: messenger.UpdateChatSettingsResponse
+	(*GetFCMLogsRequest)(nil),              // 75: messenger.GetFCMLogsRequest
+	(*FCMLogEntry)(nil),                    // 76: messenger.FCMLogEntry
+	(*GetFCMLogsResponse)(nil),             // 77: messenger.GetFCMLogsResponse
+	(*SaveDraftRequest)(nil),               // 78: messenger.SaveDraftRequest
+	(*SaveDraftResponse)(nil),              // 79: messenger.SaveDraftResponse
+	(*GetDraftRequest)(nil),                // 80: messenger.GetDraftRequest
+	(*GetDraftResponse)(nil),               // 81: messenger.GetDraftResponse
+	(*DeleteDraftRequest)(nil),             // 82: messenger.DeleteDraftRequest
+	(*DeleteDraftResponse)(nil),            // 83: messenger.DeleteDraftResponse
+	(*GetMutedChatsRequest)(nil),           // 84: messenger.GetMutedChatsRequest
+	(*GetMutedChatsResponse)(nil),          // 85: messenger.GetMutedChatsResponse
+	(*SetMutedChatRequest)(nil),            // 86: messenger.SetMutedChatRequest
+	(*SetMutedChatResponse)(nil),           // 87: messenger.SetMutedChatResponse
+	(*GetUserIdRequest)(nil),               // 88: messenger.GetUserIdRequest
+	(*GetUserIdResponse)(nil),              // 89: messenger.GetUserIdResponse
+	(*AddFavoriteRequest)(nil),             // 90: messenger.AddFavoriteRequest
+	(*AddFavoriteResponse)(nil),            // 91: messenger.AddFavoriteResponse
+	(*RemoveFavoriteRequest)(nil),          // 92: messenger.RemoveFavoriteRequest
+	(*RemoveFavoriteResponse)(nil),         // 93: messenger.RemoveFavoriteResponse
+	(*GetFavoritesRequest)(nil),            // 94: messenger.GetFavoritesRequest
+	(*GetFavoritesResponse)(nil),           // 95: messenger.GetFavoritesResponse
+	(*TypingRequest)(nil),                  // 96: messenger.TypingRequest
+	(*TypingSignal)(nil),                   // 97: messenger.TypingSignal
+	(*DeviceInfo)(nil),                     // 98: messenger.DeviceInfo
+	(*GetDevicesRequest)(nil),              // 99: messenger.GetDevicesRequest
+	(*GetDevicesResponse)(nil),             // 100: messenger.GetDevicesResponse
+	(*DeleteDeviceRequest)(nil),            // 101: messenger.DeleteDeviceRequest
+	(*DeleteDeviceResponse)(nil),           // 102: messenger.DeleteDeviceResponse
+	(*RequestPasswordResetRequest)(nil),    // 103: messenger.RequestPasswordResetRequest
+	(*RequestPasswordResetResponse)(nil),   // 104: messenger.RequestPasswordResetResponse
+	(*ResetPasswordRequest)(nil),           // 105: messenger.ResetPasswordRequest
+	(*ResetPasswordResponse)(nil),          // 106: messenger.ResetPasswordResponse
+	(*CallMessage)(nil),                    // 107: messenger.CallMessage
+	(*CreateSecretChatRequest)(nil),        // 108: messenger.CreateSecretChatRequest
+	(*CreateSecretChatResponse)(nil),       // 109: messenger.CreateSecretChatResponse
+	(*ExchangeSecretKeyRequest)(nil),       // 110: messenger.ExchangeSecretKeyRequest
+	(*ExchangeSecretKeyResponse)(nil),      // 111: messenger.ExchangeSecretKeyResponse
+	(*GetSecretChatKeyRequest)(nil),        // 112: messenger.GetSecretChatKeyRequest
+	(*GetSecretChatKeyResponse)(nil),       // 113: messenger.GetSecretChatKeyResponse
+	(*CreateOwlChatRequest)(nil),           // 114: messenger.CreateOwlChatRequest
+	(*CreateOwlChatResponse)(nil),          // 115: messenger.CreateOwlChatResponse
+	(*DeleteOwlChatRequest)(nil),           // 116: messenger.DeleteOwlChatRequest
+	(*DeleteOwlChatResponse)(nil),          // 117: messenger.DeleteOwlChatResponse
+	(*GetOwlHistoryRequest)(nil),           // 118: messenger.GetOwlHistoryRequest
+	(*OwlHistoryMessage)(nil),              // 119: messenger.OwlHistoryMessage
+	(*GetOwlHistoryResponse)(nil),          // 120: messenger.GetOwlHistoryResponse
+	(*UpdateOwlSettingsRequest)(nil),       // 121: messenger.UpdateOwlSettingsRequest
+	(*UpdateOwlSettingsResponse)(nil),      // 122: messenger.UpdateOwlSettingsResponse
+	(*OWLRequest)(nil),                     // 123: messenger.OWLRequest
+	(*OWLResponse)(nil),                    // 124: messenger.OWLResponse
+	(*OrchestratorRequest)(nil),            // 125: messenger.OrchestratorRequest
+	(*OrchestratorResponse)(nil),           // 126: messenger.OrchestratorResponse
+	(*HermesChatMessage)(nil),              // 127: messenger.HermesChatMessage
+	(*GetOrchestratorHistoryRequest)(nil),  // 128: messenger.GetOrchestratorHistoryRequest
+	(*GetOrchestratorHistoryResponse)(nil), // 129: messenger.GetOrchestratorHistoryResponse
+	(*AgentInfo)(nil),                      // 130: messenger.AgentInfo
+	(*AgentPresetInfo)(nil),                // 131: messenger.AgentPresetInfo
+	(*ListAgentsRequest)(nil),              // 132: messenger.ListAgentsRequest
+	(*ListAgentsResponse)(nil),             // 133: messenger.ListAgentsResponse
+	(*ListAgentPresetsRequest)(nil),        // 134: messenger.ListAgentPresetsRequest
+	(*ListAgentPresetsResponse)(nil),       // 135: messenger.ListAgentPresetsResponse
+	(*CreateAgentRequest)(nil),             // 136: messenger.CreateAgentRequest
+	(*CreateAgentResponse)(nil),            // 137: messenger.CreateAgentResponse
+	(*UpdateAgentRequest)(nil),             // 138: messenger.UpdateAgentRequest
+	(*UpdateAgentResponse)(nil),            // 139: messenger.UpdateAgentResponse
+	(*DeleteAgentRequest)(nil),             // 140: messenger.DeleteAgentRequest
+	(*DeleteAgentResponse)(nil),            // 141: messenger.DeleteAgentResponse
+	(*ListUserAgentsRequest)(nil),          // 142: messenger.ListUserAgentsRequest
+	(*ListUserAgentsResponse)(nil),         // 143: messenger.ListUserAgentsResponse
+	(*CreateHermesSessionRequest)(nil),     // 144: messenger.CreateHermesSessionRequest
+	(*CreateHermesSessionResponse)(nil),    // 145: messenger.CreateHermesSessionResponse
+	(*DeleteHermesSessionRequest)(nil),     // 146: messenger.DeleteHermesSessionRequest
+	(*DeleteHermesSessionResponse)(nil),    // 147: messenger.DeleteHermesSessionResponse
+	(*RemoteAgentInfo)(nil),                // 148: messenger.RemoteAgentInfo
+	(*ListRemoteAgentsRequest)(nil),        // 149: messenger.ListRemoteAgentsRequest
+	(*ListRemoteAgentsResponse)(nil),       // 150: messenger.ListRemoteAgentsResponse
+	(*DeployAgentTaskRequest)(nil),         // 151: messenger.DeployAgentTaskRequest
+	(*DeployAgentTaskResponse)(nil),        // 152: messenger.DeployAgentTaskResponse
+	(*GetRemoteAgentStatusRequest)(nil),    // 153: messenger.GetRemoteAgentStatusRequest
+	(*GetRemoteAgentStatusResponse)(nil),   // 154: messenger.GetRemoteAgentStatusResponse
+	nil,                                    // 155: messenger.DeployAgentTaskRequest.ParamsEntry
+	(*timestamp.Timestamp)(nil),            // 156: google.protobuf.Timestamp
 }
 var file_messenger_proto_depIdxs = []int32{
-	125, // 0: messenger.Message.created_at:type_name -> google.protobuf.Timestamp
+	156, // 0: messenger.Message.created_at:type_name -> google.protobuf.Timestamp
 	2,   // 1: messenger.Message.reactions:type_name -> messenger.Reaction
 	2,   // 2: messenger.ReactionRequest.reaction:type_name -> messenger.Reaction
-	125, // 3: messenger.UserInfo.last_seen_at:type_name -> google.protobuf.Timestamp
+	156, // 3: messenger.UserInfo.last_seen_at:type_name -> google.protobuf.Timestamp
 	8,   // 4: messenger.GetAllUsersResponse.users:type_name -> messenger.UserInfo
-	125, // 5: messenger.GetAllUsersResponse.server_time:type_name -> google.protobuf.Timestamp
+	156, // 5: messenger.GetAllUsersResponse.server_time:type_name -> google.protobuf.Timestamp
 	19,  // 6: messenger.GetAllChatsResponse.chats:type_name -> messenger.ChatInfo
 	1,   // 7: messenger.GetHistoryResponse.messages:type_name -> messenger.Message
 	1,   // 8: messenger.DeleteMessagesRequest.messages:type_name -> messenger.Message
-	125, // 9: messenger.ChatInfo.created_at:type_name -> google.protobuf.Timestamp
-	125, // 10: messenger.ChatInfo.last_message_time:type_name -> google.protobuf.Timestamp
+	156, // 9: messenger.ChatInfo.created_at:type_name -> google.protobuf.Timestamp
+	156, // 10: messenger.ChatInfo.last_message_time:type_name -> google.protobuf.Timestamp
 	19,  // 11: messenger.GetChatsResponse.chats:type_name -> messenger.ChatInfo
-	125, // 12: messenger.GetUserProfileResponse.last_seen_at:type_name -> google.protobuf.Timestamp
+	156, // 12: messenger.GetUserProfileResponse.last_seen_at:type_name -> google.protobuf.Timestamp
 	60,  // 13: messenger.GetThemesResponse.custom_themes:type_name -> messenger.CustomTheme
 	60,  // 14: messenger.SaveThemeRequest.theme:type_name -> messenger.CustomTheme
 	76,  // 15: messenger.GetFCMLogsResponse.logs:type_name -> messenger.FCMLogEntry
 	1,   // 16: messenger.GetFavoritesResponse.messages:type_name -> messenger.Message
-	125, // 17: messenger.DeviceInfo.last_seen_at:type_name -> google.protobuf.Timestamp
+	156, // 17: messenger.DeviceInfo.last_seen_at:type_name -> google.protobuf.Timestamp
 	98,  // 18: messenger.GetDevicesResponse.devices:type_name -> messenger.DeviceInfo
 	0,   // 19: messenger.CallMessage.type:type_name -> messenger.CallMessage.Type
 	119, // 20: messenger.GetOwlHistoryResponse.messages:type_name -> messenger.OwlHistoryMessage
-	1,   // 21: messenger.ChatService.Chat:input_type -> messenger.Message
-	96,  // 22: messenger.ChatService.Typing:input_type -> messenger.TypingRequest
-	107, // 23: messenger.ChatService.CallSession:input_type -> messenger.CallMessage
-	5,   // 24: messenger.ChatService.GetClients:input_type -> messenger.ClientListRequest
-	7,   // 25: messenger.ChatService.GetAllUsers:input_type -> messenger.GetAllUsersRequest
-	10,  // 26: messenger.ChatService.GetAllChats:input_type -> messenger.GetAllChatsRequest
-	13,  // 27: messenger.ChatService.GetHistory:input_type -> messenger.GetHistoryRequest
-	3,   // 28: messenger.ChatService.SetReaction:input_type -> messenger.ReactionRequest
-	15,  // 29: messenger.ChatService.DeleteMessages:input_type -> messenger.DeleteMessagesRequest
-	17,  // 30: messenger.ChatService.RegisterToken:input_type -> messenger.TokenRequest
-	20,  // 31: messenger.ChatService.GetChats:input_type -> messenger.GetChatsRequest
-	58,  // 32: messenger.ChatService.GetChatListVersion:input_type -> messenger.GetChatListVersionRequest
-	22,  // 33: messenger.ChatService.CreateDirectChat:input_type -> messenger.CreateDirectChatRequest
-	24,  // 34: messenger.ChatService.CreateGroupChat:input_type -> messenger.CreateGroupChatRequest
-	26,  // 35: messenger.ChatService.UpdateUsername:input_type -> messenger.UpdateUsernameRequest
-	28,  // 36: messenger.ChatService.UpdatePassword:input_type -> messenger.UpdatePasswordRequest
-	30,  // 37: messenger.ChatService.AdminUpdatePassword:input_type -> messenger.AdminUpdatePasswordRequest
-	32,  // 38: messenger.ChatService.MarkRead:input_type -> messenger.MarkReadRequest
-	34,  // 39: messenger.ChatService.UpdateAvatar:input_type -> messenger.UpdateAvatarRequest
-	36,  // 40: messenger.ChatService.UpdateProfile:input_type -> messenger.UpdateProfileRequest
-	38,  // 41: messenger.ChatService.GetUserProfile:input_type -> messenger.GetUserProfileRequest
-	40,  // 42: messenger.ChatService.GetUserAvatar:input_type -> messenger.GetUserAvatarRequest
-	42,  // 43: messenger.ChatService.AddParticipant:input_type -> messenger.AddParticipantRequest
-	44,  // 44: messenger.ChatService.RemoveParticipant:input_type -> messenger.RemoveParticipantRequest
-	46,  // 45: messenger.ChatService.EditMessage:input_type -> messenger.EditMessageRequest
-	69,  // 46: messenger.ChatService.UpdateChatName:input_type -> messenger.UpdateChatNameRequest
-	71,  // 47: messenger.ChatService.UpdateChatAvatar:input_type -> messenger.UpdateChatAvatarRequest
-	73,  // 48: messenger.ChatService.UpdateChatSettings:input_type -> messenger.UpdateChatSettingsRequest
-	48,  // 49: messenger.ChatService.DeleteChat:input_type -> messenger.DeleteChatRequest
-	50,  // 50: messenger.ChatService.DeleteProfile:input_type -> messenger.DeleteProfileRequest
-	52,  // 51: messenger.ChatService.AddContact:input_type -> messenger.AddContactRequest
-	54,  // 52: messenger.ChatService.RemoveContact:input_type -> messenger.RemoveContactRequest
-	56,  // 53: messenger.ChatService.GetContacts:input_type -> messenger.GetContactsRequest
-	61,  // 54: messenger.ChatService.GetThemes:input_type -> messenger.GetThemesRequest
-	63,  // 55: messenger.ChatService.SaveTheme:input_type -> messenger.SaveThemeRequest
-	65,  // 56: messenger.ChatService.SetCurrentTheme:input_type -> messenger.SetCurrentThemeRequest
-	67,  // 57: messenger.ChatService.DeleteTheme:input_type -> messenger.DeleteThemeRequest
-	75,  // 58: messenger.ChatService.GetFCMLogs:input_type -> messenger.GetFCMLogsRequest
-	78,  // 59: messenger.ChatService.SaveDraft:input_type -> messenger.SaveDraftRequest
-	80,  // 60: messenger.ChatService.GetDraft:input_type -> messenger.GetDraftRequest
-	82,  // 61: messenger.ChatService.DeleteDraft:input_type -> messenger.DeleteDraftRequest
-	84,  // 62: messenger.ChatService.GetMutedChats:input_type -> messenger.GetMutedChatsRequest
-	86,  // 63: messenger.ChatService.SetMutedChat:input_type -> messenger.SetMutedChatRequest
-	88,  // 64: messenger.ChatService.GetUserId:input_type -> messenger.GetUserIdRequest
-	90,  // 65: messenger.ChatService.AddFavorite:input_type -> messenger.AddFavoriteRequest
-	92,  // 66: messenger.ChatService.RemoveFavorite:input_type -> messenger.RemoveFavoriteRequest
-	94,  // 67: messenger.ChatService.GetFavorites:input_type -> messenger.GetFavoritesRequest
-	1,   // 68: messenger.ChatService.SaveFavoriteMessage:input_type -> messenger.Message
-	99,  // 69: messenger.ChatService.GetDevices:input_type -> messenger.GetDevicesRequest
-	101, // 70: messenger.ChatService.DeleteDevice:input_type -> messenger.DeleteDeviceRequest
-	101, // 71: messenger.ChatService.DeleteOtherDevices:input_type -> messenger.DeleteDeviceRequest
-	103, // 72: messenger.ChatService.RequestPasswordReset:input_type -> messenger.RequestPasswordResetRequest
-	105, // 73: messenger.ChatService.ResetPassword:input_type -> messenger.ResetPasswordRequest
-	108, // 74: messenger.ChatService.CreateSecretChat:input_type -> messenger.CreateSecretChatRequest
-	110, // 75: messenger.ChatService.ExchangeSecretKey:input_type -> messenger.ExchangeSecretKeyRequest
-	112, // 76: messenger.ChatService.GetSecretChatKey:input_type -> messenger.GetSecretChatKeyRequest
-	123, // 77: messenger.ChatService.ChatWithOWL:input_type -> messenger.OWLRequest
-	114, // 78: messenger.ChatService.CreateOwlChat:input_type -> messenger.CreateOwlChatRequest
-	116, // 79: messenger.ChatService.DeleteOwlChat:input_type -> messenger.DeleteOwlChatRequest
-	118, // 80: messenger.ChatService.GetOwlHistory:input_type -> messenger.GetOwlHistoryRequest
-	121, // 81: messenger.ChatService.UpdateOwlSettings:input_type -> messenger.UpdateOwlSettingsRequest
-	1,   // 82: messenger.ChatService.Chat:output_type -> messenger.Message
-	97,  // 83: messenger.ChatService.Typing:output_type -> messenger.TypingSignal
-	107, // 84: messenger.ChatService.CallSession:output_type -> messenger.CallMessage
-	6,   // 85: messenger.ChatService.GetClients:output_type -> messenger.ClientListResponse
-	9,   // 86: messenger.ChatService.GetAllUsers:output_type -> messenger.GetAllUsersResponse
-	11,  // 87: messenger.ChatService.GetAllChats:output_type -> messenger.GetAllChatsResponse
-	14,  // 88: messenger.ChatService.GetHistory:output_type -> messenger.GetHistoryResponse
-	4,   // 89: messenger.ChatService.SetReaction:output_type -> messenger.ReactionResponse
-	16,  // 90: messenger.ChatService.DeleteMessages:output_type -> messenger.DeleteMessagesResponse
-	18,  // 91: messenger.ChatService.RegisterToken:output_type -> messenger.TokenResponse
-	21,  // 92: messenger.ChatService.GetChats:output_type -> messenger.GetChatsResponse
-	59,  // 93: messenger.ChatService.GetChatListVersion:output_type -> messenger.GetChatListVersionResponse
-	23,  // 94: messenger.ChatService.CreateDirectChat:output_type -> messenger.CreateDirectChatResponse
-	25,  // 95: messenger.ChatService.CreateGroupChat:output_type -> messenger.CreateGroupChatResponse
-	27,  // 96: messenger.ChatService.UpdateUsername:output_type -> messenger.UpdateUsernameResponse
-	29,  // 97: messenger.ChatService.UpdatePassword:output_type -> messenger.UpdatePasswordResponse
-	31,  // 98: messenger.ChatService.AdminUpdatePassword:output_type -> messenger.AdminUpdatePasswordResponse
-	33,  // 99: messenger.ChatService.MarkRead:output_type -> messenger.MarkReadResponse
-	35,  // 100: messenger.ChatService.UpdateAvatar:output_type -> messenger.UpdateAvatarResponse
-	37,  // 101: messenger.ChatService.UpdateProfile:output_type -> messenger.UpdateProfileResponse
-	39,  // 102: messenger.ChatService.GetUserProfile:output_type -> messenger.GetUserProfileResponse
-	41,  // 103: messenger.ChatService.GetUserAvatar:output_type -> messenger.GetUserAvatarResponse
-	43,  // 104: messenger.ChatService.AddParticipant:output_type -> messenger.AddParticipantResponse
-	45,  // 105: messenger.ChatService.RemoveParticipant:output_type -> messenger.RemoveParticipantResponse
-	47,  // 106: messenger.ChatService.EditMessage:output_type -> messenger.EditMessageResponse
-	70,  // 107: messenger.ChatService.UpdateChatName:output_type -> messenger.UpdateChatNameResponse
-	72,  // 108: messenger.ChatService.UpdateChatAvatar:output_type -> messenger.UpdateChatAvatarResponse
-	74,  // 109: messenger.ChatService.UpdateChatSettings:output_type -> messenger.UpdateChatSettingsResponse
-	49,  // 110: messenger.ChatService.DeleteChat:output_type -> messenger.DeleteChatResponse
-	51,  // 111: messenger.ChatService.DeleteProfile:output_type -> messenger.DeleteProfileResponse
-	53,  // 112: messenger.ChatService.AddContact:output_type -> messenger.AddContactResponse
-	55,  // 113: messenger.ChatService.RemoveContact:output_type -> messenger.RemoveContactResponse
-	57,  // 114: messenger.ChatService.GetContacts:output_type -> messenger.GetContactsResponse
-	62,  // 115: messenger.ChatService.GetThemes:output_type -> messenger.GetThemesResponse
-	64,  // 116: messenger.ChatService.SaveTheme:output_type -> messenger.SaveThemeResponse
-	66,  // 117: messenger.ChatService.SetCurrentTheme:output_type -> messenger.SetCurrentThemeResponse
-	68,  // 118: messenger.ChatService.DeleteTheme:output_type -> messenger.DeleteThemeResponse
-	77,  // 119: messenger.ChatService.GetFCMLogs:output_type -> messenger.GetFCMLogsResponse
-	79,  // 120: messenger.ChatService.SaveDraft:output_type -> messenger.SaveDraftResponse
-	81,  // 121: messenger.ChatService.GetDraft:output_type -> messenger.GetDraftResponse
-	83,  // 122: messenger.ChatService.DeleteDraft:output_type -> messenger.DeleteDraftResponse
-	85,  // 123: messenger.ChatService.GetMutedChats:output_type -> messenger.GetMutedChatsResponse
-	87,  // 124: messenger.ChatService.SetMutedChat:output_type -> messenger.SetMutedChatResponse
-	89,  // 125: messenger.ChatService.GetUserId:output_type -> messenger.GetUserIdResponse
-	91,  // 126: messenger.ChatService.AddFavorite:output_type -> messenger.AddFavoriteResponse
-	93,  // 127: messenger.ChatService.RemoveFavorite:output_type -> messenger.RemoveFavoriteResponse
-	95,  // 128: messenger.ChatService.GetFavorites:output_type -> messenger.GetFavoritesResponse
-	91,  // 129: messenger.ChatService.SaveFavoriteMessage:output_type -> messenger.AddFavoriteResponse
-	100, // 130: messenger.ChatService.GetDevices:output_type -> messenger.GetDevicesResponse
-	102, // 131: messenger.ChatService.DeleteDevice:output_type -> messenger.DeleteDeviceResponse
-	102, // 132: messenger.ChatService.DeleteOtherDevices:output_type -> messenger.DeleteDeviceResponse
-	104, // 133: messenger.ChatService.RequestPasswordReset:output_type -> messenger.RequestPasswordResetResponse
-	106, // 134: messenger.ChatService.ResetPassword:output_type -> messenger.ResetPasswordResponse
-	109, // 135: messenger.ChatService.CreateSecretChat:output_type -> messenger.CreateSecretChatResponse
-	111, // 136: messenger.ChatService.ExchangeSecretKey:output_type -> messenger.ExchangeSecretKeyResponse
-	113, // 137: messenger.ChatService.GetSecretChatKey:output_type -> messenger.GetSecretChatKeyResponse
-	124, // 138: messenger.ChatService.ChatWithOWL:output_type -> messenger.OWLResponse
-	115, // 139: messenger.ChatService.CreateOwlChat:output_type -> messenger.CreateOwlChatResponse
-	117, // 140: messenger.ChatService.DeleteOwlChat:output_type -> messenger.DeleteOwlChatResponse
-	120, // 141: messenger.ChatService.GetOwlHistory:output_type -> messenger.GetOwlHistoryResponse
-	122, // 142: messenger.ChatService.UpdateOwlSettings:output_type -> messenger.UpdateOwlSettingsResponse
-	82,  // [82:143] is the sub-list for method output_type
-	21,  // [21:82] is the sub-list for method input_type
-	21,  // [21:21] is the sub-list for extension type_name
-	21,  // [21:21] is the sub-list for extension extendee
-	0,   // [0:21] is the sub-list for field type_name
+	127, // 21: messenger.GetOrchestratorHistoryResponse.messages:type_name -> messenger.HermesChatMessage
+	130, // 22: messenger.ListAgentsResponse.agents:type_name -> messenger.AgentInfo
+	131, // 23: messenger.ListAgentPresetsResponse.presets:type_name -> messenger.AgentPresetInfo
+	130, // 24: messenger.ListUserAgentsResponse.agents:type_name -> messenger.AgentInfo
+	148, // 25: messenger.ListRemoteAgentsResponse.agents:type_name -> messenger.RemoteAgentInfo
+	155, // 26: messenger.DeployAgentTaskRequest.params:type_name -> messenger.DeployAgentTaskRequest.ParamsEntry
+	1,   // 27: messenger.ChatService.Chat:input_type -> messenger.Message
+	96,  // 28: messenger.ChatService.Typing:input_type -> messenger.TypingRequest
+	107, // 29: messenger.ChatService.CallSession:input_type -> messenger.CallMessage
+	5,   // 30: messenger.ChatService.GetClients:input_type -> messenger.ClientListRequest
+	7,   // 31: messenger.ChatService.GetAllUsers:input_type -> messenger.GetAllUsersRequest
+	10,  // 32: messenger.ChatService.GetAllChats:input_type -> messenger.GetAllChatsRequest
+	13,  // 33: messenger.ChatService.GetHistory:input_type -> messenger.GetHistoryRequest
+	3,   // 34: messenger.ChatService.SetReaction:input_type -> messenger.ReactionRequest
+	15,  // 35: messenger.ChatService.DeleteMessages:input_type -> messenger.DeleteMessagesRequest
+	17,  // 36: messenger.ChatService.RegisterToken:input_type -> messenger.TokenRequest
+	20,  // 37: messenger.ChatService.GetChats:input_type -> messenger.GetChatsRequest
+	58,  // 38: messenger.ChatService.GetChatListVersion:input_type -> messenger.GetChatListVersionRequest
+	22,  // 39: messenger.ChatService.CreateDirectChat:input_type -> messenger.CreateDirectChatRequest
+	24,  // 40: messenger.ChatService.CreateGroupChat:input_type -> messenger.CreateGroupChatRequest
+	26,  // 41: messenger.ChatService.UpdateUsername:input_type -> messenger.UpdateUsernameRequest
+	28,  // 42: messenger.ChatService.UpdatePassword:input_type -> messenger.UpdatePasswordRequest
+	30,  // 43: messenger.ChatService.AdminUpdatePassword:input_type -> messenger.AdminUpdatePasswordRequest
+	32,  // 44: messenger.ChatService.MarkRead:input_type -> messenger.MarkReadRequest
+	34,  // 45: messenger.ChatService.UpdateAvatar:input_type -> messenger.UpdateAvatarRequest
+	36,  // 46: messenger.ChatService.UpdateProfile:input_type -> messenger.UpdateProfileRequest
+	38,  // 47: messenger.ChatService.GetUserProfile:input_type -> messenger.GetUserProfileRequest
+	40,  // 48: messenger.ChatService.GetUserAvatar:input_type -> messenger.GetUserAvatarRequest
+	42,  // 49: messenger.ChatService.AddParticipant:input_type -> messenger.AddParticipantRequest
+	44,  // 50: messenger.ChatService.RemoveParticipant:input_type -> messenger.RemoveParticipantRequest
+	46,  // 51: messenger.ChatService.EditMessage:input_type -> messenger.EditMessageRequest
+	69,  // 52: messenger.ChatService.UpdateChatName:input_type -> messenger.UpdateChatNameRequest
+	71,  // 53: messenger.ChatService.UpdateChatAvatar:input_type -> messenger.UpdateChatAvatarRequest
+	73,  // 54: messenger.ChatService.UpdateChatSettings:input_type -> messenger.UpdateChatSettingsRequest
+	48,  // 55: messenger.ChatService.DeleteChat:input_type -> messenger.DeleteChatRequest
+	50,  // 56: messenger.ChatService.DeleteProfile:input_type -> messenger.DeleteProfileRequest
+	52,  // 57: messenger.ChatService.AddContact:input_type -> messenger.AddContactRequest
+	54,  // 58: messenger.ChatService.RemoveContact:input_type -> messenger.RemoveContactRequest
+	56,  // 59: messenger.ChatService.GetContacts:input_type -> messenger.GetContactsRequest
+	61,  // 60: messenger.ChatService.GetThemes:input_type -> messenger.GetThemesRequest
+	63,  // 61: messenger.ChatService.SaveTheme:input_type -> messenger.SaveThemeRequest
+	65,  // 62: messenger.ChatService.SetCurrentTheme:input_type -> messenger.SetCurrentThemeRequest
+	67,  // 63: messenger.ChatService.DeleteTheme:input_type -> messenger.DeleteThemeRequest
+	75,  // 64: messenger.ChatService.GetFCMLogs:input_type -> messenger.GetFCMLogsRequest
+	78,  // 65: messenger.ChatService.SaveDraft:input_type -> messenger.SaveDraftRequest
+	80,  // 66: messenger.ChatService.GetDraft:input_type -> messenger.GetDraftRequest
+	82,  // 67: messenger.ChatService.DeleteDraft:input_type -> messenger.DeleteDraftRequest
+	84,  // 68: messenger.ChatService.GetMutedChats:input_type -> messenger.GetMutedChatsRequest
+	86,  // 69: messenger.ChatService.SetMutedChat:input_type -> messenger.SetMutedChatRequest
+	88,  // 70: messenger.ChatService.GetUserId:input_type -> messenger.GetUserIdRequest
+	90,  // 71: messenger.ChatService.AddFavorite:input_type -> messenger.AddFavoriteRequest
+	92,  // 72: messenger.ChatService.RemoveFavorite:input_type -> messenger.RemoveFavoriteRequest
+	94,  // 73: messenger.ChatService.GetFavorites:input_type -> messenger.GetFavoritesRequest
+	1,   // 74: messenger.ChatService.SaveFavoriteMessage:input_type -> messenger.Message
+	99,  // 75: messenger.ChatService.GetDevices:input_type -> messenger.GetDevicesRequest
+	101, // 76: messenger.ChatService.DeleteDevice:input_type -> messenger.DeleteDeviceRequest
+	101, // 77: messenger.ChatService.DeleteOtherDevices:input_type -> messenger.DeleteDeviceRequest
+	103, // 78: messenger.ChatService.RequestPasswordReset:input_type -> messenger.RequestPasswordResetRequest
+	105, // 79: messenger.ChatService.ResetPassword:input_type -> messenger.ResetPasswordRequest
+	108, // 80: messenger.ChatService.CreateSecretChat:input_type -> messenger.CreateSecretChatRequest
+	110, // 81: messenger.ChatService.ExchangeSecretKey:input_type -> messenger.ExchangeSecretKeyRequest
+	112, // 82: messenger.ChatService.GetSecretChatKey:input_type -> messenger.GetSecretChatKeyRequest
+	123, // 83: messenger.ChatService.ChatWithOWL:input_type -> messenger.OWLRequest
+	114, // 84: messenger.ChatService.CreateOwlChat:input_type -> messenger.CreateOwlChatRequest
+	116, // 85: messenger.ChatService.DeleteOwlChat:input_type -> messenger.DeleteOwlChatRequest
+	118, // 86: messenger.ChatService.GetOwlHistory:input_type -> messenger.GetOwlHistoryRequest
+	121, // 87: messenger.ChatService.UpdateOwlSettings:input_type -> messenger.UpdateOwlSettingsRequest
+	125, // 88: messenger.ChatService.ChatWithOrchestrator:input_type -> messenger.OrchestratorRequest
+	128, // 89: messenger.ChatService.GetOrchestratorHistory:input_type -> messenger.GetOrchestratorHistoryRequest
+	132, // 90: messenger.ChatService.ListAgents:input_type -> messenger.ListAgentsRequest
+	134, // 91: messenger.ChatService.ListAgentPresets:input_type -> messenger.ListAgentPresetsRequest
+	136, // 92: messenger.ChatService.CreateAgent:input_type -> messenger.CreateAgentRequest
+	138, // 93: messenger.ChatService.UpdateAgent:input_type -> messenger.UpdateAgentRequest
+	140, // 94: messenger.ChatService.DeleteAgent:input_type -> messenger.DeleteAgentRequest
+	142, // 95: messenger.ChatService.ListUserAgents:input_type -> messenger.ListUserAgentsRequest
+	144, // 96: messenger.ChatService.CreateHermesSession:input_type -> messenger.CreateHermesSessionRequest
+	146, // 97: messenger.ChatService.DeleteHermesSession:input_type -> messenger.DeleteHermesSessionRequest
+	149, // 98: messenger.ChatService.ListRemoteAgents:input_type -> messenger.ListRemoteAgentsRequest
+	151, // 99: messenger.ChatService.DeployAgentTask:input_type -> messenger.DeployAgentTaskRequest
+	153, // 100: messenger.ChatService.GetRemoteAgentStatus:input_type -> messenger.GetRemoteAgentStatusRequest
+	1,   // 101: messenger.ChatService.Chat:output_type -> messenger.Message
+	97,  // 102: messenger.ChatService.Typing:output_type -> messenger.TypingSignal
+	107, // 103: messenger.ChatService.CallSession:output_type -> messenger.CallMessage
+	6,   // 104: messenger.ChatService.GetClients:output_type -> messenger.ClientListResponse
+	9,   // 105: messenger.ChatService.GetAllUsers:output_type -> messenger.GetAllUsersResponse
+	11,  // 106: messenger.ChatService.GetAllChats:output_type -> messenger.GetAllChatsResponse
+	14,  // 107: messenger.ChatService.GetHistory:output_type -> messenger.GetHistoryResponse
+	4,   // 108: messenger.ChatService.SetReaction:output_type -> messenger.ReactionResponse
+	16,  // 109: messenger.ChatService.DeleteMessages:output_type -> messenger.DeleteMessagesResponse
+	18,  // 110: messenger.ChatService.RegisterToken:output_type -> messenger.TokenResponse
+	21,  // 111: messenger.ChatService.GetChats:output_type -> messenger.GetChatsResponse
+	59,  // 112: messenger.ChatService.GetChatListVersion:output_type -> messenger.GetChatListVersionResponse
+	23,  // 113: messenger.ChatService.CreateDirectChat:output_type -> messenger.CreateDirectChatResponse
+	25,  // 114: messenger.ChatService.CreateGroupChat:output_type -> messenger.CreateGroupChatResponse
+	27,  // 115: messenger.ChatService.UpdateUsername:output_type -> messenger.UpdateUsernameResponse
+	29,  // 116: messenger.ChatService.UpdatePassword:output_type -> messenger.UpdatePasswordResponse
+	31,  // 117: messenger.ChatService.AdminUpdatePassword:output_type -> messenger.AdminUpdatePasswordResponse
+	33,  // 118: messenger.ChatService.MarkRead:output_type -> messenger.MarkReadResponse
+	35,  // 119: messenger.ChatService.UpdateAvatar:output_type -> messenger.UpdateAvatarResponse
+	37,  // 120: messenger.ChatService.UpdateProfile:output_type -> messenger.UpdateProfileResponse
+	39,  // 121: messenger.ChatService.GetUserProfile:output_type -> messenger.GetUserProfileResponse
+	41,  // 122: messenger.ChatService.GetUserAvatar:output_type -> messenger.GetUserAvatarResponse
+	43,  // 123: messenger.ChatService.AddParticipant:output_type -> messenger.AddParticipantResponse
+	45,  // 124: messenger.ChatService.RemoveParticipant:output_type -> messenger.RemoveParticipantResponse
+	47,  // 125: messenger.ChatService.EditMessage:output_type -> messenger.EditMessageResponse
+	70,  // 126: messenger.ChatService.UpdateChatName:output_type -> messenger.UpdateChatNameResponse
+	72,  // 127: messenger.ChatService.UpdateChatAvatar:output_type -> messenger.UpdateChatAvatarResponse
+	74,  // 128: messenger.ChatService.UpdateChatSettings:output_type -> messenger.UpdateChatSettingsResponse
+	49,  // 129: messenger.ChatService.DeleteChat:output_type -> messenger.DeleteChatResponse
+	51,  // 130: messenger.ChatService.DeleteProfile:output_type -> messenger.DeleteProfileResponse
+	53,  // 131: messenger.ChatService.AddContact:output_type -> messenger.AddContactResponse
+	55,  // 132: messenger.ChatService.RemoveContact:output_type -> messenger.RemoveContactResponse
+	57,  // 133: messenger.ChatService.GetContacts:output_type -> messenger.GetContactsResponse
+	62,  // 134: messenger.ChatService.GetThemes:output_type -> messenger.GetThemesResponse
+	64,  // 135: messenger.ChatService.SaveTheme:output_type -> messenger.SaveThemeResponse
+	66,  // 136: messenger.ChatService.SetCurrentTheme:output_type -> messenger.SetCurrentThemeResponse
+	68,  // 137: messenger.ChatService.DeleteTheme:output_type -> messenger.DeleteThemeResponse
+	77,  // 138: messenger.ChatService.GetFCMLogs:output_type -> messenger.GetFCMLogsResponse
+	79,  // 139: messenger.ChatService.SaveDraft:output_type -> messenger.SaveDraftResponse
+	81,  // 140: messenger.ChatService.GetDraft:output_type -> messenger.GetDraftResponse
+	83,  // 141: messenger.ChatService.DeleteDraft:output_type -> messenger.DeleteDraftResponse
+	85,  // 142: messenger.ChatService.GetMutedChats:output_type -> messenger.GetMutedChatsResponse
+	87,  // 143: messenger.ChatService.SetMutedChat:output_type -> messenger.SetMutedChatResponse
+	89,  // 144: messenger.ChatService.GetUserId:output_type -> messenger.GetUserIdResponse
+	91,  // 145: messenger.ChatService.AddFavorite:output_type -> messenger.AddFavoriteResponse
+	93,  // 146: messenger.ChatService.RemoveFavorite:output_type -> messenger.RemoveFavoriteResponse
+	95,  // 147: messenger.ChatService.GetFavorites:output_type -> messenger.GetFavoritesResponse
+	91,  // 148: messenger.ChatService.SaveFavoriteMessage:output_type -> messenger.AddFavoriteResponse
+	100, // 149: messenger.ChatService.GetDevices:output_type -> messenger.GetDevicesResponse
+	102, // 150: messenger.ChatService.DeleteDevice:output_type -> messenger.DeleteDeviceResponse
+	102, // 151: messenger.ChatService.DeleteOtherDevices:output_type -> messenger.DeleteDeviceResponse
+	104, // 152: messenger.ChatService.RequestPasswordReset:output_type -> messenger.RequestPasswordResetResponse
+	106, // 153: messenger.ChatService.ResetPassword:output_type -> messenger.ResetPasswordResponse
+	109, // 154: messenger.ChatService.CreateSecretChat:output_type -> messenger.CreateSecretChatResponse
+	111, // 155: messenger.ChatService.ExchangeSecretKey:output_type -> messenger.ExchangeSecretKeyResponse
+	113, // 156: messenger.ChatService.GetSecretChatKey:output_type -> messenger.GetSecretChatKeyResponse
+	124, // 157: messenger.ChatService.ChatWithOWL:output_type -> messenger.OWLResponse
+	115, // 158: messenger.ChatService.CreateOwlChat:output_type -> messenger.CreateOwlChatResponse
+	117, // 159: messenger.ChatService.DeleteOwlChat:output_type -> messenger.DeleteOwlChatResponse
+	120, // 160: messenger.ChatService.GetOwlHistory:output_type -> messenger.GetOwlHistoryResponse
+	122, // 161: messenger.ChatService.UpdateOwlSettings:output_type -> messenger.UpdateOwlSettingsResponse
+	126, // 162: messenger.ChatService.ChatWithOrchestrator:output_type -> messenger.OrchestratorResponse
+	129, // 163: messenger.ChatService.GetOrchestratorHistory:output_type -> messenger.GetOrchestratorHistoryResponse
+	133, // 164: messenger.ChatService.ListAgents:output_type -> messenger.ListAgentsResponse
+	135, // 165: messenger.ChatService.ListAgentPresets:output_type -> messenger.ListAgentPresetsResponse
+	137, // 166: messenger.ChatService.CreateAgent:output_type -> messenger.CreateAgentResponse
+	139, // 167: messenger.ChatService.UpdateAgent:output_type -> messenger.UpdateAgentResponse
+	141, // 168: messenger.ChatService.DeleteAgent:output_type -> messenger.DeleteAgentResponse
+	143, // 169: messenger.ChatService.ListUserAgents:output_type -> messenger.ListUserAgentsResponse
+	145, // 170: messenger.ChatService.CreateHermesSession:output_type -> messenger.CreateHermesSessionResponse
+	147, // 171: messenger.ChatService.DeleteHermesSession:output_type -> messenger.DeleteHermesSessionResponse
+	150, // 172: messenger.ChatService.ListRemoteAgents:output_type -> messenger.ListRemoteAgentsResponse
+	152, // 173: messenger.ChatService.DeployAgentTask:output_type -> messenger.DeployAgentTaskResponse
+	154, // 174: messenger.ChatService.GetRemoteAgentStatus:output_type -> messenger.GetRemoteAgentStatusResponse
+	101, // [101:175] is the sub-list for method output_type
+	27,  // [27:101] is the sub-list for method input_type
+	27,  // [27:27] is the sub-list for extension type_name
+	27,  // [27:27] is the sub-list for extension extendee
+	0,   // [0:27] is the sub-list for field type_name
 }
 
 func init() { file_messenger_proto_init() }
@@ -8171,7 +10120,7 @@ func file_messenger_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_messenger_proto_rawDesc), len(file_messenger_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   124,
+			NumMessages:   155,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -9,6 +11,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"sync"
 	"time"
 )
@@ -230,4 +233,152 @@ func (rl *rateLimiter) allow(userID string) bool {
 
 	rl.requests[userID] = append(valid, now)
 	return true
+}
+
+// callOpenRouterContext — context-aware версия callOpenRouter для оркестратора
+func callOpenRouterContext(ctx context.Context, apiKey string, model string, systemPrompt string, messages []map[string]string) (string, error) {
+	if apiKey == "" {
+		apiKey = os.Getenv("OPENROUTER_API_KEY")
+	}
+	if apiKey == "" {
+		return "", fmt.Errorf("OpenRouter API key not configured")
+	}
+	if model == "" {
+		model = os.Getenv("OPENROUTER_MODEL")
+		if model == "" {
+			model = "openrouter/auto"
+		}
+	}
+
+	payload := map[string]interface{}{
+		"model":    model,
+		"messages": append([]map[string]string{{"role": "system", "content": systemPrompt}}, messages...),
+	}
+
+	jsonData, err := json.Marshal(payload)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return "", fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("HTTP-Referer", "https://lavender-messenger.com")
+
+	client := &http.Client{Timeout: 120 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("OpenRouter request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to read response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("OpenRouter returned %d: %s", resp.StatusCode, string(body))
+	}
+
+	var result oll
+	if err := json.Unmarshal(body, &result); err != nil {
+		return "", fmt.Errorf("failed to parse response: %w", err)
+	}
+	if len(result.Choices) == 0 {
+		return "", fmt.Errorf("no choices in OpenRouter response")
+	}
+	return result.Choices[0].Message.Content, nil
+}
+
+// streamOpenRouter — стримит ответ OpenRouter через callback
+func streamOpenRouter(ctx context.Context, apiKey string, model string, systemPrompt string, messages []map[string]string, onToken func(token string, finished bool) error) error {
+	if apiKey == "" {
+		apiKey = os.Getenv("OPENROUTER_API_KEY")
+	}
+	if apiKey == "" {
+		return fmt.Errorf("OpenRouter API key not configured")
+	}
+	if model == "" {
+		model = os.Getenv("OPENROUTER_MODEL")
+		if model == "" {
+			model = "openrouter/auto"
+		}
+	}
+
+	payload := map[string]interface{}{
+		"model":    model,
+		"messages": append([]map[string]string{{"role": "system", "content": systemPrompt}}, messages...),
+		"stream":   true,
+	}
+
+	jsonData, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("HTTP-Referer", "https://lavender-messenger.com")
+
+	client := &http.Client{Timeout: 120 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("OpenRouter request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("OpenRouter returned %d: %s", resp.StatusCode, string(body))
+	}
+
+	reader := bufio.NewReader(resp.Body)
+	for {
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return fmt.Errorf("stream read error: %w", err)
+		}
+
+		line = strings.TrimSpace(line)
+		if line == "" || !strings.HasPrefix(line, "data: ") {
+			continue
+		}
+
+		data := strings.TrimPrefix(line, "data: ")
+		if data == "[DONE]" {
+			_ = onToken("", true)
+			break
+		}
+
+		var chunk struct {
+			Choices []struct {
+				Delta struct {
+					Content string `json:"content"`
+				} `json:"delta"`
+			} `json:"choices"`
+		}
+		if err := json.Unmarshal([]byte(data), &chunk); err != nil {
+			continue
+		}
+		if len(chunk.Choices) > 0 && chunk.Choices[0].Delta.Content != "" {
+			if err := onToken(chunk.Choices[0].Delta.Content, false); err != nil {
+				return err
+			}
+		}
+	}
+
+	return onToken("", true)
 }

@@ -21,7 +21,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/peer"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	firebase "firebase.google.com/go/v4"
@@ -42,6 +44,9 @@ type server struct {
 	fcmLogsMu    sync.Mutex
 	owlModel     string        // Default OWL model
 	owlApiKey    string        // Default OpenRouter API key
+
+	// Hermes Orchestrator
+	hermesOrchestrator *Orchestrator
 }
 
 func (s *server) logErrorOnce(key string, format string, v ...interface{}) {
@@ -3069,6 +3074,421 @@ func (s *server) UpdateOwlSettings(_ context.Context, req *gen.UpdateOwlSettings
 
 	owlSessions.saveSettings(req.ChatId, req.ApiKey, req.Model)
 	return &gen.UpdateOwlSettingsResponse{Success: true, Message: "OK"}, nil
+}
+
+// ======= Hermes Multi-Agent Orchestrator gRPC methods =======
+
+// ChatWithOrchestrator — основной метод: стриминг ответов оркестратора
+func (s *server) ChatWithOrchestrator(req *gen.OrchestratorRequest, stream gen.ChatService_ChatWithOrchestratorServer) error {
+	userID := req.UserId
+	if userID == "" {
+		return status.Error(codes.InvalidArgument, "user_id is required")
+	}
+
+	chatID := req.SessionId
+	if chatID == "" {
+		chatID = "hermes-" + userID
+	}
+
+	// Rate limit check (reuse OWL rate limiter)
+	if !owlRateLimiter.allow(userID) {
+		return status.Error(codes.ResourceExhausted, "rate limit exceeded: max 10 requests per minute")
+	}
+
+	// Check if orchestrator is initialized
+	if s.hermesOrchestrator == nil {
+		return status.Error(codes.Unavailable, "orchestrator not initialized")
+	}
+
+	log.Printf("[Hermes] chat=%s user=%s msg=%q", chatID, userID, truncateString(req.Message, 80))
+
+	// Welcome message: if this is a new session, send greeting first
+	session := s.hermesOrchestrator.getOrCreateSession(userID)
+	session.mu.Lock()
+	isNewSession := len(session.Messages) == 0
+	session.mu.Unlock()
+
+	if isNewSession {
+		welcomeMsg := s.buildWelcomeMessage()
+		if err := stream.Send(&gen.OrchestratorResponse{
+			Token: welcomeMsg,
+		}); err != nil {
+			return err
+		}
+		// Save welcome to session history
+		session.mu.Lock()
+		session.Messages = append(session.Messages, OrchestratorMessage{Role: "assistant", Content: welcomeMsg})
+		session.mu.Unlock()
+	}
+
+	// Run orchestrator
+	err := s.hermesOrchestrator.Orchestrate(stream.Context(), userID, chatID, req.Message,
+		func(token string, finished bool) error {
+			return stream.Send(&gen.OrchestratorResponse{
+				Token:    token,
+				Finished: finished,
+			})
+		})
+
+	if err != nil {
+		log.Printf("[Hermes] orchestrator error for user %s: %v", userID, err)
+		// Send error as final message
+		_ = stream.Send(&gen.OrchestratorResponse{
+			Token:    "",
+			Finished: true,
+			Error:    err.Error(),
+		})
+		return nil // Don't propagate error to client, we sent it in the stream
+	}
+
+	return nil
+}
+
+// buildWelcomeMessage формирует приветственное сообщение со списком агентов
+func (s *server) buildWelcomeMessage() string {
+	if s.hermesOrchestrator == nil || s.hermesOrchestrator.registry == nil {
+		return "Добро пожаловать в Hermes! Оркестратор временно недоступен."
+	}
+
+	var sb strings.Builder
+	sb.WriteString("👋 Добро пожаловать в **Hermes** — мульти-агентный AI оркестратор!\n\n")
+	sb.WriteString("Я автоматически маршрутизирую ваши запросы к специализированным агентам.\n\n")
+	sb.WriteString("**Доступные агенты:**\n")
+
+	for _, agent := range s.hermesOrchestrator.registry.GetAll() {
+		icon := agent.Icon
+		if icon == "" {
+			icon = "🤖"
+		}
+		sb.WriteString(fmt.Sprintf("%s **%s** — %s\n", icon, agent.Name, agent.Description))
+	}
+
+	sb.WriteString("\nПросто напишите ваш вопрос, и я выберу подходящего агента!\n")
+	sb.WriteString("Или укажите агента напрямую: `@developer напиши код...`")
+
+	return sb.String()
+}
+
+// GetOrchestratorHistory — история сообщений с оркестратором
+func (s *server) GetOrchestratorHistory(_ context.Context, req *gen.GetOrchestratorHistoryRequest) (*gen.GetOrchestratorHistoryResponse, error) {
+	userID := req.UserId
+	if userID == "" {
+		return nil, status.Error(codes.InvalidArgument, "user_id is required")
+	}
+
+	if s.hermesOrchestrator == nil {
+		return &gen.GetOrchestratorHistoryResponse{}, nil
+	}
+
+	session := s.hermesOrchestrator.getOrCreateSession(userID)
+	session.mu.Lock()
+	defer session.mu.Unlock()
+
+	messages := make([]*gen.HermesChatMessage, 0, len(session.Messages))
+	for _, msg := range session.Messages {
+		messages = append(messages, &gen.HermesChatMessage{
+			Role:      msg.Role,
+			Content:   msg.Content,
+			CreatedAt: time.Now().Format(time.RFC3339),
+		})
+	}
+
+	return &gen.GetOrchestratorHistoryResponse{Messages: messages}, nil
+}
+
+// ListAgents — список кастомных агентов пользователя
+func (s *server) ListAgents(_ context.Context, req *gen.ListAgentsRequest) (*gen.ListAgentsResponse, error) {
+	userID := req.UserId
+	if userID == "" {
+		return nil, status.Error(codes.InvalidArgument, "user_id is required")
+	}
+
+	if s.hermesOrchestrator == nil {
+		return &gen.ListAgentsResponse{}, nil
+	}
+
+	// Load custom agents from DB
+	rows, err := s.db.Query(
+		"SELECT id, name, COALESCE(system_prompt, ''), COALESCE(model, ''), COALESCE(max_tokens, 2048) FROM hermes_custom_agents WHERE user_id = $1 ORDER BY created_at ASC",
+		userID)
+	if err != nil {
+		log.Printf("[Hermes] ListAgents DB error: %v", err)
+		return &gen.ListAgentsResponse{}, nil
+	}
+	defer rows.Close()
+
+	var agents []*gen.AgentInfo
+	for rows.Next() {
+		var a gen.AgentInfo
+		var model string
+		var maxTokens int32
+		if err := rows.Scan(&a.Id, &a.Name, &a.SystemPrompt, &model, &maxTokens); err == nil {
+			a.IsPreset = false
+			a.Model = model
+			a.MaxTokens = maxTokens
+			agents = append(agents, &a)
+		}
+	}
+
+	return &gen.ListAgentsResponse{Agents: agents}, nil
+}
+
+// ListAgentPresets — список пресет-агентов
+func (s *server) ListAgentPresets(_ context.Context, _ *gen.ListAgentPresetsRequest) (*gen.ListAgentPresetsResponse, error) {
+	if s.hermesOrchestrator == nil || s.hermesOrchestrator.registry == nil {
+		return &gen.ListAgentPresetsResponse{}, nil
+	}
+
+	presets := s.hermesOrchestrator.registry.GetPresets()
+	result := make([]*gen.AgentPresetInfo, 0, len(presets))
+	for _, p := range presets {
+		result = append(result, &gen.AgentPresetInfo{
+			Id:          p.ID,
+			Name:        p.Name,
+			Role:        p.ID,
+			Description: p.Description,
+			Icon:        p.Icon,
+			MaxTokens:   int32(p.MaxTokens),
+		})
+	}
+
+	return &gen.ListAgentPresetsResponse{Presets: result}, nil
+}
+
+// CreateAgent — создание кастомного агента
+func (s *server) CreateAgent(_ context.Context, req *gen.CreateAgentRequest) (*gen.CreateAgentResponse, error) {
+	userID := req.UserId
+	if userID == "" {
+		return &gen.CreateAgentResponse{Success: false, Error: "user_id is required"}, nil
+	}
+
+	if s.hermesOrchestrator == nil {
+		return &gen.CreateAgentResponse{Success: false, Error: "orchestrator not initialized"}, nil
+	}
+
+	agentID := "custom-" + userID + "-" + req.PresetId + "-" + fmt.Sprintf("%d", time.Now().Unix())
+
+	_, err := s.db.Exec(
+		"INSERT INTO hermes_custom_agents (id, user_id, preset_id, name, system_prompt, model, max_tokens) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+		agentID, userID, req.PresetId, req.Name, req.SystemPrompt, req.Model, req.MaxTokens,
+	)
+	if err != nil {
+		log.Printf("[Hermes] CreateAgent DB error: %v", err)
+		return &gen.CreateAgentResponse{Success: false, Error: err.Error()}, nil
+	}
+
+	// Reload custom agents in registry
+	s.hermesOrchestrator.registry.LoadCustomAgents(s.db.DB)
+
+	log.Printf("[Hermes] created agent %s for user %s", agentID, userID)
+	return &gen.CreateAgentResponse{Success: true, AgentId: agentID}, nil
+}
+
+// UpdateAgent — обновление кастомного агента
+func (s *server) UpdateAgent(_ context.Context, req *gen.UpdateAgentRequest) (*gen.UpdateAgentResponse, error) {
+	userID := req.UserId
+	if userID == "" || req.AgentId == "" {
+		return &gen.UpdateAgentResponse{Success: false, Error: "agent_id and user_id required"}, nil
+	}
+
+	// Verify ownership
+	var owner string
+	err := s.db.QueryRow("SELECT user_id FROM hermes_custom_agents WHERE id = $1", req.AgentId).Scan(&owner)
+	if err != nil || owner != userID {
+		return &gen.UpdateAgentResponse{Success: false, Error: "not your agent"}, nil
+	}
+
+	_, err = s.db.Exec(
+		"UPDATE hermes_custom_agents SET name=$1, system_prompt=$2, model=$3, max_tokens=$4 WHERE id=$5",
+		req.Name, req.SystemPrompt, req.Model, req.MaxTokens, req.AgentId,
+	)
+	if err != nil {
+		return &gen.UpdateAgentResponse{Success: false, Error: err.Error()}, nil
+	}
+
+	// Reload
+	if s.hermesOrchestrator != nil {
+		s.hermesOrchestrator.registry.LoadCustomAgents(s.db.DB)
+	}
+
+	return &gen.UpdateAgentResponse{Success: true}, nil
+}
+
+// DeleteAgent — удаление кастомного агента
+func (s *server) DeleteAgent(_ context.Context, req *gen.DeleteAgentRequest) (*gen.DeleteAgentResponse, error) {
+	userID := req.UserId
+	if userID == "" || req.AgentId == "" {
+		return &gen.DeleteAgentResponse{Success: false, Error: "agent_id and user_id required"}, nil
+	}
+
+	// Verify ownership
+	var owner string
+	err := s.db.QueryRow("SELECT user_id FROM hermes_custom_agents WHERE id = $1", req.AgentId).Scan(&owner)
+	if err != nil || owner != userID {
+		return &gen.DeleteAgentResponse{Success: false, Error: "not your agent"}, nil
+	}
+
+	_, err = s.db.Exec("DELETE FROM hermes_custom_agents WHERE id = $1", req.AgentId)
+	if err != nil {
+		return &gen.DeleteAgentResponse{Success: false, Error: err.Error()}, nil
+	}
+
+	// Reload
+	if s.hermesOrchestrator != nil {
+		s.hermesOrchestrator.registry.LoadCustomAgents(s.db.DB)
+	}
+
+	return &gen.DeleteAgentResponse{Success: true}, nil
+}
+
+// ListUserAgents — список всех агентов пользователя (пресеты + кастомные)
+func (s *server) ListUserAgents(_ context.Context, req *gen.ListUserAgentsRequest) (*gen.ListUserAgentsResponse, error) {
+	userID := req.UserId
+	if userID == "" {
+		return nil, status.Error(codes.InvalidArgument, "user_id is required")
+	}
+
+	if s.hermesOrchestrator == nil {
+		return &gen.ListUserAgentsResponse{}, nil
+	}
+
+	// Start with presets
+	presets := s.hermesOrchestrator.registry.GetPresets()
+	result := make([]*gen.AgentInfo, 0, len(presets))
+	for _, p := range presets {
+		result = append(result, &gen.AgentInfo{
+			Id:          p.ID,
+			Name:        p.Name,
+			Description: p.Description,
+			IsPreset:    true,
+			Model:       p.Model,
+			MaxTokens:   int32(p.MaxTokens),
+		})
+	}
+
+	// Add custom agents from DB
+	rows, err := s.db.Query(
+		"SELECT id, name, COALESCE(system_prompt, ''), COALESCE(model, ''), COALESCE(max_tokens, 2048) FROM hermes_custom_agents WHERE user_id = $1 ORDER BY created_at ASC",
+		userID)
+	if err == nil {
+		for rows.Next() {
+			var a gen.AgentInfo
+			var model string
+			var maxTokens int32
+			if err := rows.Scan(&a.Id, &a.Name, &a.SystemPrompt, &model, &maxTokens); err == nil {
+				a.IsPreset = false
+				a.Model = model
+				a.MaxTokens = maxTokens
+				result = append(result, &a)
+			}
+		}
+		rows.Close()
+	}
+
+	return &gen.ListUserAgentsResponse{Agents: result}, nil
+}
+
+// CreateHermesSession — создание новой сессии с оркестратором
+func (s *server) CreateHermesSession(_ context.Context, req *gen.CreateHermesSessionRequest) (*gen.CreateHermesSessionResponse, error) {
+	userID := req.UserId
+	if userID == "" {
+		return &gen.CreateHermesSessionResponse{Success: false, Error: "user_id is required"}, nil
+	}
+
+	sessionID := "hermes-" + userID + "-" + uuid.New().String()[:8]
+
+	_, err := s.db.Exec(
+		"INSERT INTO hermes_sessions (id, user_id, name) VALUES ($1, $2, $3)",
+		sessionID, userID, req.Name,
+	)
+	if err != nil {
+		return &gen.CreateHermesSessionResponse{Success: false, Error: err.Error()}, nil
+	}
+
+	return &gen.CreateHermesSessionResponse{Success: true, SessionId: sessionID}, nil
+}
+
+// DeleteHermesSession — удаление сессии
+func (s *server) DeleteHermesSession(_ context.Context, req *gen.DeleteHermesSessionRequest) (*gen.DeleteHermesSessionResponse, error) {
+	if req.SessionId == "" || req.UserId == "" {
+		return &gen.DeleteHermesSessionResponse{Success: false, Error: "session_id and user_id required"}, nil
+	}
+
+	_, err := s.db.Exec("DELETE FROM hermes_sessions WHERE id = $1 AND user_id = $2", req.SessionId, req.UserId)
+	if err != nil {
+		return &gen.DeleteHermesSessionResponse{Success: false, Error: err.Error()}, nil
+	}
+
+	return &gen.DeleteHermesSessionResponse{Success: true}, nil
+}
+
+// ListRemoteAgents — список удалённых агентов
+func (s *server) ListRemoteAgents(_ context.Context, _ *gen.ListRemoteAgentsRequest) (*gen.ListRemoteAgentsResponse, error) {
+	if s.hermesOrchestrator == nil || s.hermesOrchestrator.remoteManager == nil {
+		return &gen.ListRemoteAgentsResponse{}, nil
+	}
+
+	agents := s.hermesOrchestrator.remoteManager.GetAllAgents()
+	result := make([]*gen.RemoteAgentInfo, 0, len(agents))
+	for _, a := range agents {
+		result = append(result, &gen.RemoteAgentInfo{
+			Id:            a.ID,
+			Name:          a.Name,
+			Host:          a.Host,
+			IpAddress:     a.IPAddress,
+			Os:            a.OS,
+			Status:        a.Status,
+			Capabilities:  a.Capabilities,
+			ActiveTasks:   int32(a.ActiveTasks),
+			LastHeartbeat: a.LastHeartbeat.Format(time.RFC3339),
+		})
+	}
+
+	return &gen.ListRemoteAgentsResponse{Agents: result}, nil
+}
+
+// DeployAgentTask — отправка задачи удалённому агенту
+func (s *server) DeployAgentTask(_ context.Context, req *gen.DeployAgentTaskRequest) (*gen.DeployAgentTaskResponse, error) {
+	if s.hermesOrchestrator == nil || s.hermesOrchestrator.remoteManager == nil {
+		return &gen.DeployAgentTaskResponse{Success: false, Error: "remote manager not available"}, nil
+	}
+
+	taskID := uuid.New().String()[:12]
+	task := &RemoteTask{
+		ID:          taskID,
+		Type:        req.TaskType,
+		Params:      req.Params,
+		WorkingDir:  req.WorkingDir,
+		TimeoutSec:  int(req.TimeoutSec),
+		StreamOutput: true,
+	}
+
+	if err := s.hermesOrchestrator.remoteManager.SendTask(task); err != nil {
+		return &gen.DeployAgentTaskResponse{Success: false, Error: err.Error()}, nil
+	}
+
+	return &gen.DeployAgentTaskResponse{
+		Success: true,
+		TaskId:  taskID,
+	}, nil
+}
+
+// GetRemoteAgentStatus — статус удалённого агента
+func (s *server) GetRemoteAgentStatus(_ context.Context, req *gen.GetRemoteAgentStatusRequest) (*gen.GetRemoteAgentStatusResponse, error) {
+	if s.hermesOrchestrator == nil || s.hermesOrchestrator.remoteManager == nil {
+		return &gen.GetRemoteAgentStatusResponse{Status: "unavailable"}, nil
+	}
+
+	agent := s.hermesOrchestrator.remoteManager.GetAgent(req.AgentId)
+	if agent == nil {
+		return &gen.GetRemoteAgentStatusResponse{Status: "not_found"}, nil
+	}
+
+	return &gen.GetRemoteAgentStatusResponse{
+		Status:        agent.Status,
+		ActiveTasks:   int32(agent.ActiveTasks),
+		LastHeartbeat: agent.LastHeartbeat.Format(time.RFC3339),
+	}, nil
 }
 
 // truncateString truncates a string to maxLen characters, adding "..." if truncated

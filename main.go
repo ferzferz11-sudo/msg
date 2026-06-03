@@ -136,6 +136,14 @@ func main() {
 	owlSessions = newOwlSessionManager(db.DB, 50)
 	log.Println("OWL AI assistant initialized (rate limit: 10 req/min, history: 50 msgs, DB-backed)")
 
+	// Initialize Hermes Multi-Agent Orchestrator
+	hermesRegistry := NewAgentRegistry(db.DB)
+	srv.hermesOrchestrator = NewOrchestrator(hermesRegistry, db.DB, os.Getenv("OPENROUTER_API_KEY"), os.Getenv("OPENROUTER_MODEL"))
+	log.Printf("Hermes Orchestrator initialized with %d agents", len(hermesRegistry.GetAll()))
+
+	// Run Hermes DB migrations
+	runHermesMigrations(db.DB)
+
 	// Register our chat service with the gRPC server
 	gen.RegisterChatServiceServer(s, srv)
 
