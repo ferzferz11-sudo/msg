@@ -30,6 +30,7 @@ func runHermesMigrations(db *sql.DB) {
 		`CREATE TABLE IF NOT EXISTS hermes_sessions (
 			id VARCHAR(255) PRIMARY KEY,
 			user_id TEXT NOT NULL,
+			name TEXT DEFAULT '',
 			active_agent_id TEXT DEFAULT '',
 			agent_mode TEXT DEFAULT 'single', -- single, parallel, pipeline
 			created_at TIMESTAMPTZ DEFAULT NOW(),
