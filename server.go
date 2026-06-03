@@ -21,7 +21,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/peer"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	firebase "firebase.google.com/go/v4"
@@ -42,6 +44,10 @@ type server struct {
 	fcmLogsMu    sync.Mutex
 	owlModel     string        // Default OWL model
 	owlApiKey    string        // Default OpenRouter API key
+
+	// Hermes Orchestrator
+	hermesOrchestrator *Orchestrator
+	hermesDB           *HermesDB
 }
 
 func (s *server) logErrorOnce(key string, format string, v ...interface{}) {
@@ -1037,6 +1043,7 @@ func (s *server) GetChats(_ context.Context, req *gen.GetChatsRequest) (*gen.Get
 		}
 	}
 	if owlUsername != "" {
+		// OWL chats
 		owlRows, err := s.db.Query(
 			"SELECT id, name, type, participants, created_at, creator_username, last_message_text, last_message_time FROM chats WHERE type = 'owl' AND creator_username = $1 ORDER BY created_at ASC",
 			owlUsername,
@@ -1062,21 +1069,51 @@ func (s *server) GetChats(_ context.Context, req *gen.GetChatsRequest) (*gen.Get
 			}
 			owlRows.Close()
 		}
+
+		// Hermes Orchestrator chats
+		hermesRows, err := s.db.Query(
+			"SELECT id, name, type, participants, created_at, creator_username, last_message_text, last_message_time FROM chats WHERE type = 'hermes' AND creator_username = $1 ORDER BY created_at ASC",
+			owlUsername,
+		)
+		if err == nil {
+			for hermesRows.Next() {
+				var c gen.ChatInfo
+				var createdAt time.Time
+				var lastMsg sql.NullString
+				var lastMsgTime sql.NullTime
+				if err := hermesRows.Scan(&c.Id, &c.Name, &c.Type, &c.Participants, &createdAt, &c.Creator, &lastMsg, &lastMsgTime); err == nil {
+					c.CreatedAt = timestamppb.New(createdAt)
+					if lastMsgTime.Valid {
+						c.LastMessageTime = timestamppb.New(lastMsgTime.Time)
+					} else {
+						c.LastMessageTime = timestamppb.New(createdAt)
+					}
+					if lastMsg.Valid {
+						c.LastMessageText = lastMsg.String
+					}
+					chatInfos = append(chatInfos, &c)
+				}
+			}
+			hermesRows.Close()
+		}
 	}
 
-	// Prepend OWL chats at the beginning
-	// (owl chats are already in chatInfos from the DB query above,
-	//  but we want them before regular chats — rebuild the slice)
+	// Prepend AI chats at the beginning (hermes first, then owl, then regular)
+	hermesChats := make([]*gen.ChatInfo, 0)
 	owlChats := make([]*gen.ChatInfo, 0)
 	regularChats := make([]*gen.ChatInfo, 0)
 	for _, c := range chatInfos {
-		if c.Type == "owl" {
+		switch c.Type {
+		case "hermes":
+			hermesChats = append(hermesChats, c)
+		case "owl":
 			owlChats = append(owlChats, c)
-		} else {
+		default:
 			regularChats = append(regularChats, c)
 		}
 	}
-	chatInfos = append(owlChats, regularChats...)
+	chatInfos = append(hermesChats, owlChats...)
+	chatInfos = append(chatInfos, regularChats...)
 
 	return &gen.GetChatsResponse{Chats: chatInfos}, nil
 }
@@ -2864,39 +2901,39 @@ func (s *server) ResetPassword(_ context.Context, req *gen.ResetPasswordRequest)
 	return &gen.ResetPasswordResponse{Success: true, Message: "Password reset successfully"}, nil
 }
 
-// ChatWithOWL handles streaming AI chat via OpenRouter
+// ChatWithOWL handles streaming AI chat via OpenRouter (real-time SSE)
 func (s *server) ChatWithOWL(req *gen.OWLRequest, stream gen.ChatService_ChatWithOWLServer) error {
+	ctx := stream.Context()
 	userID := req.UserId
 	if userID == "" {
-		return fmt.Errorf("user_id is required")
+		return status.Error(codes.InvalidArgument, "user_id is required")
 	}
 
 	chatID := req.SessionId
 	if chatID == "" {
-		// Fallback for old clients
 		chatID = "owl-" + userID
 	}
 
 	// Rate limit check
 	if !owlRateLimiter.allow(userID) {
-		return fmt.Errorf("rate limit exceeded: max 10 requests per minute")
+		return status.Error(codes.ResourceExhausted, "rate limit exceeded: max 10 requests per minute")
 	}
 
-	// System prompt
 	systemPrompt := `Вы — AI-ассистент OWL в мессенджере Lavender. Отвечайте кратко и по делу на русском языке.
 Вы можете помочь с вопросами о приложении Lavender, настройками, темами, функциями.
 Будьте дружелюбны, но лаконичны. Не выдавайте себя за человека.`
 
-	// Add user message to history
 	owlSessions.addMessage(chatID, "user", req.Message)
 
-	// Build context from history
+	// Sliding window: max 30 messages for context
 	history := owlSessions.getHistory(chatID)
+	const maxHistory = 30
+	if len(history) > maxHistory {
+		history = history[len(history)-maxHistory:]
+	}
 
-	// Get per-chat settings from DB
 	settings := owlSessions.getSettings(chatID)
 
-	// Use model from request, then per-chat setting, then server default
 	model := req.Model
 	if model == "" {
 		model = settings.Model
@@ -2905,7 +2942,6 @@ func (s *server) ChatWithOWL(req *gen.OWLRequest, stream gen.ChatService_ChatWit
 		model = s.owlModel
 	}
 
-	// Use API key from request, then per-chat setting, then server default
 	apiKey := req.ApiKey
 	if apiKey == "" {
 		apiKey = settings.UserAPIKey
@@ -2914,42 +2950,55 @@ func (s *server) ChatWithOWL(req *gen.OWLRequest, stream gen.ChatService_ChatWit
 		apiKey = s.owlApiKey
 	}
 
-	log.Printf("OWL: chat=%s, user=%s, msg=%q, history_len=%d, model=%s, custom_key=%t",
-		chatID, userID, req.Message, len(history), model, req.ApiKey != "" || settings.UserAPIKey != "")
+	log.Printf("OWL: chat=%s user=%s history_len=%d model=%s",
+		chatID, userID, len(history), model)
 
-	// Call OpenRouter
-	log.Printf("OWL: calling OpenRouter for chat %s, model=%s, history_len=%d", chatID, model, len(history))
-	response, err := callOpenRouter(apiKey, model, systemPrompt, history)
-	if err != nil {
-		log.Printf("OWL: OpenRouter error for chat %s: %v", chatID, err)
-		return fmt.Errorf("AI service error: %w", err)
-	}
-	log.Printf("OWL: OpenRouter response for chat %s: %q (len=%d)", chatID, response, len(response))
+	streamResult := streamOpenRouter(ctx, apiKey, model, systemPrompt, history)
 
-	// Add assistant response to history
-	owlSessions.addMessage(chatID, "assistant", response)
+	var fullResponse strings.Builder
+	streamDone := false
 
-	// Update chat last message
-	_, _ = s.db.Exec("UPDATE chats SET last_message_text=$1, last_message_time=NOW() WHERE id=$2",
-		truncateString(response, 100), chatID)
-	log.Printf("OWL: updated last_message_text for chat %s: %q", chatID, truncateString(response, 100))
+	for !streamDone {
+		select {
+		case <-ctx.Done():
+			log.Printf("OWL: client disconnected chat=%s partial_len=%d", chatID, fullResponse.Len())
+			if fullResponse.Len() > 0 {
+				partial := fullResponse.String()
+				owlSessions.addMessage(chatID, "assistant", partial)
+				_, _ = s.db.Exec("UPDATE chats SET last_message_text=$1, last_message_time=NOW() WHERE id=$2",
+					truncateString(partial, 100), chatID)
+			}
+			return nil
 
-	// Stream response in chunks
-	words := strings.Fields(response)
-	for i, word := range words {
-		chunk := word
-		if i < len(words)-1 {
-			chunk += " "
+		case err, ok := <-streamResult.Err:
+			if ok && err != nil {
+				log.Printf("OWL: OpenRouter error chat=%s: %v", chatID, err)
+				return status.Error(codes.Unavailable, "AI service error: "+err.Error())
+			}
+
+		case token, ok := <-streamResult.Tokens:
+			if !ok {
+				streamDone = true
+				break
+			}
+			fullResponse.WriteString(token)
+			if sendErr := stream.Send(&gen.OWLResponse{Text: token, Finished: false}); sendErr != nil {
+				log.Printf("OWL: send error chat=%s: %v", chatID, sendErr)
+				return nil // Client gone, not our error
+			}
+
+		case full, ok := <-streamResult.Done:
+			if !ok {
+				streamDone = true
+				break
+			}
+			owlSessions.addMessage(chatID, "assistant", full)
+			_, _ = s.db.Exec("UPDATE chats SET last_message_text=$1, last_message_time=NOW() WHERE id=$2",
+				truncateString(full, 100), chatID)
+			log.Printf("OWL: completed chat=%s response_len=%d", chatID, len(full))
+			_ = stream.Send(&gen.OWLResponse{Text: "", Finished: true})
+			return nil
 		}
-		isLast := i == len(words)-1
-		if err := stream.Send(&gen.OWLResponse{
-			Text:     chunk,
-			Finished: isLast,
-		}); err != nil {
-			log.Printf("OWL: stream send error for chat %s: %v", chatID, err)
-			return err
-		}
-		time.Sleep(30 * time.Millisecond)
 	}
 
 	return nil
@@ -3023,7 +3072,288 @@ func (s *server) DeleteOwlChat(_ context.Context, req *gen.DeleteOwlChatRequest)
 	return &gen.DeleteOwlChatResponse{Success: true, Message: "OK"}, nil
 }
 
-// GetOwlHistory returns the message history for an OWL chat
+// ===== Hermes Orchestrator gRPC methods =====
+
+// ChatWithOrchestrator — основной метод: пользователь пишет оркестратору
+func (s *server) ChatWithOrchestrator(req *gen.OrchestratorRequest, stream gen.ChatService_ChatWithOrchestratorServer) error {
+	ctx := stream.Context()
+	userID := req.UserId
+	if userID == "" {
+		return status.Error(codes.InvalidArgument, "user_id is required")
+	}
+
+	sessionID := req.SessionId
+	if sessionID == "" {
+		sessionID = "hermes-" + userID
+	}
+
+	if !owlRateLimiter.allow(userID) {
+		return status.Error(codes.ResourceExhausted, "rate limit exceeded: max 10 requests per minute")
+	}
+
+	log.Printf("[Hermes] chat: user=%s session=%s msg=%q", userID, sessionID, req.Message)
+
+	// Если сессия пустая — отправляем инструкцию первым сообщением
+	history := s.hermesDB.GetOrchestratorHistory(sessionID, 1)
+	if len(history) == 0 {
+		welcomeMsg := "👋 Привет! Я — Hermes Orchestrator.\n\n" +
+			"Я могу маршрутизировать твои запросы к специализированным AI-агентам:\n" +
+			"• 💻 Developer — код, баги, фичи\n" +
+			"• 🔧 DevOps — деплой, сервер, логи\n" +
+			"• 🏗️ Architect — архитектура, решения\n" +
+			"• 🧪 QA — тестирование\n" +
+			"• 📊 Analyst — анализ данных\n" +
+			"• 🔒 Security — аудит безопасности\n\n" +
+			"Просто напиши свой вопрос, и я выберу подходящего агента.\n" +
+			"Или укажи агента напрямую: «DevOps, посмотри логи сервера»"
+		if err := stream.Send(&gen.OrchestratorResponse{
+			Token:    welcomeMsg,
+			Finished: true,
+		}); err != nil {
+			return err
+		}
+		// Сохраняем инструкцию в историю
+		s.hermesDB.SaveOrchestratorMessage(sessionID, userID, "assistant", "", welcomeMsg)
+	}
+
+	err := s.hermesOrchestrator.Orchestrate(ctx, userID, sessionID, req.Message, func(token string, finished bool) error {
+		return stream.Send(&gen.OrchestratorResponse{
+			Token:    token,
+			Finished: finished,
+		})
+	})
+
+	if err != nil {
+		log.Printf("[Hermes] orchestrate error: %v", err)
+		return status.Error(codes.Unavailable, "orchestrator error: "+err.Error())
+	}
+	return nil
+}
+
+// GetOrchestratorHistory — история сообщений оркестратора
+func (s *server) GetOrchestratorHistory(ctx context.Context, req *gen.GetOrchestratorHistoryRequest) (*gen.GetOrchestratorHistoryResponse, error) {
+	if req.SessionId == "" {
+		return &gen.GetOrchestratorHistoryResponse{}, nil
+	}
+	messages := s.hermesDB.GetOrchestratorHistory(req.SessionId, int(req.Limit))
+	pbMessages := make([]*gen.OrchestratorHistoryMessage, 0, len(messages))
+	for _, msg := range messages {
+		pbMessages = append(pbMessages, &gen.OrchestratorHistoryMessage{
+			Role:    msg.Role,
+			Content: msg.Content,
+		})
+	}
+	return &gen.GetOrchestratorHistoryResponse{Messages: pbMessages}, nil
+}
+
+// ListAgents — список доступных агентов
+func (s *server) ListAgents(ctx context.Context, req *gen.ListAgentsRequest) (*gen.ListAgentsResponse, error) {
+	agents := s.hermesOrchestrator.registry.GetAll()
+	pbAgents := make([]*gen.AgentInfo, 0, len(agents))
+	for _, a := range agents {
+		pbAgents = append(pbAgents, &gen.AgentInfo{
+			Id:          a.ID,
+			Name:        a.Name,
+			Description: a.Description,
+		})
+	}
+	return &gen.ListAgentsResponse{Agents: pbAgents}, nil
+}
+
+// CreateHermesSession — создать новую сессию оркестратора
+func (s *server) CreateHermesSession(ctx context.Context, req *gen.CreateHermesSessionRequest) (*gen.CreateHermesSessionResponse, error) {
+	if req.UserId == "" {
+		return &gen.CreateHermesSessionResponse{Success: false, Message: "user_id required"}, nil
+	}
+	sessionID := "hermes-" + req.UserId + "-" + uuid.New().String()[:8]
+	s.hermesDB.SaveSession(sessionID, req.UserId, "", "single")
+	return &gen.CreateHermesSessionResponse{SessionId: sessionID, Success: true, Message: "OK"}, nil
+}
+
+// DeleteHermesSession — удалить сессию
+func (s *server) DeleteHermesSession(ctx context.Context, req *gen.DeleteHermesSessionRequest) (*gen.DeleteHermesSessionResponse, error) {
+	if req.SessionId == "" {
+		return &gen.DeleteHermesSessionResponse{Success: false, Message: "session_id required"}, nil
+	}
+	_, err := s.hermesDB.db.Exec("DELETE FROM hermes_messages WHERE session_id = $1", req.SessionId)
+	if err != nil {
+		return &gen.DeleteHermesSessionResponse{Success: false, Message: err.Error()}, nil
+	}
+	_, _ = s.hermesDB.db.Exec("DELETE FROM hermes_sessions WHERE id = $1", req.SessionId)
+	return &gen.DeleteHermesSessionResponse{Success: true, Message: "OK"}, nil
+}
+
+// ===== Hermes Agent Management RPC =====
+
+// ListAgentPresets — список доступных пресетов агентов (для Android UI)
+func (s *server) ListAgentPresets(_ context.Context, _ *gen.ListAgentPresetsRequest) (*gen.ListAgentPresetsResponse, error) {
+	presets := GetAgentPresets()
+	pbPresets := make([]*gen.AgentPresetInfo, 0, len(presets))
+	for _, p := range presets {
+		pbPresets = append(pbPresets, &gen.AgentPresetInfo{
+			Id:          p.ID,
+			Name:        p.Name,
+			Role:        p.Role,
+			Description: p.Description,
+			Icon:        p.Icon,
+			MaxTokens:   int32(p.MaxTokens),
+		})
+	}
+	return &gen.ListAgentPresetsResponse{Presets: pbPresets}, nil
+}
+
+// CreateAgent — создать нового кастомного агента из пресета
+func (s *server) CreateAgent(_ context.Context, req *gen.CreateAgentRequest) (*gen.CreateAgentResponse, error) {
+	if req.UserId == "" {
+		return &gen.CreateAgentResponse{Success: false, Message: "user_id required"}, nil
+	}
+	if req.PresetId == "" {
+		return &gen.CreateAgentResponse{Success: false, Message: "preset_id required"}, nil
+	}
+
+	agent, err := s.hermesOrchestrator.registry.CreateCustomAgent(
+		req.UserId,
+		req.PresetId,
+		req.CustomName,
+		req.CustomPrompt,
+		req.Model,
+		int(req.MaxTokens),
+	)
+	if err != nil {
+		return &gen.CreateAgentResponse{Success: false, Message: err.Error()}, nil
+	}
+
+	log.Printf("[Hermes] created agent: id=%s name=%s user=%s preset=%s", agent.ID, agent.Name, req.UserId, req.PresetId)
+
+	return &gen.CreateAgentResponse{
+		AgentId: agent.ID,
+		Success: true,
+		Message: "OK",
+		Agent: &gen.AgentInfo{
+			Id:          agent.ID,
+			Name:        agent.Name,
+			Description: agent.Description,
+		},
+	}, nil
+}
+
+// UpdateAgent — обновить кастомного агента
+func (s *server) UpdateAgent(_ context.Context, req *gen.UpdateAgentRequest) (*gen.UpdateAgentResponse, error) {
+	if req.AgentId == "" || req.UserId == "" {
+		return &gen.UpdateAgentResponse{Success: false, Message: "agent_id and user_id required"}, nil
+	}
+
+	err := s.hermesOrchestrator.registry.UpdateCustomAgent(
+		req.AgentId, req.UserId, req.Name, req.SystemPrompt, req.Model, int(req.MaxTokens),
+	)
+	if err != nil {
+		return &gen.UpdateAgentResponse{Success: false, Message: err.Error()}, nil
+	}
+
+	return &gen.UpdateAgentResponse{Success: true, Message: "OK"}, nil
+}
+
+// DeleteAgent — удалить кастомного агента
+func (s *server) DeleteAgent(_ context.Context, req *gen.DeleteAgentRequest) (*gen.DeleteAgentResponse, error) {
+	if req.AgentId == "" || req.UserId == "" {
+		return &gen.DeleteAgentResponse{Success: false, Message: "agent_id and user_id required"}, nil
+	}
+
+	err := s.hermesOrchestrator.registry.DeleteCustomAgent(req.AgentId, req.UserId)
+	if err != nil {
+		return &gen.DeleteAgentResponse{Success: false, Message: err.Error()}, nil
+	}
+
+	return &gen.DeleteAgentResponse{Success: true, Message: "OK"}, nil
+}
+
+// ListUserAgents — список агентов пользователя (кастомные + пресеты)
+func (s *server) ListUserAgents(_ context.Context, req *gen.ListUserAgentsRequest) (*gen.ListUserAgentsResponse, error) {
+	if req.UserId == "" {
+		return &gen.ListUserAgentsResponse{}, nil
+	}
+
+	agents := s.hermesOrchestrator.registry.GetByUserID(req.UserId)
+	pbAgents := make([]*gen.AgentInfo, 0, len(agents))
+	for _, a := range agents {
+		pbAgents = append(pbAgents, &gen.AgentInfo{
+			Id:          a.ID,
+			Name:        a.Name,
+			Description: a.Description,
+		})
+	}
+	return &gen.ListUserAgentsResponse{Agents: pbAgents}, nil
+}
+
+// ===== Hermes Remote Agent RPC =====
+
+// ListRemoteAgents — список подключённых удалённых агентов
+func (s *server) ListRemoteAgents(_ context.Context, _ *gen.ListRemoteAgentsRequest) (*gen.ListRemoteAgentsResponse, error) {
+	agents := s.hermesOrchestrator.remoteManager.GetAllAgents()
+	pbAgents := make([]*gen.RemoteAgentInfo, 0, len(agents))
+	for _, a := range agents {
+		pbAgents = append(pbAgents, &gen.RemoteAgentInfo{
+			Id:            a.ID,
+			Name:          a.Name,
+			Host:          a.Host,
+			IpAddress:     a.IPAddress,
+			Os:            a.OS,
+			Status:        a.Status,
+			Capabilities:  a.Capabilities,
+			ActiveTasks:   int32(a.ActiveTasks),
+			LastHeartbeat: a.LastHeartbeat.Format(time.RFC3339),
+		})
+	}
+	return &gen.ListRemoteAgentsResponse{Agents: pbAgents}, nil
+}
+
+// DeployAgentTask — отправить задачу на удалённый агент
+func (s *server) DeployAgentTask(_ context.Context, req *gen.DeployAgentTaskRequest) (*gen.DeployAgentTaskResponse, error) {
+	if req.AgentId == "" {
+		return &gen.DeployAgentTaskResponse{Success: false, Message: "agent_id required"}, nil
+	}
+	if req.TaskType == "" {
+		return &gen.DeployAgentTaskResponse{Success: false, Message: "task_type required"}, nil
+	}
+
+	task := &RemoteTask{
+		ID:         fmt.Sprintf("task-%d", time.Now().UnixNano()),
+		AgentID:    req.AgentId,
+		Type:       req.TaskType,
+		Params:     req.Params,
+		WorkingDir: req.WorkingDir,
+		TimeoutSec: int(req.TimeoutSec),
+	}
+
+	if err := s.hermesOrchestrator.remoteManager.SendTask(task); err != nil {
+		return &gen.DeployAgentTaskResponse{Success: false, Message: err.Error()}, nil
+	}
+
+	return &gen.DeployAgentTaskResponse{
+		TaskId:  task.ID,
+		Success: true,
+		Message: "task sent",
+	}, nil
+}
+
+// GetRemoteAgentStatus — статус удалённого агента
+func (s *server) GetRemoteAgentStatus(_ context.Context, req *gen.GetRemoteAgentStatusRequest) (*gen.GetRemoteAgentStatusResponse, error) {
+	agent := s.hermesOrchestrator.remoteManager.GetAgent(req.AgentId)
+	if agent == nil {
+		return &gen.GetRemoteAgentStatusResponse{Status: "not_found"}, nil
+	}
+
+	return &gen.GetRemoteAgentStatusResponse{
+		Id:            agent.ID,
+		Name:          agent.Name,
+		Status:        agent.Status,
+		Host:          agent.Host,
+		Capabilities:  agent.Capabilities,
+		ActiveTasks:   int32(agent.ActiveTasks),
+		LastHeartbeat: agent.LastHeartbeat.Format(time.RFC3339),
+	}, nil
+}
+
 func (s *server) GetOwlHistory(_ context.Context, req *gen.GetOwlHistoryRequest) (*gen.GetOwlHistoryResponse, error) {
 	if req.ChatId == "" {
 		return &gen.GetOwlHistoryResponse{}, nil
