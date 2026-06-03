@@ -103,6 +103,11 @@ func ConnectDB() (*DB, error) {
 		END $$;`,
 		`CREATE TABLE IF NOT EXISTS secret_chat_keys (chat_id VARCHAR(255) NOT NULL REFERENCES chats(id) ON DELETE CASCADE, user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE, public_key TEXT NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT NOW(), PRIMARY KEY (chat_id, user_id))`,
 		`CREATE TABLE IF NOT EXISTS reactions (id SERIAL PRIMARY KEY, message_id VARCHAR(255) NOT NULL REFERENCES messages(message_id) ON DELETE CASCADE, username VARCHAR(255) NOT NULL, emoji VARCHAR(50) NOT NULL)`,
+		`DO $$ BEGIN
+			IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE table_name='reactions' AND constraint_name='reactions_message_id_username_key') THEN
+				ALTER TABLE reactions ADD CONSTRAINT reactions_message_id_username_key UNIQUE (message_id, username);
+			END IF;
+		END $$;`,
 		`CREATE TABLE IF NOT EXISTS user_chat_metadata (username VARCHAR(255) NOT NULL, room_id VARCHAR(255) NOT NULL, last_read_at TIMESTAMP NOT NULL DEFAULT NOW(), PRIMARY KEY (username, room_id))`,
 		`CREATE TABLE IF NOT EXISTS user_tokens (username VARCHAR(255) PRIMARY KEY, fcm_token TEXT NOT NULL, updated_at TIMESTAMP NOT NULL, push_enabled BOOLEAN DEFAULT TRUE)`,
 		`CREATE TABLE IF NOT EXISTS contacts (id SERIAL PRIMARY KEY, username VARCHAR(255) NOT NULL, contact_username VARCHAR(255) NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT NOW())`,
@@ -144,6 +149,10 @@ func ConnectDB() (*DB, error) {
 		}
 	}
 	db.Exec(`UPDATE users SET is_super_admin = TRUE WHERE username = 'ferz'`)
+
+	// Hermes Orchestrator migrations
+	runHermesMigrations(db)
+
 	return &DB{db}, nil
 }
 
