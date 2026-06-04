@@ -1,34 +1,31 @@
 # Hermes Orchestrator — Отчёт
 
-**Время:** 2026-06-04 07:45 UTC
-**Dev сервер:** running (v1.1.0.15)
-**Git:** edc8594 — chore: cleanup + pipeline v1.1.0.15
-**Незакоммиченные:** нет
+**Время:** 2026-06-04 15:12:43 UTC
+**Dev сервер:** running (v1.1.0.15, PID 719575, uptime 5h 47m)
+**Git:** `1e337eb` feat: connect HermesAgentService + remote agent routing
+**Незакоммиченные:** да — `M REPORT.md`, `M server.go` (38 вставок / 24 удаления)
 **Ошибки за 30мин:** нет
 
+---
+
 ## ✅ Сделано
-- ServerVersion обновлена до 1.1.0.15
-- Pipeline: adaptive tool calling loop (max 10, был жёсткий 3)
-- TASKS.md переписан под текущее состояние
-- ARCHITECTURE.md обновлён
-- PROJECT_MEMORY.md обновлён
-- Удалены: agent/, cli/, core/rag/mock/, старые промпты (7 файлов), docs/bak
-- Dev сервер пересобран и запущен
-- Cron job для отчётов каждые 30 минут (job_id: d84bfe5f5adc)
+- Hermes Orchestrator полная архитектура (v1.1.0.15): LLM Router, in-memory RAG, Tool Executor, Pipeline, gRPC ChatWithPipeline
+- 8 агентов в реестре (7 пресетов + hermes-owl fallback)
+- HermesAgentService подключён, remote agent routing реализован (последний коммит `1e337eb`)
 
 ## 🔧 В процессе
-- Ничего — ожидаю задач от пользователя
+- Tool Calling Loop — адаптивный лимит итераций (убрать жёсткий max 3, детектить завершение по отсутствию tool calls)
+- HermesAgentService — приём подключений от hermes-agent daemon (bidirectional stream) — заявлен как "не реализовано"
 
 ## ⏳ Не начато
-- HermesAgentService — bidirectional stream для hermes-agent daemon
-- RemoteAgentManager.SendTask() — реальная реализация
-- Auth токены для удалённых агентов
+- RemoteAgentManager.SendTask() — только заглушка
+- Auth токены для удалённых агентов (бэклог)
 - Qdrant + CLIP для production RAG
 
 ## 🧪 Готово к проверке
-- Dev сервер (50052) работает с новой версией 1.1.0.15
-- Pipeline adaptive tool calling — можно тестировать через ChatWithPipeline gRPC
-- Все core/ компоненты собраны и работают
+- gRPC ChatWithPipeline — стриминг ответов + tool calling, потестить через gRPC клиент
+- 8 агентов реестра — проверить роутинг по agent_id
+- HermesAgentService — проверить подключение от hermes-agent daemon
 
 ## Следующий шаг
-Жду задач от пользователя. Приоритет: HermesAgentService bidirectional stream или Android клиент.
+Доработать Tool Calling Loop: убрать жёсткий лимит 3 итерации, добавить авто-финализацию когда LLM перестаёт вызывать tools. Файл: `core/pipeline/pipeline.go`.

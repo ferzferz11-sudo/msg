@@ -213,8 +213,8 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 			}
 			_ = stream.Send(serverInfoMsg)
 
-			// Inform the user about their admin status
-			if s.db.IsSuperAdmin(msg.User) {
+			// Inform the user about their admin status (check by user_id first, then username)
+			if s.db.IsSuperAdmin(connectedUserID) || s.db.IsSuperAdmin(msg.User) {
 				statusMsg := &gen.Message{
 					User:         "SYSTEM",
 					Text:         "SET_SUPER_ADMIN",
@@ -3090,6 +3090,8 @@ func (s *server) ChatWithOrchestrator(req *gen.OrchestratorRequest, stream gen.C
 		chatID = "hermes-" + userID
 	}
 
+	log.Printf("[Hermes] chat=%s user=%s session=%s msg=%q", chatID, userID, req.SessionId, truncateString(req.Message, 80))
+
 	// Rate limit check (reuse OWL rate limiter)
 	if !owlRateLimiter.allow(userID) {
 		return status.Error(codes.ResourceExhausted, "rate limit exceeded: max 10 requests per minute")
@@ -3100,8 +3102,6 @@ func (s *server) ChatWithOrchestrator(req *gen.OrchestratorRequest, stream gen.C
 		return status.Error(codes.Unavailable, "orchestrator not initialized")
 	}
 
-	log.Printf("[Hermes] chat=%s user=%s msg=%q", chatID, userID, truncateString(req.Message, 80))
-
 	// Welcome message: if this is a new session, send greeting first
 	session := s.hermesOrchestrator.getOrCreateSession(userID)
 	session.mu.Lock()
@@ -3110,10 +3110,13 @@ func (s *server) ChatWithOrchestrator(req *gen.OrchestratorRequest, stream gen.C
 
 	if isNewSession {
 		welcomeMsg := s.buildWelcomeMessage()
+		log.Printf("[Hermes] sending welcome message for new session user=%s", userID)
+		// Send welcome as NOT finished — client should keep stream open
 		if err := stream.Send(&gen.OrchestratorResponse{
 			Token:    welcomeMsg,
-			Finished: true,
+			Finished: false,
 		}); err != nil {
+			log.Printf("[Hermes] welcome send error: %v", err)
 			return err
 		}
 		// Save welcome to session history
@@ -3123,6 +3126,7 @@ func (s *server) ChatWithOrchestrator(req *gen.OrchestratorRequest, stream gen.C
 	}
 
 	// Run orchestrator
+	log.Printf("[Hermes] calling Orchestrate for user=%s chat=%s", userID, chatID)
 	err := s.hermesOrchestrator.Orchestrate(stream.Context(), userID, chatID, req.Message,
 		func(token string, finished bool) error {
 			return stream.Send(&gen.OrchestratorResponse{
@@ -3142,6 +3146,7 @@ func (s *server) ChatWithOrchestrator(req *gen.OrchestratorRequest, stream gen.C
 		return nil // Don't propagate error to client, we sent it in the stream
 	}
 
+	log.Printf("[Hermes] Orchestrate completed for user=%s", userID)
 	return nil
 }
 
@@ -3437,7 +3442,9 @@ func (s *server) ListUserAgents(_ context.Context, req *gen.ListUserAgentsReques
 // CreateHermesSession — создание новой сессии с оркестратором
 func (s *server) CreateHermesSession(_ context.Context, req *gen.CreateHermesSessionRequest) (*gen.CreateHermesSessionResponse, error) {
 	userID := req.UserId
+	log.Printf("[Hermes] CreateHermesSession: user_id=%q name=%q", userID, req.Name)
 	if userID == "" {
+		log.Printf("[Hermes] CreateHermesSession: ERROR empty user_id")
 		return &gen.CreateHermesSessionResponse{Success: false, Error: "user_id is required"}, nil
 	}
 
@@ -3453,9 +3460,11 @@ func (s *server) CreateHermesSession(_ context.Context, req *gen.CreateHermesSes
 		sessionID, userID, name,
 	)
 	if err != nil {
+		log.Printf("[Hermes] CreateHermesSession: DB error: %v", err)
 		return &gen.CreateHermesSessionResponse{Success: false, Error: err.Error()}, nil
 	}
 
+	log.Printf("[Hermes] CreateHermesSession: OK session_id=%s", sessionID)
 	return &gen.CreateHermesSessionResponse{Success: true, SessionId: sessionID}, nil
 }
 

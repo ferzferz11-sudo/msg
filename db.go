@@ -295,6 +295,12 @@ func (db *DB) SaveUser(user, hash string) error {
 
 func (db *DB) IsSuperAdmin(user string) bool {
 	var a bool
+	// Сначала пробуем найти по UUID (user_id)
+	err := db.QueryRow(`SELECT is_super_admin FROM users WHERE id=$1`, user).Scan(&a)
+	if err == nil && a {
+		return true
+	}
+	// Fallback: ищем по username
 	db.QueryRow(`SELECT is_super_admin FROM users WHERE username=$1`, user).Scan(&a)
 	return a
 }
