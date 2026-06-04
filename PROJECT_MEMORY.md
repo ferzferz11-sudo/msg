@@ -34,6 +34,7 @@
 - `hermes_orchestrator.go` — оркестратор, LLM Router + RAG + Pipeline init
 - `hermes_agents.go` — реестр агентов (8 агентов: 7 пресетов + hermes-owl)
 - `hermes_remote_manager.go` — remote agents (heartbeat, tasks)
+- `hermes_agent_service.go` — bidirectional stream для hermes-agent daemon (НЕ РЕАЛИЗОВАНО)
 - `db_hermes.go` — миграции Hermes таблиц
 - `owl.go` — OWL AI assistant
 
@@ -44,8 +45,7 @@
 - `core/rag/interfaces.go` — EmbeddingService, VectorSearch, RAGPipeline interfaces
 - `core/rag/memory/memory.go` — in-memory RAG (TF-IDF, 384 dim, cosine similarity)
 - `core/rag/memory/memory_test.go` — unit тесты RAG (4 теста)
-- `core/rag/mock/` — mock реализации (deprecated, заменены на memory)
-- `core/pipeline/pipeline.go` — RAG → LLM → Tool Calling loop (max 3 iter)
+- `core/pipeline/pipeline.go` — RAG → LLM → Tool Calling loop (adaptive, max 10)
 - `core/tools/executor.go` — DefaultToolExecutor (search_messages, search_users, web_search, get_chat_info)
 
 ## Клиент — ключевые файлы
@@ -69,7 +69,7 @@
 
 ### Сервер
 - Go 1.26, gRPC, PostgreSQL, Firebase Cloud Messaging
-- AES-256-GCM, bcrypt, keepalive 15s/10s
+- AES-256-GCM, bcrypt, keepalive 20s/20s
 - systemd сервис, .env конфигурация
 - Hermes Agent v0.14.0 (Python 3.11.15) — локальный LLM провайдер
 
@@ -114,4 +114,8 @@
 - search_users: поиск по username/display_name/phone
 - web_search: DuckDuckGo Instant Answer API
 - get_chat_info: имя чата, тип, количество участников
-- Известная проблема: tool calling loop (max 3 iter)
+
+### Hermes Orchestrator — Pipeline
+- Адаптивный tool calling loop: max 10 итераций (страховка)
+- Цикл продолжается пока LLM вызывает tools
+- Останавливается когда LLM даёт финальный ответ без tool calls

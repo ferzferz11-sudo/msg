@@ -149,6 +149,26 @@ func (o *Orchestrator) Orchestrate(ctx context.Context, userID, chatID, userMess
 	log.Printf("[ORCHESTRATOR] user=%s decision: mode=%s agents=%v reason=%s",
 		userID, decision.Mode, decision.AgentIDs, decision.Reason)
 
+	// Шаг 1.5: Проверяем есть ли remote agents в решении
+	// Если агент не найден в локальном реестре — ищем в remote agents
+	resolvedAgentIDs := make([]string, 0, len(decision.AgentIDs))
+	for _, agentID := range decision.AgentIDs {
+		if o.registry.Get(agentID) != nil {
+			resolvedAgentIDs = append(resolvedAgentIDs, agentID)
+		} else if remoteAgent := o.remoteManager.GetAgent(agentID); remoteAgent != nil {
+			// Remote agent найден — выполняем через него
+			log.Printf("[ORCHESTRATOR] routing to remote agent: %s (%s)", agentID, remoteAgent.Name)
+			return o.runRemoteAgent(ctx, session, remoteAgent, userMessage, streamFn)
+		}
+	}
+
+	if len(resolvedAgentIDs) == 0 {
+		// Ни локальных, ни remote агентов не найдено — fallback на hermes-owl
+		log.Printf("[ORCHESTRATOR] no agents found, fallback to hermes-owl")
+		resolvedAgentIDs = []string{"hermes-owl"}
+	}
+	decision.AgentIDs = resolvedAgentIDs
+
 	// Шаг 2: Выполнение в зависимости от режима
 	switch decision.Mode {
 	case "single":
@@ -520,6 +540,77 @@ func (o *Orchestrator) ProcessWithPipeline(
 		})
 		session.mu.Unlock()
 	}
+
+	return nil
+}
+
+// runRemoteAgent — выполняет запрос через удалённый агент
+func (o *Orchestrator) runRemoteAgent(
+	ctx context.Context,
+	session *OrchestratorSession,
+	agent *RemoteAgent,
+	userMessage string,
+	streamFn func(token string, finished bool) error,
+) error {
+	log.Printf("[ORCHESTRATOR] runRemoteAgent: agent=%s (%s) host=%s", agent.ID, agent.Name, agent.Host)
+
+	// Информируем пользователя о маршрутизации
+	intro := fmt.Sprintf("→ [%s@%s] ", agent.Name, agent.Host)
+	if err := streamFn(intro, false); err != nil {
+		return err
+	}
+
+	// Создаём задачу для remote agent
+	taskID := fmt.Sprintf("task-%d", time.Now().UnixNano())
+	task := &RemoteTask{
+		ID:         taskID,
+		AgentID:    agent.ID,
+		Type:       "shell",
+		Params:     map[string]string{"command": userMessage},
+		TimeoutSec: 120,
+	}
+
+	// Отправляем задачу через RemoteAgentManager
+	if err := o.remoteManager.SendTask(task); err != nil {
+		errMsg := fmt.Sprintf("\n⚠️ Remote agent error: %v\n", err)
+		streamFn(errMsg, false)
+		return err
+	}
+
+	// Ждём результат
+	result := o.remoteManager.WaitForResult(taskID, 2*time.Minute)
+	if result == nil {
+		streamFn("\n⚠️ Remote agent: no result\n", false)
+		return fmt.Errorf("remote agent %s: no result", agent.ID)
+	}
+
+	// Стримим результат
+	if result.Status == "success" {
+		// Стримим stdout по чанкам
+		lines := strings.Split(result.Stdout, "\n")
+		for _, line := range lines {
+			if line != "" {
+				streamFn(line+"\n", false)
+			}
+		}
+	} else {
+		errMsg := fmt.Sprintf("\n⚠️ Remote agent error: %s\n", result.Error)
+		streamFn(errMsg, false)
+	}
+
+	streamFn("", true)
+
+	// Сохраняем ответ в сессию
+	output := result.Stdout
+	if result.Status != "success" {
+		output = fmt.Sprintf("[remote:%s] error: %s", agent.ID, result.Error)
+	}
+	session.mu.Lock()
+	session.Messages = append(session.Messages, OrchestratorMessage{
+		Role:    "assistant",
+		Content: output,
+	})
+	session.mu.Unlock()
 
 	return nil
 }

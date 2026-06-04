@@ -15,6 +15,7 @@ import (
 	"strings" // String manipulation functions
 
 	"LavenderMessenger/gen" // Generated gRPC code package
+	hermesagent "LavenderMessenger/gen/hermes_agent"
 
 	"github.com/joho/godotenv" // Environment variable loading from .env files
 	"google.golang.org/grpc"   // gRPC framework for RPC communication
@@ -146,6 +147,10 @@ func main() {
 
 	// Register our chat service with the gRPC server
 	gen.RegisterChatServiceServer(s, srv)
+
+	// Register Hermes Agent Service (for hermes-agent daemon connections)
+	hermesAgentServer := newHermesAgentServer(srv)
+	hermesagent.RegisterHermesAgentServiceServer(s, hermesAgentServer)
 
 	// Register server management service (super admin only)
 	srvMgmt := &serverServiceServer{db: db}
