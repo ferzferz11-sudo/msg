@@ -108,6 +108,12 @@ func runHermesMigrations(db *sql.DB) {
 			completed_at TIMESTAMPTZ
 		)`,
 		`CREATE INDEX IF NOT EXISTS idx_hermes_remote_tasks_agent ON hermes_remote_tasks(agent_id, status)`,
+
+		// GRANT permissions for lavender user
+		`GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO lavender`,
+		`GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO lavender`,
+		`ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO lavender`,
+		`ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO lavender`,
 	}
 
 	for _, q := range queries {
