@@ -14,9 +14,12 @@ import (
 	"time"
 
 	"LavenderMessenger/core/llm"
+	"LavenderMessenger/core/llm/hermes"
 	"LavenderMessenger/core/llm/openrouter"
 	"LavenderMessenger/core/pipeline"
-	"LavenderMessenger/core/rag/mock"
+	"LavenderMessenger/core/rag"
+	"LavenderMessenger/core/rag/memory"
+	"LavenderMessenger/core/tools"
 )
 
 // OrchestratorSession — контекст диалога с оркестратором
@@ -47,9 +50,9 @@ type Orchestrator struct {
 	remoteManager *RemoteAgentManager
 
 	// ===== NEW: LLM Router + RAG Pipeline (Ports & Adapters) =====
-	llmRouter    llm.LLMRouter          // маршрутизатор LLM-провайдеров
-	ragPipeline  *mock.MockRAGPipeline  // RAG-пайплайн (mock, заменить на реальный)
-	aiPipeline   *pipeline.Pipeline     // полный пайплайн: RAG → LLM → Tools
+	llmRouter   llm.LLMRouter       // маршрутизатор LLM-провайдеров
+	ragPipeline rag.RAGPipeline     // RAG-пайплайн (in-memory с TF-IDF embeddings)
+	aiPipeline  *pipeline.Pipeline  // полный пайплайн: RAG → LLM → Tools
 }
 
 func NewOrchestrator(registry *HermesAgentRegistry, db *sql.DB, apiKey, model string) *Orchestrator {
@@ -70,27 +73,32 @@ func NewOrchestrator(registry *HermesAgentRegistry, db *sql.DB, apiKey, model st
 		Provider:    openRouterProvider,
 		Priority:    10,
 	})
-	// TODO: Register Hermes local provider when HERMES_PATH is available
-	// hermesProvider, err := hermes.NewProvider("")
-	// if err == nil {
-	// 	llmRouter.Register(llm.RouteRule{
-	// 		ModelPrefix: "local/",
-	// 		Provider:    hermesProvider,
-	// 		Priority:    20,
-	// 	})
-	// }
+	// Register Hermes local provider
+	hermesProvider, err := hermes.NewProvider("")
+	if err == nil {
+		llmRouter.Register(llm.RouteRule{
+			ModelPrefix: "local/",
+			Provider:    hermesProvider,
+			Priority:    20,
+		})
+		log.Printf("[Orchestrator] Hermes local provider registered (prefix=local/)")
+	} else {
+		log.Printf("[Orchestrator] Hermes local provider not available: %v", err)
+	}
 	o.llmRouter = llmRouter
 
-	// ===== NEW: Initialize RAG pipeline (mock) =====
-	embedder := mock.NewMockEmbeddingService(384)
-	vectorDB := mock.NewMockVectorDB(384)
-	o.ragPipeline = mock.NewMockRAGPipeline(embedder, vectorDB)
+	// ===== NEW: Initialize RAG pipeline (in-memory with real TF-IDF embeddings) =====
+	ragEmbedder := memory.NewInMemoryEmbeddingService(384)
+	ragVectorDB := memory.NewInMemoryVectorDB(384)
+	o.ragPipeline = memory.NewInMemoryRAGPipeline(ragEmbedder, ragVectorDB)
 
-	// ===== NEW: Initialize AI Pipeline =====
-	o.aiPipeline = pipeline.NewPipeline(llmRouter, o.ragPipeline, &pipeline.NoOpToolExecutor{})
+	// ===== NEW: Initialize AI Pipeline with Tool Executor =====
+	toolExecutor := tools.NewDefaultToolExecutor(db)
+	o.aiPipeline = pipeline.NewPipeline(llmRouter, o.ragPipeline, toolExecutor)
 
 	log.Printf("[Orchestrator] LLM Router initialized with OpenRouter provider (model=%s)", model)
-	log.Printf("[Orchestrator] RAG Pipeline initialized (mock, dim=384)")
+	log.Printf("[Orchestrator] RAG Pipeline initialized (in-memory, TF-IDF embeddings, dim=384)")
+	log.Printf("[Orchestrator] Tool Executor initialized (search_messages, search_users, web_search, get_chat_info)")
 
 	return o
 }
@@ -522,6 +530,6 @@ func (o *Orchestrator) GetLLMRouter() llm.LLMRouter {
 }
 
 // GetRAGPipeline возвращает RAG pipeline для загрузки данных
-func (o *Orchestrator) GetRAGPipeline() *mock.MockRAGPipeline {
+func (o *Orchestrator) GetRAGPipeline() rag.RAGPipeline {
 	return o.ragPipeline
 }

@@ -3,9 +3,7 @@ package hermes
 import (
 	"bufio"
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -16,40 +14,13 @@ import (
 	"LavenderMessenger/core/llm"
 )
 
-// Provider — реализация LLMProvider для локального Hermes (stdin/stdout JSON-RPC)
-// Запускает hermes как дочерний процесс и общается через JSON построчно
+// Provider — реализация LLMProvider для локального Hermes Agent
+// Запускает `hermes chat -q` как дочерний процесс, стримит ответ построчно
 type Provider struct {
-	cmd       *exec.Cmd
-	stdin     io.WriteCloser
-	stdout    *bufio.Scanner
-	mu        sync.Mutex
-	modelID   string
+	mu         sync.Mutex
+	modelID    string
 	hermesPath string
-	sessionID string
-}
-
-// hermesRequest — запрос к Hermes процессу
-type hermesRequest struct {
-	Type      string        `json:"type"` // "chat"
-	Messages  []llm.Message `json:"messages"`
-	Tools     []llm.ToolDef `json:"tools,omitempty"`
-	Stream    bool          `json:"stream"`
-	SessionID string        `json:"session_id,omitempty"`
-}
-
-// hermesResponse — ответ от Hermes процесса
-type hermesResponse struct {
-	Type     string `json:"type"` // "chunk" | "tool_call" | "done" | "error"
-	Content  string `json:"content,omitempty"`
-	ToolCall *struct {
-		ID       string `json:"id"`
-		Function struct {
-			Name      string `json:"name"`
-			Arguments string `json:"arguments"`
-		} `json:"function"`
-	} `json:"tool_call,omitempty"`
-	Done  bool   `json:"done"`
-	Error string `json:"error,omitempty"`
+	sessionID  string
 }
 
 // NewProvider создаёт Hermes provider
@@ -67,44 +38,8 @@ func NewProvider(hermesPath string) (*Provider, error) {
 		hermesPath: hermesPath,
 	}
 
-	if err := p.start(); err != nil {
-		return nil, err
-	}
-
+	log.Printf("[HermesProvider] initialized path=%s", hermesPath)
 	return p, nil
-}
-
-func (p *Provider) start() error {
-	// Запускаем hermes в JSON-RPC режиме
-	// Ожидаем, что hermes поддерживает: hermes --json-rpc --stream
-	cmd := exec.Command(p.hermesPath, "--json-rpc", "--stream")
-
-	stdin, err := cmd.StdinPipe()
-	if err != nil {
-		return fmt.Errorf("stdin pipe: %w", err)
-	}
-
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		return fmt.Errorf("stdout pipe: %w", err)
-	}
-
-	// stderr — в лог сервера
-	cmd.Stderr = os.Stderr
-
-	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("start hermes: %w", err)
-	}
-
-	p.cmd = cmd
-	p.stdin = stdin
-	p.stdout = bufio.NewScanner(stdout)
-
-	// Увеличиваем буфер сканера для длинных строк
-	p.stdout.Buffer(make([]byte, 0, 64*1024), 1024*1024)
-
-	log.Printf("[HermesProvider] started pid=%d path=%s", cmd.Process.Pid, p.hermesPath)
-	return nil
 }
 
 func (p *Provider) ModelID() string {
@@ -112,17 +47,12 @@ func (p *Provider) ModelID() string {
 }
 
 func (p *Provider) Close() error {
-	p.mu.Lock()
-	defer p.mu.Unlock()
+	return nil // stateless — каждый запуск отдельный процесс
+}
 
-	if p.stdin != nil {
-		p.stdin.Close()
-	}
-	if p.cmd != nil && p.cmd.Process != nil {
-		p.cmd.Process.Kill()
-		return p.cmd.Wait()
-	}
-	return nil
+// SetSessionID — устанавливает ID сессии для контекста (передаётся через --resume)
+func (p *Provider) SetSessionID(id string) {
+	p.sessionID = id
 }
 
 func (p *Provider) StreamChat(
@@ -132,102 +62,117 @@ func (p *Provider) StreamChat(
 ) (<-chan llm.StreamChunk, error) {
 	out := make(chan llm.StreamChunk, 64)
 
-	req := hermesRequest{
-		Type:      "chat",
-		Messages:  messages,
-		Tools:     tools,
-		Stream:    true,
-		SessionID: p.sessionID,
+	// Собираем весь контекст в один промпт
+	var sb strings.Builder
+	for _, msg := range messages {
+		switch msg.Role {
+		case "system":
+			sb.WriteString("[System] ")
+		case "user":
+			sb.WriteString("[User] ")
+		case "assistant":
+			sb.WriteString("[Assistant] ")
+		case "tool":
+			sb.WriteString("[Tool] ")
+		}
+		sb.WriteString(msg.Content)
+		sb.WriteString("\n\n")
 	}
-
-	p.mu.Lock()
-	data, err := json.Marshal(req)
-	if err != nil {
-		p.mu.Unlock()
-		return nil, fmt.Errorf("marshal: %w", err)
+	query := strings.TrimSpace(sb.String())
+	if query == "" {
+		query = " "
 	}
-	data = append(data, '\n')
-	if _, err := p.stdin.Write(data); err != nil {
-		p.mu.Unlock()
-		return nil, fmt.Errorf("write: %w", err)
-	}
-	p.mu.Unlock()
 
 	go func() {
 		defer close(out)
 
-		for p.stdout.Scan() {
-			select {
-			case <-ctx.Done():
+		// Собираем команду
+		args := []string{"chat", "-q", query, "--quiet"}
+
+		// Если есть сессия — возобновляем
+		if p.sessionID != "" {
+			args = append(args, "--resume", p.sessionID)
+		}
+
+		// Картинки — передаём через --image (только первая для простоты)
+		for _, msg := range messages {
+			for _, img := range msg.Images {
+				// Сохраняем во временный файл
+				tmpFile := fmt.Sprintf("/tmp/hermes_img_%d.jpg", time.Now().UnixNano())
+				if err := os.WriteFile(tmpFile, img, 0644); err == nil {
+					args = append(args, "--image", tmpFile)
+				}
+				break // только первая картинка
+			}
+			break
+		}
+
+		cmd := exec.CommandContext(ctx, p.hermesPath, args...)
+
+		stdout, err := cmd.StdoutPipe()
+		if err != nil {
+			out <- llm.StreamChunk{Error: fmt.Sprintf("stdout pipe: %v", err), Done: true}
+			return
+		}
+
+		if err := cmd.Start(); err != nil {
+			out <- llm.StreamChunk{Error: fmt.Sprintf("start hermes: %v", err), Done: true}
+			return
+		}
+
+		// Читаем stdout построчно и стримим
+		scanner := bufio.NewScanner(stdout)
+		scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+
+		sessionID := ""
+		fullResponse := strings.Builder{}
+
+		for scanner.Scan() {
+			line := scanner.Text()
+
+			// Пропускаем служебные строки
+			if strings.HasPrefix(line, "session_id:") {
+				sessionID = strings.TrimSpace(strings.TrimPrefix(line, "session_id:"))
+				continue
+			}
+
+			// Пропускаем пустые строки в начале
+			if fullResponse.Len() == 0 && strings.TrimSpace(line) == "" {
+				continue
+			}
+
+			fullResponse.WriteString(line)
+			fullResponse.WriteString("\n")
+
+			// Стримим по строкам (эмуляция стриминга)
+			out <- llm.StreamChunk{Content: line + "\n"}
+		}
+
+		if err := cmd.Wait(); err != nil {
+			if ctx.Err() == context.Canceled {
 				out <- llm.StreamChunk{Error: "context cancelled", Done: true}
-				return
-			default:
+			} else {
+				out <- llm.StreamChunk{Error: fmt.Sprintf("hermes exit: %v", err), Done: true}
 			}
-
-			line := p.stdout.Bytes()
-			if len(line) == 0 {
-				continue
-			}
-
-			var resp hermesResponse
-			if err := json.Unmarshal(line, &resp); err != nil {
-				// Пропускаем не-JSON строки (логи, debug и т.д.)
-				continue
-			}
-
-			switch resp.Type {
-			case "chunk":
-				if resp.Content != "" {
-					out <- llm.StreamChunk{Content: resp.Content}
-				}
-			case "tool_call":
-				if resp.ToolCall != nil {
-					out <- llm.StreamChunk{
-						ToolCall: &llm.ToolCall{
-							ID: resp.ToolCall.ID,
-							Function: llm.ToolCallFunc{
-								Name:      resp.ToolCall.Function.Name,
-								Arguments: resp.ToolCall.Function.Arguments,
-							},
-						},
-					}
-				}
-			case "done":
-				out <- llm.StreamChunk{Done: true}
-				return
-			case "error":
-				out <- llm.StreamChunk{Error: resp.Error, Done: true}
-				return
-			}
+			return
 		}
 
-		// Scanner завершился — процесс умер
-		if err := p.stdout.Err(); err != nil {
-			out <- llm.StreamChunk{Error: fmt.Sprintf("stdout: %v", err), Done: true}
-		} else {
-			out <- llm.StreamChunk{Error: "hermes process exited", Done: true}
+		// Сохраняем session ID для следующего запроса
+		if sessionID != "" {
+			p.mu.Lock()
+			p.sessionID = sessionID
+			p.mu.Unlock()
 		}
+
+		// Если ничего не прочитали — отправляем пустой done
+		if fullResponse.Len() == 0 {
+			log.Printf("[HermesProvider] empty response for query: %q", query[:min(len(query), 80)])
+		}
+
+		out <- llm.StreamChunk{Done: true}
 	}()
 
 	return out, nil
-}
-
-// SetSessionID — устанавливает ID сессии для контекста
-func (p *Provider) SetSessionID(id string) {
-	p.sessionID = id
-}
-
-// Restart — перезапускает hermes процесс
-func (p *Provider) Restart() error {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	if p.cmd != nil && p.cmd.Process != nil {
-		p.cmd.Process.Kill()
-		p.cmd.Wait()
-	}
-
-	return p.start()
 }
 
 // findHermesBinary — ищет hermes в стандартных местах
@@ -262,5 +207,9 @@ func findHermesBinary() string {
 	return ""
 }
 
-// Используем time для heartbeat
-var _ = time.Now
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
