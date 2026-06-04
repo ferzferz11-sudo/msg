@@ -1,6 +1,6 @@
 # Lavender Messenger — Project Memory
 # Created: 2026-05-28
-# Updated: 2026-06-04 — Hermes Orchestrator v1.1.0.15
+# Updated: 2026-06-04 — Hermes Orchestrator v1.1.0.12 (Unified Chat Widget)
 
 ## Репозитории
 
@@ -119,3 +119,11 @@
 - Адаптивный tool calling loop: max 10 итераций (страховка)
 - Цикл продолжается пока LLM вызывает tools
 - Останавливается когда LLM даёт финальный ответ без tool calls
+
+### Android — Unified Chat Widget (v1.1.0.12)
+- **layout/widget_chat.xml** — единый layout для NewChatActivity и HermesChatActivity
+- **layout/item_chat_message.xml** — универсальный item (user/agent/system/typing/date)
+- **ui/chat/widget/ChatMessageAdapter.kt** — единый адаптер с DiffUtil
+- **ui/chat/widget/ChatWidget.kt** — ViewBinding обёртка с общим API
+- **HermesChatActivity** — агенты как участники группового чата (emoji + name)
+- **ChatMessageItem** — универсальная data class для всех типов сообщений

@@ -3,6 +3,21 @@
 **Author:** Pavel Davydov (ferz)
 
 
+## [1.1.0.12] - 2026-06-04
+- **Android — Unified Chat Widget:**
+  - **widget_chat.xml** — единый layout для группового чата и Hermes
+  - **item_chat_message.xml** — универсальный item (user/agent/system/typing/date)
+  - **ChatMessageAdapter** — единый адаптер с DiffUtil
+  - **ChatWidget.kt** — ViewBinding обёртка
+- **Android — HermesChatActivity переписан:**
+  - Агенты отображаются как участники группового чата
+  - Каждый агент = emoji-иконка + имя в тулбаре
+  - Тап по чипу агента → переключение на прямой чат
+  - Сообщения от разных агентов визуально различаются
+- **Android — HermesChatViewModel:**
+  - Добавлен `agents: StateFlow<List<AgentInfo>>` — реестр агентов-участников
+  - Методы: `addAgent()`, `removeAgent()`, `getAgent()`, `initPresetAgents()`
+
 ## [1.1.0.11] - 2026-06-04
 - **Android + Server — Hermes Orchestrator работает:**
   - ✅ Оркестратор отвечает приветственным сообщением на Android
