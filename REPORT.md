@@ -1,31 +1,33 @@
 # Hermes Orchestrator — Отчёт
 
-**Время:** 2026-06-04 15:12:43 UTC
-**Dev сервер:** running (v1.1.0.15, PID 719575, uptime 5h 47m)
-**Git:** `1e337eb` feat: connect HermesAgentService + remote agent routing
-**Незакоммиченные:** да — `M REPORT.md`, `M server.go` (38 вставок / 24 удаления)
-**Ошибки за 30мин:** нет
+**Время:** 2026-06-04 22:30 UTC
+**Dev сервер:** running (v1.1.0.11)
+**Git:** `7b87739` fix: proto mismatch в CreateHermesSession
+**Статус:** ✅ Оркестратор работает, Android подключается и получает ответы
 
 ---
 
-## ✅ Сделано
-- Hermes Orchestrator полная архитектура (v1.1.0.15): LLM Router, in-memory RAG, Tool Executor, Pipeline, gRPC ChatWithPipeline
+## ✅ Сделано (v1.1.0.11)
+
+- Hermes Orchestrator полная архитектура: LLM Router, in-memory RAG, Tool Executor, Pipeline
 - 8 агентов в реестре (7 пресетов + hermes-owl fallback)
-- HermesAgentService подключён, remote agent routing реализован (последний коммит `1e337eb`)
+- gRPC ChatWithOrchestrator — стриминг ответов работает
+- CreateHermesSession — создание сессии работает (исправлен proto mismatch)
+- LogViewerActivity — просмотр логов из админки (исправлен ClassCastException)
+- SuperAdmin определяется по user_id (UUID) с fallback на username
+- AppLog — система логирования ошибок
 
 ## 🔧 В процессе
-- Tool Calling Loop — адаптивный лимит итераций (убрать жёсткий max 3, детектить завершение по отсутствию tool calls)
-- HermesAgentService — приём подключений от hermes-agent daemon (bidirectional stream) — заявлен как "не реализовано"
+
+- Tool Calling Loop — адаптивный лимит итераций
 
 ## ⏳ Не начато
-- RemoteAgentManager.SendTask() — только заглушка
-- Auth токены для удалённых агентов (бэклог)
-- Qdrant + CLIP для production RAG
 
-## 🧪 Готово к проверке
-- gRPC ChatWithPipeline — стриминг ответов + tool calling, потестить через gRPC клиент
-- 8 агентов реестра — проверить роутинг по agent_id
-- HermesAgentService — проверить подключение от hermes-agent daemon
+- RemoteAgentManager.SendTask() — заглушка
+- Auth токены для удалённых агентов
+- Qdrant + CLIP для production RAG
+- Agent settings bottom sheet
 
 ## Следующий шаг
-Доработать Tool Calling Loop: убрать жёсткий лимит 3 итерации, добавить авто-финализацию когда LLM перестаёт вызывать tools. Файл: `core/pipeline/pipeline.go`.
+
+Доработать Tool Calling Loop: убрать жёсткий лимит 3 итерации.

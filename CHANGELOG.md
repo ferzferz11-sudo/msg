@@ -3,6 +3,22 @@
 **Author:** Pavel Davydov (ferz)
 
 
+## [1.1.0.11] - 2026-06-04
+- **Android + Server — Hermes Orchestrator работает:**
+  - ✅ Оркестратор отвечает приветственным сообщением на Android
+  - ✅ CreateHermesSession — создание сессии работает
+  - ✅ ChatWithOrchestrator — стриминг ответов работает
+- **Android — исправлен proto mismatch в CreateHermesSession:**
+  - Response marshaller: перепутаны номера полей (field 1=success/bool, field 2=session_id/string)
+  - Вызывало `CANCELLED: Failed to read message` — теперь исправлено
+  - Убран field 3 (mode) из запроса — его нет в серверном proto
+- **Android — LogViewerActivity:**
+  - Добавлена в AndroidManifest (ClassCastException при возврате)
+  - Убран ThemeUi.bind() — вызывал recreate()/ClassCastException
+- **Server — SuperAdmin по user_id:**
+  - IsSuperAdmin теперь проверяет по UUID в первую очередь, fallback на username
+  - На dev сервере админка работает корректно
+
 ## [Unreleased] - 2026-06-04
 - **Server (dev) — Hermes Orchestrator v1.1.0.15:**
   - **Hermes local provider** (`core/llm/hermes/provider.go`): переписан — использует `hermes chat -q --quiet` (не JSON-RPC)
