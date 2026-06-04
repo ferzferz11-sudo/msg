@@ -3145,6 +3145,51 @@ func (s *server) ChatWithOrchestrator(req *gen.OrchestratorRequest, stream gen.C
 	return nil
 }
 
+// ChatWithPipeline — новый метод: RAG + LLM + Tool Calling pipeline
+func (s *server) ChatWithPipeline(req *gen.PipelineRequest, stream gen.ChatService_ChatWithPipelineServer) error {
+	userID := req.UserId
+	if userID == "" {
+		return status.Error(codes.InvalidArgument, "user_id is required")
+	}
+
+	// Rate limit check
+	if !owlRateLimiter.allow(userID) {
+		return status.Error(codes.ResourceExhausted, "rate limit exceeded: max 10 requests per minute")
+	}
+
+	if s.hermesOrchestrator == nil {
+		return status.Error(codes.Unavailable, "orchestrator not initialized")
+	}
+
+	log.Printf("[Pipeline] user=%s msg=%q images=%d model_hint=%q",
+		userID, truncateString(req.Message, 80), len(req.Images), req.ModelHint)
+
+	// Запускаем pipeline
+	err := s.hermesOrchestrator.ProcessWithPipeline(
+		stream.Context(),
+		userID,
+		req.Message,
+		req.Images,
+		func(token string, finished bool) error {
+			return stream.Send(&gen.PipelineResponse{
+				Token:    token,
+				Finished: finished,
+			})
+		},
+	)
+
+	if err != nil {
+		log.Printf("[Pipeline] error for user %s: %v", userID, err)
+		_ = stream.Send(&gen.PipelineResponse{
+			Finished: true,
+			Error:    err.Error(),
+		})
+		return nil
+	}
+
+	return nil
+}
+
 // buildWelcomeMessage формирует приветственное сообщение со списком агентов
 func (s *server) buildWelcomeMessage() string {
 	if s.hermesOrchestrator == nil || s.hermesOrchestrator.registry == nil {

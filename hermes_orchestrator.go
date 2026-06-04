@@ -12,6 +12,11 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"LavenderMessenger/core/llm"
+	"LavenderMessenger/core/llm/openrouter"
+	"LavenderMessenger/core/pipeline"
+	"LavenderMessenger/core/rag/mock"
 )
 
 // OrchestratorSession — контекст диалога с оркестратором
@@ -40,10 +45,15 @@ type Orchestrator struct {
 
 	// Remote Agent Manager
 	remoteManager *RemoteAgentManager
+
+	// ===== NEW: LLM Router + RAG Pipeline (Ports & Adapters) =====
+	llmRouter    llm.LLMRouter          // маршрутизатор LLM-провайдеров
+	ragPipeline  *mock.MockRAGPipeline  // RAG-пайплайн (mock, заменить на реальный)
+	aiPipeline   *pipeline.Pipeline     // полный пайплайн: RAG → LLM → Tools
 }
 
 func NewOrchestrator(registry *HermesAgentRegistry, db *sql.DB, apiKey, model string) *Orchestrator {
-	return &Orchestrator{
+	o := &Orchestrator{
 		registry:      registry,
 		sessions:      make(map[string]*OrchestratorSession),
 		db:            db,
@@ -51,6 +61,38 @@ func NewOrchestrator(registry *HermesAgentRegistry, db *sql.DB, apiKey, model st
 		model:         model,
 		remoteManager: NewRemoteAgentManager(),
 	}
+
+	// ===== NEW: Initialize LLM Router with OpenRouter provider =====
+	openRouterProvider := openrouter.NewProvider(apiKey, model)
+	llmRouter := llm.NewSimpleRouter(openRouterProvider)
+	llmRouter.Register(llm.RouteRule{
+		ModelPrefix: "openrouter/",
+		Provider:    openRouterProvider,
+		Priority:    10,
+	})
+	// TODO: Register Hermes local provider when HERMES_PATH is available
+	// hermesProvider, err := hermes.NewProvider("")
+	// if err == nil {
+	// 	llmRouter.Register(llm.RouteRule{
+	// 		ModelPrefix: "local/",
+	// 		Provider:    hermesProvider,
+	// 		Priority:    20,
+	// 	})
+	// }
+	o.llmRouter = llmRouter
+
+	// ===== NEW: Initialize RAG pipeline (mock) =====
+	embedder := mock.NewMockEmbeddingService(384)
+	vectorDB := mock.NewMockVectorDB(384)
+	o.ragPipeline = mock.NewMockRAGPipeline(embedder, vectorDB)
+
+	// ===== NEW: Initialize AI Pipeline =====
+	o.aiPipeline = pipeline.NewPipeline(llmRouter, o.ragPipeline, &pipeline.NoOpToolExecutor{})
+
+	log.Printf("[Orchestrator] LLM Router initialized with OpenRouter provider (model=%s)", model)
+	log.Printf("[Orchestrator] RAG Pipeline initialized (mock, dim=384)")
+
+	return o
 }
 
 // getOrCreateSession возвращает существующую сессию или создаёт новую
@@ -414,4 +456,72 @@ func (o *Orchestrator) saveAgentMessage(session *OrchestratorSession, agentID, c
 		Role:    "assistant",
 		Content: fmt.Sprintf("[%s] %s", agentID, content),
 	})
+}
+
+// ===== NEW: ProcessWithPipeline — обработка через RAG + LLM Pipeline =====
+
+// ProcessWithPipeline обрабатывает запрос через новый пайплайн:
+// RAG (эмбеддинг → векторный поиск → контекст) → LLM (стриминг) → Tool Calls
+func (o *Orchestrator) ProcessWithPipeline(
+	ctx context.Context,
+	userID string,
+	userMessage string,
+	images [][]byte,
+	onChunk func(token string, finished bool) error,
+) error {
+	if o.aiPipeline == nil {
+		return fmt.Errorf("AI pipeline not initialized")
+	}
+
+	// Получаем историю из сессии
+	session := o.getOrCreateSession(userID)
+	session.mu.Lock()
+	history := make([]llm.Message, 0, len(session.Messages))
+	for _, m := range session.Messages {
+		history = append(history, llm.Message{
+			Role:    m.Role,
+			Content: m.Content,
+		})
+	}
+	session.mu.Unlock()
+
+	// Сохраняем сообщение пользователя
+	session.mu.Lock()
+	session.Messages = append(session.Messages, OrchestratorMessage{Role: "user", Content: userMessage})
+	session.mu.Unlock()
+
+	// Запускаем пайплайн
+	var fullResponse strings.Builder
+	err := o.aiPipeline.ProcessRequest(ctx, "", userMessage, images, history, func(chunk llm.StreamChunk) error {
+		if chunk.Content != "" {
+			fullResponse.WriteString(chunk.Content)
+		}
+		return onChunk(chunk.Content, chunk.Done)
+	})
+
+	if err != nil {
+		return fmt.Errorf("pipeline error: %w", err)
+	}
+
+	// Сохраняем ответ ассистента
+	if fullResponse.Len() > 0 {
+		session.mu.Lock()
+		session.Messages = append(session.Messages, OrchestratorMessage{
+			Role:    "assistant",
+			Content: fullResponse.String(),
+		})
+		session.mu.Unlock()
+	}
+
+	return nil
+}
+
+// GetLLMRouter возвращает LLM Router для регистрации дополнительных провайдеров
+func (o *Orchestrator) GetLLMRouter() llm.LLMRouter {
+	return o.llmRouter
+}
+
+// GetRAGPipeline возвращает RAG pipeline для загрузки данных
+func (o *Orchestrator) GetRAGPipeline() *mock.MockRAGPipeline {
+	return o.ragPipeline
 }

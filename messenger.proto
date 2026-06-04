@@ -715,6 +715,26 @@ service ChatService {
   rpc ListRemoteAgents(ListRemoteAgentsRequest) returns (ListRemoteAgentsResponse);
   rpc DeployAgentTask(DeployAgentTaskRequest) returns (DeployAgentTaskResponse);
   rpc GetRemoteAgentStatus(GetRemoteAgentStatusRequest) returns (GetRemoteAgentStatusResponse);
+
+  // Hermes AI Pipeline (RAG + LLM + Tool Calling)
+  rpc ChatWithPipeline(PipelineRequest) returns (stream PipelineResponse);
+}
+
+// ======= AI Pipeline Messages =======
+
+message PipelineRequest {
+  string user_id = 1;
+  string session_id = 2;
+  string message = 3;
+  repeated bytes images = 4; // Raw image bytes for multimodal RAG
+  string model_hint = 5;     // "openrouter/auto", "local/hermes", etc.
+}
+
+message PipelineResponse {
+  string token = 1;
+  bool finished = 2;
+  string error = 3;
+  bool has_rag_context = 4;  // Indicates if RAG context was used
 }
 
 // ======= Secret Chat Messages =======
