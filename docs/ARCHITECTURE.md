@@ -1,9 +1,8 @@
 # Lavender Messenger — Архитектурный анализ
 
-**Дата:** 2026-06-01
-**Автор:** OWL (автоматический анализ)
-**Версия сервера:** 1.1.0.7 (server.go)
-**Версия клиента:** 1.1.0.8 (TASKS.md)
+**Дата:** 2026-06-04
+**Версия сервера:** 1.1.0.15
+**Версия клиента:** 1.1.0.10+
 
 ---
 
@@ -28,230 +27,96 @@
 │   (Swift)   │                              │
 └─────────────┘                    ┌─────────┴─────────┐
                                    │       FCM         │
-                                   │ (Firebase Cloud   │
-                                   │   Messaging)      │
+                                   │  (Push Notif.)    │
                                    └───────────────────┘
 ```
 
-### Стек сервера:
-- **Язык:** Go
-- **Фреймворк:** gRPC (grpc-go)
-- **База данных:** PostgreSQL (github.com/lib/pq)
-- **Файл-сервер:** net/http (порт 8082)
-- **Push:** Firebase Admin SDK (firebase.google.com/go/v4)
-- **AI:** OpenRouter API (owl.go)
+## 2. Порты
 
-### Стек клиентов:
-- **Android:** Kotlin, gRPC, WebRTC, Room DB, FCM
-- **iOS:** Swift, gRPC-Web, SwiftUI
-- **macOS:** Swift, AppKit
+| Сервис | Порт | Протокол |
+|--------|------|----------|
+| gRPC (prod) | 50051 | gRPC |
+| gRPC (dev) | 50052 | gRPC |
+| HTTP (prod) | 8081-8082 | HTTP |
+| HTTP (dev) | 8083 | HTTP |
 
----
+## 3. Hermes Multi-Agent Orchestrator (v1.1.0.15)
 
-## 2. Ключевые компоненты сервера
-
-### 2.1 Hub (hub.go) — менеджер соединений
-- Хранит `map[stream]username` для chat, typing и call стримов
-- Безопасность: `sync.RWMutex` для конкурентного доступа
-- Broadcast: room-based для сообщений, user-based для call сигналов
-- Конференции: in-memory структура `Conference` с участниками и приглашёнными
-
-### 2.2 Server (server.go) — основная логика
-- **Chat()**: bidirectional streaming для сообщений (основной метод)
-- **CallSession()**: bidirectional streaming для WebRTC сигналов (OFFER/ANSWER/ICE)
-- **Typing()**: streaming для индикатора набора текста
-- **GetHistory()**: unary RPC для загрузки истории
-- **CRUD**: чаты, пользователи, сообщения, устройства, контакты
-
-### 2.3 FCM (server.go, sendPushNotification, sendCallPushNotification)
-- Использует Firebase Admin SDK
-- Push для сообщений: Notification + Data payload
-- Push для звонков: только Data payload (type=VOIP_CALL), Android high priority
-- Muted chats: проверка перед отправкой
-
-### 2.4 OWL (owl.go) — AI ассистент
-- OpenRouter API для LLM
-- Rate limiter: 10 запросов/минуту на пользователя
-- DB-backed сессии (таблица owl_messages)
-- Per-chat настройки API key и model
-
-### 2.5 Crypto (crypto.go)
-- AES-256-GCM для шифрования сообщений на сервере
-- bcrypt для паролей
-- E2EE: ECDH key exchange для секретных чатов (client-side)
-
-### 2.6 HTTP Server (http_server.go)
-- Порт 8082
-- Upload: avatars, images, files, backgrounds, audio (10MB max)
-- Serve: статика из ./uploads/
-- Delete: удаление файлов
-
----
-
-## 3. Ключевые компоненты Android клиента
-
-### 3.1 RealGrpcClient — singleton, управление соединением
-- OkHttpChannelBuilder с keepAlive (15s ping, 10s timeout)
-- Автоматический reconnect (10s delay)
-- CoroutineScope(Dispatchers.Main + SupervisorJob())
-- Состояния: DISCONNECTED → CONNECTING → READY → FAILED
-- Pending messages/reads для повторной отправки после reconnect
-
-### 3.2 CallManager — управление звонками
-- StateFlow<CallMessageProto?> для текущего звонка
-- SharedFlow для incoming сигналов
-- WebRTC signaling через gRPC CallSession
-- Conference support
-
-### 3.3 WebRtcClient — WebRTC реализация
-- PeerConnectionFactory, PeerConnection
-- ICE servers: только Google STUN (stun:stun.l.google.com:19302)
-- Video: Camera2Enumerator, front-facing priority
-- Audio: AudioSource → AudioTrack
-- ICE candidate queuing (drain после remote description)
-
-### 3.4 LavenderMessagingService — FCM handler
-- onMessageReceived: разделение VOIP_CALL vs обычные сообщения
-- onNewToken: синхронизация через SessionManager
-- Notifications: 2 канала (lavender_calls, lavender_messages)
-- FullScreenIntent для звонков
-
-### 3.5 Локальная БД (Room)
-- AppDatabase с DAO
-- Кэширование сообщений, пользователей, настроек
-
----
-
-### 3.6 Favorites — избранные сообщения
-- Сохраняются в таблицу `messages` с `room_id = 'favorites_' + username`
-- Дублирующая запись в таблицу `favorites` (user_id, message_id) для быстрого поиска
-- При загрузке: `LEFT JOIN favorites` + `WHERE m.room_id = 'favorites_X' OR f.message_id IS NOT NULL`
-- Сообщения зашифрованы как обычные (is_e2ee = false), расшифровываются сервером
-- gRPC: `GetFavorites(uid)` → `SaveFavoriteMessage(msg)` → `RemoveFavorite(uid, mid)`
-- Клиент: `FavoritesActivity.kt` — показывает сообщения из favorites room
-- Важно: SELECT должен содержать ровно 16 полей, соответствующих Scan() — дубликат полей смещает все значения
-
-## 4. Протокол (messenger.proto)
-
-### Основные сервисы:
-```
-service ChatService {
-  rpc Chat(stream Message) returns (stream Message);
-  rpc Typing(stream TypingRequest) returns (stream TypingSignal);
-  rpc CallSession(stream CallMessage) returns (stream CallMessage);
-  rpc GetHistory(GetHistoryRequest) returns (GetHistoryResponse);
-  // ... unary methods
-}
-```
-
-### CallMessage типы:
-```
-enum Type {
-  INITIATE = 0;  ACCEPT = 1;  REJECT = 2;  HANGUP = 3;
-  OFFER = 4;  ANSWER = 5;  ICE_CANDIDATE = 6;
-  INITIATE_CONFERENCE = 7;  JOIN_CONFERENCE = 8;
-  LEAVE_CONFERENCE = 9;  END_CONFERENCE = 10;
-}
-```
-
----
-
-## 5. Критические проблемы (по приоритету)
-
-### 🔴 P0: FCM полностью сломан
-**Симптом:** `[FCM ERROR] Invalid JWT Signature` на каждый push
-**Причина:** Firebase service account key истёк или отозван
-**Решение:** Сгенерировать новый key в Firebase Console → scp на сервер → restart
-
-### 🔴 P0: WebRTC не соединяется (звонки не работают)
-**Причины:**
-1. **Нет TURN сервера** — только Google STUN
-2. **Нет ICE candidate filtering**
-3. **Нет signaling при ошибке** — нет retry
-
-### 🟡 P1: CallActivity — множественные проблемы
-1. receiverId по умолчанию — username, не UUID
-2. Нет timeout на соединение
-3. Нет обработки ICE connection state
-
-### 🟡 P1: gRPC stream нестабильность
-1. Keepalive failed при длительном простое
-2. Нет graceful degradation при reconnect
-
-### 🟠 P2: UI проблемы
-1. OWL chat: `enableEdgeToEdge()` конфликтует с `adjustResize`
-2. Keyboard overlapping navigation buttons
-
----
-
-## 6. Проблемы безопасности
-
-1. **password в Message proto** — plaintext через gRPC (без TLS на клиенте)
-2. **No rate limiting** на сервере (кроме OWL)
-3. **No message size limit** — gRPC max message size не настроен
-
----
-
-## 7. Проблемы производительности
-
-1. **GetUserChats** — сложный SQL с CTE, нет кэширования
-2. **GetAllUsers** — вызывается для push на КАЖДОЕ сообщение
-3. **Sync.Map** для `recentMsgs` — нет GC
-4. **HTTP uploads** — 10MB limit, entire file loaded in memory
-
----
-
-## 8. Архитектурные долги
-
-1. Server version — hardcoded const, не из build system
-2. No graceful shutdown
-3. Global variables — `firebaseApp`, `owlRateLimiter`
-4. No structured logging — `log.Printf` вместо zap/logrus
-5. No metrics — latency, error rates
-6. Mixed concerns — server.go = 2969 строк
-7. No migration system — raw SQL in ConnectDB()
-8. iOS клиент — многие методы stubs
-
----
-
-## 9. Диаграмма потока звонка
+### Архитектура
 
 ```
-Caller            Server              Listener
-  │                  │                   │
-  │──INITIATE──────►│                   │
-  │                  │───FCM push──────►│
-  │                  │──INITIATE──────►│
-  │                  │                   │
-  │                  │◄────ACCEPT───────│
-  │◄──ACCEPT────────│                   │
-  │──OFFER─────────►│──OFFER──────────►│
-  │                  │                   │
-  │  WebRTC p2p установление            │
-  │◄═══════════════════════════════════►│
-  │                  │                   │
-  │──HANGUP────────►│──HANGUP─────────►│
+ChatService (gRPC)
+  │
+  ├─→ ChatWithPipeline → Orchestrator.ProcessWithPipeline()
+  │                         │
+  │                         ├─→ RAG Pipeline (core/rag/)
+  │                         │     ├─ EmbeddingService (TF-IDF → Qdrant+CLIP)
+  │                         │     └─ VectorSearch (in-memory → Qdrant)
+  │                         │
+  │                         ├─ LLM Router (core/llm/)
+  │                         │     ├─ OpenRouter (default, priority=10)
+  │                         │     └─ Hermes local (prefix=local/, priority=20)
+  │                         │
+  │                         └─ Tool Executor (core/tools/)
+  │                               ├─ search_messages
+  │                               ├─ search_users
+  │                               ├─ web_search
+  │                               └─ get_chat_info
+  │
+  ├─→ Orchestrate → Orchestrator.Orchestrate()
+  │                   ├─ analyzeRequest (LLM routing)
+  │                   ├─ runSingleAgent
+  │                   ├─ runParallelAgents
+  │                   └─ runPipelineAgents
+  │
+  └─→ HermesAgentService ←─ hermes-agent daemon (НЕ РЕАЛИЗОВАНО)
 ```
 
----
+### LLM Router
+- **OpenRouter** (default) — SSE streaming, tool calls, multimodal images
+- **Hermes local** (prefix=local/) — `hermes chat -q --quiet`, stateless, --resume для сессий
 
-## 10. Рекомендации
+### RAG Pipeline
+- Интерфейсы: `EmbeddingService`, `VectorSearch`, `RAGPipeline`
+- Текущая реализация: in-memory TF-IDF (384 dim, cosine similarity)
+- Production план: Qdrant + CLIP
 
-### Краткосрочные:
-1. Исправить FCM (новый key)
-2. Добавить HANGUP при abrupt disconnect
-3. Добавить TURN сервер (coturn)
-4. Исправить receiverId/username в CallActivity
-5. Добавить timeout на WebRTC
+### Tool Executor
+- `search_messages` — ILIKE по messages таблице
+- `search_users` — поиск по username/display_name/phone
+- `web_search` — DuckDuckGo Instant Answer API
+- `get_chat_info` — имя чата, тип, количество участников
 
-### Среднесрочные:
-1. Рефакторинг server.go → пакеты
-2. Rate limiting
-3. Graceful shutdown
-4. ICE candidate filtering
+### Pipeline (core/pipeline/)
+- Адаптивный tool calling loop: max 10 итераций (страховка от бесконечного цикла)
+- Цикл продолжается пока LLM вызывает tools, останавливается когда ответ финальный
 
-### Долгосрочные:
-1. Message queue для push
-2. CDN для uploads
-3. Load balancing
-4. Automated testing
+## 4. Технический стек
+
+### Сервер
+- Go 1.26, gRPC, PostgreSQL, Firebase Cloud Messaging
+- AES-256-GCM, bcrypt, keepalive 20s/20s
+- systemd сервис, .env конфигурация
+- Hermes Agent v0.14.0 (Python 3.11.15) — локальный LLM провайдер
+
+### Клиент (Android)
+- Kotlin, gRPC (protobuf-lite manual), Room, Firebase, WebRTC
+- minSdk 29, compileSdk 37, targetSdk 35
+- MVVM + StateFlow + ViewBinding
+- Material Design 3
+
+## 5. Ключевые файлы
+
+| Файл | Назначение |
+|------|------------|
+| `main.go` | gRPC + HTTP серверы, точка входа |
+| `server.go` | Основные gRPC хендлеры (~3550 строк) |
+| `hermes_orchestrator.go` | Оркестратор, LLM Router + RAG + Pipeline init |
+| `hermes_agents.go` | Реестр агентов (8 агентов) |
+| `core/pipeline/pipeline.go` | RAG → LLM → Tool Calling loop |
+| `core/llm/` | LLM Router + провайдеры |
+| `core/rag/` | RAG интерфейсы + in-memory реализация |
+| `core/tools/` | Tool Executor |
+| `db.go` | PostgreSQL, миграции |
+| `db_hermes.go` | миграции Hermes таблиц |
+| `messenger.proto` | gRPC определения |
