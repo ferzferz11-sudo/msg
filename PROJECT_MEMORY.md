@@ -1,6 +1,6 @@
 # Lavender Messenger — Project Memory
 # Created: 2026-05-28
-# Updated: 2026-05-29 — split into two repos
+# Updated: 2026-06-04 — Hermes Orchestrator v1.1.0.15
 
 ## Репозитории
 
@@ -8,9 +8,9 @@
 - **Git:** `ferzferz11-sudo/msg`
 - **Dev сервер:** `13.140.25.249`, путь `/root/msg`
 - **Production:** `159.195.38.145`, путь `/root/LavenderMessenger/run`
-- **Ветка:** `main` (prod), `feat/remove-username-compat` (dev)
-- **PostgreSQL:** user `lavender`, database `chat_db`
-- **systemd:** `lavender-server.service`
+- **Ветка:** `main`
+- **PostgreSQL:** user `lavender`, database `chat_db` (prod), `chat_db_dev` (dev)
+- **systemd:** `lavender-server.service` (prod), `lavender-server-dev.service` (dev)
 
 ### Клиент (Android)
 - **Git:** `ferzferz11-sudo/msg.client.android`
@@ -19,8 +19,9 @@
 
 ## Сервер — ключевые файлы
 
+### Ядро
 - `main.go` — gRPC + HTTP серверы, точка входа
-- `server.go` — основные gRPC хендлеры (~2704 строк)
+- `server.go` — основные gRPC хендлеры (~3550 строк)
 - `secret_chat.go` — E2EE хендлеры
 - `server_management.go` — мультисерверность, админ RPC
 - `db.go` — PostgreSQL, миграции
@@ -28,6 +29,24 @@
 - `http_server.go` — HTTP (8081 APK, 8082 uploads)
 - `crypto.go` — AES-256-GCM + bcrypt
 - `email.go` — email уведомления
+
+### Hermes Orchestrator (v1.1.0.15)
+- `hermes_orchestrator.go` — оркестратор, LLM Router + RAG + Pipeline init
+- `hermes_agents.go` — реестр агентов (8 агентов: 7 пресетов + hermes-owl)
+- `hermes_remote_manager.go` — remote agents (heartbeat, tasks)
+- `db_hermes.go` — миграции Hermes таблиц
+- `owl.go` — OWL AI assistant
+
+### Core (Ports & Adapters)
+- `core/llm/provider.go` — LLMProvider, LLMRouter, SimpleRouter, StreamChunk, Message interfaces
+- `core/llm/openrouter/provider.go` — OpenRouter SSE provider (tool calls, multimodal)
+- `core/llm/hermes/provider.go` — Hermes local provider (`hermes chat -q --quiet`)
+- `core/rag/interfaces.go` — EmbeddingService, VectorSearch, RAGPipeline interfaces
+- `core/rag/memory/memory.go` — in-memory RAG (TF-IDF, 384 dim, cosine similarity)
+- `core/rag/memory/memory_test.go` — unit тесты RAG (4 теста)
+- `core/rag/mock/` — mock реализации (deprecated, заменены на memory)
+- `core/pipeline/pipeline.go` — RAG → LLM → Tool Calling loop (max 3 iter)
+- `core/tools/executor.go` — DefaultToolExecutor (search_messages, search_users, web_search, get_chat_info)
 
 ## Клиент — ключевые файлы
 
@@ -42,8 +61,8 @@
 
 ## Версионирование
 
-- Android: `version.txt` в корне (1.0.7.1)
-- Сервер: `const ServerVersion = "1.0.7.1"` в server.go
+- Android: `version.txt` в корне
+- Сервер: `const ServerVersion` в server.go
 - versionCode = major*1000000 + minor*10000 + patch*100 + build
 
 ## Технический стек
@@ -52,6 +71,7 @@
 - Go 1.26, gRPC, PostgreSQL, Firebase Cloud Messaging
 - AES-256-GCM, bcrypt, keepalive 15s/10s
 - systemd сервис, .env конфигурация
+- Hermes Agent v0.14.0 (Python 3.11.15) — локальный LLM провайдер
 
 ### Клиент
 - Kotlin, gRPC (protobuf-lite manual), Room, Firebase, WebRTC
@@ -78,3 +98,20 @@
 ### Обратная совместимость
 - Новые proto поля — optional (proto3)
 - Новые RPC — старые клиенты не вызывают
+
+### Hermes Orchestrator — LLM Router
+- OpenRouter (default) — SSE streaming, tool calls, multimodal images
+- Hermes local (prefix=local/) — CLI wrapper, stateless, session через --resume
+- Регистрация: `llmRouter.Register(llm.RouteRule{ModelPrefix, Provider, Priority})`
+
+### Hermes Orchestrator — RAG Pipeline
+- Интерфейсы: EmbeddingService, VectorSearch, RAGPipeline
+- Текущая реализация: in-memory TF-IDF (384 dim)
+- Production план: Qdrant + CLIP для мультимодальных эмбеддингов
+
+### Hermes Orchestrator — Tool Executor
+- search_messages: ILIKE по messages таблице
+- search_users: поиск по username/display_name/phone
+- web_search: DuckDuckGo Instant Answer API
+- get_chat_info: имя чата, тип, количество участников
+- Известная проблема: tool calling loop (max 3 iter)

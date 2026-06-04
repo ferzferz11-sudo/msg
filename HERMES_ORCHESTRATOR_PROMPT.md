@@ -13,8 +13,9 @@ gRPC-мессенджер с E2EE (AES-256) и AI оркестратором.
 
 **Сборка dev:**
 ```bash
-cd /root/msg && go build -o /root/msg/run/lavender-server-dev .
-systemctl stop lavender-server-dev && cp /root/msg/run/lavender-server-dev /root/LavenderMessenger/run/lavender-server-dev && systemctl start lavender-server-dev
+cd /root/msg && export PATH=$PATH:/usr/local/go/bin:~/go/bin
+go build -o /tmp/lavender-server-dev .
+systemctl stop lavender-server-dev && cp /tmp/lavender-server-dev /root/LavenderMessenger/run/lavender-server-dev && systemctl start lavender-server-dev
 ```
 
 **Сборка Android:**
@@ -22,45 +23,88 @@ systemctl stop lavender-server-dev && cp /root/msg/run/lavender-server-dev /root
 cd /root/msg.client.android && ./gradlew assembleDebug
 ```
 
+**Proto gen:**
+```bash
+cd /root/msg && protoc --go_out=./gen --go_opt=paths=source_relative --go-grpc_out=./gen --go-grpc_opt=paths=source_relative messenger.proto
+```
+⚠️ НЕ использовать `--go_out=.` (генерирует в корень, ломает сборку)
+
 ## ТЕКУЩЕЕ СОСТОЯНИЕ
 
-### ✅ Работает на dev сервере (v1.1.0.9):
+### ✅ Работает на dev сервере (v1.1.0.15):
 
-1. **Hermes Orchestrator** — `hermes_orchestrator.go` (467 строк) — маршрутизация к агентам, 3 режима, streaming
-2. **Agent Registry** — `hermes_agents.go` (417 строк) — 8 агентов (7 пресетов + hermes-owl fallback)
-3. **gRPC API** — server.go (~3080-3387), все Hermes методы
-4. **Remote Agent Manager** — `hermes_remote_manager.go` — heartbeat, диспетчеризация
-5. **Database** — `db_hermes.go` — hermes_messages, hermes_sessions, hermes_agent_runs, hermes_custom_agents, reactions (UNIQUE constraint fixed)
+**Ядро (Ports & Adapters):**
+1. **LLM Router** (`core/llm/`) — маршрутизация между провайдерами:
+   - `OpenRouter` (default, prefix=openrouter/, priority=10) — SSE streaming, tool calls, multimodal images
+   - `Hermes local` (prefix=local/, priority=20) — `hermes chat -q --quiet`, stateless, session через --resume
+2. **RAG Pipeline** (`core/rag/`) — векторный поиск контекста:
+   - Интерфейсы: `EmbeddingService`, `VectorSearch`, `RAGPipeline`
+   - Реализация: `in-memory` с TF-IDF эмбеддингами (384 dim), cosine similarity
+   - Unit тесты: `core/rag/memory/memory_test.go` (4 теста, все PASS)
+3. **Pipeline** (`core/pipeline/`) — RAG → LLM → Tool Calling loop (max 3 iter)
+4. **Tool Executor** (`core/tools/`) — 4 инструмента:
+   - `search_messages` — ILIKE по messages таблице
+   - `search_users` — поиск по username/display_name/phone
+   - `web_search` — DuckDuckGo Instant Answer API
+   - `get_chat_info` — имя чата, тип, количество участников
 
-### ✅ Android клиент — v1.1.0.10:
+**gRPC API:**
+- `ChatWithPipeline(PipelineRequest) → stream PipelineResponse` — полный пайплайн с картинками
+- `PipelineRequest`: user_id, session_id, message, images (repeated bytes), model_hint
+- `PipelineResponse`: token, finished, error, has_rag_context
+
+**Hermes Orchestrator** (`hermes_orchestrator.go`):
+- Маршрутизация к агентам, 3 режима (single/parallel/pipeline), streaming
+- LLM Router + RAG Pipeline + AI Pipeline
+- `ProcessWithPipeline(ctx, userID, message, images, onChunk)`
+
+**Agent Registry** (`hermes_agents.go`):
+- 8 агентов (7 пресетов + hermes-owl fallback)
+
+**Database** (`db_hermes.go`):
+- hermes_messages, hermes_sessions, hermes_agent_runs, hermes_custom_agents, hermes_remote_agents, hermes_remote_tasks
+
+### ✅ Android клиент — v1.1.0.10+:
 - HermesChatActivity (чат с оркестратором)
 - AgentListActivity (список агентов)
 - AgentSettingsActivity (настройка агентов)
 - Все Hermes методы в HermesGrpc.kt / GrpcClient.kt
-- AndroidManifest.xml обновлён
-
-### ✅ Исправлено в этой сессии:
-- Reactions UNIQUE constraint (ON CONFLICT работает)
-- HermesChatActivity добавлен в chat action sheet
-- Server switching: CredentialStore.getServerAddress() используется в onResume()
-- hermes-owl зареистрирован как агент (fallback работает)
-- Dev firewall port 50052 открыт
 
 ### ❌ Не работает / не доделано:
-1. **HermesAgentService** — оркестратор НЕ принимает подключения от hermes-agent daemon
-2. **Agent↔Orchestrator** — RemoteAgentManager.SendTask() заглушка
-3. **Auth токены** — не генерируются для удалённых агентов
-4. **OWL на dev** — OpenRouter 401 (ключ невалидный), fallback на hermes-owl работает но тоже зависит от OpenRouter
+1. **Tool calling loop** — max iterations (3) при активном function calling — нужна доработка pipeline
+2. **HermesAgentService** — оркестратор НЕ принимает подключения от hermes-agent daemon
+3. **Agent↔Orchestrator** — RemoteAgentManager.SendTask() заглушка
+4. **Auth токены** — не генерируются для удалённых агентов
+5. **Qdrant + CLIP** — запланировано для production RAG
 
 ## АРХИТЕКТУРА
 
 ```
-ChatService → HermesOrchestrator → OpenRouter (LLM)
-     │                │
-     │                ├── Registry (8 агентов: 7 preset + hermes-owl)
-     │                └── RemoteAgentManager (heartbeat, tasks)
-     │
-HermesAgentService ←── hermes-agent daemon (bidirectional stream)
+ChatService (gRPC)
+  │
+  ├─→ ChatWithPipeline → Orchestrator.ProcessWithPipeline()
+  │                         │
+  │                         ├─→ RAG Pipeline (core/rag/)
+  │                         │     ├─ EmbeddingService (TF-IDF → Qdrant+CLIP)
+  │                         │     └─ VectorSearch (in-memory → Qdrant)
+  │                         │
+  │                         ├─ LLM Router (core/llm/)
+  │                         │     ├─ OpenRouter (default)
+  │                         │     └─ Hermes local (prefix=local/)
+  │                         │
+  │                         └─ Tool Executor (core/tools/)
+  │                               ├─ search_messages
+  │                               ├─ search_users
+  │                               ├─ web_search
+  │                               └─ get_chat_info
+  │
+  ├─→ Orchestrate → Orchestrator.Orchestrate()
+  │                   ├─ analyzeRequest (LLM routing)
+  │                   ├─ runSingleAgent
+  │                   ├─ runParallelAgents
+  │                   └─ runPipelineAgents
+  │
+  └─→ HermesAgentService ←─ hermes-agent daemon (bidirectional stream, НЕ РЕАЛИЗОВАНО)
 ```
 
 ## ПРАВИЛА
@@ -69,21 +113,26 @@ HermesAgentService ←── hermes-agent daemon (bidirectional stream)
 - НЕ копировать поверх работающего процесса!
 - Всегда: stop → cp → start
 - НЕ редактировать gen/ файлы
-- CRUD: hermes_custom_agents table (agents: preset name/role/description/prompt/model/max_tokens)
+- Proto gen: `--go_out=./gen --go_opt=paths=source_relative` (НЕ `--go_out=.`)
+- CRUD: hermes_custom_agents table
 
 ## КРИТИЧЕСКИЕ PITFALLS
 
 1. goroutine leak: все channel sends через select с ctx.Done()
 2. SQL column duplication: дублирование в SELECT смещает Scan
 3. Nil pointer: проверять все указатели (ListUserAgents!)
-4. OPENROUTER_API_KEY на dev невалидный (401) — оркестратор fallback на hermes-owl
+4. Tool calling loop: max 3 итерации — при активном function calling pipeline может зациклиться
+5. Hermes local provider: использует `hermes chat -q --quiet` (НЕ JSON-RPC)
 
 ## ФАЙЛЫ ДЛЯ ЧТЕНИЯ
 
-1. `server.go` (3080-3387) — gRPC endpoints
-2. `hermes_orchestrator.go` — оркестратор
-3. `hermes_agents.go` — реестр агентов
-4. `hermes_remote_manager.go` — remote agents
-5. `db_hermes.go` — миграции
-6. `owl.go` — OWL streaming
-7. `messenger.proto` — gRPC определения
+1. `hermes_orchestrator.go` — оркестратор, LLM Router, RAG, Pipeline init
+2. `core/llm/provider.go` — LLMProvider, LLMRouter, SimpleRouter interfaces
+3. `core/llm/openrouter/provider.go` — OpenRouter SSE provider
+4. `core/llm/hermes/provider.go` — Hermes local provider (CLI wrapper)
+5. `core/rag/interfaces.go` — EmbeddingService, VectorSearch, RAGPipeline
+6. `core/rag/memory/memory.go` — in-memory RAG implementation
+7. `core/pipeline/pipeline.go` — RAG → LLM → Tool Calling loop
+8. `core/tools/executor.go` — DefaultToolExecutor
+9. `server.go` (ChatWithPipeline handler) — gRPC endpoint
+10. `messenger.proto` — gRPC определения

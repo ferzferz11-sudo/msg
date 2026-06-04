@@ -3,6 +3,20 @@
 **Author:** Pavel Davydov (ferz)
 
 
+## [Unreleased] - 2026-06-04
+- **Server (dev) — Hermes Orchestrator v1.1.0.15:**
+  - **Hermes local provider** (`core/llm/hermes/provider.go`): переписан — использует `hermes chat -q --quiet` (не JSON-RPC)
+    - Stateless: каждый запуск — отдельный процесс; сессии через --resume; картинки через --image
+    - Регистрируется в LLM Router с префиксом `local/` (priority=20)
+  - **In-memory RAG** (`core/rag/memory/`): TF-IDF эмбеддинги (384 dim), cosine similarity, upsert/delete/search
+    - Unit тесты: `memory_test.go` (4 теста, все PASS)
+  - **Tool Executor** (`core/tools/executor.go`): search_messages, search_users, web_search (DDG API), get_chat_info
+  - **Pipeline**: RAG → LLM → Tool Calling loop (max 3 iter)
+  - **gRPC**: `ChatWithPipeline(PipelineRequest) → stream PipelineResponse` — поддержка картинок и model_hint
+  - **Orchestrator**: mock RAG → in-memory RAG, NoOpToolExecutor → DefaultToolExecutor
+  - Dev сервер обновлён (d7ccbac)
+  - ⚠️ Известная проблема: tool calling loop (max 3 iter) — нужна доработка pipeline
+
 ## [Unreleased] - 2026-06-03
 - **Server (dev):**
   - **Исправлено**: Welcome message — добавлен `Finished: true` для корректного завершения стрима на Android
