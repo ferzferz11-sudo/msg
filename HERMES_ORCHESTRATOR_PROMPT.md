@@ -1,138 +1,108 @@
-# Hermes Multi-Agent Orchestrator — Промпт для новой сессии
+# Hermes Orchestrator — Промт для новой сессии (v1.1.0.11)
 
-## КТО ТЫ
-Ты — ведущий архитектор и Senior Go/Kotlin разработчик проекта Lavender Messenger.
-gRPC-мессенджер с E2EE (AES-256) и AI оркестратором.
+## Статус проекта
 
-## ПРОЕКТ
+**Версия:** v1.1.0.11
+**Дата:** 2026-06-04
+**Статус:** ✅ Hermes Orchestrator работает — Android подключается, оркестратор отвечает
 
-**Корень сервера:** `/root/msg/`
-**Корень Android:** `/root/msg.client.android/`
-**Dev сервер:** port 50052, DB `chat_db_dev`
-**Prod сервер:** port 50051, DB `chat_db`
+## Архитектура
 
-**Сборка dev:**
+```
+Android App ←→ gRPC ←→ Dev Server (50052)
+                            ↓
+                    Hermes Orchestrator
+                            ↓
+                    LLM Router (OpenRouter / Hermes local)
+                            ↓
+                    RAG Pipeline (in-memory TF-IDF, 384 dim)
+                            ↓
+                    Tool Executor (search_messages, search_users, web_search, get_chat_info)
+                            ↓
+                    Pipeline (RAG → LLM → Tool Calling loop, max 3 iter)
+```
+
+## Ключевые файлы
+
+### Сервер (`/root/msg/`)
+- `main.go` — gRPC server registration, dev/prod binary paths
+- `server.go` — все gRPC методы (auth, chat, Hermes sessions)
+- `hermes_orchestrator.go` — Orchestrator, LLM Router, RAG, Pipeline, Tool Executor
+- `core/llm/` — LLM providers (OpenRouter, Hermes local)
+- `core/rag/memory/` — in-memory RAG (TF-IDF)
+- `core/tools/` — Tool Executor
+- `core/pipeline/` — Pipeline
+- `messenger.proto` — proto definitions
+- `gen/` — сгенерированный Go код
+
+### Android (`msg.client.android` на Mac пользователя)
+- `HermesGrpc.kt` — gRPC методы для Hermes (createSession, chatWithOrchestrator)
+- `HermesChatActivity.kt` — UI чата с оркестратором
+- `HermesChatViewModel.kt` — ViewModel для чата
+- `AppLog.kt` — система логирования ошибок
+- `LogViewerActivity.kt` — просмотр логов из админки
+- `SuperAdminActivity.kt` — админ панель
+- `RealGrpcClient.kt` — gRPC клиент (канал, стримы)
+- `AndroidManifest.xml` — регистрация Activity
+
+## Что работает
+
+- ✅ Авторизация на dev сервере (port 50052)
+- ✅ SuperAdmin по user_id (UUID)
+- ✅ CreateHermesSession — создание сессии
+- ✅ ChatWithOrchestrator — стриминг ответов оркестратора
+- ✅ Оркестратор отвечает приветственным сообщением
+- ✅ LogViewerActivity — просмотр логов из админки
+- ✅ AppLog — логирование ошибок
+
+## Известные проблемы
+
+- ⚠️ Tool Calling Loop — жёсткий лимит 3 итерации, нужна авто-финализация
+- ⚠️ Hermes local provider — может не работать если `hermes` CLI не установлен
+- ⚠️ RemoteAgentManager.SendTask() — только заглушка
+
+## Что делать дальше
+
+### Приоритет 1: Tool Calling Loop
+Файл: `core/pipeline/pipeline.go`
+- Убрать жёсткий лимит `maxIterations = 3`
+- Добавить детекцию завершения: если LLM не вызывает tools в ответе → финализировать
+
+### Приоритет 2: Тестирование Hermes на Android
+- Проверить все агенты реестра
+- Проверить маршрутизацию между агентами
+- Проверить tool calling (search_messages и т.д.)
+
+### Приоритет 3: Agent Settings Bottom Sheet
+- Привязать long click по аватарке агента в чате
+- Показать настройки агента (model, system prompt и т.д.)
+
+## Деплой
+
+### Dev сервер
 ```bash
-cd /root/msg && export PATH=$PATH:/usr/local/go/bin:~/go/bin
+export PATH=$PATH:/usr/local/go/bin:~/go/bin
+cd /root/msg
 go build -o /tmp/lavender-server-dev .
-systemctl stop lavender-server-dev && cp /tmp/lavender-server-dev /root/LavenderMessenger/run/lavender-server-dev && systemctl start lavender-server-dev
+systemctl stop lavender-server-dev
+cp /tmp/lavender-server-dev /root/LavenderMessenger/run/lavender-server-dev
+systemctl start lavender-server-dev
 ```
 
-**Сборка Android:**
-```bash
-cd /root/msg.client.android && ./gradlew assembleDebug
-```
+### Android
+- Пользователь собирает APK локально на Mac
+- `compileDebugKotlin` OK, `assembleRelease` — OOM на сервере!
 
-**Proto gen:**
-```bash
-cd /root/msg && protoc --go_out=./gen --go_opt=paths=source_relative --go-grpc_out=./gen --go-grpc_opt=paths=source_relative messenger.proto
-```
-⚠️ НЕ использовать `--go_out=.` (генерирует в корень, ломает сборку)
+## Важные заметки
 
-## ТЕКУЩЕЕ СОСТОЯНИЕ
+- **НЕ использовать `--go_out=.`** — генерирует в корень, ломает сборку
+- **Proto gen:** `cd /root/msg && protoc --go_out=./gen --go_opt=paths=source_relative --go-grpc_out=./gen --go-grpc_opt=paths=source_relative messenger.proto`
+- **Android proto** — это ручные data class'ы в `MessengerProto.kt`, НЕ сгенерированные из .proto
+- **Proto field numbers должны совпадать** между Android и сервером — проверять при изменении!
 
-### ✅ Работает на dev сервере (v1.1.0.15):
+## Коммиты
 
-**Ядро (Ports & Adapters):**
-1. **LLM Router** (`core/llm/`) — маршрутизация между провайдерами:
-   - `OpenRouter` (default, prefix=openrouter/, priority=10) — SSE streaming, tool calls, multimodal images
-   - `Hermes local` (prefix=local/, priority=20) — `hermes chat -q --quiet`, stateless, session через --resume
-2. **RAG Pipeline** (`core/rag/`) — векторный поиск контекста:
-   - Интерфейсы: `EmbeddingService`, `VectorSearch`, `RAGPipeline`
-   - Реализация: `in-memory` с TF-IDF эмбеддингами (384 dim), cosine similarity
-   - Unit тесты: `core/rag/memory/memory_test.go` (4 теста, все PASS)
-3. **Pipeline** (`core/pipeline/`) — RAG → LLM → Tool Calling loop (max 3 iter)
-4. **Tool Executor** (`core/tools/`) — 4 инструмента:
-   - `search_messages` — ILIKE по messages таблице
-   - `search_users` — поиск по username/display_name/phone
-   - `web_search` — DuckDuckGo Instant Answer API
-   - `get_chat_info` — имя чата, тип, количество участников
-
-**gRPC API:**
-- `ChatWithPipeline(PipelineRequest) → stream PipelineResponse` — полный пайплайн с картинками
-- `PipelineRequest`: user_id, session_id, message, images (repeated bytes), model_hint
-- `PipelineResponse`: token, finished, error, has_rag_context
-
-**Hermes Orchestrator** (`hermes_orchestrator.go`):
-- Маршрутизация к агентам, 3 режима (single/parallel/pipeline), streaming
-- LLM Router + RAG Pipeline + AI Pipeline
-- `ProcessWithPipeline(ctx, userID, message, images, onChunk)`
-
-**Agent Registry** (`hermes_agents.go`):
-- 8 агентов (7 пресетов + hermes-owl fallback)
-
-**Database** (`db_hermes.go`):
-- hermes_messages, hermes_sessions, hermes_agent_runs, hermes_custom_agents, hermes_remote_agents, hermes_remote_tasks
-
-### ✅ Android клиент — v1.1.0.10+:
-- HermesChatActivity (чат с оркестратором)
-- AgentListActivity (список агентов)
-- AgentSettingsActivity (настройка агентов)
-- Все Hermes методы в HermesGrpc.kt / GrpcClient.kt
-
-### ❌ Не работает / не доделано:
-1. **Tool calling loop** — max iterations (3) при активном function calling — нужна доработка pipeline
-2. **HermesAgentService** — оркестратор НЕ принимает подключения от hermes-agent daemon
-3. **Agent↔Orchestrator** — RemoteAgentManager.SendTask() заглушка
-4. **Auth токены** — не генерируются для удалённых агентов
-5. **Qdrant + CLIP** — запланировано для production RAG
-
-## АРХИТЕКТУРА
-
-```
-ChatService (gRPC)
-  │
-  ├─→ ChatWithPipeline → Orchestrator.ProcessWithPipeline()
-  │                         │
-  │                         ├─→ RAG Pipeline (core/rag/)
-  │                         │     ├─ EmbeddingService (TF-IDF → Qdrant+CLIP)
-  │                         │     └─ VectorSearch (in-memory → Qdrant)
-  │                         │
-  │                         ├─ LLM Router (core/llm/)
-  │                         │     ├─ OpenRouter (default)
-  │                         │     └─ Hermes local (prefix=local/)
-  │                         │
-  │                         └─ Tool Executor (core/tools/)
-  │                               ├─ search_messages
-  │                               ├─ search_users
-  │                               ├─ web_search
-  │                               └─ get_chat_info
-  │
-  ├─→ Orchestrate → Orchestrator.Orchestrate()
-  │                   ├─ analyzeRequest (LLM routing)
-  │                   ├─ runSingleAgent
-  │                   ├─ runParallelAgents
-  │                   └─ runPipelineAgents
-  │
-  └─→ HermesAgentService ←─ hermes-agent daemon (bidirectional stream, НЕ РЕАЛИЗОВАНО)
-```
-
-## ПРАВИЛА
-
-- Go: идиоматичный, stdlib + grpc + lib/pq
-- НЕ копировать поверх работающего процесса!
-- Всегда: stop → cp → start
-- НЕ редактировать gen/ файлы
-- Proto gen: `--go_out=./gen --go_opt=paths=source_relative` (НЕ `--go_out=.`)
-- CRUD: hermes_custom_agents table
-
-## КРИТИЧЕСКИЕ PITFALLS
-
-1. goroutine leak: все channel sends через select с ctx.Done()
-2. SQL column duplication: дублирование в SELECT смещает Scan
-3. Nil pointer: проверять все указатели (ListUserAgents!)
-4. Tool calling loop: max 3 итерации — при активном function calling pipeline может зациклиться
-5. Hermes local provider: использует `hermes chat -q --quiet` (НЕ JSON-RPC)
-
-## ФАЙЛЫ ДЛЯ ЧТЕНИЯ
-
-1. `hermes_orchestrator.go` — оркестратор, LLM Router, RAG, Pipeline init
-2. `core/llm/provider.go` — LLMProvider, LLMRouter, SimpleRouter interfaces
-3. `core/llm/openrouter/provider.go` — OpenRouter SSE provider
-4. `core/llm/hermes/provider.go` — Hermes local provider (CLI wrapper)
-5. `core/rag/interfaces.go` — EmbeddingService, VectorSearch, RAGPipeline
-6. `core/rag/memory/memory.go` — in-memory RAG implementation
-7. `core/pipeline/pipeline.go` — RAG → LLM → Tool Calling loop
-8. `core/tools/executor.go` — DefaultToolExecutor
-9. `server.go` (ChatWithPipeline handler) — gRPC endpoint
-10. `messenger.proto` — gRPC определения
+- `7b87739` — fix: proto mismatch в CreateHermesSession
+- `ba53e00` — fix: LogViewerActivity в AndroidManifest
+- `6d89d84` — docs: v1.1.0.11
+- `d7ccbac` — feat: Hermes Orchestrator full architecture
