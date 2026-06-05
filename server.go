@@ -47,6 +47,7 @@ type server struct {
 
 	// Hermes Orchestrator
 	hermesOrchestrator *Orchestrator
+	hermesDB           *HermesDB
 }
 
 func (s *server) logErrorOnce(key string, format string, v ...interface{}) {
@@ -3169,10 +3170,14 @@ func (s *server) ChatWithOrchestrator(req *gen.OrchestratorRequest, stream gen.C
 		session.mu.Unlock()
 	}
 
-	// Run orchestrator
+	// Run orchestrator — collect full response for DB saving
+	var fullResponse strings.Builder
 	log.Printf("[Hermes] calling Orchestrate for user=%s chat=%s", userID, chatID)
 	err := s.hermesOrchestrator.Orchestrate(stream.Context(), userID, chatID, req.Message,
 		func(token string, finished bool) error {
+			if !finished && token != "" {
+				fullResponse.WriteString(token)
+			}
 			return stream.Send(&gen.OrchestratorResponse{
 				Token:    token,
 				Finished: finished,
@@ -3181,13 +3186,26 @@ func (s *server) ChatWithOrchestrator(req *gen.OrchestratorRequest, stream gen.C
 
 	if err != nil {
 		log.Printf("[Hermes] orchestrator error for user %s: %v", userID, err)
-		// Send error as final message
 		_ = stream.Send(&gen.OrchestratorResponse{
 			Token:    "",
 			Finished: true,
 			Error:    err.Error(),
 		})
-		return nil // Don't propagate error to client, we sent it in the stream
+		return nil
+	}
+
+	// Save user message to DB
+	if s.hermesDB != nil {
+		s.hermesDB.SaveOrchestratorMessage(chatID, userID, "user", "", req.Message)
+	}
+
+	// Save assistant response to DB (strip agent prefix like "[Support] ")
+	assistantResponse := fullResponse.String()
+	if idx := strings.Index(assistantResponse, "] "); idx >= 0 && idx < 30 {
+		assistantResponse = assistantResponse[idx+2:]
+	}
+	if assistantResponse != "" && s.hermesDB != nil {
+		s.hermesDB.SaveOrchestratorMessage(chatID, userID, "assistant", "", assistantResponse)
 	}
 
 	log.Printf("[Hermes] Orchestrate completed for user=%s", userID)

@@ -139,6 +139,7 @@ func main() {
 
 	// Initialize Hermes Multi-Agent Orchestrator
 	hermesRegistry := NewAgentRegistry(db.DB)
+	srv.hermesDB = NewHermesDB(db.DB)
 	srv.hermesOrchestrator = NewOrchestrator(hermesRegistry, db.DB, os.Getenv("OPENROUTER_API_KEY"), os.Getenv("OPENROUTER_MODEL"))
 	log.Printf("Hermes Orchestrator initialized with %d agents", len(hermesRegistry.GetAll()))
 
