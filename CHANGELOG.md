@@ -2,6 +2,20 @@
 
 **Author:** Pavel Davydov (ferz)
 
+## [1.1.0.13] - 2026-07-15
+
+### Android — ChatWidget рефакторинг
+- **HermesChatActivity** переписан на использование ChatWidget (убрано дублирование findViewById)
+- **activity_hermes_chat.xml** — теперь FrameLayout с ChatWidget + ProgressBar вместо полного дублирования layout
+- **ChatWidget** — единая точка доступа к toolbar, recycler, input для обоих активити
+
+### Android — UI полировка
+- **Агенты-чипы** — активный агент визуально выделен (фон + обводка primary color)
+- **ProgressBar** — индикатор загрузки истории поверх чата (gone по умолчанию)
+- **Typing indicator** — имя агента в субтитле тулбара + в typing bubble
+- Добавлены цвета: chip_background_active, chip_text_active, chip_stroke_active
+- Добавлен drawable: bg_hermes_circle.xml (круглая подложка для emoji агента)
+
 ## [1.1.0.12] - 2026-06-04
 
 ### Android — Unified Chat Widget
