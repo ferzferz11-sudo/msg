@@ -3364,8 +3364,8 @@ func (s *server) CreateAgent(_ context.Context, req *gen.CreateAgentRequest) (*g
 	agentID := "custom-" + userID + "-" + req.PresetId + "-" + fmt.Sprintf("%d", time.Now().Unix())
 
 	_, err := s.db.Exec(
-		"INSERT INTO hermes_custom_agents (id, user_id, preset_id, name, system_prompt, model, max_tokens) VALUES ($1, $2, $3, $4, $5, $6, $7)",
-		agentID, userID, req.PresetId, req.Name, req.SystemPrompt, req.Model, req.MaxTokens,
+		"INSERT INTO hermes_custom_agents (id, user_id, created_by, preset_id, name, system_prompt, model, max_tokens) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+		agentID, userID, userID, req.PresetId, req.Name, req.SystemPrompt, req.Model, req.MaxTokens,
 	)
 	if err != nil {
 		log.Printf("[Hermes] CreateAgent DB error: %v", err)

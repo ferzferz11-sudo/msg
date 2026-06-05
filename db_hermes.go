@@ -81,6 +81,14 @@ func runHermesMigrations(db *sql.DB) {
 		)`,
 		`CREATE INDEX IF NOT EXISTS idx_hermes_custom_agents_user ON hermes_custom_agents(created_by, is_active)`,
 
+		// Миграция: добавляем недостающие колонки если отсутствуют
+		`DO $$
+		BEGIN
+			ALTER TABLE hermes_custom_agents ADD COLUMN IF NOT EXISTS user_id TEXT;
+			ALTER TABLE hermes_custom_agents ADD COLUMN IF NOT EXISTS preset_id TEXT;
+			UPDATE hermes_custom_agents SET user_id = created_by WHERE user_id IS NULL;
+		END$$;`,
+
 		// Таблица удалённых агентов (реестр)
 		`CREATE TABLE IF NOT EXISTS hermes_remote_agents (
 			id VARCHAR(255) PRIMARY KEY,
