@@ -1128,10 +1128,10 @@ func (db *DB) GetCallDuration(callID string) (int, error) {
 
 // GetActiveCallsByUser returns all active/pending calls where user is caller or receiver
 func (db *DB) GetActiveCallsByUser(userID string) ([]struct {
-	CallID    string
-	CallerID  string
+	CallID     string
+	CallerID   string
 	ReceiverID string
-	RoomID    string
+	RoomID     string
 }, error) {
 	rows, err := db.Query(`SELECT id, caller_id::text, receiver_id::text, COALESCE(room_id, '') FROM calls WHERE (caller_id = $1::uuid OR receiver_id = $1::uuid) AND status IN ('pending', 'active')`, userID)
 	if err != nil {
@@ -1139,17 +1139,17 @@ func (db *DB) GetActiveCallsByUser(userID string) ([]struct {
 	}
 	defer rows.Close()
 	var calls []struct {
-		CallID    string
-		CallerID  string
+		CallID     string
+		CallerID   string
 		ReceiverID string
-		RoomID    string
+		RoomID     string
 	}
 	for rows.Next() {
 		var c struct {
-			CallID    string
-			CallerID  string
+			CallID     string
+			CallerID   string
 			ReceiverID string
-			RoomID    string
+			RoomID     string
 		}
 		if err := rows.Scan(&c.CallID, &c.CallerID, &c.ReceiverID, &c.RoomID); err == nil {
 			calls = append(calls, c)
@@ -1325,5 +1325,10 @@ func (db *DB) DeleteServer(id string) error {
 		return fmt.Errorf("cannot delete protected server")
 	}
 	_, err = db.Exec(`DELETE FROM servers WHERE id = $1`, id)
+	return err
+}
+
+func (db *DB) CreateHermesSession(sessionID, userID, agentID, mode string) error {
+	_, err := db.Exec(`INSERT INTO hermes_sessions (id, user_id, active_agent_id, mode) VALUES ($1, $2, $3, $4)`, sessionID, userID, agentID, mode)
 	return err
 }

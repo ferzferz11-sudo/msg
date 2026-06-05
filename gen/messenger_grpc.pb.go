@@ -80,6 +80,7 @@ const (
 	ChatService_DeleteOwlChat_FullMethodName        = "/messenger.ChatService/DeleteOwlChat"
 	ChatService_GetOwlHistory_FullMethodName        = "/messenger.ChatService/GetOwlHistory"
 	ChatService_UpdateOwlSettings_FullMethodName    = "/messenger.ChatService/UpdateOwlSettings"
+	ChatService_CreateHermesSession_FullMethodName  = "/messenger.ChatService/CreateHermesSession"
 )
 
 // ChatServiceClient is the client API for ChatService service.
@@ -149,6 +150,8 @@ type ChatServiceClient interface {
 	DeleteOwlChat(ctx context.Context, in *DeleteOwlChatRequest, opts ...grpc.CallOption) (*DeleteOwlChatResponse, error)
 	GetOwlHistory(ctx context.Context, in *GetOwlHistoryRequest, opts ...grpc.CallOption) (*GetOwlHistoryResponse, error)
 	UpdateOwlSettings(ctx context.Context, in *UpdateOwlSettingsRequest, opts ...grpc.CallOption) (*UpdateOwlSettingsResponse, error)
+	// Hermes Multi-Agent Orchestrator
+	CreateHermesSession(ctx context.Context, in *CreateHermesSessionRequest, opts ...grpc.CallOption) (*CreateHermesSessionResponse, error)
 }
 
 type chatServiceClient struct {
@@ -787,6 +790,16 @@ func (c *chatServiceClient) UpdateOwlSettings(ctx context.Context, in *UpdateOwl
 	return out, nil
 }
 
+func (c *chatServiceClient) CreateHermesSession(ctx context.Context, in *CreateHermesSessionRequest, opts ...grpc.CallOption) (*CreateHermesSessionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateHermesSessionResponse)
+	err := c.cc.Invoke(ctx, ChatService_CreateHermesSession_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ChatServiceServer is the server API for ChatService service.
 // All implementations must embed UnimplementedChatServiceServer
 // for forward compatibility.
@@ -854,6 +867,8 @@ type ChatServiceServer interface {
 	DeleteOwlChat(context.Context, *DeleteOwlChatRequest) (*DeleteOwlChatResponse, error)
 	GetOwlHistory(context.Context, *GetOwlHistoryRequest) (*GetOwlHistoryResponse, error)
 	UpdateOwlSettings(context.Context, *UpdateOwlSettingsRequest) (*UpdateOwlSettingsResponse, error)
+	// Hermes Multi-Agent Orchestrator
+	CreateHermesSession(context.Context, *CreateHermesSessionRequest) (*CreateHermesSessionResponse, error)
 	mustEmbedUnimplementedChatServiceServer()
 }
 
@@ -1046,6 +1061,9 @@ func (UnimplementedChatServiceServer) GetOwlHistory(context.Context, *GetOwlHist
 }
 func (UnimplementedChatServiceServer) UpdateOwlSettings(context.Context, *UpdateOwlSettingsRequest) (*UpdateOwlSettingsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method UpdateOwlSettings not implemented")
+}
+func (UnimplementedChatServiceServer) CreateHermesSession(context.Context, *CreateHermesSessionRequest) (*CreateHermesSessionResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateHermesSession not implemented")
 }
 func (UnimplementedChatServiceServer) mustEmbedUnimplementedChatServiceServer() {}
 func (UnimplementedChatServiceServer) testEmbeddedByValue()                     {}
@@ -2126,6 +2144,24 @@ func _ChatService_UpdateOwlSettings_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ChatService_CreateHermesSession_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateHermesSessionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).CreateHermesSession(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_CreateHermesSession_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).CreateHermesSession(ctx, req.(*CreateHermesSessionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ChatService_ServiceDesc is the grpc.ServiceDesc for ChatService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -2360,6 +2396,10 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateOwlSettings",
 			Handler:    _ChatService_UpdateOwlSettings_Handler,
+		},
+		{
+			MethodName: "CreateHermesSession",
+			Handler:    _ChatService_CreateHermesSession_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

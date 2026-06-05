@@ -3079,3 +3079,20 @@ func truncateString(s string, maxLen int) string {
 	}
 	return s[:maxLen] + "..."
 }
+
+func (s *server) CreateHermesSession(ctx context.Context, req *gen.CreateHermesSessionRequest) (*gen.CreateHermesSessionResponse, error) {
+	if req.UserId == "" {
+		return nil, fmt.Errorf("user_id is required")
+	}
+
+	sessionID := "hermes-" + req.UserId + "-" + uuid.New().String()[:8]
+	err := s.db.CreateHermesSession(sessionID, req.UserId, req.AgentId, req.Mode)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create hermes session: %w", err)
+	}
+
+	return &gen.CreateHermesSessionResponse{
+		SessionId: sessionID,
+		Success:   true,
+	}, nil
+}

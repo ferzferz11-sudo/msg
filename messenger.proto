@@ -700,6 +700,9 @@ service ChatService {
   rpc DeleteOwlChat(DeleteOwlChatRequest) returns (DeleteOwlChatResponse);
   rpc GetOwlHistory(GetOwlHistoryRequest) returns (GetOwlHistoryResponse);
   rpc UpdateOwlSettings(UpdateOwlSettingsRequest) returns (UpdateOwlSettingsResponse);
+
+  // Hermes Multi-Agent Orchestrator
+  rpc CreateHermesSession(CreateHermesSessionRequest) returns (CreateHermesSessionResponse);
 }
 
 // ======= Secret Chat Messages =======
@@ -800,4 +803,18 @@ message OWLResponse {
   string text = 1;
   bool finished = 2;
   string error = 3;
+}
+
+// ======= Hermes Multi-Agent Orchestrator messages =======
+
+message CreateHermesSessionRequest {
+  string user_id = 1;
+  string agent_id = 2;
+  string mode = 3;
+}
+
+message CreateHermesSessionResponse {
+  string session_id = 1;
+  bool success = 2;
+  string message = 3;
 }
