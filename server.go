@@ -3513,7 +3513,7 @@ func (s *server) CreateHermesSession(_ context.Context, req *gen.CreateHermesSes
 
 	name := req.Name
 	if name == "" {
-		name = "Лава ИИ"
+		name = "Lava AI"
 	}
 
 	_, err := s.db.Exec(
