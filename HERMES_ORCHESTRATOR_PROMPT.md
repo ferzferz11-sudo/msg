@@ -21,7 +21,7 @@ systemctl stop lavender-server-dev && cp /tmp/lavender-server-dev /root/Lavender
 
 **Сборка Android:**
 ```bash
-cd /root/msg.client.android && ./gradlew assembleDebug
+cd /root/msg.client.android && ./gradlew compileDebugKotlin
 ```
 ⚠️ `assembleRelease` — OOM на сервере! Только `compileDebugKotlin` на сервере, APK пользователь собирает локально.
 
@@ -33,11 +33,11 @@ cd /root/msg && protoc --go_out=./gen --go_opt=paths=source_relative --go-grpc_o
 
 ## ТЕКУЩЕЕ СОСТОЯНИЕ
 
-**Версия:** v1.1.0.12
-**Дата:** 2026-06-04
-**Статус:** ✅ Unified Chat Widget — агенты как участники группового чата
+**Версия:** v1.1.0.13
+**Дата:** 2026-07-15
+**Статус:** ✅ ChatWidget + Mention system работают на dev
 
-### ✅ Работает на dev сервере (v1.1.0.15):
+### ✅ Сервер (v1.1.0.15):
 
 **Ядро (Ports & Adapters):**
 1. **LLM Router** (`core/llm/`) — маршрутизация между провайдерами:
@@ -46,94 +46,91 @@ cd /root/msg && protoc --go_out=./gen --go_opt=paths=source_relative --go-grpc_o
 2. **RAG Pipeline** (`core/rag/`) — векторный поиск контекста:
    - Интерфейсы: `EmbeddingService`, `VectorSearch`, `RAGPipeline`
    - Реализация: `in-memory` с TF-IDF эмбеддингами (384 dim), cosine similarity
-   - Unit тесты: `core/rag/memory/memory_test.go` (4 теста, все PASS)
 3. **Pipeline** (`core/pipeline/`) — RAG → LLM → Tool Calling loop:
    - Адаптивный цикл: max 10 итераций (страховка)
-   - Цикл продолжается пока LLM вызывает tools
-   - Останавливается когда LLM даёт финальный ответ без tool calls
 4. **Tool Executor** (`core/tools/`) — 4 инструмента:
-   - `search_messages` — ILIKE по messages таблице
-   - `search_users` — поиск по username/display_name/phone
-   - `web_search` — DuckDuckGo Instant Answer API
-   - `get_chat_info` — имя чата, тип, количество участников
+   - `search_messages`, `search_users`, `web_search`, `get_chat_info`
 
 **gRPC API:**
-- `ChatWithPipeline(PipelineRequest) → stream PipelineResponse` — полный пайплайн с картинками
-- `PipelineRequest`: user_id, session_id, message, images (repeated bytes), model_hint
-- `PipelineResponse`: token, finished, error, has_rag_context
+- `ChatWithPipeline(PipelineRequest) → stream PipelineResponse`
+- `CreateHermesSession`, `DeleteHermesSession`
+- `GetChats` — возвращает обычные чаты + OWL чаты (hermes сессии НЕ включены)
 
 **Hermes Orchestrator** (`hermes_orchestrator.go`):
 - Маршрутизация к агентам, 3 режима (single/parallel/pipeline), streaming
-- LLM Router + RAG Pipeline + AI Pipeline
 - `ProcessWithPipeline(ctx, userID, message, images, onChunk)`
 
 **Agent Registry** (`hermes_agents.go`):
 - 8 агентов (7 пресетов + hermes-owl fallback)
 
-**HermesAgentService** (`hermes_agent_service.go`):
-- Bidirectional stream для hermes-agent daemon — подключён в `1e337eb`
-
 **Database** (`db_hermes.go`):
 - hermes_messages, hermes_sessions, hermes_agent_runs, hermes_custom_agents, hermes_remote_agents, hermes_remote_tasks
 
-### ✅ Android клиент (v1.1.0.12):
+### ✅ Android клиент (v1.1.0.13):
 
-**Unified Chat Widget** — единый компонент чата для обоих активити:
-- `layout/widget_chat.xml` — общий layout (toolbar + recycler + input + reply preview)
-- `layout/item_chat_message.xml` — универсальный item (user/agent/system/typing/date separator)
-- `ui/chat/widget/ChatMessageAdapter.kt` — единый адаптер с DiffUtil
-- `ui/chat/widget/ChatWidget.kt` — ViewBinding обёртка
+**ChatWidget** — единый UI компонент чата:
+- `ChatWidget.kt` — custom LinearLayout, inflates widget_chat.xml через ViewBinding
+- Использовать ТОЛЬКО как `<lavender.client.android.ui.chat.widget.ChatWidget>` в XML, НЕ `<include>`
+- `activity_hermes_chat.xml` — FrameLayout + ChatWidget + ProgressBar overlay
+- `widget_chat.xml` — toolbar + messages + mentionContainer + replyPreview + bottomPanel
+- `item_chat_message.xml` — user/agent/typing/date layouts
 
-**Агенты как участники группового чата:**
-- `HermesChatActivity` использует тот же виджет что и `NewChatActivity` (групповой чат)
-- Каждый агент = участник с emoji-иконкой и именем
-- Тап по чипу агента в тулбаре → переключение на прямой чат с агентом
-- Оркестратор маршрутизирует → сообщения от разных агентов визуально различаются
-- `ChatMessageItem` — универсальная data class для всех типов сообщений
+**Mention system:**
+- `MentionAdapter.kt` + `MentionItem.kt` — в пакете `ui.chat.widget`
+- `item_mention_agent.xml` — emoji + name + description + tag
+- TextWatcher отслеживает `@` в поле ввода → показывает popup с фильтрацией
+- При выборе агента → вставка `@tag` в текст
+- ВАЖНО: `text.toString()` перед `substring()` — SpannableBuilder крашится иначе
+- ВАЖНО: метод `setItems()` в MentionAdapter (не `submitList` — рекурсия с ListAdapter)
 
-**HermesChatViewModel** — добавлено:
-- `agents: StateFlow<List<AgentInfo>>` — реестр агентов-участников
-- `addAgent()`, `removeAgent()`, `getAgent()` — управление участниками
-- `initPresetAgents()` — инициализация 8 пресетов
+**Два отдельных MentionAdapter:**
+- `ui.chat.widget.MentionAdapter` — для агентов (emoji, item_mention_agent.xml)
+- `ui.adapter.MentionAdapter` — для пользователей (аватары, item_mention.xml)
+- НЕ МЕРЖИТЬ — разные layout и данные
 
-**Активити:**
-- `NewChatActivity` — групповой чат (без изменений)
-- `HermesChatActivity` — чат с оркестратором (использует единый виджет)
-- `AgentListActivity` — список агентов
-- `AgentSettingsActivity` — настройка агентов
-- `LogViewerActivity` — просмотр логов
+**HermesChatActivity:**
+- Использует ChatWidget напрямую (без findViewById)
+- Агенты как участники группового чата (MaterialChip в тулбаре)
+- Активный агент выделен (фон + обводка primary color)
+- ProgressBar для loading state
+- Typing indicator с именем агента
+
+**HermesChatViewModel:**
+- `agents: StateFlow<List<AgentInfo>>` — реестр агентов
+- `initPresetAgents()` — 8 пресетов (Developer, Designer, Writer, Analyst, Translator, Researcher, Tester, OWL)
+- `createSession()`, `sendMessage()`, `loadHistory()`, `switchAgent()`
 
 ### ❌ Не работает / не доделано:
-1. **RemoteAgentManager.SendTask()** — заглушка
-2. **Auth токены** — не генерируются для удалённых агентов
-3. **Qdrant + CLIP** — запланировано для production RAG
+
+1. **Hermes сессии НЕ появляются в списке чатов** — при выходе из HermesChatActivity чат исчезает
+2. **Нет gRPC API для получения списка hermes сессий** — нужно добавить
+3. **RemoteAgentManager.SendTask()** — заглушка
+4. **Auth токены** — не генерируются для удалённых агентов
 
 ## АРХИТЕКТУРА
 
 ```
-ChatService (gRPC)
-  │
-  ├─→ ChatWithPipeline → Orchestrator.ProcessWithPipeline()
-  │                         │
-  │                         ├─→ RAG Pipeline (core/rag/)
-  │                         ├─ LLM Router (core/llm/)
-  │                         └─ Tool Executor (core/tools/)
-  │
-  ├─→ Orchestrate → Orchestrator.Orchestrate()
-  │
-  └─→ HermesAgentService ←─ hermes-agent daemon
+Сервер (Go):
+  ChatService (gRPC)
+    ├─→ GetChats → обычные чаты + OWL (hermes сессии НЕ включены!)
+    ├─→ ChatWithPipeline → Orchestrator.ProcessWithPipeline()
+    ├─→ CreateHermesSession / DeleteHermesSession
+    └─→ HermesAgentService ←─ hermes-agent daemon
 
-Android UI:
-  │
-  ├─→ NewChatActivity (групповой чат)
-  │     └─→ ChatWidget (widget_chat.xml + ChatMessageAdapter)
-  │
-  └─→ HermesChatActivity (агенты как участники)
-        └─→ ChatWidget (тот же виджет)
-              ├─→ User messages (right-aligned)
-              ├─→ Agent messages (left-aligned + emoji + name)
-              ├─→ Typing indicators
-              └─→ Date separators
+  Orchestrator
+    ├─→ RAG Pipeline (core/rag/)
+    ├─→ LLM Router (core/llm/)
+    └─→ Tool Executor (core/tools/)
+
+Android (Kotlin):
+  ChatListActivity → список чатов (обычные + OWL, hermes НЕТ)
+    │
+    ├─→ NewChatActivity (групповой чат) → свой layout
+    │
+    └─→ HermesChatActivity (чат с оркестратором)
+          └─→ ChatWidget (toolbar + messages + mention + input)
+                ├─→ ChatMessageAdapter (user/agent/typing/date)
+                └─→ MentionAdapter (agent selection popup)
 ```
 
 ## ПРАВИЛА
@@ -145,6 +142,7 @@ Android UI:
 - Proto gen: `--go_out=./gen --go_opt=paths=source_relative` (НЕ `--go_out=.`)
 - Android proto — ручные data class'ы в `MessengerProto.kt`
 - Proto field numbers должны совпадать между Android и сервером!
+- ChatWidget в XML — ТОЛЬКО fully-qualified class name, НЕ `<include>`
 
 ## КРИТИЧЕСКИЕ PITFALLS
 
@@ -152,34 +150,40 @@ Android UI:
 2. **SQL column duplication**: дублирование в SELECT смещает Scan
 3. **Nil pointer**: проверять все указатели
 4. **Tool calling loop**: max 10 итераций — адаптивный, но страховка
-5. **Hermes local provider**: использует `hermes chat -q --quiet` (НЕ JSON-RPC)
-6. **Android proto**: ручной парсинг — field numbers должны совпадать с сервером
-7. **ChatWidget**: при изменении layout — проверять оба активити (NewChat + HermesChat)
+5. **Android proto**: ручной парсинг — field numbers должны совпадать с сервером
+6. **ChatWidget в XML**: ТОЛЬКО `<lavender.client.android.ui.chat.widget.ChatWidget>`, НЕ `<include>` — иначе ClassCastException
+7. **SpannableBuilder**: всегда `text.toString()` перед `substring()` — иначе IndexOutOfBoundsException
+8. **MentionAdapter.submitList**: переименован в `setItems` — `submitList` вызывает рекурсию с ListAdapter
+9. **Два MentionAdapter**: ui.chat.widget (агенты) и ui.adapter (пользователи) — НЕ МЕРЖИТЬ
 
 ## ФАЙЛЫ ДЛЯ ЧТЕНИЯ (при старте новой сессии)
 
 ### Сервер:
 1. `hermes_orchestrator.go` — оркестратор
-2. `core/pipeline/pipeline.go` — RAG → LLM → Tool Calling
-3. `core/tools/executor.go` — Tool Executor
-4. `hermes_agent_service.go` — HermesAgentService
-5. `hermes_remote_manager.go` — RemoteAgentManager
+2. `db_hermes.go` — hermes_sessions, hermes_messages tables
+3. `server.go` — GetChats, CreateHermesSession, DeleteHermesSession
+4. `messenger.proto` — ChatInfo, GetChats, HermesSession messages
 
 ### Android:
-1. `ui/chat/widget/ChatMessageAdapter.kt` — единый адаптер
-2. `ui/chat/widget/ChatWidget.kt` — ViewBinding обёртка
-3. `ui/hermes/HermesChatActivity.kt` — чат с агентами
-4. `ui/hermes/HermesChatViewModel.kt` — ViewModel с агентами
-5. `NewChatActivity.kt` — групповой чат
-6. `layout/widget_chat.xml` — общий layout
-7. `layout/item_chat_message.xml` — универсальный item
+1. `ui/chat/widget/ChatWidget.kt` — виджет чата
+2. `ui/chat/widget/ChatMessageAdapter.kt` — адаптер сообщений
+3. `ui/chat/widget/MentionAdapter.kt` — адаптер меншена
+4. `ui/hermes/HermesChatActivity.kt` — чат с оркестратором
+5. `ui/hermes/HermesChatViewModel.kt` — ViewModel
+6. `ChatListActivity.kt` — список чатов (loadChats, getChats)
+7. `layout/widget_chat.xml` — layout виджета
+8. `layout/activity_hermes_chat.xml` — layout активити
 
 ## ЗАДАЧИ (по приоритету)
 
-### Высокий приоритет
-1. **Auth токены для удалённых агентов** — генерация JWT при регистрации, валидация при каждом запросе
+### Высокий приоритет (текущая сессия)
+1. **Hermes сессии в списке чатов** — чат с оркестратором должен появляться в списке чатов как групповой
+   - Сервер: добавить hermes_sessions в GetChats как type="hermes"
+   - Android: при получении hermes чатов — показывать в списке, при тапе открывать HermesChatActivity
+   - Сохранять историю переписки при выходе из чата
 
 ### Средний приоритет
+2. **Auth токены для удалённых агентов** — генерация JWT при регистрации, валидация при каждом запросе
 3. **Qdrant + CLIP** — production RAG
 
 ### Низкий приоритет
@@ -187,7 +191,7 @@ Android UI:
 
 ## ДОКУМЕНТАЦИЯ
 
-- `HERMES_ORCHESTRATOR_DOC.md` — полная документация по оркестратору (архитектура, компоненты, gRPC API, деплой)
+- `HERMES_ORCHESTRATOR_DOC.md` — полная документация по оркестратору
 - `TASKS.md` — текущие задачи
 - `CHANGELOG.md` — история изменений
 - `PROJECT_MEMORY.md` — память проекта
@@ -195,15 +199,10 @@ Android UI:
 ## КОММИТЫ (последние)
 
 ```
-5ef6295 docs: обновлён HERMES_ORCHESTRATOR_PROMPT.md для v1.1.0.11
-6d89d84 docs: обновлены TASKS.md, REPORT.md, CHANGELOG.md для v1.1.0.11
-3fd209c fix: IsSuperAdmin check by user_id first, then username fallback
-1e337eb feat: connect HermesAgentService + remote agent routing
-edc8594 chore: cleanup + pipeline v1.1.0.15
-aa9da5b docs: update Hermes Orchestrator docs for v1.1.0.15
-d7ccbac chore: remove test client, keep RAG unit tests
-730de49 feat: Hermes local provider + in-memory RAG + Tool Executor
-4b9dc3b feat: add LLM Router, RAG Pipeline, and Hermes local provider interfaces
+2682bd1 fix: SpannableBuilder IndexOutOfBoundsException in detectMention/insertMention
+ce5242b fix: rename submitList to setItems in MentionAdapter to avoid recursion
+6687b45 feat: mention system for HermesChat — @ triggers agent selection popup
+2ac32b6 refactor: HermesChatActivity uses ChatWidget, add chip active state, progress indicator
 ```
 
 ## ВАЖНЫЕ ЗАМЕТКИ

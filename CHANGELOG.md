@@ -5,16 +5,23 @@
 ## [1.1.0.13] - 2026-07-15
 
 ### Android — ChatWidget рефакторинг
-- **HermesChatActivity** переписан на использование ChatWidget (убрано дублирование findViewById)
-- **activity_hermes_chat.xml** — теперь FrameLayout с ChatWidget + ProgressBar вместо полного дублирования layout
-- **ChatWidget** — единая точка доступа к toolbar, recycler, input для обоих активити
+- **HermesChatActivity** переписан на ChatWidget (убрано дублирование findViewById)
+- **activity_hermes_chat.xml** → FrameLayout + ChatWidget + ProgressBar (было 178 строк → 20)
 
 ### Android — UI полировка
-- **Агенты-чипы** — активный агент визуально выделен (фон + обводка primary color)
-- **ProgressBar** — индикатор загрузки истории поверх чата (gone по умолчанию)
-- **Typing indicator** — имя агента в субтитле тулбара + в typing bubble
-- Добавлены цвета: chip_background_active, chip_text_active, chip_stroke_active
-- Добавлен drawable: bg_hermes_circle.xml (круглая подложка для emoji агента)
+- **Агенты-чипы** — активный агент выделен (фон + обводка primary color)
+- **ProgressBar** — индикатор загрузки истории
+- **Typing indicator** — имя агента в субтитле тулбара
+- Новые цвета: chip_background_active, chip_text_active, chip_stroke_active
+- bg_hermes_circle.xml — круглая подложка для emoji
+
+### Android — Mention system
+- **@ в поле ввода** → popup со списком агентов (MentionAdapter + MentionItem)
+- **item_mention_agent.xml** — emoji + name + description + tag
+- Фильтрация по имени/тегу при вводе, вставка @tag при выборе
+- Исправлен SpannableBuilder IndexOutOfBoundsException (toString() перед substring)
+- Исправлена рекурсия в MentionAdapter (submitList → setItems)
+- Два отдельных MentionAdapter: ui.chat.widget (агенты) и ui.adapter (пользователи) — НЕ МЕРЖИТЬ
 
 ## [1.1.0.12] - 2026-06-04
 
