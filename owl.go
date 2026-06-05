@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"sync"
 	"time"
 )
@@ -33,9 +35,9 @@ type owlMessage struct {
 
 // owlChatSettings stores per-chat user settings
 type owlChatSettings struct {
-	ChatID    string `json:"chat_id"`
+	ChatID     string `json:"chat_id"`
 	UserAPIKey string `json:"user_api_key"`
-	Model     string `json:"model"`
+	Model      string `json:"model"`
 }
 
 // owlSessionManager replaces in-memory storage with DB-backed storage
@@ -132,6 +134,10 @@ func (s *owlSessionManager) getOwlChats(userID string) []string {
 
 // callOpenRouter sends a message to OpenRouter and returns the response
 func callOpenRouter(apiKey string, model string, systemPrompt string, messages []map[string]string) (string, error) {
+	return callOpenRouterContext(context.Background(), apiKey, model, systemPrompt, messages)
+}
+
+func callOpenRouterContext(ctx context.Context, apiKey string, model string, systemPrompt string, messages []map[string]string) (string, error) {
 	if apiKey == "" {
 		apiKey = os.Getenv("OPENROUTER_API_KEY")
 	}
@@ -156,7 +162,7 @@ func callOpenRouter(apiKey string, model string, systemPrompt string, messages [
 		return "", fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	req, err := http.NewRequest("POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewBuffer(jsonData))
+	req, err := http.NewRequestWithContext(ctx, "POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewBuffer(jsonData))
 	if err != nil {
 		return "", fmt.Errorf("failed to create request: %w", err)
 	}
@@ -191,6 +197,101 @@ func callOpenRouter(apiKey string, model string, systemPrompt string, messages [
 	}
 
 	return result.Choices[0].Message.Content, nil
+}
+
+type StreamResult struct {
+	Tokens chan string
+	Done   chan string
+	Err    chan error
+}
+
+func streamOpenRouter(ctx context.Context, apiKey, model, systemPrompt string, messages []map[string]string) *StreamResult {
+	result := &StreamResult{
+		Tokens: make(chan string, 128),
+		Done:   make(chan string, 1),
+		Err:    make(chan error, 1),
+	}
+
+	go func() {
+		defer close(result.Tokens)
+		defer close(result.Done)
+		defer close(result.Err)
+
+		if apiKey == "" {
+			apiKey = os.Getenv("OPENROUTER_API_KEY")
+		}
+		if model == "" {
+			model = os.Getenv("OPENROUTER_MODEL")
+			if model == "" {
+				model = "openrouter/auto"
+			}
+		}
+
+		payload := map[string]interface{}{
+			"model":    model,
+			"messages": append([]map[string]string{{"role": "system", "content": systemPrompt}}, messages...),
+			"stream":   true,
+		}
+
+		jsonData, err := json.Marshal(payload)
+		if err != nil {
+			result.Err <- fmt.Errorf("failed to marshal request: %w", err)
+			return
+		}
+
+		req, err := http.NewRequestWithContext(ctx, "POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewBuffer(jsonData))
+		if err != nil {
+			result.Err <- fmt.Errorf("failed to create request: %w", err)
+			return
+		}
+
+		req.Header.Set("Authorization", "Bearer "+apiKey)
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("HTTP-Referer", "https://lavender-messenger.com")
+
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		if err != nil {
+			result.Err <- fmt.Errorf("OpenRouter request failed: %w", err)
+			return
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			body, _ := io.ReadAll(resp.Body)
+			result.Err <- fmt.Errorf("OpenRouter returned %d: %s", resp.StatusCode, string(body))
+			return
+		}
+
+		var fullResponse strings.Builder
+		decoder := json.NewDecoder(resp.Body)
+		for {
+			var chunk struct {
+				Choices []struct {
+					Delta struct {
+						Content string `json:"content"`
+					} `json:"delta"`
+				} `json:"choices"`
+			}
+			if err := decoder.Decode(&chunk); err == io.EOF {
+				break
+			} else if err != nil {
+				result.Err <- fmt.Errorf("error decoding stream: %w", err)
+				return
+			}
+
+			if len(chunk.Choices) > 0 {
+				content := chunk.Choices[0].Delta.Content
+				if content != "" {
+					result.Tokens <- content
+					fullResponse.WriteString(content)
+				}
+			}
+		}
+		result.Done <- fullResponse.String()
+	}()
+
+	return result
 }
 
 // Rate limiter per user

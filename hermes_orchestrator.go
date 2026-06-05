@@ -31,12 +31,12 @@ type OrchestratorMessage struct {
 
 // Orchestrator — центральный оркестратор
 type Orchestrator struct {
-	registry  *HermesAgentRegistry
-	sessions  map[string]*OrchestratorSession // key = userID
-	mu        sync.RWMutex
-	db        *sql.DB
-	apiKey    string
-	model     string
+	registry *HermesAgentRegistry
+	sessions map[string]*OrchestratorSession // key = userID
+	mu       sync.RWMutex
+	db       *sql.DB
+	apiKey   string
+	model    string
 
 	// Remote Agent Manager
 	remoteManager *RemoteAgentManager
@@ -76,6 +76,11 @@ func (o *Orchestrator) getOrCreateSession(userID string) *OrchestratorSession {
 func (o *Orchestrator) Orchestrate(ctx context.Context, userID, chatID, userMessage string, streamFn func(token string, finished bool) error) error {
 	session := o.getOrCreateSession(userID)
 
+	// Handle commands
+	if strings.HasPrefix(userMessage, "/") {
+		return o.handleCommand(ctx, session, userMessage, streamFn)
+	}
+
 	// Сохраняем сообщение пользователя
 	session.mu.Lock()
 	session.Messages = append(session.Messages, OrchestratorMessage{Role: "user", Content: userMessage})
@@ -100,6 +105,30 @@ func (o *Orchestrator) Orchestrate(ctx context.Context, userID, chatID, userMess
 		return o.runPipelineAgents(ctx, session, decision.AgentIDs, userMessage, streamFn)
 	default:
 		return o.runSingleAgent(ctx, session, "hermes-owl", userMessage, streamFn)
+	}
+}
+
+func (o *Orchestrator) handleCommand(ctx context.Context, session *OrchestratorSession, command string, streamFn func(token string, finished bool) error) error {
+	switch command {
+	case "/status":
+		agentID := session.ActiveAgentID
+		if agentID == "" {
+			agentID = "hermes-owl" // Default if no agent is active
+		}
+		agent := o.registry.Get(agentID)
+		if agent == nil {
+			return streamFn("Agent not found", true)
+		}
+
+		model := agent.Model
+		if model == "" {
+			model = o.model
+		}
+
+		response := fmt.Sprintf("Current Agent: %s\nDescription: %s\nModel: %s", agent.Name, agent.Description, model)
+		return streamFn(response, true)
+	default:
+		return streamFn(fmt.Sprintf("Unknown command: %s", command), true)
 	}
 }
 
@@ -164,12 +193,12 @@ func (o *Orchestrator) parseRoutingDecision(response string) *RoutingDecision {
 		return &RoutingDecision{Mode: "single", AgentIDs: []string{"hermes-owl"}, Reason: "parse error"}
 	}
 
-	jsonStr := response[start:end+1]
+	jsonStr := response[start : end+1]
 
 	var parsed struct {
-		Mode    string   `json:"mode"`
-		Agents  []string `json:"agents"`
-		Reason  string   `json:"reason"`
+		Mode   string   `json:"mode"`
+		Agents []string `json:"agents"`
+		Reason string   `json:"reason"`
 	}
 
 	if err := json.Unmarshal([]byte(jsonStr), &parsed); err != nil {

@@ -41,15 +41,17 @@ func (as *agentStream) send(msg *hermesagent.OrchestratorMessage) error {
 type hermesAgentServer struct {
 	*server
 	hermesagent.UnimplementedHermesAgentServiceServer
-	streams map[string]*agentStream // agentID → stream
-	mu      sync.RWMutex
+	hermesOrchestrator *Orchestrator
+	streams            map[string]*agentStream // agentID → stream
+	mu                 sync.RWMutex
 }
 
 // newHermesAgentServer создаёт сервер для HermesAgentService
-func newHermesAgentServer(s *server) *hermesAgentServer {
+func newHermesAgentServer(s *server, o *Orchestrator) *hermesAgentServer {
 	return &hermesAgentServer{
-		server:  s,
-		streams: make(map[string]*agentStream),
+		server:             s,
+		hermesOrchestrator: o,
+		streams:            make(map[string]*agentStream),
 	}
 }
 
@@ -267,5 +269,3 @@ func taskStatusFromProto(s hermesagent.TaskStatus) string {
 		return "unknown"
 	}
 }
-
-

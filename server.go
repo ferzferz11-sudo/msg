@@ -33,15 +33,16 @@ const ServerVersion = "1.1.0.9"
 // server implements the gRPC ChatService interface
 type server struct {
 	gen.UnimplementedChatServiceServer
-	hub          *Hub          // Hub for managing client connections
-	db           *DB           // Database for message persistence
-	firebaseApp  *firebase.App // Firebase Admin SDK instance
-	recentMsgs   sync.Map      // Cache for deduplicating identical rapid messages
-	recentErrors sync.Map      // map[string]time.Time to prevent duplicate error logs
-	fcmLogs      []*gen.FCMLogEntry
-	fcmLogsMu    sync.Mutex
-	owlModel     string        // Default OWL model
-	owlApiKey    string        // Default OpenRouter API key
+	hub                *Hub          // Hub for managing client connections
+	db                 *DB           // Database for message persistence
+	firebaseApp        *firebase.App // Firebase Admin SDK instance
+	recentMsgs         sync.Map      // Cache for deduplicating identical rapid messages
+	recentErrors       sync.Map      // map[string]time.Time to prevent duplicate error logs
+	fcmLogs            []*gen.FCMLogEntry
+	fcmLogsMu          sync.Mutex
+	owlModel           string // Default OWL model
+	owlApiKey          string // Default OpenRouter API key
+	hermesOrchestrator *Orchestrator
 }
 
 func (s *server) logErrorOnce(key string, format string, v ...interface{}) {
