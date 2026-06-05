@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"log"
 	"strings"
+	"time"
 )
 
 // runHermesMigrations создаёт таблицы для Hermes Orchestrator
@@ -217,6 +218,65 @@ func (h *HermesDB) GetSessionActiveAgent(sessionID string) string {
 		return ""
 	}
 	return agentID
+}
+
+// GetUserHermesSessions возвращает список hermes-сессий пользователя
+func (h *HermesDB) GetUserHermesSessions(userID string) ([]struct {
+	ID              string
+	Name            string
+	ActiveAgentID   string
+	AgentMode       string
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+	LastMessageText string
+	LastMessageTime time.Time
+}, error) {
+	query := `
+		SELECT s.id, s.name, s.active_agent_id, s.agent_mode, s.created_at, s.updated_at,
+		       COALESCE(m.content, '') as last_message_text,
+		       COALESCE(m.created_at, s.updated_at) as last_message_time
+		FROM hermes_sessions s
+		LEFT JOIN LATERAL (
+			SELECT content, created_at FROM hermes_messages
+			WHERE session_id = s.id AND role = 'assistant'
+			ORDER BY created_at DESC LIMIT 1
+		) m ON true
+		WHERE s.user_id = $1
+		ORDER BY s.updated_at DESC`
+	rows, err := h.db.Query(query, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var res []struct {
+		ID              string
+		Name            string
+		ActiveAgentID   string
+		AgentMode       string
+		CreatedAt       time.Time
+		UpdatedAt       time.Time
+		LastMessageText string
+		LastMessageTime time.Time
+	}
+	for rows.Next() {
+		var r struct {
+			ID              string
+			Name            string
+			ActiveAgentID   string
+			AgentMode       string
+			CreatedAt       time.Time
+			UpdatedAt       time.Time
+			LastMessageText string
+			LastMessageTime time.Time
+		}
+		if err := rows.Scan(&r.ID, &r.Name, &r.ActiveAgentID, &r.AgentMode, &r.CreatedAt, &r.UpdatedAt, &r.LastMessageText, &r.LastMessageTime); err != nil {
+			log.Printf("[HermesDB] GetUserHermesSessions scan error: %v", err)
+			continue
+		}
+		res = append(res, r)
+	}
+	return res, nil
 }
 
 // SaveSession сохраняет или обновляет сессию

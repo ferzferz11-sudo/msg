@@ -1069,19 +1069,63 @@ func (s *server) GetChats(_ context.Context, req *gen.GetChatsRequest) (*gen.Get
 		}
 	}
 
-	// Prepend OWL chats at the beginning
+	// Add Hermes sessions as hermes-type chats
+	if queryIdentifier != "" && queryIdentifier != "00000000-0000-0000-0000-000000000000" {
+		hermesRows, err := s.db.Query(`
+			SELECT s.id, s.name, s.active_agent_id, s.agent_mode, s.created_at, s.updated_at,
+			       COALESCE(m.content, '') as last_message_text,
+			       COALESCE(m.created_at, s.updated_at) as last_message_time
+			FROM hermes_sessions s
+			LEFT JOIN LATERAL (
+				SELECT content, created_at FROM hermes_messages
+				WHERE session_id = s.id AND role = 'assistant'
+				ORDER BY created_at DESC LIMIT 1
+			) m ON true
+			WHERE s.user_id = $1
+			ORDER BY s.updated_at DESC`, queryIdentifier)
+		if err == nil {
+			for hermesRows.Next() {
+				var id, name, agentID, mode, lastMsg string
+				var createdAt, updatedAt time.Time
+				var lastMsgTime sql.NullTime
+				if err := hermesRows.Scan(&id, &name, &agentID, &mode, &createdAt, &updatedAt, &lastMsg, &lastMsgTime); err == nil {
+					lastMsgTS := updatedAt
+					if lastMsgTime.Valid {
+						lastMsgTS = lastMsgTime.Time
+					}
+					chatInfos = append(chatInfos, &gen.ChatInfo{
+						Id:              id,
+						Name:            name,
+						Type:            "hermes",
+						ActiveAgentId:   agentID,
+						AgentMode:       mode,
+						CreatedAt:       timestamppb.New(createdAt),
+						LastMessageTime: timestamppb.New(lastMsgTS),
+						LastMessageText: lastMsg,
+					})
+				}
+			}
+			hermesRows.Close()
+		}
+	}
+
+	// Prepend OWL chats, append Hermes sessions at the end
 	// (owl chats are already in chatInfos from the DB query above,
-	//  but we want them before regular chats — rebuild the slice)
+	//  hermes sessions were just added — rebuild the slice)
 	owlChats := make([]*gen.ChatInfo, 0)
 	regularChats := make([]*gen.ChatInfo, 0)
+	hermesChats := make([]*gen.ChatInfo, 0)
 	for _, c := range chatInfos {
 		if c.Type == "owl" {
 			owlChats = append(owlChats, c)
+		} else if c.Type == "hermes" {
+			hermesChats = append(hermesChats, c)
 		} else {
 			regularChats = append(regularChats, c)
 		}
 	}
 	chatInfos = append(owlChats, regularChats...)
+	chatInfos = append(chatInfos, hermesChats...)
 
 	return &gen.GetChatsResponse{Chats: chatInfos}, nil
 }
