@@ -3147,27 +3147,26 @@ func (s *server) ChatWithOrchestrator(req *gen.OrchestratorRequest, stream gen.C
 		return status.Error(codes.Unavailable, "orchestrator not initialized")
 	}
 
-	// Welcome message: if this is a new session, send greeting first
-	session := s.hermesOrchestrator.getOrCreateSession(userID)
-	session.mu.Lock()
-	isNewSession := len(session.Messages) == 0
-	session.mu.Unlock()
+	// Welcome message: only send if user explicitly asks /help
+	// (removed auto-welcome on first message to avoid spam)
 
-	if isNewSession {
+	// Handle /help command — send welcome message with agent list
+	if strings.TrimSpace(req.Message) == "/help" {
 		welcomeMsg := s.buildWelcomeMessage()
-		log.Printf("[Lava] sending welcome message for new session user=%s", userID)
-		// Send welcome as NOT finished — client should keep stream open
+		log.Printf("[Lava] sending /help welcome message for user=%s", userID)
 		if err := stream.Send(&gen.OrchestratorResponse{
 			Token:    welcomeMsg,
-			Finished: false,
+			Finished: true,
 		}); err != nil {
-			log.Printf("[Lava] welcome send error: %v", err)
+			log.Printf("[Lava] /help send error: %v", err)
 			return err
 		}
-		// Save welcome to session history
-		session.mu.Lock()
-		session.Messages = append(session.Messages, OrchestratorMessage{Role: "assistant", Content: welcomeMsg})
-		session.mu.Unlock()
+		// Save to DB
+		if s.hermesDB != nil {
+			s.hermesDB.SaveOrchestratorMessage(chatID, userID, "user", "", req.Message)
+			s.hermesDB.SaveOrchestratorMessage(chatID, userID, "assistant", "", welcomeMsg)
+		}
+		return nil
 	}
 
 	// Run orchestrator — collect full response for DB saving
@@ -3260,11 +3259,11 @@ func (s *server) ChatWithPipeline(req *gen.PipelineRequest, stream gen.ChatServi
 // buildWelcomeMessage формирует приветственное сообщение со списком агентов
 func (s *server) buildWelcomeMessage() string {
 	if s.hermesOrchestrator == nil || s.hermesOrchestrator.registry == nil {
-		return "Добро пожаловать в Hermes! Оркестратор временно недоступен."
+		return "Добро пожаловать в Лава ИИ! Оркестратор временно недоступен."
 	}
 
 	var sb strings.Builder
-	sb.WriteString("👋 Добро пожаловать в **Hermes** — мульти-агентный AI оркестратор!\n\n")
+	sb.WriteString("👋 Добро пожаловать в **Лава ИИ** — мульти-агентный AI оркестратор!\n\n")
 	sb.WriteString("Я автоматически маршрутизирую ваши запросы к специализированным агентам.\n\n")
 	sb.WriteString("**Доступные агенты:**\n")
 
@@ -3514,7 +3513,7 @@ func (s *server) CreateHermesSession(_ context.Context, req *gen.CreateHermesSes
 
 	name := req.Name
 	if name == "" {
-		name = "Lava AI"
+		name = "Лава ИИ"
 	}
 
 	_, err := s.db.Exec(
