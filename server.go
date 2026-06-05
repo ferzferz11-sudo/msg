@@ -212,7 +212,7 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 				Id:        uuid.New().String(),
 				CreatedAt: timestamppb.Now(),
 			}
-			_ = stream.Send(serverInfoMsg)
+			if err := stream.Send(serverInfoMsg); err != nil { log.Printf("Failed to send server info: %v", err) }
 
 			// Inform the user about their admin status (check by user_id first, then username)
 			if s.db.IsSuperAdmin(connectedUserID) || s.db.IsSuperAdmin(msg.User) {
@@ -446,7 +446,7 @@ func (s *server) Typing(stream gen.ChatService_TypingServer) error {
 				RoomId:   currentRoomID,
 				Username: currentTypingUser,
 				IsTyping: false,
-			})
+			}); err != nil { log.Printf("Failed to send server info: %v", err) }
 		}
 		s.hub.UnregisterTyping(stream)
 	}()
@@ -3185,11 +3185,11 @@ func (s *server) ChatWithOrchestrator(req *gen.OrchestratorRequest, stream gen.C
 
 	if err != nil {
 		log.Printf("[Lava] orchestrator error for user %s: %v", userID, err)
-		_ = stream.Send(&gen.OrchestratorResponse{
+		if err := stream.Send(&gen.OrchestratorResponse{
 			Token:    "",
 			Finished: true,
 			Error:    err.Error(),
-		})
+		}); err != nil { log.Printf("Failed to send orchestrator response: %v", err) }
 		return nil
 	}
 
@@ -3240,16 +3240,16 @@ func (s *server) ChatWithPipeline(req *gen.PipelineRequest, stream gen.ChatServi
 			return stream.Send(&gen.PipelineResponse{
 				Token:    token,
 				Finished: finished,
-			})
+			}); err != nil { log.Printf("Failed to send orchestrator response: %v", err) }
 		},
 	)
 
 	if err != nil {
 		log.Printf("[Pipeline] error for user %s: %v", userID, err)
-		_ = stream.Send(&gen.PipelineResponse{
+		if err := stream.Send(&gen.PipelineResponse{
 			Finished: true,
 			Error:    err.Error(),
-		})
+		}); err != nil { log.Printf("Failed to send pipeline response: %v", err) }
 		return nil
 	}
 
