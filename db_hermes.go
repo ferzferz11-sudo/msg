@@ -128,7 +128,7 @@ func runHermesMigrations(db *sql.DB) {
 	for _, q := range queries {
 		if _, err := db.Exec(q); err != nil {
 			if !strings.Contains(err.Error(), "must be owner of table") {
-				log.Printf("[Hermes] Migration error: %v", err)
+				log.Printf("[Lava] Migration error: %v", err)
 			}
 		}
 	}

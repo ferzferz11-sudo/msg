@@ -3135,7 +3135,7 @@ func (s *server) ChatWithOrchestrator(req *gen.OrchestratorRequest, stream gen.C
 		chatID = "hermes-" + userID
 	}
 
-	log.Printf("[Hermes] chat=%s user=%s session=%s msg=%q", chatID, userID, req.SessionId, truncateString(req.Message, 80))
+	log.Printf("[Lava] chat=%s user=%s session=%s msg=%q", chatID, userID, req.SessionId, truncateString(req.Message, 80))
 
 	// Rate limit check (reuse OWL rate limiter)
 	if !owlRateLimiter.allow(userID) {
@@ -3155,13 +3155,13 @@ func (s *server) ChatWithOrchestrator(req *gen.OrchestratorRequest, stream gen.C
 
 	if isNewSession {
 		welcomeMsg := s.buildWelcomeMessage()
-		log.Printf("[Hermes] sending welcome message for new session user=%s", userID)
+		log.Printf("[Lava] sending welcome message for new session user=%s", userID)
 		// Send welcome as NOT finished — client should keep stream open
 		if err := stream.Send(&gen.OrchestratorResponse{
 			Token:    welcomeMsg,
 			Finished: false,
 		}); err != nil {
-			log.Printf("[Hermes] welcome send error: %v", err)
+			log.Printf("[Lava] welcome send error: %v", err)
 			return err
 		}
 		// Save welcome to session history
@@ -3172,7 +3172,7 @@ func (s *server) ChatWithOrchestrator(req *gen.OrchestratorRequest, stream gen.C
 
 	// Run orchestrator — collect full response for DB saving
 	var fullResponse strings.Builder
-	log.Printf("[Hermes] calling Orchestrate for user=%s chat=%s", userID, chatID)
+	log.Printf("[Lava] calling Orchestrate for user=%s chat=%s", userID, chatID)
 	err := s.hermesOrchestrator.Orchestrate(stream.Context(), userID, chatID, req.Message,
 		func(token string, finished bool) error {
 			if !finished && token != "" {
@@ -3185,7 +3185,7 @@ func (s *server) ChatWithOrchestrator(req *gen.OrchestratorRequest, stream gen.C
 		})
 
 	if err != nil {
-		log.Printf("[Hermes] orchestrator error for user %s: %v", userID, err)
+		log.Printf("[Lava] orchestrator error for user %s: %v", userID, err)
 		_ = stream.Send(&gen.OrchestratorResponse{
 			Token:    "",
 			Finished: true,
@@ -3208,7 +3208,7 @@ func (s *server) ChatWithOrchestrator(req *gen.OrchestratorRequest, stream gen.C
 		s.hermesDB.SaveOrchestratorMessage(chatID, userID, "assistant", "", assistantResponse)
 	}
 
-	log.Printf("[Hermes] Orchestrate completed for user=%s", userID)
+	log.Printf("[Lava] Orchestrate completed for user=%s", userID)
 	return nil
 }
 
@@ -3325,7 +3325,7 @@ func (s *server) ListAgents(_ context.Context, req *gen.ListAgentsRequest) (*gen
 		"SELECT id, name, COALESCE(system_prompt, ''), COALESCE(model, ''), COALESCE(max_tokens, 2048) FROM hermes_custom_agents WHERE user_id = $1 ORDER BY created_at ASC",
 		userID)
 	if err != nil {
-		log.Printf("[Hermes] ListAgents DB error: %v", err)
+		log.Printf("[Lava] ListAgents DB error: %v", err)
 		return &gen.ListAgentsResponse{}, nil
 	}
 	defer rows.Close()
@@ -3386,14 +3386,14 @@ func (s *server) CreateAgent(_ context.Context, req *gen.CreateAgentRequest) (*g
 		agentID, userID, userID, req.PresetId, req.Name, req.SystemPrompt, req.Model, req.MaxTokens,
 	)
 	if err != nil {
-		log.Printf("[Hermes] CreateAgent DB error: %v", err)
+		log.Printf("[Lava] CreateAgent DB error: %v", err)
 		return &gen.CreateAgentResponse{Success: false, Error: err.Error()}, nil
 	}
 
 	// Reload custom agents in registry
 	s.hermesOrchestrator.registry.LoadCustomAgents(s.db.DB)
 
-	log.Printf("[Hermes] created agent %s for user %s", agentID, userID)
+	log.Printf("[Lava] created agent %s for user %s", agentID, userID)
 	return &gen.CreateAgentResponse{Success: true, AgentId: agentID}, nil
 }
 
@@ -3504,9 +3504,9 @@ func (s *server) ListUserAgents(_ context.Context, req *gen.ListUserAgentsReques
 // CreateHermesSession — создание новой сессии с оркестратором
 func (s *server) CreateHermesSession(_ context.Context, req *gen.CreateHermesSessionRequest) (*gen.CreateHermesSessionResponse, error) {
 	userID := req.UserId
-	log.Printf("[Hermes] CreateHermesSession: user_id=%q name=%q", userID, req.Name)
+	log.Printf("[Lava] CreateHermesSession: user_id=%q name=%q", userID, req.Name)
 	if userID == "" {
-		log.Printf("[Hermes] CreateHermesSession: ERROR empty user_id")
+		log.Printf("[Lava] CreateHermesSession: ERROR empty user_id")
 		return &gen.CreateHermesSessionResponse{Success: false, Error: "user_id is required"}, nil
 	}
 
@@ -3514,7 +3514,7 @@ func (s *server) CreateHermesSession(_ context.Context, req *gen.CreateHermesSes
 
 	name := req.Name
 	if name == "" {
-		name = "Hermes"
+		name = "Lava AI"
 	}
 
 	_, err := s.db.Exec(
@@ -3522,11 +3522,11 @@ func (s *server) CreateHermesSession(_ context.Context, req *gen.CreateHermesSes
 		sessionID, userID, name,
 	)
 	if err != nil {
-		log.Printf("[Hermes] CreateHermesSession: DB error: %v", err)
+		log.Printf("[Lava] CreateHermesSession: DB error: %v", err)
 		return &gen.CreateHermesSessionResponse{Success: false, Error: err.Error()}, nil
 	}
 
-	log.Printf("[Hermes] CreateHermesSession: OK session_id=%s", sessionID)
+	log.Printf("[Lava] CreateHermesSession: OK session_id=%s", sessionID)
 	return &gen.CreateHermesSessionResponse{Success: true, SessionId: sessionID}, nil
 }
 

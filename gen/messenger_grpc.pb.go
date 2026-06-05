@@ -177,7 +177,7 @@ type ChatServiceClient interface {
 	ListRemoteAgents(ctx context.Context, in *ListRemoteAgentsRequest, opts ...grpc.CallOption) (*ListRemoteAgentsResponse, error)
 	DeployAgentTask(ctx context.Context, in *DeployAgentTaskRequest, opts ...grpc.CallOption) (*DeployAgentTaskResponse, error)
 	GetRemoteAgentStatus(ctx context.Context, in *GetRemoteAgentStatusRequest, opts ...grpc.CallOption) (*GetRemoteAgentStatusResponse, error)
-	// Hermes AI Pipeline (RAG + LLM + Tool Calling)
+	// Lava AI Pipeline (RAG + LLM + Tool Calling)
 	ChatWithPipeline(ctx context.Context, in *PipelineRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[PipelineResponse], error)
 }
 
@@ -1056,7 +1056,7 @@ type ChatServiceServer interface {
 	ListRemoteAgents(context.Context, *ListRemoteAgentsRequest) (*ListRemoteAgentsResponse, error)
 	DeployAgentTask(context.Context, *DeployAgentTaskRequest) (*DeployAgentTaskResponse, error)
 	GetRemoteAgentStatus(context.Context, *GetRemoteAgentStatusRequest) (*GetRemoteAgentStatusResponse, error)
-	// Hermes AI Pipeline (RAG + LLM + Tool Calling)
+	// Lava AI Pipeline (RAG + LLM + Tool Calling)
 	ChatWithPipeline(*PipelineRequest, grpc.ServerStreamingServer[PipelineResponse]) error
 	mustEmbedUnimplementedChatServiceServer()
 }

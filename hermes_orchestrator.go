@@ -124,7 +124,7 @@ func (o *Orchestrator) getOrCreateSession(userID string) *OrchestratorSession {
 	if o.db != nil {
 		_, _ = o.db.Exec(
 			"INSERT INTO hermes_sessions (id, user_id, name) VALUES ($1, $2, $3) ON CONFLICT (id) DO UPDATE SET updated_at = NOW()",
-			"hermes-"+userID, userID, "Hermes",
+			"hermes-"+userID, userID, "Lava AI",
 		)
 	}
 
