@@ -1,8 +1,22 @@
 # Hermes Orchestrator — Задачи
 
-**Версия:** v1.1.0.13
-**Обновлено:** 2026-07-15
-**Статус:** ✅ ChatWidget + Mention system работают
+**Версия:** v1.1.0.14
+**Обновлено:** 2026-06-05
+**Статус:** ✅ Hermes сессии в списке чатов — сервер + Android готовы
+
+---
+
+## ✅ Сделано (v1.1.0.14)
+
+### Hermes сессии в списке чатов
+- **Сервер:** `GetChats` теперь включает hermes_sessions как `type="hermes"`
+- **Сервер:** `db_hermes.go` — `GetUserHermesSessions()` с LATERAL JOIN для последнего сообщения
+- **Proto:** `ChatInfo` расширен — `active_agent_id = 20`, `agent_mode = 21`
+- **Android:** `ChatInfoProto`, `ChatInfo`, `ChatEntity` обновлены с новыми полями
+- **Android:** `RealGrpcClient` — оба парсера парсят fields 21/22
+- **Android:** `ChatListActivity.onChatClick` — при `type == "hermes"` → `HermesChatActivity`
+- **Android:** `HermesChatActivity` — принимает существующую сессию из intent
+- **Android:** `HermesChatViewModel` — `setExistingSession(sessionId, userId, agentId, mode)`
 
 ---
 
@@ -14,22 +28,17 @@
 - Agent chips: активный агент выделен (фон + обводка primary color)
 - ProgressBar для loading state
 - Typing indicator с именем агента
-- Новые цвета: chip_background_active, chip_text_active, chip_stroke_active
-- bg_hermes_circle.xml — круглая подложка для emoji
 
 ### Android — Mention system
 - @ в поле ввода → popup со списком агентов
 - MentionAdapter + MentionItem в ui.chat.widget
 - item_mention_agent.xml — emoji + name + description + tag
-- Фильтрация по имени/тегу при вводе
-- Вставка @tag при выборе агента
 - Исправлен SpannableBuilder IndexOutOfBoundsException
 - Исправлена рекursion в MentionAdapter (submitList → setItems)
 
 ### Два отдельных MentionAdapter
 - ui.chat.widget.MentionAdapter — агенты (emoji, item_mention_agent.xml)
 - ui.adapter.MentionAdapter — пользователи (аватары, item_mention.xml)
-- НЕ МЕРЖИТЬ!
 
 ---
 
@@ -52,11 +61,8 @@
 
 ## ⏳ Не начато (по приоритету)
 
-### Высокий приоритет (текущий спринт — публикация на prod)
-1. **Hermes сессии в списке чатов** — чат с оркестратором должен сохраняться в списке чатов как групповой
-   - Сервер: добавить hermes_sessions в GetChats как type="hermes"
-   - Android: показывать hermes чаты в ChatListActivity, при тапе → HermesChatActivity
-   - Сохранение истории переписки при выходе из чата
+### Высокий приоритет
+1. **Тестирование** — проверить что hermes сессии появляются в списке чатов, открываются, история загружается
 
 ### Средний приоритет
 2. **Auth токены для удалённых агентов** — JWT при регистрации, валидация при каждом запросе
@@ -70,4 +76,7 @@
 
 ## Следующий шаг
 
-**Hermes сессии в списке чатов** — чтобы при выходе из HermesChatActivity чат не исчезал, а оставался в списке как групповой чат. Сервер должен возвращать hermes_sessions в GetChats, Android — отображать их и открывать по тапу.
+**Тестирование** — после сборки APK пользователем, проверить:
+1. Hermes сессия появляется в списке чатов после первого диалога с оркестратором
+2. Тап на hermes чат открывает HermesChatActivity с загрузкой истории
+3. При выходе из HermesChatActivity чат остаётся в списке

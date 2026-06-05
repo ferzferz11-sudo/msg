@@ -2,6 +2,18 @@
 
 **Author:** Pavel Davydov (ferz)
 
+## [1.1.0.14] - 2026-06-05
+
+### Hermes сессии в списке чатов
+- **Сервер:** `GetChats` теперь возвращает hermes_sessions как `type="hermes"` (после обычных чатов)
+- **Сервер:** `GetUserHermesSessions()` — SQL с LATERAL JOIN для последнего assistant-сообщения
+- **Proto:** `ChatInfo` расширен — `active_agent_id = 20`, `agent_mode = 21`
+- **Android:** `ChatListActivity` — тап на hermes чат открывает `HermesChatActivity`
+- **Android:** `HermesChatActivity` — принимает существующую сессию из intent (CHAT_ID, ACTIVE_AGENT_ID, AGENT_MODE, CHAT_NAME)
+- **Android:** `HermesChatViewModel` — `setExistingSession()` для открытия из списка
+- **Android:** `ChatInfoProto`, `ChatInfo`, `ChatEntity` — новые поля `activeAgentId`, `agentMode`
+- **Android:** `RealGrpcClient` — парсеры обновлены (fields 21, 22)
+
 ## [1.1.0.13] - 2026-07-15
 
 ### Android — ChatWidget рефакторинг

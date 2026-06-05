@@ -33,11 +33,11 @@ cd /root/msg && protoc --go_out=./gen --go_opt=paths=source_relative --go-grpc_o
 
 ## ТЕКУЩЕЕ СОСТОЯНИЕ
 
-**Версия:** v1.1.0.13
-**Дата:** 2026-07-15
-**Статус:** ✅ ChatWidget + Mention system работают на dev
+**Версия:** v1.1.0.14
+**Дата:** 2026-06-05
+**Статус:** ✅ Hermes сессии в списке чатов — сервер + Android готовы
 
-### ✅ Сервер (v1.1.0.15):
+### ✅ Сервер:
 
 **Ядро (Ports & Adapters):**
 1. **LLM Router** (`core/llm/`) — маршрутизация между провайдерами:
@@ -54,7 +54,7 @@ cd /root/msg && protoc --go_out=./gen --go_opt=paths=source_relative --go-grpc_o
 **gRPC API:**
 - `ChatWithPipeline(PipelineRequest) → stream PipelineResponse`
 - `CreateHermesSession`, `DeleteHermesSession`
-- `GetChats` — возвращает обычные чаты + OWL чаты (hermes сессии НЕ включены)
+- `GetChats` — возвращает обычные чаты + OWL чаты + hermes сессии (type="hermes")
 
 **Hermes Orchestrator** (`hermes_orchestrator.go`):
 - Маршрутизация к агентам, 3 режима (single/parallel/pipeline), streaming
@@ -65,8 +65,9 @@ cd /root/msg && protoc --go_out=./gen --go_opt=paths=source_relative --go-grpc_o
 
 **Database** (`db_hermes.go`):
 - hermes_messages, hermes_sessions, hermes_agent_runs, hermes_custom_agents, hermes_remote_agents, hermes_remote_tasks
+- `GetUserHermesSessions(userID)` — список сессий с последним сообщением (LATERAL JOIN)
 
-### ✅ Android клиент (v1.1.0.13):
+### ✅ Android клиент:
 
 **ChatWidget** — единый UI компонент чата:
 - `ChatWidget.kt` — custom LinearLayout, inflates widget_chat.xml через ViewBinding
@@ -94,25 +95,31 @@ cd /root/msg && protoc --go_out=./gen --go_opt=paths=source_relative --go-grpc_o
 - Активный агент выделен (фон + обводка primary color)
 - ProgressBar для loading state
 - Typing indicator с именем агента
+- Принимает существующую сессию из intent (CHAT_ID, ACTIVE_AGENT_ID, AGENT_MODE, CHAT_NAME)
 
 **HermesChatViewModel:**
 - `agents: StateFlow<List<AgentInfo>>` — реестр агентов
 - `initPresetAgents()` — 8 пресетов (Developer, Designer, Writer, Analyst, Translator, Researcher, Tester, OWL)
 - `createSession()`, `sendMessage()`, `loadHistory()`, `switchAgent()`
+- `setExistingSession(sessionId, userId, agentId, mode)` — для открытия из списка чатов
+
+**Hermes сессии в списке чатов:**
+- `ChatListActivity.onChatClick` — при `type == "hermes"` открывает `HermesChatActivity`
+- `ChatInfo` содержит `activeAgentId` и `agentMode` (proto fields 20, 21)
+- `ChatEntity` и конвертеры обновлены
 
 ### ❌ Не работает / не доделано:
 
-1. **Hermes сессии НЕ появляются в списке чатов** — при выходе из HermesChatActivity чат исчезает
-2. **Нет gRPC API для получения списка hermes сессий** — нужно добавить
-3. **RemoteAgentManager.SendTask()** — заглушка
-4. **Auth токены** — не генерируются для удалённых агентов
+1. **RemoteAgentManager.SendTask()** — заглушка
+2. **Auth токены** — не генерируются для удалённых агентов
+3. **Qdrant + CLIP** — production RAG (пока in-memory TF-IDF)
 
 ## АРХИТЕКТУРА
 
 ```
 Сервер (Go):
   ChatService (gRPC)
-    ├─→ GetChats → обычные чаты + OWL (hermes сессии НЕ включены!)
+    ├─→ GetChats → обычные чаты + OWL + hermes сессии (type="hermes")
     ├─→ ChatWithPipeline → Orchestrator.ProcessWithPipeline()
     ├─→ CreateHermesSession / DeleteHermesSession
     └─→ HermesAgentService ←─ hermes-agent daemon
@@ -123,11 +130,11 @@ cd /root/msg && protoc --go_out=./gen --go_opt=paths=source_relative --go-grpc_o
     └─→ Tool Executor (core/tools/)
 
 Android (Kotlin):
-  ChatListActivity → список чатов (обычные + OWL, hermes НЕТ)
+  ChatListActivity → список чатов (обычные + OWL + hermes)
     │
-    ├─→ NewChatActivity (групповой чат) → свой layout
+    ├─→ NewChatActivity (групповой/прямой чат)
     │
-    └─→ HermesChatActivity (чат с оркестратором)
+    └─→ HermesChatActivity (чат с оркестратором) ← type="hermes"
           └─→ ChatWidget (toolbar + messages + mention + input)
                 ├─→ ChatMessageAdapter (user/agent/typing/date)
                 └─→ MentionAdapter (agent selection popup)
@@ -155,14 +162,15 @@ Android (Kotlin):
 7. **SpannableBuilder**: всегда `text.toString()` перед `substring()` — иначе IndexOutOfBoundsException
 8. **MentionAdapter.submitList**: переименован в `setItems` — `submitList` вызывает рекурсию с ListAdapter
 9. **Два MentionAdapter**: ui.chat.widget (агенты) и ui.adapter (пользователи) — НЕ МЕРЖИТЬ
+10. **Proto field numbers**: парсер Android использует 18→isSecret, 19→peerKey, 20→e2eeReady, 21→activeAgentId, 22→agentMode (рассинхрон с proto, но работает)
 
 ## ФАЙЛЫ ДЛЯ ЧТЕНИЯ (при старте новой сессии)
 
 ### Сервер:
 1. `hermes_orchestrator.go` — оркестратор
-2. `db_hermes.go` — hermes_sessions, hermes_messages tables
-3. `server.go` — GetChats, CreateHermesSession, DeleteHermesSession
-4. `messenger.proto` — ChatInfo, GetChats, HermesSession messages
+2. `db_hermes.go` — hermes_sessions, hermes_messages tables, GetUserHermesSessions()
+3. `server.go` — GetChats (строки ~994-1120), CreateHermesSession, DeleteHermesSession
+4. `messenger.proto` — ChatInfo (fields 1-21), GetChats, HermesSession messages
 
 ### Android:
 1. `ui/chat/widget/ChatWidget.kt` — виджет чата
@@ -170,17 +178,16 @@ Android (Kotlin):
 3. `ui/chat/widget/MentionAdapter.kt` — адаптер меншена
 4. `ui/hermes/HermesChatActivity.kt` — чат с оркестратором
 5. `ui/hermes/HermesChatViewModel.kt` — ViewModel
-6. `ChatListActivity.kt` — список чатов (loadChats, getChats)
-7. `layout/widget_chat.xml` — layout виджета
-8. `layout/activity_hermes_chat.xml` — layout активити
+6. `ChatListActivity.kt` — список чатов (loadChats, getChats, onChatClick)
+7. `data/proto/MessengerProto.kt` — ChatInfoProto с activeAgentId/agentMode
+8. `data/grpc/RealGrpcClient.kt` — парсеры ChatInfo (fields 1-22)
+9. `data/models/Message.kt` — ChatInfo data class
+10. `data/db/Entities.kt` — ChatEntity, toEntity(), toDomain()
 
 ## ЗАДАЧИ (по приоритету)
 
-### Высокий приоритет (текущая сессия)
-1. **Hermes сессии в списке чатов** — чат с оркестратором должен появляться в списке чатов как групповой
-   - Сервер: добавить hermes_sessions в GetChats как type="hermes"
-   - Android: при получении hermes чатов — показывать в списке, при тапе открывать HermesChatActivity
-   - Сохранять историю переписки при выходе из чата
+### Высокий приоритет
+1. **Тестирование** — проверить что hermes сессии появляются в списке чатов и открываются
 
 ### Средний приоритет
 2. **Auth токены для удалённых агентов** — генерация JWT при регистрации, валидация при каждом запросе
@@ -188,6 +195,7 @@ Android (Kotlin):
 
 ### Низкий приоритет
 4. **Graceful reconnect** при keepalive failed
+5. **NewChatActivity** — миграция на ChatWidget (рефакторинг)
 
 ## ДОКУМЕНТАЦИЯ
 
@@ -199,10 +207,12 @@ Android (Kotlin):
 ## КОММИТЫ (последние)
 
 ```
-2682bd1 fix: SpannableBuilder IndexOutOfBoundsException in detectMention/insertMention
-ce5242b fix: rename submitList to setItems in MentionAdapter to avoid recursion
-6687b45 feat: mention system for HermesChat — @ triggers agent selection popup
-2ac32b6 refactor: HermesChatActivity uses ChatWidget, add chip active state, progress indicator
+6eb1835 feat: hermes sessions in chat list — server includes hermes_sessions in GetChats as type=hermes
+e006247 docs: update prompt, tasks, changelog for v1.1.0.13
+2682bd1 fix: SpannableBuilder IndexOutOfBoundsException
+ce5242b fix: rename submitList to setItems in MentionAdapter
+6687b45 feat: mention system for HermesChat
+2ac32b6 refactor: HermesChatActivity uses ChatWidget
 ```
 
 ## ВАЖНЫЕ ЗАМЕТКИ
