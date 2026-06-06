@@ -1329,6 +1329,6 @@ func (db *DB) DeleteServer(id string) error {
 }
 
 func (db *DB) CreateHermesSession(sessionID, userID, agentID, mode string) error {
-	_, err := db.Exec(`INSERT INTO hermes_sessions (id, user_id, active_agent_id, mode) VALUES ($1, $2, $3, $4)`, sessionID, userID, agentID, mode)
+	_, err := db.Exec(`INSERT INTO hermes_sessions (id, user_id, active_agent_id, agent_mode) VALUES ($1, $2, $3, $4)`, sessionID, userID, agentID, mode)
 	return err
 }
