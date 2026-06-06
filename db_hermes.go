@@ -116,7 +116,6 @@ func runHermesMigrations(db *sql.DB) {
 			completed_at TIMESTAMPTZ
 		)`,
 		`CREATE INDEX IF NOT EXISTS idx_hermes_remote_tasks_agent ON hermes_remote_tasks(agent_id, status)`,
-		`GRANT ALL PRIVILEGES ON TABLE hermes_sessions TO "ferz"`,
 	}
 
 	for _, q := range queries {
