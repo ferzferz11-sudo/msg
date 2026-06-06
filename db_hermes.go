@@ -35,6 +35,15 @@ func runHermesMigrations(db *sql.DB) {
 			created_at TIMESTAMPTZ DEFAULT NOW(),
 			updated_at TIMESTAMPTZ DEFAULT NOW()
 		)`,
+		`DO $$
+		BEGIN
+			IF NOT EXISTS (
+				SELECT 1 FROM information_schema.columns
+				WHERE table_name='hermes_sessions' AND column_name='mode'
+			) THEN
+				ALTER TABLE hermes_sessions ADD COLUMN mode TEXT DEFAULT 'single';
+			END IF;
+		END$$;`,
 
 		// Таблица запусков агентов (для аналитики и дебага)
 		`CREATE TABLE IF NOT EXISTS hermes_agent_runs (
@@ -107,6 +116,7 @@ func runHermesMigrations(db *sql.DB) {
 			completed_at TIMESTAMPTZ
 		)`,
 		`CREATE INDEX IF NOT EXISTS idx_hermes_remote_tasks_agent ON hermes_remote_tasks(agent_id, status)`,
+		`GRANT ALL PRIVILEGES ON TABLE hermes_sessions TO "ferz"`,
 	}
 
 	for _, q := range queries {
