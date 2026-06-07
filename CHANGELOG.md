@@ -3,6 +3,12 @@
 **Author:** Pavel Davodov (ferz)
 
 
+## [1.1.0.11] - 2026-06-07
+- **Server:**
+  - Версия обновлена до 1.1.0.11
+  - **Orchestrator:** исправлен SSE парсинг в `streamOpenRouter` — заменён `json.NewDecoder` на `bufio.Reader` + построчный разбор `data: {...}` (OpenRouter отдаёт SSE, не голый JSON). Исправляет ошибку `invalid character ':' looking for beginning of value`
+  - **OWL:** лог инициализации теперь показывает provider и model: `OWL AI assistant initialized (provider: OpenRouter, model: openrouter/owl-alpha, ...)`
+
 ## [1.1.0.10] - 2026-06-07
 - **Server:**
   - Версия обновлена до 1.1.0.10
@@ -13,6 +19,8 @@
   - **Hermes:** `AdminUpdatePassword` — админ-проверка по `AdminUserId` (UUID)
   - **Hermes:** логирование во все методы (`[Hermes]`, `[HermesDB]`)
   - **DB:** `scripts/db_maintenance.sh` — integrity check, orphaned records (18 таблиц), file cleanup, `--dry-run`/`--prod`
+  - **Orchestrator:** исправлен SSE парсинг в `streamOpenRouter` — заменён `json.NewDecoder` на `bufio.Reader` + построчный разбор `data: {...}` (OpenRouter отдаёт SSE, не голый JSON)
+  - **OWL:** лог инициализации теперь показывает provider и model: `OWL AI assistant initialized (provider: OpenRouter, model: openrouter/owl-alpha, ...)`
 - **Android:**
   - **HermesGrpc:** исправлен порядок полей в парсере `CreateHermesSessionResponse` (1=session_id, 2=success, 3=message)
 - **Нерешено:** Hermes chat creation — "Missing Authentication header" (CANCELLED)

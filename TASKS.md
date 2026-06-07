@@ -1,89 +1,59 @@
 # Lavender Messenger — Известные проблемы и задачи в работе
 
-**Последнее обновление:** 2026-07-15
+**Последнее обновление:** 2026-06-07
 **Ветка:** feat/1.1.0.x
-**Версия:** 1.1.0.15 (dev)
-
----
-
-## 🔧 В процессе
-
-### 1. Повторная регистрация после удаления профиля
-- **Статус:** частично исправлено, требует тестирования
-- **Описание:** После удаления профиля повторная регистрация не работала («соединение не удалось»)
-- **Причина:** `GrpcClient.connect()` видел что канал уже READY и не пересоздавал соединение; `CredentialStore.save()` использовал `apply()` (async) — новый ChatListActivity читал старый адрес
-- **Что сделано:**
-  - `SessionManager.login()` теперь вызывает `disconnect()` + `connect(forceReconnect = true)` перед логином
-- **Файлы:** `SessionManager.kt`, `ChatListActivity.kt`
-
-### 2. loadingContainer крутится бесконечно при ошибке
-- **Статус:** ✅ исправлено (0327d25)
-- **Причина:** В `catch (e: Exception)` блоке `loadChats()` не скрывался `loadingContainer`
-- **Исправление:** Добавлено скрытие `loadingContainer` + показ `chatsRecyclerView` при ошибке
-- **Файлы:** `ChatListActivity.kt:880-888`
-
-### 3. Dev server connection при re-registration
-- **Статус:** ✅ исправлено
-- **Описание:** Сервер не отвечал на повторные запросы после удаления профиля
-- **Исправление:** Перезапуск dev сервера с обновлённым кодом
+**Версия:** 1.1.0.10 (dev)
 
 ---
 
 ## ✅ Исправлено в этой сессии
 
-### 4. Пресеты агентов не отображались
-- **Статус:** ✅ исправлено (60efcef)
-- **Причина:** На сервере не было реализованы gRPC методы `ListAgentPresets`, `ListAgents`, `ListUserAgents`, `CreateAgent`, `UpdateAgent`, `DeleteAgent`, `GetOrchestratorHistory`
-- **Что сделано:**
-  - Добавлены proto-сообщения: `AgentPresetInfo`, `AgentInfo`, `ListAgentPresetsRequest/Response`, `ListAgentsRequest/Response`, `ListUserAgentsRequest/Response`, `CreateAgentRequest/Response`, `UpdateAgentRequest/Response`, `DeleteAgentRequest/Response`
-  - Добавлены RPC в `ChatService`
-  - Добавлен `Icon` field в `AgentDefinition`
-  - Добавлены методы `GetPresets()`, `LoadCustomAgents()`, `getSession()` в `HermesAgentRegistry`
-  - Все 7 методов реализованы в `server.go`
-  - Проверено: `ListAgentPresets` возвращает 8 пресетов ✅
-- **Файлы:** `messenger.proto`, `server.go`, `hermes_agents.go`, `hermes_orchestrator.go`
+### 1. Orchestrator SSE парсинг — "invalid character ':'"
+- **Статус:** ✅ исправлено
+- **Ошибка:** `error decoding stream: invalid character ':' looking for beginning of value`
+- **Причина:** `streamOpenRouter` использовал `json.NewDecoder(resp.Body)` — ожидал голый JSON, но OpenRouter отдаёт SSE формат (`data: {...}\n\n`)
+- **Исправление:** Заменён на `bufio.Reader` + построчное чтение + отрезание префикса `data: ` + парсинг JSON каждого чанка
+- **Файл:** `owl.go` — функция `streamOpenRouter`
+- **Проверено:** оркестратор успешно отвечает на сообщения ✅
 
-### 5. Избранное не появлялось без создания чата
-- **Статус:** наблюдалось ранее; после создания первого чата — работает
-- **Причина:** `loadingContainer` блокировал интерфейс при проблемах с загрузкой чатов
+### 2. OWL init log — добавлен provider и model
+- **Статус:** ✅ исправлено
+- **Было:** `OWL AI assistant initialized (rate limit: 10 req/min, history: 50 msgs, DB-backed)`
+- **Стало:** `OWL AI assistant initialized (provider: OpenRouter, model: openrouter/owl-alpha, rate limit: 10 req/min, history: 50 msgs, DB-backed)`
+- **Файл:** `main.go`
 
-### 6. Favorites: сообщения не отображались (empty encrypted data)
-- **Статус:** ✅ исправлено ранее (e0d5dd5)
-- **Причина:** Дубликат `COALESCE(m.is_e2ee, false)` в SQL запросе `GetMessages`
+---
 
-### 7. Hermes: сессия не создавалась (column "mode")
-- **Статус:** ✅ исправлено ранее
-- **Причина:** Дубликат `mode` в миграции `db_hermes.go`
+## 🔧 В процессе
 
-### 8. Hermes: proto field number mismatch
-- **Статус:** ✅ исправлено ранее
-- **Причина:** Сервер поля 15-17 (E2EE), парсил как Timestamp; клиент читал 18-22 как activeAgentId/agentMode
-- **Исправление:** Серверные поля 20/21 для `active_agent_id`/`agent_mode`
+### 3. Регистрация нового пользователя — приложение сворачивается
+- **Статус:** не исправлено, требует анализа клиента
+- **Описание:** После регистрации нового пользователя приложение сворачивается (ChatListActivity уничтожается)
+- **Лог клиента:** `VRI[ChatListActivity]#2 destructor()` + `disconnect`
+- **Лог сервера:** регистрация проходит успешно, `REGISTRATION_SUCCESS` отправляется
+- **Гипотеза:** клиент крашится при переходе на ChatListActivity после регистрации
+- **Следующий шаг:** логкат клиента с фильтром `AndroidRuntime:F` или `Exception`
 
-### 9. Hermes → Lava AI rebrand
-- **Статус:** ✅ сделано ранее (Android 681e9c0, Server 5b2372d)
+### 4. Избранное (Favorites) не отображается в списке чатов
+- **Статус:** не исправлено
+- **Описание:** До создания любого чата с человеком — Избранное не отображается в списке
+- **Причина:** `GetChats` не включает favorites в список возвращаемых чатов
+- **Favorites хранится:** в таблице `messages` с `room_id = 'favorites_' + username`
+- **Следующий шаг:** добавить favorites в `GetChats` как специальный чат
 
-### 10. Force reconnect убивал стримы
-- **Статус:** ✅ исправлено (v1.1.0.15, коммит 1976d5c)
-- **Причина:** `connect(force=true)` при живом канале (READY) вызывал `shutdownNow()`, стримы падали с `UNAVAILABLE: Channel shutdownNow invoked`
-- **Исправление:** Единая проверка `if (addressMatch && channelAlive)` — если канал живой и адрес совпадает, force не трогает канал. Переподключение только при мёртвом канале или смене адреса.
-- **Файлы:** `RealGrpcClient.kt`
-- **Проверено:** пользователь подтвердил — ошибка ушла
-
-### 11. OpenRouter 401 — "Missing Authentication header"
-- **Статус:** ✅ решено (2026-07-15)
-- **Ошибка:** `OpenRouter returned 401: Missing Authentication header` при отправке сообщения в Hermes чат
-- **Причина:** Невалидный API ключ в `/root/LavenderMessenger/run/.env.dev`
-- **Решение:** Пользователь обновил ключ в `.env.dev`, сервер перезапущен (daemon-reload + stop + start)
-- **Результат:** Оркестратор успешно отвечает на сообщения
+### 5. Выход / Удаление профиля — очистка кэша
+- **Статус:** запланировано
+- **Описание:** При нажатии "Удалить профиль" или "Выход" — принудительно очищать кэш приложения Android
+- **Следующий шаг:** реализовать на клиенте (Android)
 
 ---
 
 ## 📋 Бэклог
 
 ### Высокий приоритет
-- [ ] Re-registration flow — полное тестирование (текущая задача пользователя)
-- [ ] Favorites перестал работать с нуля (если чатов нет) — воспроизвести и исправить
+- [ ] Регистрация нового пользователя — приложение сворачивается (требует анализа клиента)
+- [ ] Favorites не отображается в списке чатов до создания первого чата с человеком
+- [ ] Выход / Удаление профиля — очистка кэша приложения
 
 ### Средний приоритет
 - [ ] Секретный чат — заглушка "not implemented in this build"
@@ -110,22 +80,21 @@
 | Hermes поля 20/21 в proto | Избегает конфликта с E2EE полями 15-17 |
 | `forceReconnect = true` при логине | Гарантирует пересоздание канала при re-registration |
 | `disconnect()` + `connect()` в SessionManager.login() | Сброс закэшированного READY канала |
+| SSE парсинг вместо JSON decoder для OpenRouter | OpenRouter отдаёт SSE формат, не голый JSON |
 
 ---
 
-## 🧪 Dev Testing Checklist (July 15, 2026)
-
-**Тест:** ferz11, dev server 50052
+## 🧪 Dev Testing Checklist (June 7, 2026)
 
 | # | Тест | Статус |
 |---|------|--------|
-| 1 | Регистрация нового пользователя | ✅ Auth success |
+| 1 | Регистрация нового пользователя | ❌ Приложение сворачивается |
 | 2 | Список чатов загружается | ✅ |
-| 3 | Избранное отображается | ✅ |
+| 3 | Избранное отображается | ❌ Не отображается |
 | 4 | Hermes чат виден в списке | ✅ |
 | 5 | Открытие HermesChatActivity | ✅ |
 | 6 | Force reconnect не убивает стримы | ✅ v1.1.0.15 |
-| 7 | Отправка сообщения → ответ оркестратора | ✅ OpenRouter key fixed |
+| 7 | Отправка сообщения → ответ оркестратора | ✅ SSE парсинг исправлен |
 | 8 | AgentListActivity — пресеты видны | ✅ 8 пресетов |
-| 9 | Удаление профиля → повторная регистрация | ⏳ |
+| 9 | Удаление профиля → повторная регистрация | ⏳ Требует очистки кэша |
 | 10 | login flow без сбоя | ⏳ |
