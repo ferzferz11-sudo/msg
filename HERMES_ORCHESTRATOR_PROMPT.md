@@ -41,10 +41,12 @@ cd /Users/paveld/LavenderMessenger-Android
 
 ### ❌ Не работает / не доделано:
 1. **Hermes chat creation** — "Missing Authentication header" (CANCELLED) при вызове CreateHermesSession с Android
-2. **Android force reconnect** — onResume вызывает connect(force=true) когда канал уже READY, убивая стримы
 3. **HermesAgentService** — оркестратор НЕ принимает подключения от hermes-agent daemon
 4. **Agent↔Orchestrator** — RemoteAgentManager.SendTask() заглушка
 5. **OWL на dev** — OpenRouter 401 (ключ невалидный)
+
+### ✅ Исправлено:
+- **Android force reconnect** (v1.1.0.15) — `connect(force=true)` больше не убивает активные стримы. Единая проверка `if (addressMatch && channelAlive)` — force переподключает только когда канал мёртв или адрес изменился.
 
 ## АРХИТЕКТУРА
 

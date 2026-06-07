@@ -1,6 +1,6 @@
 # Lavender Messenger — Project Memory
 # Created: 2026-05-28
-# Updated: 2026-06-07
+# Updated: 2026-07-15
 
 ## Репозитории
 
@@ -55,8 +55,8 @@
 
 ## Версионирование
 
-- Android: `versionCode` 1100901, `versionName` 1.1.0.9
-- Сервер: `const ServerVersion = "1.1.0.9"`
+- Android: `versionCode` 1100150, `versionName` 1.1.0.15
+- Сервер: `const ServerVersion = "1.1.0.10"`
 - versionCode = major*1000000 + minor*10000 + patch*100 + build
 
 ## Технический стек
@@ -118,6 +118,11 @@ systemctl stop lavender-server-dev && cp /tmp/lavender-server-dev /root/Lavender
 export PATH=$PATH:/usr/local/go/bin:~/go/bin
 go build -o /root/msg/run/lavender-server .
 systemctl stop lavender-server && cp /root/msg/run/lavender-server /root/LavenderMessenger/run/lavender-server && systemctl start lavender-server
+
+# Log monitor rebuild + deploy
+cd /root/msg/log-monitor
+go build -o /root/LavenderMessenger/run/log-monitor-dev log-monitor-dev.go
+systemctl restart log-monitor-dev
 
 # Android build (LOCAL Mac, NOT server — OOM kill)
 cd /Users/paveld/LavenderMessenger-Android
