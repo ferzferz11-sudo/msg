@@ -71,20 +71,14 @@
 - **Проверено:** пользователь подтвердил — ошибка ушла
 
 ### 11. OpenRouter 401 — "Missing Authentication header"
-- **Статус:** ❌ не решено
+- **Статус:** ⏳ ключ обновлён, требуется тестирование
 - **Описание:** При отправке сообщения в Hermes чат сервер возвращает 401 от OpenRouter
-- **Логи:**
-  ```
-  [ORCHESTRATOR] analysis error, fallback to OWL: OpenRouter returned 401: {"error":{"message":"Missing Authentication header","code":401}}
-  [ORCHESTRATOR] running single agent: hermes-owl (OWL AI)
-  [Lava] orchestrator error for user ferz11: agent hermes-owl error: OpenRouter returned 401
-  ```
-- **Наблюдения:**
-  - CreateHermesSession работает (возвращает существующий чат)
-  - ChatWithOrchestrator падает на этапе анализа (analysis error)
-  - Fallback на hermes-owl тоже падает с тем же 401
-  - Проблема именно с API ключом OpenRouter на dev сервере
-- **Требует:** проверить/обновить OPENROUTER_API_KEY в .env.dev или на сервере
+- **Что сделано:**
+  - Пользователь вручную обновил OPENROUTER_API_KEY в `/root/LavenderMessenger/run/.env.dev`
+  - Сервер перезапущен (daemon-reload + stop + start)
+  - Python-тест к OpenRouter API вернул 200 с новым ключом
+- **Требуется:** тестирование из приложения — отправить сообщение в Hermes чат
+- **Если снова 401:** возможно сервер не перечитал EnvironmentFile, нужно проверить как owl.go получает ключ (os.Getenv vs godotenv)
 
 ---
 
