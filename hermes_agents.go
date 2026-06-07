@@ -25,6 +25,7 @@ type AgentDefinition struct {
 	MaxTokens    int    // Максимум токенов ответа
 	IsPreset     bool   // true = системный пресет, false = кастомный
 	CreatedBy    string // user_id создателя (пусто = системный)
+	Icon         string // Иконка для UI (emoji)
 }
 
 // AgentPreset — шаблон для быстрого создания агента
@@ -225,6 +226,7 @@ func (r *HermesAgentRegistry) registerPresetAgents() {
 			MaxTokens:    p.MaxTokens,
 			IsPreset:     true,
 			CreatedBy:    "",
+			Icon:         p.Icon,
 		})
 	}
 }
@@ -280,6 +282,25 @@ func (r *HermesAgentRegistry) GetAll() []*AgentDefinition {
 		result = append(result, a)
 	}
 	return result
+}
+
+// GetPresets возвращает только пресет-агентов
+func (r *HermesAgentRegistry) GetPresets() []*AgentDefinition {
+	result := make([]*AgentDefinition, 0)
+	for _, a := range r.agents {
+		if a.IsPreset {
+			result = append(result, a)
+		}
+	}
+	return result
+}
+
+// LoadCustomAgents перезагружает кастомных агентов из БД (публичный метод)
+func (r *HermesAgentRegistry) LoadCustomAgents(db *sql.DB) {
+	if db != nil {
+		r.db = db
+	}
+	r.loadCustomAgents()
 }
 
 // GetByUserID возвращает агентов пользователя (кастомные + пресеты)

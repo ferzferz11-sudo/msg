@@ -72,7 +72,24 @@ func (o *Orchestrator) getOrCreateSession(userID string) *OrchestratorSession {
 	return s
 }
 
-// Orchestrate — главный метод: принимает запрос пользователя, возвращает ответ
+// getSession возвращает существующую сессию (без создания)
+func (o *Orchestrator) getSession(sessionID string) *OrchestratorSession {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+
+	// Try direct lookup by sessionID first
+	if s, ok := o.sessions[sessionID]; ok {
+		return s
+	}
+
+	// Fallback: search by prefix match (sessionID may be "hermes-<userid>-...")
+	for _, s := range o.sessions {
+		if s.UserID == sessionID {
+			return s
+		}
+	}
+	return nil
+}
 func (o *Orchestrator) Orchestrate(ctx context.Context, userID, chatID, userMessage string, streamFn func(token string, finished bool) error) error {
 	session := o.getOrCreateSession(userID)
 

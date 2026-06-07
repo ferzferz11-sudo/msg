@@ -707,6 +707,14 @@ service ChatService {
   rpc CreateHermesSession(CreateHermesSessionRequest) returns (CreateHermesSessionResponse);
   rpc ChatWithOrchestrator(OrchestratorRequest) returns (stream OrchestratorResponse);
   rpc GetOrchestratorHistory(GetOrchestratorHistoryRequest) returns (GetOrchestratorHistoryResponse);
+
+  // Agent management
+  rpc ListAgentPresets(ListAgentPresetsRequest) returns (ListAgentPresetsResponse);
+  rpc ListAgents(ListAgentsRequest) returns (ListAgentsResponse);
+  rpc ListUserAgents(ListUserAgentsRequest) returns (ListUserAgentsResponse);
+  rpc CreateAgent(CreateAgentRequest) returns (CreateAgentResponse);
+  rpc UpdateAgent(UpdateAgentRequest) returns (UpdateAgentResponse);
+  rpc DeleteAgent(DeleteAgentRequest) returns (DeleteAgentResponse);
 }
 
 // ======= Secret Chat Messages =======
@@ -854,4 +862,96 @@ message OrchestratorHistoryMessage {
 
 message GetOrchestratorHistoryResponse {
   repeated OrchestratorHistoryMessage messages = 1;
+}
+
+// Agent preset info
+message AgentPresetInfo {
+  string id = 1;
+  string name = 2;
+  string role = 3;
+  string description = 4;
+  string icon = 5;
+  int32 max_tokens = 6;
+}
+
+// Agent info (custom agent)
+message AgentInfo {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  string role = 4;
+  string system_prompt = 5;
+  string model = 6;
+  int32 max_tokens = 7;
+  bool is_preset = 8;
+  string icon = 9;
+}
+
+// ListAgentPresets
+message ListAgentPresetsRequest {
+  bool dummy = 1;
+}
+
+message ListAgentPresetsResponse {
+  repeated AgentPresetInfo presets = 1;
+}
+
+// ListAgents (custom agents for user)
+message ListAgentsRequest {
+  string user_id = 1;
+}
+
+message ListAgentsResponse {
+  repeated AgentInfo agents = 1;
+}
+
+// ListUserAgents (presets + custom)
+message ListUserAgentsRequest {
+  string user_id = 1;
+}
+
+message ListUserAgentsResponse {
+  repeated AgentInfo agents = 1;
+}
+
+// CreateAgent
+message CreateAgentRequest {
+  string user_id = 1;
+  string preset_id = 2;
+  string name = 3;
+  string system_prompt = 4;
+  string model = 5;
+  int32 max_tokens = 6;
+}
+
+message CreateAgentResponse {
+  bool success = 1;
+  string agent_id = 2;
+  string error = 3;
+}
+
+// UpdateAgent
+message UpdateAgentRequest {
+  string user_id = 1;
+  string agent_id = 2;
+  string name = 3;
+  string system_prompt = 4;
+  string model = 5;
+  int32 max_tokens = 6;
+}
+
+message UpdateAgentResponse {
+  bool success = 1;
+  string error = 2;
+}
+
+// DeleteAgent
+message DeleteAgentRequest {
+  string user_id = 1;
+  string agent_id = 2;
+}
+
+message DeleteAgentResponse {
+  bool success = 1;
+  string error = 2;
 }
