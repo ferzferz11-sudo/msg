@@ -3,6 +3,21 @@
 **Author:** Pavel Davodov (ferz)
 
 
+## [1.1.0.10] - 2026-06-07
+- **Server:**
+  - Версия обновлена до 1.1.0.10
+  - **Hermes:** `CreateHermesSession` теперь создаёт запись и в `hermes_sessions`, и в `chats` (раньше только `hermes_sessions` → чат не появлялся в списке)
+  - **Hermes:** `CreateHermesSession` резолвит username → userId (UUID), проверка дубликатов, логирование
+  - **Hermes:** `GetChats` включает hermes-чаты по `creator_id` (UUID)
+  - **Hermes:** `IsSuperAdmin` — проверка только по userId (UUID), без fallback на username
+  - **Hermes:** `AdminUpdatePassword` — админ-проверка по `AdminUserId` (UUID)
+  - **Hermes:** логирование во все методы (`[Hermes]`, `[HermesDB]`)
+  - **DB:** `scripts/db_maintenance.sh` — integrity check, orphaned records (18 таблиц), file cleanup, `--dry-run`/`--prod`
+- **Android:**
+  - **HermesGrpc:** исправлен порядок полей в парсере `CreateHermesSessionResponse` (1=session_id, 2=success, 3=message)
+- **Нерешено:** Hermes chat creation — "Missing Authentication header" (CANCELLED)
+- **Нерешено:** Android force reconnect убивает стримы (onResume force=true когда READY)
+
 ## [Unreleased] - 2026-06-07
 
 ### Добавлено — Agent Management gRPC
