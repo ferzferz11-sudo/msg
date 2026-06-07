@@ -94,6 +94,12 @@ const (
 	ChatService_DeployAgentTask_FullMethodName        = "/messenger.ChatService/DeployAgentTask"
 	ChatService_GetRemoteAgentStatus_FullMethodName   = "/messenger.ChatService/GetRemoteAgentStatus"
 	ChatService_ChatWithPipeline_FullMethodName       = "/messenger.ChatService/ChatWithPipeline"
+	ChatService_ProcessBotCommand_FullMethodName      = "/messenger.ChatService/ProcessBotCommand"
+	ChatService_GetBotCommands_FullMethodName         = "/messenger.ChatService/GetBotCommands"
+	ChatService_GetOWLStatus_FullMethodName           = "/messenger.ChatService/GetOWLStatus"
+	ChatService_SubscribeNotifications_FullMethodName = "/messenger.ChatService/SubscribeNotifications"
+	ChatService_GetNotificationHistory_FullMethodName = "/messenger.ChatService/GetNotificationHistory"
+	ChatService_MarkNotificationsRead_FullMethodName  = "/messenger.ChatService/MarkNotificationsRead"
 )
 
 // ChatServiceClient is the client API for ChatService service.
@@ -177,8 +183,16 @@ type ChatServiceClient interface {
 	ListRemoteAgents(ctx context.Context, in *ListRemoteAgentsRequest, opts ...grpc.CallOption) (*ListRemoteAgentsResponse, error)
 	DeployAgentTask(ctx context.Context, in *DeployAgentTaskRequest, opts ...grpc.CallOption) (*DeployAgentTaskResponse, error)
 	GetRemoteAgentStatus(ctx context.Context, in *GetRemoteAgentStatusRequest, opts ...grpc.CallOption) (*GetRemoteAgentStatusResponse, error)
-	// Lava AI Pipeline (RAG + LLM + Tool Calling)
+	// Hermes AI Pipeline (RAG + LLM + Tool Calling)
 	ChatWithPipeline(ctx context.Context, in *PipelineRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[PipelineResponse], error)
+	// Bot Commands
+	ProcessBotCommand(ctx context.Context, in *BotCommandRequest, opts ...grpc.CallOption) (*BotCommandResponse, error)
+	GetBotCommands(ctx context.Context, in *GetBotCommandsRequest, opts ...grpc.CallOption) (*GetBotCommandsResponse, error)
+	GetOWLStatus(ctx context.Context, in *OWLStatusRequest, opts ...grpc.CallOption) (*OWLStatusResponse, error)
+	// Server Notifications
+	SubscribeNotifications(ctx context.Context, in *SubscribeNotificationsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[ServerNotification], error)
+	GetNotificationHistory(ctx context.Context, in *GetNotificationHistoryRequest, opts ...grpc.CallOption) (*GetNotificationHistoryResponse, error)
+	MarkNotificationsRead(ctx context.Context, in *MarkNotificationReadRequest, opts ...grpc.CallOption) (*MarkNotificationReadResponse, error)
 }
 
 type chatServiceClient struct {
@@ -975,6 +989,75 @@ func (c *chatServiceClient) ChatWithPipeline(ctx context.Context, in *PipelineRe
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type ChatService_ChatWithPipelineClient = grpc.ServerStreamingClient[PipelineResponse]
 
+func (c *chatServiceClient) ProcessBotCommand(ctx context.Context, in *BotCommandRequest, opts ...grpc.CallOption) (*BotCommandResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(BotCommandResponse)
+	err := c.cc.Invoke(ctx, ChatService_ProcessBotCommand_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) GetBotCommands(ctx context.Context, in *GetBotCommandsRequest, opts ...grpc.CallOption) (*GetBotCommandsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetBotCommandsResponse)
+	err := c.cc.Invoke(ctx, ChatService_GetBotCommands_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) GetOWLStatus(ctx context.Context, in *OWLStatusRequest, opts ...grpc.CallOption) (*OWLStatusResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(OWLStatusResponse)
+	err := c.cc.Invoke(ctx, ChatService_GetOWLStatus_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) SubscribeNotifications(ctx context.Context, in *SubscribeNotificationsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[ServerNotification], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &ChatService_ServiceDesc.Streams[6], ChatService_SubscribeNotifications_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[SubscribeNotificationsRequest, ServerNotification]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type ChatService_SubscribeNotificationsClient = grpc.ServerStreamingClient[ServerNotification]
+
+func (c *chatServiceClient) GetNotificationHistory(ctx context.Context, in *GetNotificationHistoryRequest, opts ...grpc.CallOption) (*GetNotificationHistoryResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetNotificationHistoryResponse)
+	err := c.cc.Invoke(ctx, ChatService_GetNotificationHistory_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) MarkNotificationsRead(ctx context.Context, in *MarkNotificationReadRequest, opts ...grpc.CallOption) (*MarkNotificationReadResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MarkNotificationReadResponse)
+	err := c.cc.Invoke(ctx, ChatService_MarkNotificationsRead_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ChatServiceServer is the server API for ChatService service.
 // All implementations must embed UnimplementedChatServiceServer
 // for forward compatibility.
@@ -1056,8 +1139,16 @@ type ChatServiceServer interface {
 	ListRemoteAgents(context.Context, *ListRemoteAgentsRequest) (*ListRemoteAgentsResponse, error)
 	DeployAgentTask(context.Context, *DeployAgentTaskRequest) (*DeployAgentTaskResponse, error)
 	GetRemoteAgentStatus(context.Context, *GetRemoteAgentStatusRequest) (*GetRemoteAgentStatusResponse, error)
-	// Lava AI Pipeline (RAG + LLM + Tool Calling)
+	// Hermes AI Pipeline (RAG + LLM + Tool Calling)
 	ChatWithPipeline(*PipelineRequest, grpc.ServerStreamingServer[PipelineResponse]) error
+	// Bot Commands
+	ProcessBotCommand(context.Context, *BotCommandRequest) (*BotCommandResponse, error)
+	GetBotCommands(context.Context, *GetBotCommandsRequest) (*GetBotCommandsResponse, error)
+	GetOWLStatus(context.Context, *OWLStatusRequest) (*OWLStatusResponse, error)
+	// Server Notifications
+	SubscribeNotifications(*SubscribeNotificationsRequest, grpc.ServerStreamingServer[ServerNotification]) error
+	GetNotificationHistory(context.Context, *GetNotificationHistoryRequest) (*GetNotificationHistoryResponse, error)
+	MarkNotificationsRead(context.Context, *MarkNotificationReadRequest) (*MarkNotificationReadResponse, error)
 	mustEmbedUnimplementedChatServiceServer()
 }
 
@@ -1292,6 +1383,24 @@ func (UnimplementedChatServiceServer) GetRemoteAgentStatus(context.Context, *Get
 }
 func (UnimplementedChatServiceServer) ChatWithPipeline(*PipelineRequest, grpc.ServerStreamingServer[PipelineResponse]) error {
 	return status.Errorf(codes.Unimplemented, "method ChatWithPipeline not implemented")
+}
+func (UnimplementedChatServiceServer) ProcessBotCommand(context.Context, *BotCommandRequest) (*BotCommandResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ProcessBotCommand not implemented")
+}
+func (UnimplementedChatServiceServer) GetBotCommands(context.Context, *GetBotCommandsRequest) (*GetBotCommandsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetBotCommands not implemented")
+}
+func (UnimplementedChatServiceServer) GetOWLStatus(context.Context, *OWLStatusRequest) (*OWLStatusResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetOWLStatus not implemented")
+}
+func (UnimplementedChatServiceServer) SubscribeNotifications(*SubscribeNotificationsRequest, grpc.ServerStreamingServer[ServerNotification]) error {
+	return status.Errorf(codes.Unimplemented, "method SubscribeNotifications not implemented")
+}
+func (UnimplementedChatServiceServer) GetNotificationHistory(context.Context, *GetNotificationHistoryRequest) (*GetNotificationHistoryResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetNotificationHistory not implemented")
+}
+func (UnimplementedChatServiceServer) MarkNotificationsRead(context.Context, *MarkNotificationReadRequest) (*MarkNotificationReadResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method MarkNotificationsRead not implemented")
 }
 func (UnimplementedChatServiceServer) mustEmbedUnimplementedChatServiceServer() {}
 func (UnimplementedChatServiceServer) testEmbeddedByValue()                     {}
@@ -2610,6 +2719,107 @@ func _ChatService_ChatWithPipeline_Handler(srv interface{}, stream grpc.ServerSt
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type ChatService_ChatWithPipelineServer = grpc.ServerStreamingServer[PipelineResponse]
 
+func _ChatService_ProcessBotCommand_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(BotCommandRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).ProcessBotCommand(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_ProcessBotCommand_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).ProcessBotCommand(ctx, req.(*BotCommandRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_GetBotCommands_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetBotCommandsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).GetBotCommands(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_GetBotCommands_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).GetBotCommands(ctx, req.(*GetBotCommandsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_GetOWLStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(OWLStatusRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).GetOWLStatus(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_GetOWLStatus_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).GetOWLStatus(ctx, req.(*OWLStatusRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_SubscribeNotifications_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(SubscribeNotificationsRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(ChatServiceServer).SubscribeNotifications(m, &grpc.GenericServerStream[SubscribeNotificationsRequest, ServerNotification]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type ChatService_SubscribeNotificationsServer = grpc.ServerStreamingServer[ServerNotification]
+
+func _ChatService_GetNotificationHistory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetNotificationHistoryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).GetNotificationHistory(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_GetNotificationHistory_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).GetNotificationHistory(ctx, req.(*GetNotificationHistoryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_MarkNotificationsRead_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MarkNotificationReadRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).MarkNotificationsRead(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_MarkNotificationsRead_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).MarkNotificationsRead(ctx, req.(*MarkNotificationReadRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ChatService_ServiceDesc is the grpc.ServiceDesc for ChatService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -2893,6 +3103,26 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "GetRemoteAgentStatus",
 			Handler:    _ChatService_GetRemoteAgentStatus_Handler,
 		},
+		{
+			MethodName: "ProcessBotCommand",
+			Handler:    _ChatService_ProcessBotCommand_Handler,
+		},
+		{
+			MethodName: "GetBotCommands",
+			Handler:    _ChatService_GetBotCommands_Handler,
+		},
+		{
+			MethodName: "GetOWLStatus",
+			Handler:    _ChatService_GetOWLStatus_Handler,
+		},
+		{
+			MethodName: "GetNotificationHistory",
+			Handler:    _ChatService_GetNotificationHistory_Handler,
+		},
+		{
+			MethodName: "MarkNotificationsRead",
+			Handler:    _ChatService_MarkNotificationsRead_Handler,
+		},
 	},
 	Streams: []grpc.StreamDesc{
 		{
@@ -2926,6 +3156,11 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "ChatWithPipeline",
 			Handler:       _ChatService_ChatWithPipeline_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "SubscribeNotifications",
+			Handler:       _ChatService_SubscribeNotifications_Handler,
 			ServerStreams: true,
 		},
 	},

@@ -30,7 +30,7 @@ import (
 	"firebase.google.com/go/v4/messaging"
 )
 
-const ServerVersion = "1.1.0.15"
+const ServerVersion = "1.1.1.1"
 
 // server implements the gRPC ChatService interface
 type server struct {
@@ -298,6 +298,48 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 		// Skip empty messages (unless they have an image or voice)
 		if strings.TrimSpace(msg.Text) == "" && msg.ImageUrl == "" && len(msg.ImageUrls) == 0 && msg.VoiceUrl == "" {
 			// Don't log empty messages if they are just room switches (which we now log on auth)
+			continue
+		}
+
+		// Bot command detection — messages starting with "/"
+		if strings.HasPrefix(strings.TrimSpace(msg.Text), "/") {
+			log.Printf("[BotCommand] %s in %s: %s", msg.User, roomID, msg.Text)
+
+			// Parse command and args
+			parts := strings.Fields(msg.Text)
+			cmd := parts[0]
+			var args []string
+			if len(parts) > 1 {
+				args = parts[1:]
+			}
+
+			// Process bot command
+			botReq := &gen.BotCommandRequest{
+				UserId:   connectedUserID,
+				Username: connectedUser,
+				ChatId:   roomID,
+				Command:  cmd,
+				Args:     args,
+			}
+			botResp, err := s.ProcessBotCommand(nil, botReq)
+			if err != nil {
+				log.Printf("[BotCommand] Error: %v", err)
+			} else if botResp != nil {
+				// Send bot response as a system message to the room
+				botMsg := &gen.Message{
+					User:      "🤖 OWL Bot",
+					Text:      botResp.ResponseText,
+					Id:        fmt.Sprintf("bot_%d", time.Now().UnixNano()),
+					CreatedAt: timestamppb.Now(),
+					RoomId:    roomID,
+				}
+				if botResp.IsError && botResp.ErrorMessage != "" {
+					botMsg.Text = "⚠️ " + botResp.ErrorMessage
+				}
+				// Broadcast to room
+				s.hub.Broadcast(botMsg)
+			}
+			// Don't save bot commands to DB, just respond
 			continue
 		}
 
