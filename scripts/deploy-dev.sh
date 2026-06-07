@@ -15,8 +15,8 @@ go build -o "$RUN/lavender-server-dev" .
 echo "✓ lavender-server-dev built"
 
 echo "=== Building dev log monitor ==="
-cd "$RUN"
-go build -o log-monitor-dev log-monitor-dev.go
+cd "$REPO/log-monitor"
+go build -o "$RUN/log-monitor-dev" log-monitor-dev.go
 echo "✓ log-monitor-dev built"
 
 echo "=== Restarting services ==="
