@@ -278,9 +278,12 @@ func (db *DB) SaveUser(user, hash string) error {
 	return err
 }
 
-func (db *DB) IsSuperAdmin(user string) bool {
+func (db *DB) IsSuperAdmin(userID string) bool {
 	var a bool
-	db.QueryRow(`SELECT is_super_admin FROM users WHERE username=$1`, user).Scan(&a)
+	err := db.QueryRow(`SELECT is_super_admin FROM users WHERE id=$1`, userID).Scan(&a)
+	if err != nil {
+		return false
+	}
 	return a
 }
 
@@ -1329,6 +1332,18 @@ func (db *DB) DeleteServer(id string) error {
 }
 
 func (db *DB) CreateHermesSession(sessionID, userID, agentID, mode string) error {
+	log.Printf("[HermesDB] CreateHermesSession: sessionID=%s userID=%s agentID=%s mode=%s", sessionID, userID, agentID, mode)
 	_, err := db.Exec(`INSERT INTO hermes_sessions (id, user_id, active_agent_id, agent_mode) VALUES ($1, $2, $3, $4)`, sessionID, userID, agentID, mode)
-	return err
+	if err != nil {
+		log.Printf("[HermesDB] CreateHermesSession hermes_sessions error: %v", err)
+		return err
+	}
+	// Also create a chat entry so it appears in the chat list (use creator_id = userId UUID)
+	_, err = db.Exec(`INSERT INTO chats (id, name, type, participants, creator_id, agent_id) VALUES ($1, 'Lava AI', 'hermes', '["' || $2 || '"]', $2, $3) ON CONFLICT (id) DO NOTHING`, sessionID, userID, agentID)
+	if err != nil {
+		log.Printf("[HermesDB] CreateHermesSession chats error: %v", err)
+	} else {
+		log.Printf("[HermesDB] CreateHermesSession chats inserted OK")
+	}
+	return nil
 }

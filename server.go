@@ -30,7 +30,7 @@ import (
 	"firebase.google.com/go/v4/messaging"
 )
 
-const ServerVersion = "1.1.0.9"
+const ServerVersion = "1.1.0.10"
 
 // server implements the gRPC ChatService interface
 type server struct {
@@ -233,8 +233,8 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 			}
 			_ = stream.Send(serverInfoMsg)
 
-			// Inform the user about their admin status
-			if s.db.IsSuperAdmin(msg.User) {
+			// Inform the user about their admin status (use userId UUID, not username)
+			if connectedUserID != "" && s.db.IsSuperAdmin(connectedUserID) {
 				statusMsg := &gen.Message{
 					User:         "SYSTEM",
 					Text:         "SET_SUPER_ADMIN",
@@ -1089,19 +1089,56 @@ func (s *server) GetChats(_ context.Context, req *gen.GetChatsRequest) (*gen.Get
 		}
 	}
 
-	// Prepend OWL chats at the beginning
-	// (owl chats are already in chatInfos from the DB query above,
-	//  but we want them before regular chats — rebuild the slice)
-	owlChats := make([]*gen.ChatInfo, 0)
+	// Add Hermes AI chats from database (search by creator_id = userId UUID)
+	if queryIdentifier != "" && queryIdentifier != "00000000-0000-0000-0000-000000000000" {
+		hermesRows, err := s.db.Query(
+			"SELECT c.id, c.name, c.type, c.participants, c.created_at, c.creator_username, c.last_message_text, c.last_message_time, c.agent_id FROM chats c WHERE c.type = 'hermes' AND c.creator_id = $1 ORDER BY c.created_at ASC",
+			queryIdentifier,
+		)
+		if err == nil {
+			for hermesRows.Next() {
+				var c gen.ChatInfo
+				var createdAt time.Time
+				var lastMsg sql.NullString
+				var lastMsgTime sql.NullTime
+				var agentID sql.NullString
+				if err := hermesRows.Scan(&c.Id, &c.Name, &c.Type, &c.Participants, &createdAt, &c.Creator, &lastMsg, &lastMsgTime, &agentID); err == nil {
+					c.CreatedAt = timestamppb.New(createdAt)
+					if lastMsgTime.Valid {
+						c.LastMessageTime = timestamppb.New(lastMsgTime.Time)
+					} else {
+						c.LastMessageTime = timestamppb.New(createdAt)
+					}
+					if lastMsg.Valid {
+						c.LastMessageText = lastMsg.String
+					}
+					if agentID.Valid {
+						c.ActiveAgentId = agentID.String
+					}
+					// Get agent_mode from hermes_sessions if available
+					if s.hermesDB != nil {
+						if mode := s.hermesDB.GetSessionActiveAgent(c.Id); mode != "" {
+							// mode is actually active_agent_id from hermes_sessions
+						}
+					}
+					chatInfos = append(chatInfos, &c)
+				}
+			}
+			hermesRows.Close()
+		}
+	}
+
+	// Prepend special chats (owl + hermes) at the beginning
+	specialChats := make([]*gen.ChatInfo, 0)
 	regularChats := make([]*gen.ChatInfo, 0)
 	for _, c := range chatInfos {
-		if c.Type == "owl" {
-			owlChats = append(owlChats, c)
+		if c.Type == "owl" || c.Type == "hermes" {
+			specialChats = append(specialChats, c)
 		} else {
 			regularChats = append(regularChats, c)
 		}
 	}
-	chatInfos = append(owlChats, regularChats...)
+	chatInfos = append(specialChats, regularChats...)
 
 	return &gen.GetChatsResponse{Chats: chatInfos}, nil
 }
@@ -1246,9 +1283,13 @@ func (s *server) AdminUpdatePassword(_ context.Context, req *gen.AdminUpdatePass
 		}
 	}
 
-	// Verify admin status
-	if !s.db.IsSuperAdmin(adminUsername) {
-		log.Printf("Unauthorized AdminUpdatePassword attempt by %s", adminUsername)
+	// Verify admin status — use userId UUID if available, fallback to username
+	adminID := req.AdminUserId
+	if adminID == "" {
+		adminID = req.AdminUsername
+	}
+	if !s.db.IsSuperAdmin(adminID) {
+		log.Printf("Unauthorized AdminUpdatePassword attempt by %s (id=%s)", req.AdminUsername, req.AdminUserId)
 		return &gen.AdminUpdatePasswordResponse{
 			Success: false,
 			Message: "Unauthorized: only super admins can reset passwords",
@@ -3105,16 +3146,43 @@ func truncateString(s string, maxLen int) string {
 }
 
 func (s *server) CreateHermesSession(ctx context.Context, req *gen.CreateHermesSessionRequest) (*gen.CreateHermesSessionResponse, error) {
+	log.Printf("[Hermes] CreateHermesSession: req.UserId=%s agentId=%s mode=%s", req.UserId, req.AgentId, req.Mode)
 	if req.UserId == "" {
 		return nil, fmt.Errorf("user_id is required")
 	}
 
-	sessionID := "hermes-" + req.UserId + "-" + uuid.New().String()[:8]
-	err := s.db.CreateHermesSession(sessionID, req.UserId, req.AgentId, req.Mode)
+	// Resolve userId: if it looks like a UUID use directly, otherwise lookup by username
+	userID := req.UserId
+	if !strings.Contains(userID, "-") {
+		// It's a username — resolve to UUID
+		uid, err := s.db.GetUserIdByUsername(userID)
+		if err != nil || uid == "" {
+			return nil, fmt.Errorf("user not found: %s", userID)
+		}
+		userID = uid
+		log.Printf("[Hermes] CreateHermesSession: resolved username %s → userId %s", req.UserId, userID)
+	}
+
+	// Check if user already has a hermes chat — return existing one (search by creator_id = userId)
+	var existingID string
+	err := s.db.QueryRow("SELECT id FROM chats WHERE type='hermes' AND creator_id=$1 LIMIT 1", userID).Scan(&existingID)
+	if err == nil && existingID != "" {
+		log.Printf("[Hermes] CreateHermesSession: returning existing chat %s", existingID)
+		return &gen.CreateHermesSessionResponse{
+			SessionId: existingID,
+			Success:   true,
+			Message:   "existing session",
+		}, nil
+	}
+
+	sessionID := "hermes-" + userID + "-" + uuid.New().String()[:8]
+	err = s.db.CreateHermesSession(sessionID, userID, req.AgentId, req.Mode)
 	if err != nil {
+		log.Printf("[Hermes] CreateHermesSession FAILED: %v", err)
 		return nil, fmt.Errorf("failed to create hermes session: %w", err)
 	}
 
+	log.Printf("[Hermes] CreateHermesSession SUCCESS: sessionId=%s", sessionID)
 	return &gen.CreateHermesSessionResponse{
 		SessionId: sessionID,
 		Success:   true,
