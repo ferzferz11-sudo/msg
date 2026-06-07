@@ -3,6 +3,18 @@
 **Author:** Pavel Davodov (ferz)
 
 
+## [1.1.1.1] - 2026-06-07
+- **Server:**
+  - Версия обновлена до 1.1.1.1
+  - **Bot Commands:** добавлен Bot Command Processor с командами: /status, /deploy, /logs, /restart, /ai, /help, /version
+  - **Bot Commands:** rate limiting 30 cmd/min per user, AI rate limit 10 req/min
+  - **Bot Commands:** интеграция в Chat stream — сообщения начинающиеся с `/` автоматически обрабатываются
+  - **OWL Status:** добавлен GetOWLStatus RPC для проверки доступности AI
+  - **Server Notifications:** добавлен NotificationService с broadcast и history
+  - **Server Notifications:** добавлены SubscribeNotifications, GetNotificationHistory, MarkNotificationsRead RPCs
+  - **Proto:** добавлены BotCommandRequest/Response/Info, OWLStatusRequest/Response, ServerNotification сообщения
+  - **Proto:** добавлены ProcessBotCommand, GetBotCommands, GetOWLStatus RPCs в ChatService
+
 ## [1.1.0.13] - 2026-06-07
 - **Server:**
   - Версия обновлена до 1.1.0.13
