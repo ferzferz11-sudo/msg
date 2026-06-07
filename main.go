@@ -141,6 +141,7 @@ func main() {
 	agentRegistry := NewAgentRegistry(db.DB)
 	orchestrator := NewOrchestrator(agentRegistry, db.DB, srv.owlApiKey, srv.owlModel)
 	srv.hermesOrchestrator = orchestrator
+	srv.hermesDB = NewHermesDB(db.DB)
 	log.Println("Hermes Orchestrator initialized")
 
 	// Register our chat service with the gRPC server

@@ -35,13 +35,14 @@ func runHermesMigrations(db *sql.DB) {
 			created_at TIMESTAMPTZ DEFAULT NOW(),
 			updated_at TIMESTAMPTZ DEFAULT NOW()
 		)`,
+		// Миграция: agent_mode была добавлена позже
 		`DO $$
 		BEGIN
 			IF NOT EXISTS (
 				SELECT 1 FROM information_schema.columns
-				WHERE table_name='hermes_sessions' AND column_name='mode'
+				WHERE table_name='hermes_sessions' AND column_name='agent_mode'
 			) THEN
-				ALTER TABLE hermes_sessions ADD COLUMN mode TEXT DEFAULT 'single';
+				ALTER TABLE hermes_sessions ADD COLUMN agent_mode TEXT DEFAULT 'single';
 			END IF;
 		END$$;`,
 
