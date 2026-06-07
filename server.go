@@ -1128,11 +1128,31 @@ func (s *server) GetChats(_ context.Context, req *gen.GetChatsRequest) (*gen.Get
 		}
 	}
 
-	// Prepend special chats (owl + hermes) at the beginning
+	// Add Favorites as a synthetic chat entry (always shown at the top)
+	if req.Username != "" {
+		favChatID := "favorites_" + req.Username
+		var lastFavTime time.Time
+		var lastFavText string
+		_ = s.db.QueryRow("SELECT COALESCE(MAX(m.created_at), '1970-01-01'), COALESCE(m.encrypted_text, '') FROM messages m WHERE m.room_id = $1 ORDER BY m.created_at DESC LIMIT 1", favChatID).Scan(&lastFavTime, &lastFavText)
+		favInfo := &gen.ChatInfo{
+			Id:              favChatID,
+			Name:            "⭐ Избранное",
+			Type:            "favorites",
+			Participants:    "[\"" + req.Username + "\"]",
+			Creator:         req.Username,
+			LastMessageTime: timestamppb.New(lastFavTime),
+		}
+		if !lastFavTime.IsZero() && lastFavTime.Year() > 1970 {
+			favInfo.LastMessageText = "⭐"
+		}
+		chatInfos = append(chatInfos, favInfo)
+	}
+
+	// Prepend special chats (owl + hermes + favorites) at the beginning
 	specialChats := make([]*gen.ChatInfo, 0)
 	regularChats := make([]*gen.ChatInfo, 0)
 	for _, c := range chatInfos {
-		if c.Type == "owl" || c.Type == "hermes" {
+		if c.Type == "owl" || c.Type == "hermes" || c.Type == "favorites" {
 			specialChats = append(specialChats, c)
 		} else {
 			regularChats = append(regularChats, c)
