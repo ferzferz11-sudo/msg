@@ -1,6 +1,31 @@
 # Lavender Messenger - Changelog
 
-**Author:** Pavel Davydov (ferz)
+**Author:** Pavel Davodov (ferz)
+
+
+## [Unreleased] - 2026-06-07
+
+### Добавлено — Agent Management gRPC
+- **Server (60efcef):** Добавлены 7 недостающих gRPC методов для управления агентами:
+  - `ListAgentPresets` — список пресет-агентов (8 штук: Developer, Analyst, Security, DevOps, Architect, Support, QA Engineer, OWL AI)
+  - `ListAgents` — кастомные агенты пользователя
+  - `ListUserAgents` — пресеты + кастомные
+  - `CreateAgent` — создание кастомного агента из пресета
+  - `UpdateAgent` — обновление кастомного агента
+  - `DeleteAgent` — удаление кастомного агента
+  - `GetOrchestratorHistory` — история сообщений сессии (исправлен — использует SessionId)
+- **Proto:** добавлены `AgentPresetInfo`, `AgentInfo`, `ListAgentPresetsRequest/Response`, `ListAgentsRequest/Response`, `ListUserAgentsRequest/Response`, `CreateAgentRequest/Response`, `UpdateAgentRequest/Response`, `DeleteAgentRequest/Response`
+- **Registry:** добавлены `GetPresets()`, `LoadCustomAgents()`, `getSession()`, `Icon` field в `AgentDefinition`
+- **Проверено:** `ListAgentPresets` возвращает 8 пресетов ✅
+
+### Исправлено — Android
+- **ChatListActivity (0327d25):** `loadingContainer` скрывается при ошибке загрузки чатов (ранее крутился бесконечно)
+- **SessionManager:** `disconnect()` + `connect(forceReconnect = true)` перед логином — исправляет re-registration после удаления профиля
+- **ChatListActivity:** добавлено диагностическое логирование в `onCreate` и `connectionStatus.collect`
+
+### Исправлено — Server
+- **Re-registration:** сервер корректно обрабатывает повторную регистрацию после удаления профиля
+- **Proto field mapping:** поля 20/21 для `active_agent_id`/`agent_mode` (не конфликтуют с E2EE 15-17)
 
 
 ## [Unreleased] - 2026-06-02
