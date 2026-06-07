@@ -3,9 +3,9 @@
 **Author:** Pavel Davodov (ferz)
 
 
-## [1.1.0.11] - 2026-06-07
+## [1.1.0.13] - 2026-06-07
 - **Server:**
-  - Версия обновлена до 1.1.0.11
+  - Версия обновлена до 1.1.0.13
   - **Orchestrator:** исправлен SSE парсинг в `streamOpenRouter` — заменён `json.NewDecoder` на `bufio.Reader` + построчный разбор `data: {...}` (OpenRouter отдаёт SSE, не голый JSON). Исправляет ошибку `invalid character ':' looking for beginning of value`
   - **OWL:** лог инициализации теперь показывает provider и model: `OWL AI assistant initialized (provider: OpenRouter, model: openrouter/owl-alpha, ...)`
 
