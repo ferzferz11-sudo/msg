@@ -70,6 +70,22 @@
 - **Файлы:** `RealGrpcClient.kt`
 - **Проверено:** пользователь подтвердил — ошибка ушла
 
+### 11. OpenRouter 401 — "Missing Authentication header"
+- **Статус:** ❌ не решено
+- **Описание:** При отправке сообщения в Hermes чат сервер возвращает 401 от OpenRouter
+- **Логи:**
+  ```
+  [ORCHESTRATOR] analysis error, fallback to OWL: OpenRouter returned 401: {"error":{"message":"Missing Authentication header","code":401}}
+  [ORCHESTRATOR] running single agent: hermes-owl (OWL AI)
+  [Lava] orchestrator error for user ferz11: agent hermes-owl error: OpenRouter returned 401
+  ```
+- **Наблюдения:**
+  - CreateHermesSession работает (возвращает существующий чат)
+  - ChatWithOrchestrator падает на этапе анализа (analysis error)
+  - Fallback на hermes-owl тоже падает с тем же 401
+  - Проблема именно с API ключом OpenRouter на dev сервере
+- **Требует:** проверить/обновить OPENROUTER_API_KEY в .env.dev или на сервере
+
 ---
 
 ## 📋 Бэклог
@@ -118,6 +134,7 @@
 | 4 | Hermes чат виден в списке | ✅ |
 | 5 | Открытие HermesChatActivity | ✅ |
 | 6 | Force reconnect не убивает стримы | ✅ v1.1.0.15 |
-| 7 | AgentListActivity — пресеты видны | ✅ 8 пресетов |
-| 8 | Удаление профиля → повторная регистрация | ⏳ |
-| 9 | login flow без сбоя | ⏳ |
+| 7 | Отправка сообщения → ответ оркестратора | ❌ OpenRouter 401 |
+| 8 | AgentListActivity — пресеты видны | ✅ 8 пресетов |
+| 9 | Удаление профиля → повторная регистрация | ⏳ |
+| 10 | login flow без сбоя | ⏳ |
