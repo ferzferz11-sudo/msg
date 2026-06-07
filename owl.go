@@ -133,207 +133,6 @@ func (s *owlSessionManager) getOwlChats(userID string) []string {
 	return chats
 }
 
-// callOpenRouter sends a message to OpenRouter and returns the response
-func callOpenRouter(apiKey string, model string, systemPrompt string, messages []map[string]string) (string, error) {
-	return callOpenRouterContext(context.Background(), apiKey, model, systemPrompt, messages)
-}
-
-func callOpenRouterContext(ctx context.Context, apiKey string, model string, systemPrompt string, messages []map[string]string) (string, error) {
-	if apiKey == "" {
-		apiKey = os.Getenv("OPENROUTER_API_KEY")
-	}
-	if apiKey == "" {
-		return "", fmt.Errorf("OpenRouter API key not configured")
-	}
-
-	if model == "" {
-		model = os.Getenv("OPENROUTER_MODEL")
-		if model == "" {
-			model = "openrouter/auto"
-		}
-	}
-
-	payload := map[string]interface{}{
-		"model":    model,
-		"messages": append([]map[string]string{{"role": "system", "content": systemPrompt}}, messages...),
-	}
-
-	jsonData, err := json.Marshal(payload)
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal request: %w", err)
-	}
-
-	req, err := http.NewRequestWithContext(ctx, "POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewBuffer(jsonData))
-	if err != nil {
-		return "", fmt.Errorf("failed to create request: %w", err)
-	}
-
-	req.Header.Set("Authorization", "Bearer "+apiKey)
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("HTTP-Referer", "https://lavender-messenger.com")
-
-	client := &http.Client{Timeout: 60 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("OpenRouter request failed: %w", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("failed to read response: %w", err)
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("OpenRouter returned %d: %s", resp.StatusCode, string(body))
-	}
-
-	var result oll
-	if err := json.Unmarshal(body, &result); err != nil {
-		return "", fmt.Errorf("failed to parse response: %w", err)
-	}
-
-	if len(result.Choices) == 0 {
-		return "", fmt.Errorf("no choices in OpenRouter response")
-	}
-
-	return result.Choices[0].Message.Content, nil
-}
-
-type StreamResult struct {
-	Tokens chan string
-	Done   chan string
-	Err    chan error
-}
-
-func streamOpenRouter(ctx context.Context, apiKey, model, systemPrompt string, messages []map[string]string) *StreamResult {
-	result := &StreamResult{
-		Tokens: make(chan string, 128),
-		Done:   make(chan string, 1),
-		Err:    make(chan error, 1),
-	}
-
-	go func() {
-		defer close(result.Tokens)
-		defer close(result.Done)
-		defer close(result.Err)
-
-		if apiKey == "" {
-			apiKey = os.Getenv("OPENROUTER_API_KEY")
-		}
-		if model == "" {
-			model = os.Getenv("OPENROUTER_MODEL")
-			if model == "" {
-				model = "openrouter/auto"
-			}
-		}
-
-		payload := map[string]interface{}{
-			"model":    model,
-			"messages": append([]map[string]string{{"role": "system", "content": systemPrompt}}, messages...),
-			"stream":   true,
-		}
-
-		jsonData, err := json.Marshal(payload)
-		if err != nil {
-			result.Err <- fmt.Errorf("failed to marshal request: %w", err)
-			return
-		}
-
-		req, err := http.NewRequestWithContext(ctx, "POST", "https://openrouter.ai/api/v1/chat/completions", bytes.NewBuffer(jsonData))
-		if err != nil {
-			result.Err <- fmt.Errorf("failed to create request: %w", err)
-			return
-		}
-
-		req.Header.Set("Authorization", "Bearer "+apiKey)
-		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("HTTP-Referer", "https://lavender-messenger.com")
-
-		client := &http.Client{}
-		resp, err := client.Do(req)
-		if err != nil {
-			result.Err <- fmt.Errorf("OpenRouter request failed: %w", err)
-			return
-		}
-		defer resp.Body.Close()
-
-		if resp.StatusCode != http.StatusOK {
-			body, _ := io.ReadAll(resp.Body)
-			result.Err <- fmt.Errorf("OpenRouter returned %d: %s", resp.StatusCode, string(body))
-			return
-		}
-
-		var fullResponse strings.Builder
-		decoder := json.NewDecoder(resp.Body)
-		for {
-			var chunk struct {
-				Choices []struct {
-					Delta struct {
-						Content string `json:"content"`
-					} `json:"delta"`
-				} `json:"choices"`
-			}
-			if err := decoder.Decode(&chunk); err == io.EOF {
-				break
-			} else if err != nil {
-				result.Err <- fmt.Errorf("error decoding stream: %w", err)
-				return
-			}
-
-			if len(chunk.Choices) > 0 {
-				content := chunk.Choices[0].Delta.Content
-				if content != "" {
-					result.Tokens <- content
-					fullResponse.WriteString(content)
-				}
-			}
-		}
-		result.Done <- fullResponse.String()
-	}()
-
-	return result
-}
-
-// Rate limiter per user
-type rateLimiter struct {
-	mu       sync.Mutex
-	requests map[string][]time.Time
-	limit    int
-	window   time.Duration
-}
-
-func newRateLimiter(limit int, window time.Duration) *rateLimiter {
-	return &rateLimiter{
-		requests: make(map[string][]time.Time),
-		limit:    limit,
-		window:   window,
-	}
-}
-
-func (rl *rateLimiter) allow(userID string) bool {
-	rl.mu.Lock()
-	defer rl.mu.Unlock()
-
-	now := time.Now()
-	cutoff := now.Add(-rl.window)
-
-	var valid []time.Time
-	for _, t := range rl.requests[userID] {
-		if t.After(cutoff) {
-			valid = append(valid, t)
-		}
-	}
-
-	if len(valid) >= rl.limit {
-		rl.requests[userID] = valid
-		return false
-	}
-
-	rl.requests[userID] = append(valid, now)
-	return true
-}
-
 // callOpenRouterContext — context-aware версия callOpenRouter для оркестратора
 func callOpenRouterContext(ctx context.Context, apiKey string, model string, systemPrompt string, messages []map[string]string) (string, error) {
 	if apiKey == "" {
@@ -480,4 +279,43 @@ func streamOpenRouter(ctx context.Context, apiKey string, model string, systemPr
 	}
 
 	return onToken("", true)
+}
+
+// Rate limiter per user
+type rateLimiter struct {
+	mu       sync.Mutex
+	requests map[string][]time.Time
+	limit    int
+	window   time.Duration
+}
+
+func newRateLimiter(limit int, window time.Duration) *rateLimiter {
+	return &rateLimiter{
+		requests: make(map[string][]time.Time),
+		limit:    limit,
+		window:   window,
+	}
+}
+
+func (rl *rateLimiter) allow(userID string) bool {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+
+	now := time.Now()
+	cutoff := now.Add(-rl.window)
+
+	var valid []time.Time
+	for _, t := range rl.requests[userID] {
+		if t.After(cutoff) {
+			valid = append(valid, t)
+		}
+	}
+
+	if len(valid) >= rl.limit {
+		rl.requests[userID] = valid
+		return false
+	}
+
+	rl.requests[userID] = append(valid, now)
+	return true
 }

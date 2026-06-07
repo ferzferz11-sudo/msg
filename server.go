@@ -446,7 +446,7 @@ func (s *server) Typing(stream gen.ChatService_TypingServer) error {
 				RoomId:   currentRoomID,
 				Username: currentTypingUser,
 				IsTyping: false,
-			}); err != nil { log.Printf("Failed to send server info: %v", err) }
+			})
 		}
 		s.hub.UnregisterTyping(stream)
 	}()
@@ -2969,7 +2969,7 @@ func (s *server) ChatWithOWL(req *gen.OWLRequest, stream gen.ChatService_ChatWit
 
 	// Call OpenRouter
 	log.Printf("OWL: calling OpenRouter for chat %s, model=%s, history_len=%d", chatID, model, len(history))
-	response, err := callOpenRouter(apiKey, model, systemPrompt, history)
+	response, err := callOpenRouterContext(context.Background(), apiKey, model, systemPrompt, history)
 	if err != nil {
 		log.Printf("OWL: OpenRouter error for chat %s: %v", chatID, err)
 		return fmt.Errorf("AI service error: %w", err)
@@ -3240,7 +3240,7 @@ func (s *server) ChatWithPipeline(req *gen.PipelineRequest, stream gen.ChatServi
 			return stream.Send(&gen.PipelineResponse{
 				Token:    token,
 				Finished: finished,
-			}); err != nil { log.Printf("Failed to send orchestrator response: %v", err) }
+			})
 		},
 	)
 
@@ -3249,7 +3249,9 @@ func (s *server) ChatWithPipeline(req *gen.PipelineRequest, stream gen.ChatServi
 		if err := stream.Send(&gen.PipelineResponse{
 			Finished: true,
 			Error:    err.Error(),
-		}); err != nil { log.Printf("Failed to send pipeline response: %v", err) }
+		}); err != nil {
+			log.Printf("Failed to send pipeline response: %v", err)
+		}
 		return nil
 	}
 

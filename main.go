@@ -140,7 +140,8 @@ func main() {
 	// Initialize Hermes Multi-Agent Orchestrator
 	hermesRegistry := NewAgentRegistry(db.DB)
 	srv.hermesDB = NewHermesDB(db.DB)
-	srv.hermesOrchestrator = NewOrchestrator(hermesRegistry, db.DB, os.Getenv("OPENROUTER_API_KEY"), os.Getenv("OPENROUTER_MODEL"))
+	orchestrator := NewOrchestrator(hermesRegistry, db.DB, os.Getenv("OPENROUTER_API_KEY"), os.Getenv("OPENROUTER_MODEL"))
+	srv.hermesOrchestrator = orchestrator
 	log.Printf("Hermes Orchestrator initialized with %d agents", len(hermesRegistry.GetAll()))
 
 	// Run Hermes DB migrations
@@ -150,7 +151,7 @@ func main() {
 	gen.RegisterChatServiceServer(s, srv)
 
 	// Register Hermes Agent Service (for hermes-agent daemon connections)
-	hermesAgentServer := newHermesAgentServer(srv)
+	hermesAgentServer := newHermesAgentServer(srv, orchestrator)
 	hermesagent.RegisterHermesAgentServiceServer(s, hermesAgentServer)
 
 	// Register server management service (super admin only)
