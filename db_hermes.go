@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"log"
 	"strings"
+	"time"
 )
 
 // runHermesMigrations создаёт таблицы для Hermes Orchestrator
@@ -30,6 +31,7 @@ func runHermesMigrations(db *sql.DB) {
 		`CREATE TABLE IF NOT EXISTS hermes_sessions (
 			id VARCHAR(255) PRIMARY KEY,
 			user_id TEXT NOT NULL,
+			name TEXT DEFAULT '',
 			active_agent_id TEXT DEFAULT '',
 			agent_mode TEXT DEFAULT 'single', -- single, parallel, pipeline
 			created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -89,6 +91,14 @@ func runHermesMigrations(db *sql.DB) {
 		)`,
 		`CREATE INDEX IF NOT EXISTS idx_hermes_custom_agents_user ON hermes_custom_agents(created_by, is_active)`,
 
+		// Миграция: добавляем недостающие колонки если отсутствуют
+		`DO $$
+		BEGIN
+			ALTER TABLE hermes_custom_agents ADD COLUMN IF NOT EXISTS user_id TEXT;
+			ALTER TABLE hermes_custom_agents ADD COLUMN IF NOT EXISTS preset_id TEXT;
+			UPDATE hermes_custom_agents SET user_id = created_by WHERE user_id IS NULL;
+		END$$;`,
+
 		// Таблица удалённых агентов (реестр)
 		`CREATE TABLE IF NOT EXISTS hermes_remote_agents (
 			id VARCHAR(255) PRIMARY KEY,
@@ -117,12 +127,18 @@ func runHermesMigrations(db *sql.DB) {
 			completed_at TIMESTAMPTZ
 		)`,
 		`CREATE INDEX IF NOT EXISTS idx_hermes_remote_tasks_agent ON hermes_remote_tasks(agent_id, status)`,
+
+		// GRANT permissions for lavender user
+		`GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO lavender`,
+		`GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO lavender`,
+		`ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO lavender`,
+		`ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO lavender`,
 	}
 
 	for _, q := range queries {
 		if _, err := db.Exec(q); err != nil {
 			if !strings.Contains(err.Error(), "must be owner of table") {
-				log.Printf("[Hermes] Migration error: %v", err)
+				log.Printf("[Lava] Migration error: %v", err)
 			}
 		}
 	}
@@ -220,6 +236,65 @@ func (h *HermesDB) GetSessionActiveAgent(sessionID string) string {
 		return ""
 	}
 	return agentID
+}
+
+// GetUserHermesSessions возвращает список hermes-сессий пользователя
+func (h *HermesDB) GetUserHermesSessions(userID string) ([]struct {
+	ID              string
+	Name            string
+	ActiveAgentID   string
+	AgentMode       string
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+	LastMessageText string
+	LastMessageTime time.Time
+}, error) {
+	query := `
+		SELECT s.id, s.name, s.active_agent_id, s.agent_mode, s.created_at, s.updated_at,
+		       COALESCE(m.content, '') as last_message_text,
+		       COALESCE(m.created_at, s.updated_at) as last_message_time
+		FROM hermes_sessions s
+		LEFT JOIN LATERAL (
+			SELECT content, created_at FROM hermes_messages
+			WHERE session_id = s.id AND role = 'assistant'
+			ORDER BY created_at DESC LIMIT 1
+		) m ON true
+		WHERE s.user_id = $1
+		ORDER BY s.updated_at DESC`
+	rows, err := h.db.Query(query, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var res []struct {
+		ID              string
+		Name            string
+		ActiveAgentID   string
+		AgentMode       string
+		CreatedAt       time.Time
+		UpdatedAt       time.Time
+		LastMessageText string
+		LastMessageTime time.Time
+	}
+	for rows.Next() {
+		var r struct {
+			ID              string
+			Name            string
+			ActiveAgentID   string
+			AgentMode       string
+			CreatedAt       time.Time
+			UpdatedAt       time.Time
+			LastMessageText string
+			LastMessageTime time.Time
+		}
+		if err := rows.Scan(&r.ID, &r.Name, &r.ActiveAgentID, &r.AgentMode, &r.CreatedAt, &r.UpdatedAt, &r.LastMessageText, &r.LastMessageTime); err != nil {
+			log.Printf("[HermesDB] GetUserHermesSessions scan error: %v", err)
+			continue
+		}
+		res = append(res, r)
+	}
+	return res, nil
 }
 
 // SaveSession сохраняет или обновляет сессию

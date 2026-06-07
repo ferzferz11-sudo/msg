@@ -43,7 +43,7 @@ func (s *server) CreateSecretChat(ctx context.Context, req *gen.CreateSecretChat
 
 	// Version check: secret chats require client >= 1.0.7.1
 	if req.ClientVersion != "" && compareVersions(req.ClientVersion, "1.0.7.1") < 0 {
-		log.Printf("Secret chat rejected: client %s is too old (need >= 1.0.7.1)", req.ClientVersion)
+// 		log.Printf("Secret chat rejected: client %s is too old (need >= 1.0.7.1)", req.ClientVersion)
 		return &gen.CreateSecretChatResponse{Success: false, Message: "Secret chats require client version 1.0.7.1 or higher"}, fmt.Errorf("client version too old")
 	}
 
@@ -51,7 +51,7 @@ func (s *server) CreateSecretChat(ctx context.Context, req *gen.CreateSecretChat
 	participants := []string{callerUsername, targetUser}
 	err := s.db.CreateSecretChat(chatID, callerUsername+" 🔒 "+targetUser, callerUsername, participants)
 	if err != nil {
-		log.Printf("Failed to create secret chat: %v", err)
+// 		log.Printf("Failed to create secret chat: %v", err)
 		return &gen.CreateSecretChatResponse{Success: false, Message: "Failed to create secret chat"}, err
 	}
 
@@ -60,7 +60,7 @@ func (s *server) CreateSecretChat(ctx context.Context, req *gen.CreateSecretChat
 		_ = s.db.StoreSecretChatKey(chatID, userId, req.PublicKey)
 	}
 
-	log.Printf("Secret chat created: %s (creator: %s, peer: %s)", chatID, callerUsername, targetUser)
+// 	log.Printf("Secret chat created: %s (creator: %s, peer: %s)", chatID, callerUsername, targetUser)
 	return &gen.CreateSecretChatResponse{
 		ChatId:  chatID,
 		Success: true,
@@ -78,7 +78,7 @@ func (s *server) ExchangeSecretKey(ctx context.Context, req *gen.ExchangeSecretK
 	userId, _ := s.db.GetUserIdByUsername(callerUsername)
 	if req.PublicKey != "" && userId != "" {
 		if err := s.db.StoreSecretChatKey(req.ChatId, userId, req.PublicKey); err != nil {
-			log.Printf("Failed to store secret chat key: %v", err)
+// 			log.Printf("Failed to store secret chat key: %v", err)
 			return &gen.ExchangeSecretKeyResponse{Success: false}, err
 		}
 	}
@@ -100,10 +100,10 @@ func (s *server) ExchangeSecretKey(ctx context.Context, req *gen.ExchangeSecretK
 
 	if found && len(keys) >= 2 {
 		_ = s.db.SetSecretChatE2EEReady(req.ChatId, true)
-		log.Printf("E2EE ready for secret chat: %s", req.ChatId)
+// 		log.Printf("E2EE ready for secret chat: %s", req.ChatId)
 	}
 
-	log.Printf("Secret key exchanged for chat: %s (user: %s, peer_found: %v)", req.ChatId, callerUsername, found)
+// 	log.Printf("Secret key exchanged for chat: %s (user: %s, peer_found: %v)", req.ChatId, callerUsername, found)
 	return &gen.ExchangeSecretKeyResponse{
 		Success:       true,
 		PeerPublicKey: peerKey,

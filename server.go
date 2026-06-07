@@ -30,43 +30,24 @@ import (
 	"firebase.google.com/go/v4/messaging"
 )
 
-const ServerVersion = "1.1.0.13"
+const ServerVersion = "1.1.0.15"
 
 // server implements the gRPC ChatService interface
 type server struct {
-	// Embed the unimplemented server for forward compatibility.
 	gen.UnimplementedChatServiceServer
+	hub          *Hub          // Hub for managing client connections
+	db           *DB           // Database for message persistence
+	firebaseApp  *firebase.App // Firebase Admin SDK instance
+	recentMsgs   sync.Map      // Cache for deduplicating identical rapid messages
+	recentErrors sync.Map      // map[string]time.Time to prevent duplicate error logs
+	fcmLogs      []*gen.FCMLogEntry
+	fcmLogsMu    sync.Mutex
+	owlModel     string        // Default OWL model
+	owlApiKey    string        // Default OpenRouter API key
 
-	// hub manages client connections for real-time messaging.
-	hub *Hub
-
-	// db provides PostgreSQL database access for message persistence.
-	db *DB
-
-	// hermesDB provides access to Hermes orchestrator tables.
-	hermesDB *HermesDB
-
-	// firebaseApp is the Firebase Admin SDK instance for push notifications.
-	firebaseApp *firebase.App
-
-	// recentMsgs provides a cache for deduplicating identical rapid messages.
-	recentMsgs sync.Map
-
-	// recentErrors prevents duplicate error logs within a 30-second window.
-	recentErrors sync.Map
-
-	// fcmLogs stores FCM log entries for the log viewer.
-	fcmLogs   []*gen.FCMLogEntry
-	fcmLogsMu sync.Mutex
-
-	// owlModel is the default OWL model string.
-	owlModel string
-
-	// owlApiKey is the OpenRouter API key for OWL.
-	owlApiKey string
-
-	// hermesOrchestrator handles AI agent routing and execution.
+	// Hermes Orchestrator
 	hermesOrchestrator *Orchestrator
+	hermesDB           *HermesDB
 }
 
 func (s *server) logErrorOnce(key string, format string, v ...interface{}) {
@@ -231,10 +212,10 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 				Id:        uuid.New().String(),
 				CreatedAt: timestamppb.Now(),
 			}
-			_ = stream.Send(serverInfoMsg)
+			if err := stream.Send(serverInfoMsg); err != nil { log.Printf("Failed to send server info: %v", err) }
 
-			// Inform the user about their admin status (use userId UUID, not username)
-			if connectedUserID != "" && s.db.IsSuperAdmin(connectedUserID) {
+			// Inform the user about their admin status (check by user_id first, then username)
+			if s.db.IsSuperAdmin(connectedUserID) || s.db.IsSuperAdmin(msg.User) {
 				statusMsg := &gen.Message{
 					User:         "SYSTEM",
 					Text:         "SET_SUPER_ADMIN",
@@ -465,7 +446,7 @@ func (s *server) Typing(stream gen.ChatService_TypingServer) error {
 				RoomId:   currentRoomID,
 				Username: currentTypingUser,
 				IsTyping: false,
-			})
+			}); err != nil { log.Printf("Failed to send server info: %v", err) }
 		}
 		s.hub.UnregisterTyping(stream)
 	}()
@@ -1089,58 +1070,63 @@ func (s *server) GetChats(_ context.Context, req *gen.GetChatsRequest) (*gen.Get
 		}
 	}
 
-	// Add Hermes AI chats from database (search by creator_id = userId UUID)
+	// Add Hermes sessions as hermes-type chats
 	if queryIdentifier != "" && queryIdentifier != "00000000-0000-0000-0000-000000000000" {
-		hermesRows, err := s.db.Query(
-			"SELECT c.id, c.name, c.type, c.participants, c.created_at, c.creator_username, c.last_message_text, c.last_message_time, c.agent_id FROM chats c WHERE c.type = 'hermes' AND c.creator_id = $1 ORDER BY c.created_at ASC",
-			queryIdentifier,
-		)
+		hermesRows, err := s.db.Query(`
+			SELECT s.id, s.name, s.active_agent_id, s.agent_mode, s.created_at, s.updated_at,
+			       COALESCE(m.content, '') as last_message_text,
+			       COALESCE(m.created_at, s.updated_at) as last_message_time
+			FROM hermes_sessions s
+			LEFT JOIN LATERAL (
+				SELECT content, created_at FROM hermes_messages
+				WHERE session_id = s.id AND role = 'assistant'
+				ORDER BY created_at DESC LIMIT 1
+			) m ON true
+			WHERE s.user_id = $1
+			ORDER BY s.updated_at DESC`, queryIdentifier)
 		if err == nil {
 			for hermesRows.Next() {
-				var c gen.ChatInfo
-				var createdAt time.Time
-				var lastMsg sql.NullString
+				var id, name, agentID, mode, lastMsg string
+				var createdAt, updatedAt time.Time
 				var lastMsgTime sql.NullTime
-				var agentID sql.NullString
-				if err := hermesRows.Scan(&c.Id, &c.Name, &c.Type, &c.Participants, &createdAt, &c.Creator, &lastMsg, &lastMsgTime, &agentID); err == nil {
-					c.CreatedAt = timestamppb.New(createdAt)
+				if err := hermesRows.Scan(&id, &name, &agentID, &mode, &createdAt, &updatedAt, &lastMsg, &lastMsgTime); err == nil {
+					lastMsgTS := updatedAt
 					if lastMsgTime.Valid {
-						c.LastMessageTime = timestamppb.New(lastMsgTime.Time)
-					} else {
-						c.LastMessageTime = timestamppb.New(createdAt)
+						lastMsgTS = lastMsgTime.Time
 					}
-					if lastMsg.Valid {
-						c.LastMessageText = lastMsg.String
-					}
-					if agentID.Valid {
-						c.ActiveAgentId = agentID.String
-					}
-					// Get agent_mode from hermes_sessions if available
-					if s.hermesDB != nil {
-						if mode := s.hermesDB.GetSessionActiveAgent(c.Id); mode != "" {
-							// mode is actually active_agent_id from hermes_sessions
-						}
-					}
-					chatInfos = append(chatInfos, &c)
+					chatInfos = append(chatInfos, &gen.ChatInfo{
+						Id:              id,
+						Name:            name,
+						Type:            "hermes",
+						ActiveAgentId:   agentID,
+						AgentMode:       mode,
+						CreatedAt:       timestamppb.New(createdAt),
+						LastMessageTime: timestamppb.New(lastMsgTS),
+						LastMessageText: lastMsg,
+					})
 				}
 			}
 			hermesRows.Close()
 		}
 	}
 
-	// Favorites is now handled client-side (created locally by ChatListActivity)
-	// Do not inject here to avoid duplicate
-	// Prepend special chats (owl + hermes + favorites) at the beginning
-	specialChats := make([]*gen.ChatInfo, 0)
+	// Prepend OWL chats, append Hermes sessions at the end
+	// (owl chats are already in chatInfos from the DB query above,
+	//  hermes sessions were just added — rebuild the slice)
+	owlChats := make([]*gen.ChatInfo, 0)
 	regularChats := make([]*gen.ChatInfo, 0)
+	hermesChats := make([]*gen.ChatInfo, 0)
 	for _, c := range chatInfos {
-		if c.Type == "owl" || c.Type == "hermes" || c.Type == "favorites" {
-			specialChats = append(specialChats, c)
+		if c.Type == "owl" {
+			owlChats = append(owlChats, c)
+		} else if c.Type == "hermes" {
+			hermesChats = append(hermesChats, c)
 		} else {
 			regularChats = append(regularChats, c)
 		}
 	}
-	chatInfos = append(specialChats, regularChats...)
+	chatInfos = append(owlChats, regularChats...)
+	chatInfos = append(chatInfos, hermesChats...)
 
 	return &gen.GetChatsResponse{Chats: chatInfos}, nil
 }
@@ -1285,13 +1271,9 @@ func (s *server) AdminUpdatePassword(_ context.Context, req *gen.AdminUpdatePass
 		}
 	}
 
-	// Verify admin status — use userId UUID if available, fallback to username
-	adminID := req.AdminUserId
-	if adminID == "" {
-		adminID = req.AdminUsername
-	}
-	if !s.db.IsSuperAdmin(adminID) {
-		log.Printf("Unauthorized AdminUpdatePassword attempt by %s (id=%s)", req.AdminUsername, req.AdminUserId)
+	// Verify admin status
+	if !s.db.IsSuperAdmin(adminUsername) {
+		log.Printf("Unauthorized AdminUpdatePassword attempt by %s", adminUsername)
 		return &gen.AdminUpdatePasswordResponse{
 			Success: false,
 			Message: "Unauthorized: only super admins can reset passwords",
@@ -3139,58 +3121,6 @@ func (s *server) UpdateOwlSettings(_ context.Context, req *gen.UpdateOwlSettings
 	return &gen.UpdateOwlSettingsResponse{Success: true, Message: "OK"}, nil
 }
 
-// truncateString truncates a string to maxLen characters, adding "..." if truncated
-func truncateString(s string, maxLen int) string {
-	if len(s) <= maxLen {
-		return s
-	}
-	return s[:maxLen] + "..."
-}
-
-func (s *server) CreateHermesSession(ctx context.Context, req *gen.CreateHermesSessionRequest) (*gen.CreateHermesSessionResponse, error) {
-	log.Printf("[Hermes] CreateHermesSession: req.UserId=%s agentId=%s mode=%s", req.UserId, req.AgentId, req.Mode)
-	if req.UserId == "" {
-		return nil, fmt.Errorf("user_id is required")
-	}
-
-	// Resolve userId: if it looks like a UUID use directly, otherwise lookup by username
-	userID := req.UserId
-	if !strings.Contains(userID, "-") {
-		// It's a username — resolve to UUID
-		uid, err := s.db.GetUserIdByUsername(userID)
-		if err != nil || uid == "" {
-			return nil, fmt.Errorf("user not found: %s", userID)
-		}
-		userID = uid
-		log.Printf("[Hermes] CreateHermesSession: resolved username %s → userId %s", req.UserId, userID)
-	}
-
-	// Check if user already has a hermes chat — return existing one (search by creator_id = userId)
-	var existingID string
-	err := s.db.QueryRow("SELECT id FROM chats WHERE type='hermes' AND creator_id=$1 LIMIT 1", userID).Scan(&existingID)
-	if err == nil && existingID != "" {
-		log.Printf("[Hermes] CreateHermesSession: returning existing chat %s", existingID)
-		return &gen.CreateHermesSessionResponse{
-			SessionId: existingID,
-			Success:   true,
-			Message:   "existing session",
-		}, nil
-	}
-
-	sessionID := "hermes-" + userID + "-" + uuid.New().String()[:8]
-	err = s.db.CreateHermesSession(sessionID, userID, req.AgentId, req.Mode)
-	if err != nil {
-		log.Printf("[Hermes] CreateHermesSession FAILED: %v", err)
-		return nil, fmt.Errorf("failed to create hermes session: %w", err)
-	}
-
-	log.Printf("[Hermes] CreateHermesSession SUCCESS: sessionId=%s", sessionID)
-	return &gen.CreateHermesSessionResponse{
-		SessionId: sessionID,
-		Success:   true,
-	}, nil
-}
-
 // ======= Hermes Multi-Agent Orchestrator gRPC methods =======
 
 // ChatWithOrchestrator — основной метод: стриминг ответов оркестратора
@@ -3205,27 +3135,33 @@ func (s *server) ChatWithOrchestrator(req *gen.OrchestratorRequest, stream gen.C
 		chatID = "hermes-" + userID
 	}
 
-	log.Printf("[Lava] ChatWithOrchestrator: chat=%s user=%s msg=%q", chatID, userID, truncateString(req.Message, 80))
+	log.Printf("[Lava] chat=%s user=%s session=%s msg=%q", chatID, userID, req.SessionId, truncateString(req.Message, 80))
 
-	// Rate limit check
+	// Rate limit check (reuse OWL rate limiter)
 	if !owlRateLimiter.allow(userID) {
 		return status.Error(codes.ResourceExhausted, "rate limit exceeded: max 10 requests per minute")
 	}
 
-	// Check orchestrator
+	// Check if orchestrator is initialized
 	if s.hermesOrchestrator == nil {
 		return status.Error(codes.Unavailable, "orchestrator not initialized")
 	}
 
-	// Handle /help command
+	// Welcome message: only send if user explicitly asks /help
+	// (removed auto-welcome on first message to avoid spam)
+
+	// Handle /help command — send welcome message with agent list
 	if strings.TrimSpace(req.Message) == "/help" {
 		welcomeMsg := s.buildWelcomeMessage()
+		log.Printf("[Lava] sending /help welcome message for user=%s", userID)
 		if err := stream.Send(&gen.OrchestratorResponse{
 			Token:    welcomeMsg,
 			Finished: true,
 		}); err != nil {
+			log.Printf("[Lava] /help send error: %v", err)
 			return err
 		}
+		// Save to DB
 		if s.hermesDB != nil {
 			s.hermesDB.SaveOrchestratorMessage(chatID, userID, "user", "", req.Message)
 			s.hermesDB.SaveOrchestratorMessage(chatID, userID, "assistant", "", welcomeMsg)
@@ -3233,8 +3169,9 @@ func (s *server) ChatWithOrchestrator(req *gen.OrchestratorRequest, stream gen.C
 		return nil
 	}
 
-	// Run orchestrator
+	// Run orchestrator — collect full response for DB saving
 	var fullResponse strings.Builder
+	log.Printf("[Lava] calling Orchestrate for user=%s chat=%s", userID, chatID)
 	err := s.hermesOrchestrator.Orchestrate(stream.Context(), userID, chatID, req.Message,
 		func(token string, finished bool) error {
 			if !finished && token != "" {
@@ -3248,67 +3185,123 @@ func (s *server) ChatWithOrchestrator(req *gen.OrchestratorRequest, stream gen.C
 
 	if err != nil {
 		log.Printf("[Lava] orchestrator error for user %s: %v", userID, err)
-		_ = stream.Send(&gen.OrchestratorResponse{
+		if err := stream.Send(&gen.OrchestratorResponse{
 			Token:    "",
 			Finished: true,
 			Error:    err.Error(),
-		})
+		}); err != nil { log.Printf("Failed to send orchestrator response: %v", err) }
 		return nil
 	}
 
-	// Save to DB
+	// Save user message to DB
 	if s.hermesDB != nil {
 		s.hermesDB.SaveOrchestratorMessage(chatID, userID, "user", "", req.Message)
-		assistantResponse := fullResponse.String()
-		if idx := strings.Index(assistantResponse, "] "); idx >= 0 && idx < 30 {
-			assistantResponse = assistantResponse[idx+2:]
-		}
-		if assistantResponse != "" {
-			s.hermesDB.SaveOrchestratorMessage(chatID, userID, "assistant", "", assistantResponse)
-		}
 	}
 
-	log.Printf("[Lava] ChatWithOrchestrator completed for user=%s", userID)
+	// Save assistant response to DB (strip agent prefix like "[Support] ")
+	assistantResponse := fullResponse.String()
+	if idx := strings.Index(assistantResponse, "] "); idx >= 0 && idx < 30 {
+		assistantResponse = assistantResponse[idx+2:]
+	}
+	if assistantResponse != "" && s.hermesDB != nil {
+		s.hermesDB.SaveOrchestratorMessage(chatID, userID, "assistant", "", assistantResponse)
+	}
+
+	log.Printf("[Lava] Orchestrate completed for user=%s", userID)
+	return nil
+}
+
+// ChatWithPipeline — новый метод: RAG + LLM + Tool Calling pipeline
+func (s *server) ChatWithPipeline(req *gen.PipelineRequest, stream gen.ChatService_ChatWithPipelineServer) error {
+	userID := req.UserId
+	if userID == "" {
+		return status.Error(codes.InvalidArgument, "user_id is required")
+	}
+
+	// Rate limit check
+	if !owlRateLimiter.allow(userID) {
+		return status.Error(codes.ResourceExhausted, "rate limit exceeded: max 10 requests per minute")
+	}
+
+	if s.hermesOrchestrator == nil {
+		return status.Error(codes.Unavailable, "orchestrator not initialized")
+	}
+
+	log.Printf("[Pipeline] user=%s msg=%q images=%d model_hint=%q",
+		userID, truncateString(req.Message, 80), len(req.Images), req.ModelHint)
+
+	// Запускаем pipeline
+	err := s.hermesOrchestrator.ProcessWithPipeline(
+		stream.Context(),
+		userID,
+		req.Message,
+		req.Images,
+		func(token string, finished bool) error {
+			return stream.Send(&gen.PipelineResponse{
+				Token:    token,
+				Finished: finished,
+			}); err != nil { log.Printf("Failed to send orchestrator response: %v", err) }
+		},
+	)
+
+	if err != nil {
+		log.Printf("[Pipeline] error for user %s: %v", userID, err)
+		if err := stream.Send(&gen.PipelineResponse{
+			Finished: true,
+			Error:    err.Error(),
+		}); err != nil { log.Printf("Failed to send pipeline response: %v", err) }
+		return nil
+	}
+
 	return nil
 }
 
 // buildWelcomeMessage формирует приветственное сообщение со списком агентов
 func (s *server) buildWelcomeMessage() string {
-	if s.hermesOrchestrator == nil {
-		return "🎼 Lava AI Orchestrator is not available."
+	if s.hermesOrchestrator == nil || s.hermesOrchestrator.registry == nil {
+		return "Добро пожаловать в Лава ИИ! Оркестратор временно недоступен."
 	}
 
-	agents := s.hermesOrchestrator.registry.GetAll()
 	var sb strings.Builder
-	sb.WriteString("🎼 **Lava AI Orchestrator**\n\n")
-	sb.WriteString("Available agents:\n")
-	for _, a := range agents {
-		sb.WriteString(fmt.Sprintf("- %s: %s\n", a.Name, a.Description))
+	sb.WriteString("👋 Добро пожаловать в **Лава ИИ** — мульти-агентный AI оркестратор!\n\n")
+	sb.WriteString("Я автоматически маршрутизирую ваши запросы к специализированным агентам.\n\n")
+	sb.WriteString("**Доступные агенты:**\n")
+
+	for _, agent := range s.hermesOrchestrator.registry.GetAll() {
+		icon := agent.Icon
+		if icon == "" {
+			icon = "🤖"
+		}
+		sb.WriteString(fmt.Sprintf("%s **%s** — %s\n", icon, agent.Name, agent.Description))
 	}
-	sb.WriteString("\nUse @agent_name to address a specific agent.\n")
-	sb.WriteString("Commands: /help, /status")
+
+	sb.WriteString("\nПросто напишите ваш вопрос, и я выберу подходящего агента!\n")
+	sb.WriteString("Или укажите агента напрямую: `@developer напиши код...`")
+
 	return sb.String()
 }
 
 // GetOrchestratorHistory — история сообщений с оркестратором
 func (s *server) GetOrchestratorHistory(_ context.Context, req *gen.GetOrchestratorHistoryRequest) (*gen.GetOrchestratorHistoryResponse, error) {
+	userID := req.UserId
+	if userID == "" {
+		return nil, status.Error(codes.InvalidArgument, "user_id is required")
+	}
+
 	if s.hermesOrchestrator == nil {
 		return &gen.GetOrchestratorHistoryResponse{}, nil
 	}
 
-	session := s.hermesOrchestrator.getSession(req.SessionId)
-	if session == nil {
-		return &gen.GetOrchestratorHistoryResponse{}, nil
-	}
-
+	session := s.hermesOrchestrator.getOrCreateSession(userID)
 	session.mu.Lock()
 	defer session.mu.Unlock()
 
-	messages := make([]*gen.OrchestratorHistoryMessage, 0, len(session.Messages))
+	messages := make([]*gen.HermesChatMessage, 0, len(session.Messages))
 	for _, msg := range session.Messages {
-		messages = append(messages, &gen.OrchestratorHistoryMessage{
-			Role:    msg.Role,
-			Content: msg.Content,
+		messages = append(messages, &gen.HermesChatMessage{
+			Role:      msg.Role,
+			Content:   msg.Content,
+			CreatedAt: time.Now().Format(time.RFC3339),
 		})
 	}
 
@@ -3326,6 +3319,7 @@ func (s *server) ListAgents(_ context.Context, req *gen.ListAgentsRequest) (*gen
 		return &gen.ListAgentsResponse{}, nil
 	}
 
+	// Load custom agents from DB
 	rows, err := s.db.Query(
 		"SELECT id, name, COALESCE(system_prompt, ''), COALESCE(model, ''), COALESCE(max_tokens, 2048) FROM hermes_custom_agents WHERE user_id = $1 ORDER BY created_at ASC",
 		userID)
@@ -3504,4 +3498,124 @@ func (s *server) ListUserAgents(_ context.Context, req *gen.ListUserAgentsReques
 	}
 
 	return &gen.ListUserAgentsResponse{Agents: result}, nil
+}
+
+// CreateHermesSession — создание новой сессии с оркестратором
+func (s *server) CreateHermesSession(_ context.Context, req *gen.CreateHermesSessionRequest) (*gen.CreateHermesSessionResponse, error) {
+	userID := req.UserId
+	log.Printf("[Lava] CreateHermesSession: user_id=%q name=%q", userID, req.Name)
+	if userID == "" {
+		log.Printf("[Lava] CreateHermesSession: ERROR empty user_id")
+		return &gen.CreateHermesSessionResponse{Success: false, Error: "user_id is required"}, nil
+	}
+
+	sessionID := "hermes-" + userID + "-" + uuid.New().String()[:8]
+
+	name := req.Name
+	if name == "" {
+		name = "Lava AI"
+	}
+
+	_, err := s.db.Exec(
+		"INSERT INTO hermes_sessions (id, user_id, name) VALUES ($1, $2, $3)",
+		sessionID, userID, name,
+	)
+	if err != nil {
+		log.Printf("[Lava] CreateHermesSession: DB error: %v", err)
+		return &gen.CreateHermesSessionResponse{Success: false, Error: err.Error()}, nil
+	}
+
+	log.Printf("[Lava] CreateHermesSession: OK session_id=%s", sessionID)
+	return &gen.CreateHermesSessionResponse{Success: true, SessionId: sessionID}, nil
+}
+
+// DeleteHermesSession — удаление сессии
+func (s *server) DeleteHermesSession(_ context.Context, req *gen.DeleteHermesSessionRequest) (*gen.DeleteHermesSessionResponse, error) {
+	if req.SessionId == "" || req.UserId == "" {
+		return &gen.DeleteHermesSessionResponse{Success: false, Error: "session_id and user_id required"}, nil
+	}
+
+	_, err := s.db.Exec("DELETE FROM hermes_sessions WHERE id = $1 AND user_id = $2", req.SessionId, req.UserId)
+	if err != nil {
+		return &gen.DeleteHermesSessionResponse{Success: false, Error: err.Error()}, nil
+	}
+
+	return &gen.DeleteHermesSessionResponse{Success: true}, nil
+}
+
+// ListRemoteAgents — список удалённых агентов
+func (s *server) ListRemoteAgents(_ context.Context, _ *gen.ListRemoteAgentsRequest) (*gen.ListRemoteAgentsResponse, error) {
+	if s.hermesOrchestrator == nil || s.hermesOrchestrator.remoteManager == nil {
+		return &gen.ListRemoteAgentsResponse{}, nil
+	}
+
+	agents := s.hermesOrchestrator.remoteManager.GetAllAgents()
+	result := make([]*gen.RemoteAgentInfo, 0, len(agents))
+	for _, a := range agents {
+		result = append(result, &gen.RemoteAgentInfo{
+			Id:            a.ID,
+			Name:          a.Name,
+			Host:          a.Host,
+			IpAddress:     a.IPAddress,
+			Os:            a.OS,
+			Status:        a.Status,
+			Capabilities:  a.Capabilities,
+			ActiveTasks:   int32(a.ActiveTasks),
+			LastHeartbeat: a.LastHeartbeat.Format(time.RFC3339),
+		})
+	}
+
+	return &gen.ListRemoteAgentsResponse{Agents: result}, nil
+}
+
+// DeployAgentTask — отправка задачи удалённому агенту
+func (s *server) DeployAgentTask(_ context.Context, req *gen.DeployAgentTaskRequest) (*gen.DeployAgentTaskResponse, error) {
+	if s.hermesOrchestrator == nil || s.hermesOrchestrator.remoteManager == nil {
+		return &gen.DeployAgentTaskResponse{Success: false, Error: "remote manager not available"}, nil
+	}
+
+	taskID := uuid.New().String()[:12]
+	task := &RemoteTask{
+		ID:          taskID,
+		Type:        req.TaskType,
+		Params:      req.Params,
+		WorkingDir:  req.WorkingDir,
+		TimeoutSec:  int(req.TimeoutSec),
+		StreamOutput: true,
+	}
+
+	if err := s.hermesOrchestrator.remoteManager.SendTask(task); err != nil {
+		return &gen.DeployAgentTaskResponse{Success: false, Error: err.Error()}, nil
+	}
+
+	return &gen.DeployAgentTaskResponse{
+		Success: true,
+		TaskId:  taskID,
+	}, nil
+}
+
+// GetRemoteAgentStatus — статус удалённого агента
+func (s *server) GetRemoteAgentStatus(_ context.Context, req *gen.GetRemoteAgentStatusRequest) (*gen.GetRemoteAgentStatusResponse, error) {
+	if s.hermesOrchestrator == nil || s.hermesOrchestrator.remoteManager == nil {
+		return &gen.GetRemoteAgentStatusResponse{Status: "unavailable"}, nil
+	}
+
+	agent := s.hermesOrchestrator.remoteManager.GetAgent(req.AgentId)
+	if agent == nil {
+		return &gen.GetRemoteAgentStatusResponse{Status: "not_found"}, nil
+	}
+
+	return &gen.GetRemoteAgentStatusResponse{
+		Status:        agent.Status,
+		ActiveTasks:   int32(agent.ActiveTasks),
+		LastHeartbeat: agent.LastHeartbeat.Format(time.RFC3339),
+	}, nil
+}
+
+// truncateString truncates a string to maxLen characters, adding "..." if truncated
+func truncateString(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	return s[:maxLen] + "..."
 }

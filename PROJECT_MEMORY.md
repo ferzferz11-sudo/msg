@@ -1,6 +1,6 @@
 # Lavender Messenger — Project Memory
 # Created: 2026-05-28
-# Updated: 2026-07-15
+# Updated: 2026-06-04 — Hermes Orchestrator v1.1.0.12 (Unified Chat Widget)
 
 ## Репозитории
 
@@ -8,64 +8,70 @@
 - **Git:** `ferzferz11-sudo/msg`
 - **Dev сервер:** `13.140.25.249`, путь `/root/msg`
 - **Production:** `159.195.38.145`, путь `/root/LavenderMessenger/run`
-- **Ветка:** `feat/1.1.0.x` (dev), `main` (prod)
+- **Ветка:** `main`
 - **PostgreSQL:** user `lavender`, database `chat_db` (prod), `chat_db_dev` (dev)
 - **systemd:** `lavender-server.service` (prod), `lavender-server-dev.service` (dev)
 
 ### Клиент (Android)
 - **Git:** `ferzferz11-sudo/msg.client.android`
 - **Dev сервер:** `/root/msg.client.android` на `13.140.25.249`
-- **Ветка:** `feat/1.1.0.x`
-- **Сборка:** `./gradlew compileDebugKotlin` (НЕ assembleRelease — OOM kill)
+- **Ветка:** `master`
 
-## Ключевые серверные файлы
+## Сервер — ключевые файлы
 
-| Файл | Назначение | Строк |
-|------|-----------|-------|
-| `main.go` | gRPC + HTTP серверы, точка входа | ~200 |
-| `server.go` | Основные gRPC хендлеры + agent management + orchestrator | ~3440 |
-| `hermes_orchestrator.go` | Оркестратор — маршрутизация к агентам | ~500 |
-| `hermes_agents.go` | Реестр агентов, пресеты, CRUD кастомных агентов | ~450 |
-| `hermes_remote_manager.py` | Remote agent daemon, heartbeat, task dispatch | ~300 |
-| `db_hermes.go` | Миграции hermes_* таблиц | ~230 |
-| `db.go` | PostgreSQL, основные миграции | ~300 |
-| `hub.go` — менеджер подключений | ~350 |
-| `messenger.proto` | gRPC определения | ~960 |
-| `gen/messenger.pb.go` | Сгенерированный код (НЕ редактировать) | ~9500 |
-| `hermes_agent_service.go` | HermesAgentService — подключение agent daemon | ~200 |
-| `owl.go` | OWL AI streaming | ~1500 |
-| `secret_chat.go` | E2EE хендлеры | ~200 |
-| `http_server.go` | HTTP (8083 dev, 8081 prod) | ~250 |
-| `crypto.go` | AES-256-GCM + bcrypt | ~150 |
+### Ядро
+- `main.go` — gRPC + HTTP серверы, точка входа
+- `server.go` — основные gRPC хендлеры (~3550 строк)
+- `secret_chat.go` — E2EE хендлеры
+- `server_management.go` — мультисерверность, админ RPC
+- `db.go` — PostgreSQL, миграции
+- `hub.go` — менеджер подключений
+- `http_server.go` — HTTP (8081 APK, 8082 uploads)
+- `crypto.go` — AES-256-GCM + bcrypt
+- `email.go` — email уведомления
 
-## Ключевые клиентские файлы
+### Hermes Orchestrator (v1.1.0.15)
+- `hermes_orchestrator.go` — оркестратор, LLM Router + RAG + Pipeline init
+- `hermes_agents.go` — реестр агентов (8 агентов: 7 пресетов + hermes-owl)
+- `hermes_remote_manager.go` — remote agents (heartbeat, tasks)
+- `hermes_agent_service.go` — bidirectional stream для hermes-agent daemon (НЕ РЕАЛИЗОВАНО)
+- `db_hermes.go` — миграции Hermes таблиц
+- `owl.go` — OWL AI assistant
 
-| Файл | Назначение | Строк |
-|------|-----------|-------|
-| `RealGrpcClient.kt` | gRPC клиент (protobuf-lite ручный парсинг) | ~3000 |
-| `GrpcClient.kt` — фасад | ~430 |
-| `ChatListActivity.kt` | Главный экран — список чатов | ~2750 |
-| `SessionManager.kt` | Логин, регистрация, сессия | ~280 |
-| `HermesChatActivity.kt` | Чат с оркестратором | ~800 |
-| `AgentListActivity.kt` | Список агентов | ~240 |
-| `AgentListViewModel.kt` | VM для агентов | ~100 |
-| `HermesRepository.kt` | Репозиторий агентов | ~80 |
-| `HermesGrpc.kt` | Hermes gRPC вызовы | ~830 |
-| `CredentialStore` | EncryptedSharedPreferences | ~60 |
+### Core (Ports & Adapters)
+- `core/llm/provider.go` — LLMProvider, LLMRouter, SimpleRouter, StreamChunk, Message interfaces
+- `core/llm/openrouter/provider.go` — OpenRouter SSE provider (tool calls, multimodal)
+- `core/llm/hermes/provider.go` — Hermes local provider (`hermes chat -q --quiet`)
+- `core/rag/interfaces.go` — EmbeddingService, VectorSearch, RAGPipeline interfaces
+- `core/rag/memory/memory.go` — in-memory RAG (TF-IDF, 384 dim, cosine similarity)
+- `core/rag/memory/memory_test.go` — unit тесты RAG (4 теста)
+- `core/pipeline/pipeline.go` — RAG → LLM → Tool Calling loop (adaptive, max 10)
+- `core/tools/executor.go` — DefaultToolExecutor (search_messages, search_users, web_search, get_chat_info)
+
+## Клиент — ключевые файлы
+
+- `RealGrpcClient.kt` — gRPC (~3000 строк, protobuf-lite ручной парсинг)
+- `GrpcClient.kt` — фасад
+- `CredentialStore.kt` — EncryptedSharedPreferences (server_address, key)
+- `SessionManager.kt` — StateFlow<UserSession>
+- `E2EEManager.kt` — ECDH + AES-256-GCM
+- `data/db/` — Room (AppDatabase, Daos, Entities)
+- `ChatViewModel.kt` / `ChatListViewModel.kt` — MVVM
+- `theme/` — система тем
 
 ## Версионирование
 
-- Android: `versionCode` 1100150, `versionName` 1.1.0.15
-- Сервер: `const ServerVersion = "1.1.0.10"`
+- Android: `version.txt` в корне
+- Сервер: `const ServerVersion` в server.go
 - versionCode = major*1000000 + minor*10000 + patch*100 + build
 
 ## Технический стек
 
 ### Сервер
-- Go 1.26+, gRPC, PostgreSQL, Firebase Cloud Messaging
-- AES-256-GCM, bcrypt, keepalive 15s/10s
+- Go 1.26, gRPC, PostgreSQL, Firebase Cloud Messaging
+- AES-256-GCM, bcrypt, keepalive 20s/20s
 - systemd сервис, .env конфигурация
-- OpenRouter API (AI агенты) — prod key working, dev key invalid (401)
+- Hermes Agent v0.14.0 (Python 3.11.15) — локальный LLM провайдер
 
 ### Клиент
 - Kotlin, gRPC (protobuf-lite manual), Room, Firebase, WebRTC
@@ -73,73 +79,51 @@
 - MVVM + StateFlow + ViewBinding
 - Material Design 3
 
-## Архитектура Hermes Orchestrator
+## Архитектурные решения
 
-```
-Android → gRPC → ChatService_ChatWithOrchestrator → HermesOrchestrator.Orchestrate()
-                                         │
-                                         ├── Registry (8 agents: 7 preset + OWL fallback)
-                                         │     ├── Developer (💻), Analyst, Security, DevOps (🔧)
-                                         │     ├── Architect (🏗️), Support, QA Engineer
-                                         │     └── hermes-owl (AI Assistant)
-                                         ├── OpenRouter API → LLM response
-                                         └── RemoteAgentManager (heartbeat, tasks)
-```
+### E2EE Secret Chats
+- ECDH (secp256r1) обмен ключами
+- AES-256-GCM шифрование
+- Сервер НЕ может расшифровать
 
-## Конфигурация dev/prod
+### Credential Storage
+- EncryptedSharedPreferences (AndroidX Security)
+- Авто-миграция из plaintext
 
-### Dev
-- gRPC port: 50052, HTTP: 8083
-- DB: `chat_db_dev`
-- Binary: `/root/LavenderMessenger/run/lavender-server-dev`
-- `.env.dev`: `OPENROUTER_MODEL=openrouter/owl-alpha`
-- Log monitor: `server-logs-dev` (port гарантирован)
+### Мультисерверность
+- `ListServers` RPC (публичный)
+- Admin методы используют `AdminAuth`
+- Android: CredentialStore хранит server_address
 
-### Prod
-- gRPC port: 50051, HTTP: 8081
-- DB: `chat_db`
-- Binary: `/root/LavenderMessenger/run/lavender-server`
-- `.env`: `OPENROUTER_MODEL=openrouter/owl-alpha`
+### Обратная совместимость
+- Новые proto поля — optional (proto3)
+- Новые RPC — старые клиенты не вызывают
 
-## Полезные команды
+### Hermes Orchestrator — LLM Router
+- OpenRouter (default) — SSE streaming, tool calls, multimodal images
+- Hermes local (prefix=local/) — CLI wrapper, stateless, session через --resume
+- Регистрация: `llmRouter.Register(llm.RouteRule{ModelPrefix, Provider, Priority})`
 
-```bash
-# Proto generation
-cd /root/msg
-protoc --go_out=./gen --go_opt=paths=source_relative --go-grpc_out=./gen --go-grpc_opt=paths=source_relative messenger.proto
-# НЕ использовать --go_out=. — генерирует в корень, ломает сборку
+### Hermes Orchestrator — RAG Pipeline
+- Интерфейсы: EmbeddingService, VectorSearch, RAGPipeline
+- Текущая реализация: in-memory TF-IDF (384 dim)
+- Production план: Qdrant + CLIP для мультимодальных эмбеддингов
 
-# Dev server rebuild + deploy
-export PATH=$PATH:/usr/local/go/bin:~/go/bin
-go build -o /tmp/lavender-server-dev .
-systemctl stop lavender-server-dev && cp /tmp/lavender-server-dev /root/LavenderMessenger/run/lavender-server-dev && systemctl start lavender-server-dev
+### Hermes Orchestrator — Tool Executor
+- search_messages: ILIKE по messages таблице
+- search_users: поиск по username/display_name/phone
+- web_search: DuckDuckGo Instant Answer API
+- get_chat_info: имя чата, тип, количество участников
 
-# Prod server rebuild + deploy
-export PATH=$PATH:/usr/local/go/bin:~/go/bin
-go build -o /root/msg/run/lavender-server .
-systemctl stop lavender-server && cp /root/msg/run/lavender-server /root/LavenderMessenger/run/lavender-server && systemctl start lavender-server
+### Hermes Orchestrator — Pipeline
+- Адаптивный tool calling loop: max 10 итераций (страховка)
+- Цикл продолжается пока LLM вызывает tools
+- Останавливается когда LLM даёт финальный ответ без tool calls
 
-# Log monitor rebuild + deploy
-cd /root/msg/log-monitor
-go build -o /root/LavenderMessenger/run/log-monitor-dev log-monitor-dev.go
-systemctl restart log-monitor-dev
-
-# Android build (LOCAL Mac, NOT server — OOM kill)
-cd /Users/paveld/LavenderMessenger-Android
-./gradlew assembleDebug
-# или ./gradlew compileDebugKotlin для проверки компиляции
-```
-
-## Deployment rules
-
-- **Сервер:** OWL деплоит на dev напрямую через systemctl
-- **Android:** OWL коммитит и пушит, пользователь собирает локально на Mac
-- **НЕ запускать** `./gradlew assembleRelease` на сервере — OOM kill (нужно 2GB+)
-- **НЕ редактировать** `gen/` файлы — перегенерировать через protoc
-
-## Credentials & Environment
-
-- SSH: `ssh root@13.140.25.249` (dev), `ssh root@159.195.38.145` (prod)
-- Git access: HTTPS token for `ferzferz11-sudo/msg` and `ferzferz11-sudo/msg.client.android`
-- PostgreSQL user: `lavender`
-- Firebase: project `lavender-messenger`
+### Android — Unified Chat Widget (v1.1.0.12)
+- **layout/widget_chat.xml** — единый layout для NewChatActivity и HermesChatActivity
+- **layout/item_chat_message.xml** — универсальный item (user/agent/system/typing/date)
+- **ui/chat/widget/ChatMessageAdapter.kt** — единый адаптер с DiffUtil
+- **ui/chat/widget/ChatWidget.kt** — ViewBinding обёртка с общим API
+- **HermesChatActivity** — агенты как участники группового чата (emoji + name)
+- **ChatMessageItem** — универсальная data class для всех типов сообщений

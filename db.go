@@ -158,6 +158,21 @@ func ConnectDB() (*DB, error) {
 
 func (db *DB) Close() error { return db.DB.Close() }
 
+// Query — прокси к sql.DB.Query
+func (db *DB) Query(query string, args ...interface{}) (*sql.Rows, error) {
+	return db.DB.Query(query, args...)
+}
+
+// QueryRow — прокси к sql.DB.QueryRow
+func (db *DB) QueryRow(query string, args ...interface{}) *sql.Row {
+	return db.DB.QueryRow(query, args...)
+}
+
+// Exec — прокси к sql.DB.Exec
+func (db *DB) Exec(query string, args ...interface{}) (sql.Result, error) {
+	return db.DB.Exec(query, args...)
+}
+
 func (db *DB) SaveMessage(mid, user, uid string, enc []byte, created time.Time, rmid, ruser, rtext, room, img, imgUrls, voice string, dur int32, isE2EE ...bool) error {
 	// Favorites messages are to self, so mark as read immediately
 	isRead := strings.HasPrefix(room, "favorites_")
@@ -278,12 +293,15 @@ func (db *DB) SaveUser(user, hash string) error {
 	return err
 }
 
-func (db *DB) IsSuperAdmin(userID string) bool {
+func (db *DB) IsSuperAdmin(user string) bool {
 	var a bool
-	err := db.QueryRow(`SELECT is_super_admin FROM users WHERE id=$1`, userID).Scan(&a)
-	if err != nil {
-		return false
+	// Сначала пробуем найти по UUID (user_id)
+	err := db.QueryRow(`SELECT is_super_admin FROM users WHERE id=$1`, user).Scan(&a)
+	if err == nil && a {
+		return true
 	}
+	// Fallback: ищем по username
+	db.QueryRow(`SELECT is_super_admin FROM users WHERE username=$1`, user).Scan(&a)
 	return a
 }
 
@@ -1131,10 +1149,10 @@ func (db *DB) GetCallDuration(callID string) (int, error) {
 
 // GetActiveCallsByUser returns all active/pending calls where user is caller or receiver
 func (db *DB) GetActiveCallsByUser(userID string) ([]struct {
-	CallID     string
-	CallerID   string
+	CallID    string
+	CallerID  string
 	ReceiverID string
-	RoomID     string
+	RoomID    string
 }, error) {
 	rows, err := db.Query(`SELECT id, caller_id::text, receiver_id::text, COALESCE(room_id, '') FROM calls WHERE (caller_id = $1::uuid OR receiver_id = $1::uuid) AND status IN ('pending', 'active')`, userID)
 	if err != nil {
@@ -1142,17 +1160,17 @@ func (db *DB) GetActiveCallsByUser(userID string) ([]struct {
 	}
 	defer rows.Close()
 	var calls []struct {
-		CallID     string
-		CallerID   string
+		CallID    string
+		CallerID  string
 		ReceiverID string
-		RoomID     string
+		RoomID    string
 	}
 	for rows.Next() {
 		var c struct {
-			CallID     string
-			CallerID   string
+			CallID    string
+			CallerID  string
 			ReceiverID string
-			RoomID     string
+			RoomID    string
 		}
 		if err := rows.Scan(&c.CallID, &c.CallerID, &c.ReceiverID, &c.RoomID); err == nil {
 			calls = append(calls, c)
@@ -1329,21 +1347,4 @@ func (db *DB) DeleteServer(id string) error {
 	}
 	_, err = db.Exec(`DELETE FROM servers WHERE id = $1`, id)
 	return err
-}
-
-func (db *DB) CreateHermesSession(sessionID, userID, agentID, mode string) error {
-	log.Printf("[HermesDB] CreateHermesSession: sessionID=%s userID=%s agentID=%s mode=%s", sessionID, userID, agentID, mode)
-	_, err := db.Exec(`INSERT INTO hermes_sessions (id, user_id, active_agent_id, agent_mode) VALUES ($1, $2, $3, $4)`, sessionID, userID, agentID, mode)
-	if err != nil {
-		log.Printf("[HermesDB] CreateHermesSession hermes_sessions error: %v", err)
-		return err
-	}
-	// Also create a chat entry so it appears in the chat list (use creator_id = userId UUID)
-	_, err = db.Exec(`INSERT INTO chats (id, name, type, participants, creator_id, agent_id) VALUES ($1, 'Lava AI', 'hermes', '["' || $2 || '"]', $2, $3) ON CONFLICT (id) DO NOTHING`, sessionID, userID, agentID)
-	if err != nil {
-		log.Printf("[HermesDB] CreateHermesSession chats error: %v", err)
-	} else {
-		log.Printf("[HermesDB] CreateHermesSession chats inserted OK")
-	}
-	return nil
 }

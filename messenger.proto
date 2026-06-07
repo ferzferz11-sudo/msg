@@ -704,17 +704,39 @@ service ChatService {
   rpc UpdateOwlSettings(UpdateOwlSettingsRequest) returns (UpdateOwlSettingsResponse);
 
   // Hermes Multi-Agent Orchestrator
-  rpc CreateHermesSession(CreateHermesSessionRequest) returns (CreateHermesSessionResponse);
   rpc ChatWithOrchestrator(OrchestratorRequest) returns (stream OrchestratorResponse);
   rpc GetOrchestratorHistory(GetOrchestratorHistoryRequest) returns (GetOrchestratorHistoryResponse);
-
-  // Agent management
-  rpc ListAgentPresets(ListAgentPresetsRequest) returns (ListAgentPresetsResponse);
   rpc ListAgents(ListAgentsRequest) returns (ListAgentsResponse);
-  rpc ListUserAgents(ListUserAgentsRequest) returns (ListUserAgentsResponse);
+  rpc ListAgentPresets(ListAgentPresetsRequest) returns (ListAgentPresetsResponse);
   rpc CreateAgent(CreateAgentRequest) returns (CreateAgentResponse);
   rpc UpdateAgent(UpdateAgentRequest) returns (UpdateAgentResponse);
   rpc DeleteAgent(DeleteAgentRequest) returns (DeleteAgentResponse);
+  rpc ListUserAgents(ListUserAgentsRequest) returns (ListUserAgentsResponse);
+  rpc CreateHermesSession(CreateHermesSessionRequest) returns (CreateHermesSessionResponse);
+  rpc DeleteHermesSession(DeleteHermesSessionRequest) returns (DeleteHermesSessionResponse);
+  rpc ListRemoteAgents(ListRemoteAgentsRequest) returns (ListRemoteAgentsResponse);
+  rpc DeployAgentTask(DeployAgentTaskRequest) returns (DeployAgentTaskResponse);
+  rpc GetRemoteAgentStatus(GetRemoteAgentStatusRequest) returns (GetRemoteAgentStatusResponse);
+
+  // Hermes AI Pipeline (RAG + LLM + Tool Calling)
+  rpc ChatWithPipeline(PipelineRequest) returns (stream PipelineResponse);
+}
+
+// ======= AI Pipeline Messages =======
+
+message PipelineRequest {
+  string user_id = 1;
+  string session_id = 2;
+  string message = 3;
+  repeated bytes images = 4; // Raw image bytes for multimodal RAG
+  string model_hint = 5;     // "openrouter/auto", "local/hermes", etc.
+}
+
+message PipelineResponse {
+  string token = 1;
+  bool finished = 2;
+  string error = 3;
+  bool has_rag_context = 4;  // Indicates if RAG context was used
 }
 
 // ======= Secret Chat Messages =======
@@ -819,84 +841,53 @@ message OWLResponse {
 
 // ======= Hermes Multi-Agent Orchestrator messages =======
 
-message CreateHermesSessionRequest {
-  string user_id = 1;
-  string agent_id = 2;
-  string mode = 3;
-}
-
-message CreateHermesSessionResponse {
-  string session_id = 1;
-  bool success = 2;
-  string message = 3;
-}
-
 message OrchestratorRequest {
   string user_id = 1;
   string session_id = 2;
   string message = 3;
-  string agent_id = 4;
-  string mode = 5;
+  string agent_id = 4; // Optional: force specific agent
 }
 
 message OrchestratorResponse {
   string token = 1;
   bool finished = 2;
   string error = 3;
-  string agent_id = 4;
-  string agent_name = 5;
+}
+
+message HermesChatMessage {
+  string role = 1; // "user", "assistant", "system"
+  string content = 2;
+  string created_at = 3;
 }
 
 message GetOrchestratorHistoryRequest {
-  string session_id = 1;
-  int32 limit = 2;
-}
-
-message OrchestratorHistoryMessage {
-  string role = 1;
-  string content = 2;
-  string agent_id = 3;
-  string agent_name = 4;
-  string created_at = 5;
+  string user_id = 1;
+  string session_id = 2;
 }
 
 message GetOrchestratorHistoryResponse {
-  repeated OrchestratorHistoryMessage messages = 1;
+  repeated HermesChatMessage messages = 1;
 }
 
-// Agent preset info
+message AgentInfo {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  bool is_preset = 4;
+  string system_prompt = 5;
+  string model = 6;
+  int32 max_tokens = 7;
+}
+
 message AgentPresetInfo {
   string id = 1;
   string name = 2;
   string role = 3;
   string description = 4;
-  string icon = 5;
+  string icon = 5; // emoji
   int32 max_tokens = 6;
 }
 
-// Agent info (custom agent)
-message AgentInfo {
-  string id = 1;
-  string name = 2;
-  string description = 3;
-  string role = 4;
-  string system_prompt = 5;
-  string model = 6;
-  int32 max_tokens = 7;
-  bool is_preset = 8;
-  string icon = 9;
-}
-
-// ListAgentPresets
-message ListAgentPresetsRequest {
-  bool dummy = 1;
-}
-
-message ListAgentPresetsResponse {
-  repeated AgentPresetInfo presets = 1;
-}
-
-// ListAgents (custom agents for user)
 message ListAgentsRequest {
   string user_id = 1;
 }
@@ -905,16 +896,12 @@ message ListAgentsResponse {
   repeated AgentInfo agents = 1;
 }
 
-// ListUserAgents (presets + custom)
-message ListUserAgentsRequest {
-  string user_id = 1;
+message ListAgentPresetsRequest {}
+
+message ListAgentPresetsResponse {
+  repeated AgentPresetInfo presets = 1;
 }
 
-message ListUserAgentsResponse {
-  repeated AgentInfo agents = 1;
-}
-
-// CreateAgent
 message CreateAgentRequest {
   string user_id = 1;
   string preset_id = 2;
@@ -930,10 +917,9 @@ message CreateAgentResponse {
   string error = 3;
 }
 
-// UpdateAgent
 message UpdateAgentRequest {
-  string user_id = 1;
-  string agent_id = 2;
+  string agent_id = 1;
+  string user_id = 2;
   string name = 3;
   string system_prompt = 4;
   string model = 5;
@@ -945,13 +931,83 @@ message UpdateAgentResponse {
   string error = 2;
 }
 
-// DeleteAgent
 message DeleteAgentRequest {
-  string user_id = 1;
-  string agent_id = 2;
+  string agent_id = 1;
+  string user_id = 2;
 }
 
 message DeleteAgentResponse {
   bool success = 1;
   string error = 2;
+}
+
+message ListUserAgentsRequest {
+  string user_id = 1;
+}
+
+message ListUserAgentsResponse {
+  repeated AgentInfo agents = 1;
+}
+
+message CreateHermesSessionRequest {
+  string user_id = 1;
+  string name = 2;
+}
+
+message CreateHermesSessionResponse {
+  bool success = 1;
+  string session_id = 2;
+  string error = 3;
+}
+
+message DeleteHermesSessionRequest {
+  string session_id = 1;
+  string user_id = 2;
+}
+
+message DeleteHermesSessionResponse {
+  bool success = 1;
+  string error = 2;
+}
+
+message RemoteAgentInfo {
+  string id = 1;
+  string name = 2;
+  string host = 3;
+  string ip_address = 4;
+  string os = 5;
+  string status = 6;
+  repeated string capabilities = 7;
+  int32 active_tasks = 8;
+  string last_heartbeat = 9;
+}
+
+message ListRemoteAgentsRequest {}
+
+message ListRemoteAgentsResponse {
+  repeated RemoteAgentInfo agents = 1;
+}
+
+message DeployAgentTaskRequest {
+  string agent_id = 1;
+  string task_type = 2;
+  map<string, string> params = 3;
+  string working_dir = 4;
+  int32 timeout_sec = 5;
+}
+
+message DeployAgentTaskResponse {
+  bool success = 1;
+  string task_id = 2;
+  string error = 3;
+}
+
+message GetRemoteAgentStatusRequest {
+  string agent_id = 1;
+}
+
+message GetRemoteAgentStatusResponse {
+  string status = 1;
+  int32 active_tasks = 2;
+  string last_heartbeat = 3;
 }

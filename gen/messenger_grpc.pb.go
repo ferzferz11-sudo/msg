@@ -80,15 +80,20 @@ const (
 	ChatService_DeleteOwlChat_FullMethodName          = "/messenger.ChatService/DeleteOwlChat"
 	ChatService_GetOwlHistory_FullMethodName          = "/messenger.ChatService/GetOwlHistory"
 	ChatService_UpdateOwlSettings_FullMethodName      = "/messenger.ChatService/UpdateOwlSettings"
-	ChatService_CreateHermesSession_FullMethodName    = "/messenger.ChatService/CreateHermesSession"
 	ChatService_ChatWithOrchestrator_FullMethodName   = "/messenger.ChatService/ChatWithOrchestrator"
 	ChatService_GetOrchestratorHistory_FullMethodName = "/messenger.ChatService/GetOrchestratorHistory"
-	ChatService_ListAgentPresets_FullMethodName       = "/messenger.ChatService/ListAgentPresets"
 	ChatService_ListAgents_FullMethodName             = "/messenger.ChatService/ListAgents"
-	ChatService_ListUserAgents_FullMethodName         = "/messenger.ChatService/ListUserAgents"
+	ChatService_ListAgentPresets_FullMethodName       = "/messenger.ChatService/ListAgentPresets"
 	ChatService_CreateAgent_FullMethodName            = "/messenger.ChatService/CreateAgent"
 	ChatService_UpdateAgent_FullMethodName            = "/messenger.ChatService/UpdateAgent"
 	ChatService_DeleteAgent_FullMethodName            = "/messenger.ChatService/DeleteAgent"
+	ChatService_ListUserAgents_FullMethodName         = "/messenger.ChatService/ListUserAgents"
+	ChatService_CreateHermesSession_FullMethodName    = "/messenger.ChatService/CreateHermesSession"
+	ChatService_DeleteHermesSession_FullMethodName    = "/messenger.ChatService/DeleteHermesSession"
+	ChatService_ListRemoteAgents_FullMethodName       = "/messenger.ChatService/ListRemoteAgents"
+	ChatService_DeployAgentTask_FullMethodName        = "/messenger.ChatService/DeployAgentTask"
+	ChatService_GetRemoteAgentStatus_FullMethodName   = "/messenger.ChatService/GetRemoteAgentStatus"
+	ChatService_ChatWithPipeline_FullMethodName       = "/messenger.ChatService/ChatWithPipeline"
 )
 
 // ChatServiceClient is the client API for ChatService service.
@@ -159,16 +164,21 @@ type ChatServiceClient interface {
 	GetOwlHistory(ctx context.Context, in *GetOwlHistoryRequest, opts ...grpc.CallOption) (*GetOwlHistoryResponse, error)
 	UpdateOwlSettings(ctx context.Context, in *UpdateOwlSettingsRequest, opts ...grpc.CallOption) (*UpdateOwlSettingsResponse, error)
 	// Hermes Multi-Agent Orchestrator
-	CreateHermesSession(ctx context.Context, in *CreateHermesSessionRequest, opts ...grpc.CallOption) (*CreateHermesSessionResponse, error)
 	ChatWithOrchestrator(ctx context.Context, in *OrchestratorRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[OrchestratorResponse], error)
 	GetOrchestratorHistory(ctx context.Context, in *GetOrchestratorHistoryRequest, opts ...grpc.CallOption) (*GetOrchestratorHistoryResponse, error)
-	// Agent management
-	ListAgentPresets(ctx context.Context, in *ListAgentPresetsRequest, opts ...grpc.CallOption) (*ListAgentPresetsResponse, error)
 	ListAgents(ctx context.Context, in *ListAgentsRequest, opts ...grpc.CallOption) (*ListAgentsResponse, error)
-	ListUserAgents(ctx context.Context, in *ListUserAgentsRequest, opts ...grpc.CallOption) (*ListUserAgentsResponse, error)
+	ListAgentPresets(ctx context.Context, in *ListAgentPresetsRequest, opts ...grpc.CallOption) (*ListAgentPresetsResponse, error)
 	CreateAgent(ctx context.Context, in *CreateAgentRequest, opts ...grpc.CallOption) (*CreateAgentResponse, error)
 	UpdateAgent(ctx context.Context, in *UpdateAgentRequest, opts ...grpc.CallOption) (*UpdateAgentResponse, error)
 	DeleteAgent(ctx context.Context, in *DeleteAgentRequest, opts ...grpc.CallOption) (*DeleteAgentResponse, error)
+	ListUserAgents(ctx context.Context, in *ListUserAgentsRequest, opts ...grpc.CallOption) (*ListUserAgentsResponse, error)
+	CreateHermesSession(ctx context.Context, in *CreateHermesSessionRequest, opts ...grpc.CallOption) (*CreateHermesSessionResponse, error)
+	DeleteHermesSession(ctx context.Context, in *DeleteHermesSessionRequest, opts ...grpc.CallOption) (*DeleteHermesSessionResponse, error)
+	ListRemoteAgents(ctx context.Context, in *ListRemoteAgentsRequest, opts ...grpc.CallOption) (*ListRemoteAgentsResponse, error)
+	DeployAgentTask(ctx context.Context, in *DeployAgentTaskRequest, opts ...grpc.CallOption) (*DeployAgentTaskResponse, error)
+	GetRemoteAgentStatus(ctx context.Context, in *GetRemoteAgentStatusRequest, opts ...grpc.CallOption) (*GetRemoteAgentStatusResponse, error)
+	// Lava AI Pipeline (RAG + LLM + Tool Calling)
+	ChatWithPipeline(ctx context.Context, in *PipelineRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[PipelineResponse], error)
 }
 
 type chatServiceClient struct {
@@ -807,16 +817,6 @@ func (c *chatServiceClient) UpdateOwlSettings(ctx context.Context, in *UpdateOwl
 	return out, nil
 }
 
-func (c *chatServiceClient) CreateHermesSession(ctx context.Context, in *CreateHermesSessionRequest, opts ...grpc.CallOption) (*CreateHermesSessionResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(CreateHermesSessionResponse)
-	err := c.cc.Invoke(ctx, ChatService_CreateHermesSession_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *chatServiceClient) ChatWithOrchestrator(ctx context.Context, in *OrchestratorRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[OrchestratorResponse], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	stream, err := c.cc.NewStream(ctx, &ChatService_ServiceDesc.Streams[4], ChatService_ChatWithOrchestrator_FullMethodName, cOpts...)
@@ -846,16 +846,6 @@ func (c *chatServiceClient) GetOrchestratorHistory(ctx context.Context, in *GetO
 	return out, nil
 }
 
-func (c *chatServiceClient) ListAgentPresets(ctx context.Context, in *ListAgentPresetsRequest, opts ...grpc.CallOption) (*ListAgentPresetsResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ListAgentPresetsResponse)
-	err := c.cc.Invoke(ctx, ChatService_ListAgentPresets_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *chatServiceClient) ListAgents(ctx context.Context, in *ListAgentsRequest, opts ...grpc.CallOption) (*ListAgentsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListAgentsResponse)
@@ -866,10 +856,10 @@ func (c *chatServiceClient) ListAgents(ctx context.Context, in *ListAgentsReques
 	return out, nil
 }
 
-func (c *chatServiceClient) ListUserAgents(ctx context.Context, in *ListUserAgentsRequest, opts ...grpc.CallOption) (*ListUserAgentsResponse, error) {
+func (c *chatServiceClient) ListAgentPresets(ctx context.Context, in *ListAgentPresetsRequest, opts ...grpc.CallOption) (*ListAgentPresetsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ListUserAgentsResponse)
-	err := c.cc.Invoke(ctx, ChatService_ListUserAgents_FullMethodName, in, out, cOpts...)
+	out := new(ListAgentPresetsResponse)
+	err := c.cc.Invoke(ctx, ChatService_ListAgentPresets_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -905,6 +895,85 @@ func (c *chatServiceClient) DeleteAgent(ctx context.Context, in *DeleteAgentRequ
 	}
 	return out, nil
 }
+
+func (c *chatServiceClient) ListUserAgents(ctx context.Context, in *ListUserAgentsRequest, opts ...grpc.CallOption) (*ListUserAgentsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListUserAgentsResponse)
+	err := c.cc.Invoke(ctx, ChatService_ListUserAgents_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) CreateHermesSession(ctx context.Context, in *CreateHermesSessionRequest, opts ...grpc.CallOption) (*CreateHermesSessionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateHermesSessionResponse)
+	err := c.cc.Invoke(ctx, ChatService_CreateHermesSession_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) DeleteHermesSession(ctx context.Context, in *DeleteHermesSessionRequest, opts ...grpc.CallOption) (*DeleteHermesSessionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteHermesSessionResponse)
+	err := c.cc.Invoke(ctx, ChatService_DeleteHermesSession_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) ListRemoteAgents(ctx context.Context, in *ListRemoteAgentsRequest, opts ...grpc.CallOption) (*ListRemoteAgentsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListRemoteAgentsResponse)
+	err := c.cc.Invoke(ctx, ChatService_ListRemoteAgents_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) DeployAgentTask(ctx context.Context, in *DeployAgentTaskRequest, opts ...grpc.CallOption) (*DeployAgentTaskResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeployAgentTaskResponse)
+	err := c.cc.Invoke(ctx, ChatService_DeployAgentTask_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) GetRemoteAgentStatus(ctx context.Context, in *GetRemoteAgentStatusRequest, opts ...grpc.CallOption) (*GetRemoteAgentStatusResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetRemoteAgentStatusResponse)
+	err := c.cc.Invoke(ctx, ChatService_GetRemoteAgentStatus_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) ChatWithPipeline(ctx context.Context, in *PipelineRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[PipelineResponse], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &ChatService_ServiceDesc.Streams[5], ChatService_ChatWithPipeline_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[PipelineRequest, PipelineResponse]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type ChatService_ChatWithPipelineClient = grpc.ServerStreamingClient[PipelineResponse]
 
 // ChatServiceServer is the server API for ChatService service.
 // All implementations must embed UnimplementedChatServiceServer
@@ -974,16 +1043,21 @@ type ChatServiceServer interface {
 	GetOwlHistory(context.Context, *GetOwlHistoryRequest) (*GetOwlHistoryResponse, error)
 	UpdateOwlSettings(context.Context, *UpdateOwlSettingsRequest) (*UpdateOwlSettingsResponse, error)
 	// Hermes Multi-Agent Orchestrator
-	CreateHermesSession(context.Context, *CreateHermesSessionRequest) (*CreateHermesSessionResponse, error)
 	ChatWithOrchestrator(*OrchestratorRequest, grpc.ServerStreamingServer[OrchestratorResponse]) error
 	GetOrchestratorHistory(context.Context, *GetOrchestratorHistoryRequest) (*GetOrchestratorHistoryResponse, error)
-	// Agent management
-	ListAgentPresets(context.Context, *ListAgentPresetsRequest) (*ListAgentPresetsResponse, error)
 	ListAgents(context.Context, *ListAgentsRequest) (*ListAgentsResponse, error)
-	ListUserAgents(context.Context, *ListUserAgentsRequest) (*ListUserAgentsResponse, error)
+	ListAgentPresets(context.Context, *ListAgentPresetsRequest) (*ListAgentPresetsResponse, error)
 	CreateAgent(context.Context, *CreateAgentRequest) (*CreateAgentResponse, error)
 	UpdateAgent(context.Context, *UpdateAgentRequest) (*UpdateAgentResponse, error)
 	DeleteAgent(context.Context, *DeleteAgentRequest) (*DeleteAgentResponse, error)
+	ListUserAgents(context.Context, *ListUserAgentsRequest) (*ListUserAgentsResponse, error)
+	CreateHermesSession(context.Context, *CreateHermesSessionRequest) (*CreateHermesSessionResponse, error)
+	DeleteHermesSession(context.Context, *DeleteHermesSessionRequest) (*DeleteHermesSessionResponse, error)
+	ListRemoteAgents(context.Context, *ListRemoteAgentsRequest) (*ListRemoteAgentsResponse, error)
+	DeployAgentTask(context.Context, *DeployAgentTaskRequest) (*DeployAgentTaskResponse, error)
+	GetRemoteAgentStatus(context.Context, *GetRemoteAgentStatusRequest) (*GetRemoteAgentStatusResponse, error)
+	// Lava AI Pipeline (RAG + LLM + Tool Calling)
+	ChatWithPipeline(*PipelineRequest, grpc.ServerStreamingServer[PipelineResponse]) error
 	mustEmbedUnimplementedChatServiceServer()
 }
 
@@ -1177,23 +1251,17 @@ func (UnimplementedChatServiceServer) GetOwlHistory(context.Context, *GetOwlHist
 func (UnimplementedChatServiceServer) UpdateOwlSettings(context.Context, *UpdateOwlSettingsRequest) (*UpdateOwlSettingsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateOwlSettings not implemented")
 }
-func (UnimplementedChatServiceServer) CreateHermesSession(context.Context, *CreateHermesSessionRequest) (*CreateHermesSessionResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method CreateHermesSession not implemented")
-}
 func (UnimplementedChatServiceServer) ChatWithOrchestrator(*OrchestratorRequest, grpc.ServerStreamingServer[OrchestratorResponse]) error {
 	return status.Errorf(codes.Unimplemented, "method ChatWithOrchestrator not implemented")
 }
 func (UnimplementedChatServiceServer) GetOrchestratorHistory(context.Context, *GetOrchestratorHistoryRequest) (*GetOrchestratorHistoryResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetOrchestratorHistory not implemented")
 }
-func (UnimplementedChatServiceServer) ListAgentPresets(context.Context, *ListAgentPresetsRequest) (*ListAgentPresetsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListAgentPresets not implemented")
-}
 func (UnimplementedChatServiceServer) ListAgents(context.Context, *ListAgentsRequest) (*ListAgentsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListAgents not implemented")
 }
-func (UnimplementedChatServiceServer) ListUserAgents(context.Context, *ListUserAgentsRequest) (*ListUserAgentsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListUserAgents not implemented")
+func (UnimplementedChatServiceServer) ListAgentPresets(context.Context, *ListAgentPresetsRequest) (*ListAgentPresetsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListAgentPresets not implemented")
 }
 func (UnimplementedChatServiceServer) CreateAgent(context.Context, *CreateAgentRequest) (*CreateAgentResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateAgent not implemented")
@@ -1203,6 +1271,27 @@ func (UnimplementedChatServiceServer) UpdateAgent(context.Context, *UpdateAgentR
 }
 func (UnimplementedChatServiceServer) DeleteAgent(context.Context, *DeleteAgentRequest) (*DeleteAgentResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteAgent not implemented")
+}
+func (UnimplementedChatServiceServer) ListUserAgents(context.Context, *ListUserAgentsRequest) (*ListUserAgentsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListUserAgents not implemented")
+}
+func (UnimplementedChatServiceServer) CreateHermesSession(context.Context, *CreateHermesSessionRequest) (*CreateHermesSessionResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateHermesSession not implemented")
+}
+func (UnimplementedChatServiceServer) DeleteHermesSession(context.Context, *DeleteHermesSessionRequest) (*DeleteHermesSessionResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteHermesSession not implemented")
+}
+func (UnimplementedChatServiceServer) ListRemoteAgents(context.Context, *ListRemoteAgentsRequest) (*ListRemoteAgentsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListRemoteAgents not implemented")
+}
+func (UnimplementedChatServiceServer) DeployAgentTask(context.Context, *DeployAgentTaskRequest) (*DeployAgentTaskResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeployAgentTask not implemented")
+}
+func (UnimplementedChatServiceServer) GetRemoteAgentStatus(context.Context, *GetRemoteAgentStatusRequest) (*GetRemoteAgentStatusResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetRemoteAgentStatus not implemented")
+}
+func (UnimplementedChatServiceServer) ChatWithPipeline(*PipelineRequest, grpc.ServerStreamingServer[PipelineResponse]) error {
+	return status.Errorf(codes.Unimplemented, "method ChatWithPipeline not implemented")
 }
 func (UnimplementedChatServiceServer) mustEmbedUnimplementedChatServiceServer() {}
 func (UnimplementedChatServiceServer) testEmbeddedByValue()                     {}
@@ -2283,24 +2372,6 @@ func _ChatService_UpdateOwlSettings_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ChatService_CreateHermesSession_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CreateHermesSessionRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ChatServiceServer).CreateHermesSession(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ChatService_CreateHermesSession_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ChatServiceServer).CreateHermesSession(ctx, req.(*CreateHermesSessionRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _ChatService_ChatWithOrchestrator_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(OrchestratorRequest)
 	if err := stream.RecvMsg(m); err != nil {
@@ -2330,24 +2401,6 @@ func _ChatService_GetOrchestratorHistory_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ChatService_ListAgentPresets_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListAgentPresetsRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ChatServiceServer).ListAgentPresets(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ChatService_ListAgentPresets_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ChatServiceServer).ListAgentPresets(ctx, req.(*ListAgentPresetsRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _ChatService_ListAgents_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListAgentsRequest)
 	if err := dec(in); err != nil {
@@ -2366,20 +2419,20 @@ func _ChatService_ListAgents_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ChatService_ListUserAgents_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListUserAgentsRequest)
+func _ChatService_ListAgentPresets_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListAgentPresetsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ChatServiceServer).ListUserAgents(ctx, in)
+		return srv.(ChatServiceServer).ListAgentPresets(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ChatService_ListUserAgents_FullMethodName,
+		FullMethod: ChatService_ListAgentPresets_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ChatServiceServer).ListUserAgents(ctx, req.(*ListUserAgentsRequest))
+		return srv.(ChatServiceServer).ListAgentPresets(ctx, req.(*ListAgentPresetsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2437,6 +2490,125 @@ func _ChatService_DeleteAgent_Handler(srv interface{}, ctx context.Context, dec 
 	}
 	return interceptor(ctx, in, info, handler)
 }
+
+func _ChatService_ListUserAgents_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListUserAgentsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).ListUserAgents(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_ListUserAgents_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).ListUserAgents(ctx, req.(*ListUserAgentsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_CreateHermesSession_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateHermesSessionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).CreateHermesSession(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_CreateHermesSession_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).CreateHermesSession(ctx, req.(*CreateHermesSessionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_DeleteHermesSession_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteHermesSessionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).DeleteHermesSession(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_DeleteHermesSession_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).DeleteHermesSession(ctx, req.(*DeleteHermesSessionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_ListRemoteAgents_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListRemoteAgentsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).ListRemoteAgents(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_ListRemoteAgents_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).ListRemoteAgents(ctx, req.(*ListRemoteAgentsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_DeployAgentTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeployAgentTaskRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).DeployAgentTask(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_DeployAgentTask_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).DeployAgentTask(ctx, req.(*DeployAgentTaskRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_GetRemoteAgentStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetRemoteAgentStatusRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).GetRemoteAgentStatus(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_GetRemoteAgentStatus_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).GetRemoteAgentStatus(ctx, req.(*GetRemoteAgentStatusRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_ChatWithPipeline_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(PipelineRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(ChatServiceServer).ChatWithPipeline(m, &grpc.GenericServerStream[PipelineRequest, PipelineResponse]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type ChatService_ChatWithPipelineServer = grpc.ServerStreamingServer[PipelineResponse]
 
 // ChatService_ServiceDesc is the grpc.ServiceDesc for ChatService service.
 // It's only intended for direct use with grpc.RegisterService,
@@ -2674,24 +2846,16 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _ChatService_UpdateOwlSettings_Handler,
 		},
 		{
-			MethodName: "CreateHermesSession",
-			Handler:    _ChatService_CreateHermesSession_Handler,
-		},
-		{
 			MethodName: "GetOrchestratorHistory",
 			Handler:    _ChatService_GetOrchestratorHistory_Handler,
-		},
-		{
-			MethodName: "ListAgentPresets",
-			Handler:    _ChatService_ListAgentPresets_Handler,
 		},
 		{
 			MethodName: "ListAgents",
 			Handler:    _ChatService_ListAgents_Handler,
 		},
 		{
-			MethodName: "ListUserAgents",
-			Handler:    _ChatService_ListUserAgents_Handler,
+			MethodName: "ListAgentPresets",
+			Handler:    _ChatService_ListAgentPresets_Handler,
 		},
 		{
 			MethodName: "CreateAgent",
@@ -2704,6 +2868,30 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteAgent",
 			Handler:    _ChatService_DeleteAgent_Handler,
+		},
+		{
+			MethodName: "ListUserAgents",
+			Handler:    _ChatService_ListUserAgents_Handler,
+		},
+		{
+			MethodName: "CreateHermesSession",
+			Handler:    _ChatService_CreateHermesSession_Handler,
+		},
+		{
+			MethodName: "DeleteHermesSession",
+			Handler:    _ChatService_DeleteHermesSession_Handler,
+		},
+		{
+			MethodName: "ListRemoteAgents",
+			Handler:    _ChatService_ListRemoteAgents_Handler,
+		},
+		{
+			MethodName: "DeployAgentTask",
+			Handler:    _ChatService_DeployAgentTask_Handler,
+		},
+		{
+			MethodName: "GetRemoteAgentStatus",
+			Handler:    _ChatService_GetRemoteAgentStatus_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
@@ -2733,6 +2921,11 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "ChatWithOrchestrator",
 			Handler:       _ChatService_ChatWithOrchestrator_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "ChatWithPipeline",
+			Handler:       _ChatService_ChatWithPipeline_Handler,
 			ServerStreams: true,
 		},
 	},

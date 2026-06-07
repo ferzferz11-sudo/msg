@@ -284,7 +284,7 @@ func (r *HermesAgentRegistry) GetAll() []*AgentDefinition {
 	return result
 }
 
-// GetPresets возвращает только пресет-агентов
+// GetPresets возвращает все пресет-агенты (для ListAgentPresets RPC)
 func (r *HermesAgentRegistry) GetPresets() []*AgentDefinition {
 	result := make([]*AgentDefinition, 0)
 	for _, a := range r.agents {
@@ -295,12 +295,60 @@ func (r *HermesAgentRegistry) GetPresets() []*AgentDefinition {
 	return result
 }
 
-// LoadCustomAgents перезагружает кастомных агентов из БД (публичный метод)
+// LoadCustomAgents загружает кастомных агентов из БД и добавляет в реестр
 func (r *HermesAgentRegistry) LoadCustomAgents(db *sql.DB) {
-	if db != nil {
-		r.db = db
+	if db == nil {
+		return
 	}
-	r.loadCustomAgents()
+	rows, err := db.Query(
+		"SELECT id, user_id, preset_id, name, COALESCE(system_prompt, ''), COALESCE(model, ''), COALESCE(max_tokens, 2048) FROM hermes_custom_agents ORDER BY created_at ASC")
+	if err != nil {
+		log.Printf("[Lava] LoadCustomAgents DB error: %v", err)
+		return
+	}
+	defer rows.Close()
+
+	count := 0
+	for rows.Next() {
+		var agentID, userID, presetID, name, prompt, model string
+		var maxTokens int
+		if err := rows.Scan(&agentID, &userID, &presetID, &name, &prompt, &model, &maxTokens); err != nil {
+			continue
+		}
+		// Get preset as base
+		preset := GetPresetByID(presetID)
+		if preset == nil {
+			preset = GetPresetByID("preset-custom")
+		}
+		if prompt == "" {
+			preset = GetPresetByID(presetID)
+			if preset != nil {
+				prompt = preset.SystemPrompt
+			}
+		}
+		if model == "" {
+			model = preset.Model
+		}
+		if maxTokens <= 0 {
+			maxTokens = preset.MaxTokens
+		}
+
+		r.agents[agentID] = &AgentDefinition{
+			ID:           agentID,
+			Name:         name,
+			Role:         preset.Role,
+			Description:  preset.Description,
+			SystemPrompt: prompt,
+			Model:        model,
+			MaxTokens:    maxTokens,
+			IsPreset:     false,
+			CreatedBy:    userID,
+		}
+		count++
+	}
+	if count > 0 {
+		log.Printf("[Lava] loaded %d custom agents from DB", count)
+	}
 }
 
 // GetByUserID возвращает агентов пользователя (кастомные + пресеты)

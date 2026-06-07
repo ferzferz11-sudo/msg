@@ -30,8 +30,8 @@ var firebaseApp *firebase.App
 
 // OWL AI assistant globals
 var (
-	owlRateLimiter *rateLimiter
-	owlSessions    *owlSessionManager
+owlRateLimiter *rateLimiter
+owlSessions    *owlSessionManager
 )
 
 // main is the entry point of the Lavender messaging server application
@@ -137,24 +137,25 @@ func main() {
 	owlSessions = newOwlSessionManager(db.DB, 50)
 	log.Println("OWL AI assistant initialized (rate limit: 10 req/min, history: 50 msgs, DB-backed)")
 
-	// Initialize Hermes Orchestrator
-	agentRegistry := NewAgentRegistry(db.DB)
-	orchestrator := NewOrchestrator(agentRegistry, db.DB, srv.owlApiKey, srv.owlModel)
-	srv.hermesOrchestrator = orchestrator
+	// Initialize Hermes Multi-Agent Orchestrator
+	hermesRegistry := NewAgentRegistry(db.DB)
 	srv.hermesDB = NewHermesDB(db.DB)
-	log.Println("Hermes Orchestrator initialized")
+	srv.hermesOrchestrator = NewOrchestrator(hermesRegistry, db.DB, os.Getenv("OPENROUTER_API_KEY"), os.Getenv("OPENROUTER_MODEL"))
+	log.Printf("Hermes Orchestrator initialized with %d agents", len(hermesRegistry.GetAll()))
+
+	// Run Hermes DB migrations
+	runHermesMigrations(db.DB)
 
 	// Register our chat service with the gRPC server
 	gen.RegisterChatServiceServer(s, srv)
 
+	// Register Hermes Agent Service (for hermes-agent daemon connections)
+	hermesAgentServer := newHermesAgentServer(srv)
+	hermesagent.RegisterHermesAgentServiceServer(s, hermesAgentServer)
+
 	// Register server management service (super admin only)
 	srvMgmt := &serverServiceServer{db: db}
 	gen.RegisterServerServiceServer(s, srvMgmt)
-
-	// Register Hermes Agent Service
-	hermesAgentSrv := newHermesAgentServer(srv, orchestrator)
-	hermesagent.RegisterHermesAgentServiceServer(s, hermesAgentSrv)
-	log.Println("Hermes Agent Service registered")
 
 	// Log server startup information
 	log.Printf("Listening clients at %v", lis.Addr())

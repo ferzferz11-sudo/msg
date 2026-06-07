@@ -12,6 +12,14 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"LavenderMessenger/core/llm"
+	"LavenderMessenger/core/llm/hermes"
+	"LavenderMessenger/core/llm/openrouter"
+	"LavenderMessenger/core/pipeline"
+	"LavenderMessenger/core/rag"
+	"LavenderMessenger/core/rag/memory"
+	"LavenderMessenger/core/tools"
 )
 
 // OrchestratorSession — контекст диалога с оркестратором
@@ -40,10 +48,15 @@ type Orchestrator struct {
 
 	// Remote Agent Manager
 	remoteManager *RemoteAgentManager
+
+	// ===== NEW: LLM Router + RAG Pipeline (Ports & Adapters) =====
+	llmRouter   llm.LLMRouter       // маршрутизатор LLM-провайдеров
+	ragPipeline rag.RAGPipeline     // RAG-пайплайн (in-memory с TF-IDF embeddings)
+	aiPipeline  *pipeline.Pipeline  // полный пайплайн: RAG → LLM → Tools
 }
 
 func NewOrchestrator(registry *HermesAgentRegistry, db *sql.DB, apiKey, model string) *Orchestrator {
-	return &Orchestrator{
+	o := &Orchestrator{
 		registry:      registry,
 		sessions:      make(map[string]*OrchestratorSession),
 		db:            db,
@@ -51,6 +64,43 @@ func NewOrchestrator(registry *HermesAgentRegistry, db *sql.DB, apiKey, model st
 		model:         model,
 		remoteManager: NewRemoteAgentManager(),
 	}
+
+	// ===== NEW: Initialize LLM Router with OpenRouter provider =====
+	openRouterProvider := openrouter.NewProvider(apiKey, model)
+	llmRouter := llm.NewSimpleRouter(openRouterProvider)
+	llmRouter.Register(llm.RouteRule{
+		ModelPrefix: "openrouter/",
+		Provider:    openRouterProvider,
+		Priority:    10,
+	})
+	// Register Hermes local provider
+	hermesProvider, err := hermes.NewProvider("")
+	if err == nil {
+		llmRouter.Register(llm.RouteRule{
+			ModelPrefix: "local/",
+			Provider:    hermesProvider,
+			Priority:    20,
+		})
+		log.Printf("[Orchestrator] Hermes local provider registered (prefix=local/)")
+	} else {
+		log.Printf("[Orchestrator] Hermes local provider not available: %v", err)
+	}
+	o.llmRouter = llmRouter
+
+	// ===== NEW: Initialize RAG pipeline (in-memory with real TF-IDF embeddings) =====
+	ragEmbedder := memory.NewInMemoryEmbeddingService(384)
+	ragVectorDB := memory.NewInMemoryVectorDB(384)
+	o.ragPipeline = memory.NewInMemoryRAGPipeline(ragEmbedder, ragVectorDB)
+
+	// ===== NEW: Initialize AI Pipeline with Tool Executor =====
+	toolExecutor := tools.NewDefaultToolExecutor(db)
+	o.aiPipeline = pipeline.NewPipeline(llmRouter, o.ragPipeline, toolExecutor)
+
+	log.Printf("[Orchestrator] LLM Router initialized with OpenRouter provider (model=%s)", model)
+	log.Printf("[Orchestrator] RAG Pipeline initialized (in-memory, TF-IDF embeddings, dim=384)")
+	log.Printf("[Orchestrator] Tool Executor initialized (search_messages, search_users, web_search, get_chat_info)")
+
+	return o
 }
 
 // getOrCreateSession возвращает существующую сессию или создаёт новую
@@ -69,6 +119,15 @@ func (o *Orchestrator) getOrCreateSession(userID string) *OrchestratorSession {
 		LastActivity: time.Now(),
 	}
 	o.sessions[userID] = s
+
+	// Persist session to DB
+	if o.db != nil {
+		_, _ = o.db.Exec(
+			"INSERT INTO hermes_sessions (id, user_id, name) VALUES ($1, $2, $3) ON CONFLICT (id) DO UPDATE SET updated_at = NOW()",
+			"hermes-"+userID, userID, "Lava AI",
+		)
+	}
+
 	return s
 }
 
@@ -111,6 +170,26 @@ func (o *Orchestrator) Orchestrate(ctx context.Context, userID, chatID, userMess
 
 	log.Printf("[ORCHESTRATOR] user=%s decision: mode=%s agents=%v reason=%s",
 		userID, decision.Mode, decision.AgentIDs, decision.Reason)
+
+	// Шаг 1.5: Проверяем есть ли remote agents в решении
+	// Если агент не найден в локальном реестре — ищем в remote agents
+	resolvedAgentIDs := make([]string, 0, len(decision.AgentIDs))
+	for _, agentID := range decision.AgentIDs {
+		if o.registry.Get(agentID) != nil {
+			resolvedAgentIDs = append(resolvedAgentIDs, agentID)
+		} else if remoteAgent := o.remoteManager.GetAgent(agentID); remoteAgent != nil {
+			// Remote agent найден — выполняем через него
+			log.Printf("[ORCHESTRATOR] routing to remote agent: %s (%s)", agentID, remoteAgent.Name)
+			return o.runRemoteAgent(ctx, session, remoteAgent, userMessage, streamFn)
+		}
+	}
+
+	if len(resolvedAgentIDs) == 0 {
+		// Ни локальных, ни remote агентов не найдено — fallback на hermes-owl
+		log.Printf("[ORCHESTRATOR] no agents found, fallback to hermes-owl")
+		resolvedAgentIDs = []string{"hermes-owl"}
+	}
+	decision.AgentIDs = resolvedAgentIDs
 
 	// Шаг 2: Выполнение в зависимости от режима
 	switch decision.Mode {
@@ -270,51 +349,27 @@ func (o *Orchestrator) runSingleAgent(ctx context.Context, session *Orchestrator
 		return err
 	}
 
-	// Вызываем агента через streamOpenRouter
+	// Вызываем агента через streamOpenRouter с callback
 	model := agent.Model
 	if model == "" {
 		model = o.model
 	}
-
-	// Формируем историю для агента
 	agentHistory := o.buildAgentHistory(session)
 
-	streamResult := streamOpenRouter(ctx, o.apiKey, model, agent.SystemPrompt, agentHistory)
-
 	var fullResponse strings.Builder
-	for {
-		select {
-		case <-ctx.Done():
+	err := streamOpenRouter(ctx, o.apiKey, model, agent.SystemPrompt, agentHistory, func(token string, finished bool) error {
+		if finished {
 			if fullResponse.Len() > 0 {
 				o.saveAgentMessage(session, agentID, fullResponse.String())
 			}
 			return nil
-
-		case err, ok := <-streamResult.Err:
-			if ok && err != nil {
-				return fmt.Errorf("agent %s error: %w", agentID, err)
-			}
-
-		case token, ok := <-streamResult.Tokens:
-			if !ok {
-				goto done
-			}
-			fullResponse.WriteString(token)
-			if sendErr := streamFn(token, false); sendErr != nil {
-				return nil
-			}
-
-		case full, ok := <-streamResult.Done:
-			if !ok {
-				goto done
-			}
-			o.saveAgentMessage(session, agentID, full)
-			_ = streamFn("", true)
-			return nil
 		}
+		fullResponse.WriteString(token)
+		return streamFn(token, false)
+	})
+	if err != nil {
+		return fmt.Errorf("agent %s error: %w", agentID, err)
 	}
-
-done:
 	if fullResponse.Len() > 0 {
 		o.saveAgentMessage(session, agentID, fullResponse.String())
 		_ = streamFn("", true)
@@ -351,34 +406,18 @@ func (o *Orchestrator) runParallelAgents(ctx context.Context, session *Orchestra
 			}
 
 			agentHistory := o.buildAgentHistory(session)
-			streamResult := streamOpenRouter(ctx, o.apiKey, model, agent.SystemPrompt, agentHistory)
-
 			var full strings.Builder
-			for {
-				select {
-				case <-ctx.Done():
-					results[idx] = agentResult{AgentID: id, Response: full.String()}
-					return
-				case err, ok := <-streamResult.Err:
-					if ok && err != nil {
-						results[idx] = agentResult{AgentID: id, Error: err, Response: full.String()}
-						return
-					}
-				case token, ok := <-streamResult.Tokens:
-					if !ok {
-						results[idx] = agentResult{AgentID: id, Response: full.String()}
-						return
-					}
-					full.WriteString(token)
-				case done, ok := <-streamResult.Done:
-					if !ok {
-						results[idx] = agentResult{AgentID: id, Response: full.String()}
-						return
-					}
-					results[idx] = agentResult{AgentID: id, Response: done}
-					return
+			if err := streamOpenRouter(ctx, o.apiKey, model, agent.SystemPrompt, agentHistory, func(token string, finished bool) error {
+				if finished {
+					return nil
 				}
+				full.WriteString(token)
+				return nil
+			}); err != nil {
+				results[idx] = agentResult{AgentID: id, Error: err, Response: full.String()}
+				return
 			}
+			results[idx] = agentResult{AgentID: id, Response: full.String()}
 		}(i, agentID)
 	}
 
@@ -446,36 +485,17 @@ func (o *Orchestrator) runPipelineAgents(ctx context.Context, session *Orchestra
 			{"role": "user", "content": currentInput},
 		}
 
-		streamResult := streamOpenRouter(ctx, o.apiKey, model, agent.SystemPrompt, agentHistory)
-
 		var full strings.Builder
-		for {
-			select {
-			case <-ctx.Done():
+		err := streamOpenRouter(ctx, o.apiKey, model, agent.SystemPrompt, agentHistory, func(token string, finished bool) error {
+			if finished {
 				return nil
-			case err, ok := <-streamResult.Err:
-				if ok && err != nil {
-					return fmt.Errorf("pipeline agent %s error: %w", agentID, err)
-				}
-			case token, ok := <-streamResult.Tokens:
-				if !ok {
-					goto pipelineNext
-				}
-				full.WriteString(token)
-				if sendErr := streamFn(token, false); sendErr != nil {
-					return nil
-				}
-			case done, ok := <-streamResult.Done:
-				if !ok {
-					goto pipelineNext
-				}
-				o.saveAgentMessage(session, agentID, done)
-				currentInput = done // Output → input следующего
-				goto pipelineNext
 			}
+			full.WriteString(token)
+			return streamFn(token, false)
+		})
+		if err != nil {
+			return fmt.Errorf("pipeline agent %s error: %w", agentID, err)
 		}
-
-	pipelineNext:
 		if full.Len() > 0 {
 			o.saveAgentMessage(session, agentID, full.String())
 			currentInput = full.String()
@@ -510,4 +530,143 @@ func (o *Orchestrator) saveAgentMessage(session *OrchestratorSession, agentID, c
 		Role:    "assistant",
 		Content: fmt.Sprintf("[%s] %s", agentID, content),
 	})
+}
+
+// ===== NEW: ProcessWithPipeline — обработка через RAG + LLM Pipeline =====
+
+// ProcessWithPipeline обрабатывает запрос через новый пайплайн:
+// RAG (эмбеддинг → векторный поиск → контекст) → LLM (стриминг) → Tool Calls
+func (o *Orchestrator) ProcessWithPipeline(
+	ctx context.Context,
+	userID string,
+	userMessage string,
+	images [][]byte,
+	onChunk func(token string, finished bool) error,
+) error {
+	if o.aiPipeline == nil {
+		return fmt.Errorf("AI pipeline not initialized")
+	}
+
+	// Получаем историю из сессии
+	session := o.getOrCreateSession(userID)
+	session.mu.Lock()
+	history := make([]llm.Message, 0, len(session.Messages))
+	for _, m := range session.Messages {
+		history = append(history, llm.Message{
+			Role:    m.Role,
+			Content: m.Content,
+		})
+	}
+	session.mu.Unlock()
+
+	// Сохраняем сообщение пользователя
+	session.mu.Lock()
+	session.Messages = append(session.Messages, OrchestratorMessage{Role: "user", Content: userMessage})
+	session.mu.Unlock()
+
+	// Запускаем пайплайн
+	var fullResponse strings.Builder
+	err := o.aiPipeline.ProcessRequest(ctx, "", userMessage, images, history, func(chunk llm.StreamChunk) error {
+		if chunk.Content != "" {
+			fullResponse.WriteString(chunk.Content)
+		}
+		return onChunk(chunk.Content, chunk.Done)
+	})
+
+	if err != nil {
+		return fmt.Errorf("pipeline error: %w", err)
+	}
+
+	// Сохраняем ответ ассистента
+	if fullResponse.Len() > 0 {
+		session.mu.Lock()
+		session.Messages = append(session.Messages, OrchestratorMessage{
+			Role:    "assistant",
+			Content: fullResponse.String(),
+		})
+		session.mu.Unlock()
+	}
+
+	return nil
+}
+
+// runRemoteAgent — выполняет запрос через удалённый агент
+func (o *Orchestrator) runRemoteAgent(
+	ctx context.Context,
+	session *OrchestratorSession,
+	agent *RemoteAgent,
+	userMessage string,
+	streamFn func(token string, finished bool) error,
+) error {
+	log.Printf("[ORCHESTRATOR] runRemoteAgent: agent=%s (%s) host=%s", agent.ID, agent.Name, agent.Host)
+
+	// Информируем пользователя о маршрутизации
+	intro := fmt.Sprintf("→ [%s@%s] ", agent.Name, agent.Host)
+	if err := streamFn(intro, false); err != nil {
+		return err
+	}
+
+	// Создаём задачу для remote agent
+	taskID := fmt.Sprintf("task-%d", time.Now().UnixNano())
+	task := &RemoteTask{
+		ID:         taskID,
+		AgentID:    agent.ID,
+		Type:       "shell",
+		Params:     map[string]string{"command": userMessage},
+		TimeoutSec: 120,
+	}
+
+	// Отправляем задачу через RemoteAgentManager
+	if err := o.remoteManager.SendTask(task); err != nil {
+		errMsg := fmt.Sprintf("\n⚠️ Remote agent error: %v\n", err)
+		streamFn(errMsg, false)
+		return err
+	}
+
+	// Ждём результат
+	result := o.remoteManager.WaitForResult(taskID, 2*time.Minute)
+	if result == nil {
+		streamFn("\n⚠️ Remote agent: no result\n", false)
+		return fmt.Errorf("remote agent %s: no result", agent.ID)
+	}
+
+	// Стримим результат
+	if result.Status == "success" {
+		// Стримим stdout по чанкам
+		lines := strings.Split(result.Stdout, "\n")
+		for _, line := range lines {
+			if line != "" {
+				streamFn(line+"\n", false)
+			}
+		}
+	} else {
+		errMsg := fmt.Sprintf("\n⚠️ Remote agent error: %s\n", result.Error)
+		streamFn(errMsg, false)
+	}
+
+	streamFn("", true)
+
+	// Сохраняем ответ в сессию
+	output := result.Stdout
+	if result.Status != "success" {
+		output = fmt.Sprintf("[remote:%s] error: %s", agent.ID, result.Error)
+	}
+	session.mu.Lock()
+	session.Messages = append(session.Messages, OrchestratorMessage{
+		Role:    "assistant",
+		Content: output,
+	})
+	session.mu.Unlock()
+
+	return nil
+}
+
+// GetLLMRouter возвращает LLM Router для регистрации дополнительных провайдеров
+func (o *Orchestrator) GetLLMRouter() llm.LLMRouter {
+	return o.llmRouter
+}
+
+// GetRAGPipeline возвращает RAG pipeline для загрузки данных
+func (o *Orchestrator) GetRAGPipeline() rag.RAGPipeline {
+	return o.ragPipeline
 }
