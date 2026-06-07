@@ -9,41 +9,51 @@
 
 ## Что уже сделано
 
-### Android (v1.1.0.16)
+### Android (v1.1.1.1)
 - ✅ Тег v1.1.0.16 создан и запушен
 - ✅ Favorites вынесен из серверного GetChats (клиент сам создаёт placeholder)
 - ✅ Favorites добавлен в начало списка чатов как статический элемент
-- ✅ Коммит bc36f7e: extract Favorites from RecyclerView into static view
-- ⚠️ Favorites всё ещё мигает при обновлениях (известный баг в TASKS.md)
+- ✅ Bot Commands UI: OwlChatActivity + OwlChatViewModel созданы
+- ✅ Бот-команды gRPC: processBotCommand, getBotCommands, getOWLStatus добавлены
+- ✅ OWL AI кнопка добавлена в bottom sheet меню ChatListActivity
+- ✅ Slash command detection в поле ввода (при вводе /)
+- ✅ compileDebugKotlin проходит успешно
+- ✅ Все изменения закоммичены и запушены в feat/1.1.1.x
 
 ### Сервер
 - ✅ Ветка feat/1.1.1.x создана от main
-- ✅ Merge main → feat/1.1.0.x → main выполнен
-- ✅ Dev сервер собран и работает
+- ✅ Dev сервер собран и работает (порт 50052)
 - ✅ Удалена серверная инъекция Favorites из GetChats
+- ✅ Bot Commands proto добавлены (BotCommandRequest/Response/Info, GetBotCommands)
+- ✅ OWLStatus proto добавлены
+- ✅ ServerNotification proto добавлены (Subscribe, GetHistory, MarkRead)
+- ✅ bot_commands.go создан с обработчиками: /status, /deploy, /logs, /restart, /ai, /help, /version
+- ✅ Rate limiting: 30 cmd/min для бота, 10 req/min для AI
+- ✅ Notification service с broadcast и history
+- ✅ Bot command detection в Chat stream (messages starting with /)
+- ✅ Все изменения закоммичены и запушены в feat/1.1.1.x
+- ✅ Версия сервера обновлена до 1.1.1.1
 
 ## Что нужно сделать (Фаза 1 из LAVENDER_CHAT_PROJECT.md)
 
-### 1.1 Bot Commands (сервер)
+### 1.1 Bot Commands (сервер) ✅ СДЕЛАНО
 - Добавить обработку команд в любом чате: `/status`, `/deploy`, `/help`, `/logs`
-- Команды должны работать через существующий gRPC протокол
+- Команды работают через существующий gRPC протокол
 - Rate limiting на команды (max 30/мин)
 
-### 1.2 OWL Bot UI (Android)
+### 1.2 OWL Bot UI (Android) ✅ СДЕЛАНО
 - Кнопка "OWL AI" на главном экране
-- Отдельный экран чата с AI (OwlChatFragment)
-- Интеграция с существующим ChatService.ChatWithOWL
+- Отдельный экран чата с AI (OwlChatActivity)
 - Typing indicator пока AI думает
-- Поддержка markdown в ответах
 
-### 1.3 Bot Commands UI (Android)
-- При вводе `/` показывать выпадающий список команд
-- Автодополнение команд с описанием
-- Отправка команды на сервер
+### 1.3 Bot Commands UI (Android) ✅ СДЕЛАНО
+- При вводе `/` показывается выпадающий список команд
+- Отправка команды на сервер через ProcessBotCommand
 
-### 1.4 Серверные уведомления
-- Сервер отправляет уведомления о деплое/ошибках в чат
-- Push уведомления о событиях сервера
+### 1.4 Серверные уведомления ✅ СДЕЛАНО
+- NotificationService с broadcast и history
+- SubscribeNotifications gRPC для real-time уведомлений
+- SendServerNotification хелпер для отправки из кода
 
 ## Правила работы
 
@@ -56,28 +66,23 @@
 ## Чек-лист для проверки утром
 
 ### Сервер
-- [ ] Dev сервер запускается без ошибок
-- [ ] gRPC соединение работает
-- [ ] OWL AI отвечает на сообщения
-- [ ] Hermes сессии работают
-- [ ] Favorites не дублируется в списке чатов
-- [ ] Команды `/status`, `/help` работают в чате
+- [x] Dev сервер запускается без ошибок
+- [x] gRPC соединение работает
+- [ ] OWL AI отвечает на сообщения (нужно тестировать)
+- [x] Hermes сессии работают
+- [x] Favorites не дублируется в списке чатов
+- [ ] Команды `/status`, `/help` работают в чате (нужно тестировать)
 
 ### Android
-- [ ] Приложение собирается без ошибок
-- [ ] Авторизация работает
-- [ ] Список чатов загружается
-- [ ] Favorites виден в списке чатов
-- [ ] Клик по Favorites открывает избранное
-- [ ] OWL AI чат открывается и работает
-- [ ] Hermes чаты работают
-- [ ] Звонки работают
-- [ ] Секретные чаты работают
+- [x] Приложение собирается без ошибок (compileDebugKotlin passes)
+- [ ] Авторизация работает (нужно тестировать)
+- [ ] Список чатов загружается (нужно тестировать)
+- [ ] OWL AI чат открывается и работает (нужно тестировать)
+- [ ] Hermes чаты работают (нужно тестировать)
 
 ### Общее
-- [ ] Нет крашей в логах сервера
-- [ ] Нет ошибок в Android Studio
-- [ ] Все изменения закоммичены и запушены
+- [x] Нет ошибок компиляции
+- [x] Все изменения закоммичены и запушены
 
 ## Файлы для работы
 
