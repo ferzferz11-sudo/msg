@@ -79,8 +79,8 @@ ANDROID:
 ## Что НЕ сделано (по приоритету)
 
 ### Высокий приоритет
-- Тестирование на устройстве — собрать APK, проверить все функции
-- Деплой на prod
+- **Исправить DeleteChat для Hermes чатов** — `sql: no rows in result set` при удалении hermes чата (чат есть в `hermes_sessions`, но не в `chats`)
+- **Деплой на prod** — после исправления DeleteChat
 
 ### Средний приоритет
 - NotificationActivity — badge с количеством непрочитанных
@@ -177,13 +177,15 @@ cd /root/msg.client.android
 - HermesChatActivity: использует userId (UUID) из сессии
 - Server version bump 1.1.1.3 → 1.1.1.4
 
+Тестирование на устройстве (пройдено ✅):
+- Hermes чат — сессия создаётся с UUID ✅
+- Уведомления — приходят в NotificationActivity ✅
+- [AI] кнопка — шторка открывается, пункты работают ✅
+- OWL чат — нет ошибки FK constraint ✅
+
 Следующие шаги для v1.1.1.5 (по приоритету):
-1. **Тестирование на устройстве** — собрать APK (assembleDebug локально!), проверить:
-   - [AI] кнопка и шторка
-   - OWL чат (сообщения сохраняются в БД)
-   - Hermes чат (сессия создаётся с UUID)
-   - Уведомления
-2. **Деплой на prod** — проверить на dev, потом деплой
+1. **Исправить DeleteChat для Hermes чатов** — при удалении hermes чата ошибка `sql: no rows in result set`. Чат есть в `hermes_sessions`, но не в `chats`. Нужно либо добавить запись в `chats` при создании сессии, либо обрабатывать удаление из `hermes_sessions` отдельно.
+2. **Деплой на prod** — после исправления DeleteChat
 3. NotificationActivity — badge с количеством непрочитанных
 4. Graceful reconnect при keepalive failed
 5. Auth токены для удалённых агентов (JWT)
