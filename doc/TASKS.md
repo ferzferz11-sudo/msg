@@ -1,8 +1,24 @@
 # Lavender Messenger — Задачи
 
-**Версия:** v1.1.1.10
+**Версия:** v1.1.1.11
 **Обновлено:** 2026-06-08
-**Статус:** ✅ v1.1.1.10 — AI Bottom Sheet + Hermes settings + Rate limiting
+**Статус:** ✅ v1.1.1.11 — Key/model info banner + robot icon
+
+---
+
+## ✅ Сделано (v1.1.1.11)
+
+### Server
+- **ServerVersion 1.1.1.11** — version bump
+
+### Android
+- **ic_ai.xml** — replaced with robot vector drawable (960x960 viewport, Material style)
+- **widget_chat.xml** — added `toolbarInfo` TextView for key/model banner
+- **ChatWidget.kt** — added `toolbarInfo` field + `setToolbarInfo()` method
+- **OwlChatActivity.kt** — loads OWL settings on chat open, shows key/model info in header
+- **HermesChatActivity.kt** — loads Hermes settings on chat open, shows key/model info in header
+- Info format: "Ваш ключ · {model}" or "Общий ключ · 20 запросов/час"
+- compileDebugKotlin ✅
 
 ---
 
@@ -97,7 +113,7 @@
 ## ⏳ Не начато (по приоритету)
 
 ### Высокий приоритет (v1.1.1.11 — тестирование)
-1. **Показать ключ/модель в шапке AI чатов** — OwlChatActivity + HermesChatActivity
+1. ~~**Показать ключ/модель в шапке AI чатов**~~ ✅ v1.1.1.11
 2. **Полное тестирование** — graceful reconnect, notification retry, AI chats, настройки, rate limits
 3. **Исправление найденных багов**
 4. **Деплой на prod → v1.1.2.0**

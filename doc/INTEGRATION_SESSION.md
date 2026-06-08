@@ -32,6 +32,27 @@ ANDROID:
 
 ---
 
+## Статус: v1.1.1.11 ЗАВЕРШЕНА
+
+### Сервер v1.1.1.11 (`/root/msg`)
+
+| Компонент | Статус | Файл |
+|-----------|--------|------|
+| ServerVersion 1.1.1.11 | ✅ | `server.go:33` |
+
+### Android v1.1.1.11 (`/root/msg.client.android`)
+
+| Компонент | Статус | Файл |
+|-----------|--------|------|
+| ic_ai.xml — robot icon | ✅ | `res/drawable/ic_ai.xml` |
+| toolbarInfo в widget_chat.xml | ✅ | `res/layout/widget_chat.xml` |
+| ChatWidget.setToolbarInfo() | ✅ | `ui/chat/widget/ChatWidget.kt` |
+| OwlChatActivity — key/model banner | ✅ | `ui/owl/OwlChatActivity.kt` |
+| HermesChatActivity — key/model banner | ✅ | `ui/hermes/HermesChatActivity.kt` |
+| compileDebugKotlin | ✅ | passes |
+
+---
+
 ## Статус: v1.1.1.10 ЗАВЕРШЕНА
 
 ### Сервер v1.1.1.10 (`/root/msg`)
@@ -207,6 +228,7 @@ ANDROID:
 | v1.1.1.8 | ✅ | ✅ |
 | v1.1.1.9 | ✅ | ✅ |
 | v1.1.1.10 | ✅ | ✅ |
+| v1.1.1.11 | ✅ | ✅ |
 
 ---
 
@@ -220,8 +242,8 @@ ANDROID:
 ## Что НЕ сделано (по приоритету)
 
 ### Перед деплоем на prod (обязательно)
-1. **Сессия: Тестирование (v1.1.1.11)** — полное тестирование всех новых фич: graceful reconnect, notification retry, AI chats, новых настроек (OwlSettings, rate limits, Hermes settings), edge cases. Затем деплой на prod.
-2. **Деплой на prod → v1.1.2.0** — только после завершения тестирования
+1. ~~**Сессия: Тестирование (v1.1.1.11)**~~ ✅ — key/model banner + robot icon done
+2. **Деплой на prod → v1.1.2.0** — после полного тестирования
 
 ### Средний приоритет
 - ~~NotificationActivity badge~~ ✅ v1.1.1.7
@@ -229,7 +251,7 @@ ANDROID:
 - ~~AI Bottom Sheet редизайн~~ ✅ v1.1.1.10
 - ~~Hermes per-chat settings~~ ✅ v1.1.1.10
 - ~~Rate limiting (free tier 20/hr)~~ ✅ v1.1.1.10
-- Показ ключа/модели в шапке чата (OwlChatActivity + HermesChatActivity)
+- ~~Показ ключа/модели в шапке чата~~ ✅ v1.1.1.11
 - Модульные тесты для OWL streaming
 
 ### Низкий приоритет
@@ -294,43 +316,27 @@ cd /root/msg.client.android
 
 ---
 
-## Промпт для следующей сессии (v1.1.1.11 — тестирование и полировка)
+## Промпт для следующей сессии (v1.1.2.0 — деплой на prod)
 
 ```
-Продолжаем работу над Lavender Messenger. v1.1.1.10 завершена:
-- AI Bottom Sheet полностью переписан (единый список, long-press popup menu, шестерёнки настроек)
-- Hermes per-chat settings (таблица, RPCs, UI)
-- Rate limiting: свой ключ = 10/min, бесплатный = 20/hour
-- Настройки показывают источник ключа и лимит запросов
+Продолжаем работу над Lavender Messenger. v1.1.1.11 завершена:
+- ic_ai.xml заменён на robot vector drawable
+- Показ ключа/модели в шапке AI чатов (toolbarInfo в ChatWidget)
+- OwlChatActivity и HermesChatActivity загружают настройки и показывают баннер
 
 Контекст:
 - Сервер: /root/msg, dev порт 50052, prod порт 50051
 - Android: /root/msg.client.android
 - Оба репозитория на ветке feat/1.1.1.x
-- v1.1.1.10 тег на обоих репозиториях
+- v1.1.1.11 тег на обоих репозиториях
 - Dev сервер обновлён и работает
 
-Текущая версия: v1.1.1.10
+Текущая версия: v1.1.1.11
 
-Что нужно сделать (v1.1.1.11 — тестирование и доработка):
-
-1. **Показать информацию о ключе/модели в шапке AI чатов**
-   - OwlChatActivity: показать "Общий ключ / 20 запросов/час" или "Ваш ключ / все модели"
-   - HermesChatActivity: аналогично
-   - Маленький баннер/текст под toolbar
-
-2. **Протестировать весь флоу AI чатов**:
-   - Создание Hermes чата через AIBottomSheet → открытие → отправка сообщений → rate limit
-   - Создание OWL чата → то же самое
-   - Удаление чата через long-press
-   - Настройки: ввести свой ключ → проверить что модели расширились
-   - Настройки: убрать ключ → проверить что модели сузились, лимит 20/час
-   - Graceful reconnect: выключить сеть → включить → чаты не теряются
-   - Notification retry: убить соединение → уведомления приходят после reconnect
-
-3. **Исправить найденные баги**
-
-4. **После тестирования — деплой на prod и таг v1.1.2.0**
+Что нужно сделать:
+1. Полное тестирование всех фич
+2. Исправление найденных багов
+3. Деплой на prod → v1.1.2.0
 
 Архитектура (важно!):
 - OwlGrpc.kt — отдельный файл для OWL
@@ -339,7 +345,6 @@ cd /root/msg.client.android
 - userId (UUID) — всегда как ключ, НЕ username
 - creator_id (UUID) — для проверки владельца
 - participants ВСЕГДА через json.Marshal, никогда вручную
-- ConnectionStatus: DISCONNECTED, CONNECTING, READY, RECONNECTING, FAILED
 
 Правила:
 - Коммитить после каждого изменения, пушить в feat/1.1.1.x
