@@ -2,6 +2,18 @@
 
 **Author:** Pavel Davodov (ferz)
 
+## [1.1.1.2] - 2026-07-17
+- **Server:**
+  - Версия обновлена до 1.1.1.2
+  - **SendServerNotification:** добавлены уведомления в `/deploy` и `/restart` handlers (start, success, error)
+  - **/ai команда:** улучшен системный промпт с именем пользователя
+- **Android:**
+  - Версия обновлена до 1.1.1.2
+  - **OWL streaming:** добавлены отдельные `owlTyping`/`owlResponses` SharedFlows (не переиспользуют Hermes flows)
+  - **ChatWithOWL:** добавлен `chatWithOwl()` метод — реальный gRPC вызов вместо пустого stub
+  - **OwlChatViewModel:** собирает OWL ответы из отдельного потока, аккумулирует streaming chunks
+  - **OwlRequestProto/OwlResponseProto:** новые data classes для OWL gRPC
+
 ## [1.1.1.1] - 2026-07-17
 - **Server:**
   - Версия обновлена до 1.1.1.1

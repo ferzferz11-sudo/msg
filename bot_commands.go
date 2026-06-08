@@ -248,6 +248,10 @@ func handleBotDeploy(s *server, req *gen.BotCommandRequest) *gen.BotCommandRespo
 
 	log.Printf("[BotCommand] Deploy to %s requested by %s", target, req.Username)
 
+	SendServerNotification("deploy", "🚀 Деплой запущен",
+		fmt.Sprintf("Пользователь %s запустил деплой на %s", req.Username, target),
+		map[string]string{"target": target, "user": req.Username})
+
 	go func() {
 		script := "/root/scripts/deploy-dev.sh"
 		if target == "prod" {
@@ -256,8 +260,14 @@ func handleBotDeploy(s *server, req *gen.BotCommandRequest) *gen.BotCommandRespo
 		out, err := exec.Command("bash", script).CombinedOutput()
 		if err != nil {
 			log.Printf("[BotCommand] Deploy to %s failed: %v\nOutput: %s", target, err, string(out))
+			SendServerNotification("deploy_error", "❌ Деплой не удался",
+				fmt.Sprintf("Деплой на %s завершился с ошибкой: %v", target, err),
+				map[string]string{"target": target, "error": err.Error()})
 		} else {
 			log.Printf("[BotCommand] Deploy to %s completed", target)
+			SendServerNotification("deploy_done", "✅ Деплой завершён",
+				fmt.Sprintf("Деплой на %s успешно завершён", target),
+				map[string]string{"target": target})
 		}
 	}()
 
@@ -277,6 +287,10 @@ func handleBotRestart(s *server, req *gen.BotCommandRequest) *gen.BotCommandResp
 	}
 
 	log.Printf("[BotCommand] Restart requested by %s", req.Username)
+
+	SendServerNotification("restart", "🔄 Перезапуск сервера",
+		fmt.Sprintf("Пользователь %s запросил перезапуск dev сервера", req.Username),
+		map[string]string{"user": req.Username})
 
 	go func() {
 		time.Sleep(2 * time.Second)
@@ -345,9 +359,9 @@ func handleBotAI(s *server, req *gen.BotCommandRequest) *gen.BotCommandResponse 
 		}
 	}
 
-	systemPrompt := `Вы — AI-ассистент OWL в мессенджере Lavender. Отвечайте кратко и по делу на русском языке.
-Вы можете помочь с программированием, настройкой серверов, ответами на вопросы.
-Будьте дружелюбны, но лаконичны.`
+	systemPrompt := fmt.Sprintf(`Вы — AI-ассистент OWL в мессенджере Lavender.
+Отвечайте кратко и по делу на русском языке.
+Пользователь: %s`, req.Username)
 
 	messages := []map[string]string{{"role": "user", "content": message}}
 
@@ -359,7 +373,7 @@ func handleBotAI(s *server, req *gen.BotCommandRequest) *gen.BotCommandResponse 
 		return &gen.BotCommandResponse{
 			Success:      false,
 			IsError:      true,
-			ErrorMessage: fmt.Sprintf("AI сервис недоступен: %v", err),
+			ErrorMessage: fmt.Sprintf("OWL AI недоступен: %v", err),
 		}
 	}
 
