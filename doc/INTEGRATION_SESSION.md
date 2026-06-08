@@ -32,9 +32,32 @@ ANDROID:
 
 ---
 
-## Статус: v1.1.1.4 ЗАВЕРШЕНА
+## Статус: v1.1.1.5 ЗАВЕРШЕНА
 
-### Сервер v1.1.1.4 (`/root/msg`)
+### Сервер v1.1.1.5 (`/root/msg`)
+
+| Компонент | Статус | Файл |
+|-----------|--------|------|
+| Версия 1.1.1.5 | ✅ | `server.go:33` |
+| HermesSession → chats INSERT | ✅ | `server.go` |
+| DeleteChat Hermes fallback | ✅ | `server.go` |
+| GetOwlSettings RPC | ✅ | `server.go` |
+| creator_id миграция | ✅ | `db_hermes.go` |
+| Все проверки владельца по UUID | ✅ | `server.go` |
+
+### Android v1.1.1.5 (`/root/msg.client.android`)
+
+| Компонент | Статус | Файл |
+|-----------|--------|------|
+| OwlSettingsActivity | ✅ | `ui/owl/OwlSettingsActivity.kt` |
+| activity_owl_settings.xml | ✅ | `res/layout/activity_owl_settings.xml` |
+| OwlGrpc.kt getOwlSettings/updateOwlSettings | ✅ | `data/grpc/OwlGrpc.kt` |
+| MessengerProto.kt OWL settings classes | ✅ | `data/proto/MessengerProto.kt` |
+| AndroidManifest регистрация | ✅ | `AndroidManifest.xml` |
+| AIBottomSheet → OwlSettingsActivity | ✅ | `ChatListActivity.kt` |
+| compileDebugKotlin | ✅ | passes |
+
+### Статус: v1.1.1.4 ЗАВЕРШЕНА
 
 | Компонент | Статус | Файл |
 |-----------|--------|------|
