@@ -137,3 +137,48 @@ cd /root/msg.client.android
 - **Prod DB:** `chat_db` (порт 5432, user: lavender)
 - **Dev config:** `/root/LavenderMessenger/run/.env.dev`
 - **Prod config:** `/root/LavenderMessenger/run/.env`
+
+---
+
+## Промпт для следующей сессии (v1.1.1.2)
+
+```
+Продолжаем работу над Lavender Messenger. Фаза 1 (Bot Commands, OWL Bot UI, Server Notifications) завершена в v1.1.1.1.
+
+Текущая версия: v1.1.1.2 (feat/1.1.1.x на обоих репозиториях)
+
+Контекст:
+- Сервер: /root/msg, dev порт 50052, prod порт 50051
+- Android: /root/msg.client.android
+- Оба репозитория чистые, все запушены
+- Серверы работают (lavender-server-dev, lavender-server)
+
+Что сделано (v1.1.1.1):
+- Сервер: bot_commands.go (7 команд), notification service, OWL status, bot command detection в Chat stream
+- Android: OwlChatActivity + ViewModel, slash command UI, bot command gRPC, OWL AI button
+- Proto: BotCommand*, OWLStatus*, ServerNotification* на обоих сторонах
+
+Известные проблемы v1.1.1.1:
+- OwlChatViewModel переиспользует hermesTyping/hermesResponses SharedFlows (нужен отдельный OWL streaming)
+- Server migration warnings: "role lavender does not exist" (не критично, сервер работает)
+- /ai команда вызывает OpenRouter напрямую (не через оркестратор)
+- SendServerNotification не используется в deploy/restart handlers
+- Нет модульных тестов для бот-команд
+
+Следующие шаги (v1.1.1.2):
+1. Известные проблемы v1.1.1.1 (см. выше)
+2. Тестирование — проверить бот-команды на dev сервере
+3. Подготовка к деплою на prod
+
+Правила:
+- Коммитить после каждого изменения, пушить в feat/1.1.1.x
+- Деплоить на dev для тестирования
+- Обновлять CHANGELOG.md (новая версия наверху)
+- Не ломать существующий функционал
+- Версия сервера в server.go:33
+- assembleRelease НЕ запускать на сервере (OOM kill)
+- Теги: git tag v1.1.1.2 <commit> && git push origin feat/1.1.1.x --tags
+
+Документация: /root/msg/INTEGRATION_SESSION.md, /root/msg/TASKS.md
+Команды сборки: см. раздел "Команды" выше
+```
