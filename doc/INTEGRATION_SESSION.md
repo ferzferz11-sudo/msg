@@ -216,13 +216,14 @@ ANDROID:
 ## Что НЕ сделано (по приоритету)
 
 ### Перед деплоем на prod (обязательно)
-1. **Сессия: Дизайн Android** — UI/UX улучшения, отображение RECONNECTING статуса
-2. **Сессия: Тестирование** — полное тестирование graceful reconnect, notification retry, AI chats
+1. **Сессия: Дизайн Android** — ✅ AI Bottom Sheet редизайн, настройки OWL/Hermes, rate limit UI. Осталось: тестирование
+2. **Сессия: Тестирование** — полное тестирование graceful reconnect, notification retry, AI chats, новых настроек
 3. **Деплой на prod** — только после завершения дизайна и тестирования
 
 ### Средний приоритет
 - ~~NotificationActivity badge~~ ✅ v1.1.1.7
 - ~~Graceful reconnect~~ ✅ v1.1.1.9
+- ~~AI Bottom Sheet редизайн~~ ✅ v1.1.1.x (текущий)
 - Модульные тесты для OWL streaming
 
 ### Низкий приоритет

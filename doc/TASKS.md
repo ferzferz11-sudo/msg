@@ -1,8 +1,34 @@
 # Lavender Messenger — Задачи
 
-**Версия:** v1.1.1.9
+**Версия:** v1.1.1.x
 **Обновлено:** 2026-06-08
-**Статус:** ✅ v1.1.1.9 — Graceful reconnect
+**Статус:** AI Bottom Sheet редизайн + Hermes settings
+
+---
+
+## ✅ Сделано (v1.1.1.x — AI Bottom Sheet + Settings)
+
+### Server
+- **hermes_chat_settings table**: per-session API key + model storage
+- **GetHermesSettings RPC**: returns api_key, model, is_using_custom_key
+- **UpdateHermesSettings RPC**: updates per-session settings with ownership check
+- **Rate limiting**: custom key = 10/min, free tier = 20/hour (freeTierRateLimiter)
+- **GetOwlSettings**: now returns is_using_custom_key
+- **GetAIChats**: returns is_using_custom_key + model for all chats
+- **ChatWithOWL**: rate limit check (custom vs free tier)
+- **ChatWithOrchestrator**: rate limit check (custom vs free tier)
+- Proto updated with new messages and fields
+
+### Android
+- **AIBottomSheet redesign**: unified chat list (all types), long-press popup menu (delete/settings), divider, Hermes/OWL create sections
+- **widget_ai_chat_item.xml**: new layout with icon, name, type label, settings gear
+- **OwlSettingsActivity**: unified OWL+Hermes settings screen, key source indicator, rate limit info, dynamic model list
+- **HermesGrpc.kt**: getHermesSettings/updateHermesSettings methods
+- **OwlGrpc.kt**: updated parser for GetOwlSettingsResponse (isUsingCustomKey)
+- **RealGrpcClient.kt**: updated AIChatInfo parser (isUsingCustomKey, model)
+- **ChatListActivity.kt**: rewritten showAIActionSheet, unified currentAiChats, openHermesSettings/openOwlSettings
+- **AIChatInfo / AIChatInfoProto**: added isUsingCustomKey + model fields
+- compileDebugKotlin ✅ | go build ✅ | Dev deployed
 
 ---
 
