@@ -5,6 +5,7 @@
 ## [1.1.1.4] - 2026-07-17
 - **Server:**
   - Версия обновлена до 1.1.1.4
+  - **OWL FK fix:** авто-создание OWL чата в таблице `chats` при первом сообщении (исправляет `violates foreign key constraint "owl_messages_chat_id_fkey"`)
 - **Android:**
   - **[AI] кнопка в списке чатов:** добавлена кнопка [AI] рядом с [+] в ChatListActivity
   - **AIBottomSheet:** новая шторка с группировкой AI-сервисов (Оркестратор / OWL) и разделителем
@@ -17,7 +18,7 @@
 ## [1.1.1.3] - 2026-07-17
 - **Server:**
   - Версия обновлена до 1.1.1.3
-  - **Bot Commands:** исправлен fmt.Sprintf в /logs handler (добавлен 缺失ющий lines аргумент)
+  - **Bot Commands:** исправлен fmt.Sprintf в /logs handler
   - **Unit Tests:** добавлены модульные тесты для bot_commands.go (rate limiter, command handlers, dispatcher, notification service, utility functions)
 - **Android:**
   - **Server Notifications UI:** добавлен NotificationActivity — экран просмотра серверных уведомлений
@@ -68,8 +69,8 @@
   - **Favorites flicker fix:** Favorites вынесен из RecyclerView в статический view выше списка
   - **Favorites:** использование ImageView вместо ShapeableImageView, AppCompatImageView с srcCompat
   - **Favorites:** стилизация выровнена с элементами списка чатов (margins, corner radius, theme colors)
-  - **Server:** удалена серверная инъекция Favorites из GetChats (клиент сам создаёт placeholder)
-  - **Server:** добавлена серверная инъекция Favorites как synthetic entry (временно, потом убрана)
+- **Server:**
+  - Удалена серверная инъекция Favorites из GetChats (клиент сам создаёт placeholder)
 
 ## [1.1.0.15] - 2026-06-05
 - **Server:**
