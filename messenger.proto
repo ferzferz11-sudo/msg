@@ -702,6 +702,7 @@ service ChatService {
   rpc DeleteOwlChat(DeleteOwlChatRequest) returns (DeleteOwlChatResponse);
   rpc GetOwlHistory(GetOwlHistoryRequest) returns (GetOwlHistoryResponse);
   rpc UpdateOwlSettings(UpdateOwlSettingsRequest) returns (UpdateOwlSettingsResponse);
+  rpc GetOwlSettings(GetOwlSettingsRequest) returns (GetOwlSettingsResponse);
 
   // Hermes Multi-Agent Orchestrator
   rpc ChatWithOrchestrator(OrchestratorRequest) returns (stream OrchestratorResponse);
@@ -828,6 +829,16 @@ message UpdateOwlSettingsRequest {
   string user_id = 2;
   string api_key = 3;
   string model = 4;
+}
+
+message GetOwlSettingsRequest {
+  string chat_id = 1;
+  string user_id = 2;
+}
+
+message GetOwlSettingsResponse {
+  string api_key = 1;
+  string model = 2;
 }
 
 message UpdateOwlSettingsResponse {

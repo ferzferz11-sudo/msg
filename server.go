@@ -30,7 +30,7 @@ import (
 	"firebase.google.com/go/v4/messaging"
 )
 
-const ServerVersion = "1.1.1.4"
+const ServerVersion = "1.1.1.5"
 
 // server implements the gRPC ChatService interface
 type server struct {
@@ -1085,8 +1085,9 @@ func (s *server) GetChats(_ context.Context, req *gen.GetChatsRequest) (*gen.Get
 		}
 	}
 	if owlUsername != "" {
+		// Find OWL chats by username — resolve to creator_id via subquery
 		owlRows, err := s.db.Query(
-			"SELECT id, name, type, participants, created_at, creator_username, last_message_text, last_message_time FROM chats WHERE type = 'owl' AND creator_username = $1 ORDER BY created_at ASC",
+			"SELECT c.id, c.name, c.type, c.participants, c.created_at, c.creator_username, '' as last_message_text, c.created_at as last_message_time FROM chats c WHERE c.type = 'owl' AND c.creator_id = (SELECT id FROM users WHERE username = $1 LIMIT 1) ORDER BY c.created_at ASC",
 			owlUsername,
 		)
 		if err == nil {
@@ -1617,6 +1618,16 @@ func (s *server) DeleteChat(_ context.Context, req *gen.DeleteChatRequest) (*gen
 	// 1. Get all participants and creator before deletion
 	chat, err := s.db.GetChat(req.ChatId)
 	if err != nil {
+		// Fallback: check if this is a hermes session that wasn't synced to chats
+		if s.hermesDB != nil {
+			if sessionID := s.hermesDB.GetSessionID(req.ChatId); sessionID != "" {
+				log.Printf("DeleteChat: Chat %s not in chats but found in hermes_sessions, cleaning up", req.ChatId)
+				s.hermesDB.DeleteSession(req.ChatId)
+				// Also try to delete from chats (may not exist, that's OK)
+				_ = s.db.DeleteChat(req.ChatId)
+				return &gen.DeleteChatResponse{Success: true, Message: "Hermes session deleted"}, nil
+			}
+		}
 		log.Printf("DeleteChat warning: Chat %s not found or DB error: %v", req.ChatId, err)
 		// Return error to inform user that chat is already deleted
 		return &gen.DeleteChatResponse{Success: false, Message: "Chat or group already deleted"}, nil
@@ -2979,8 +2990,8 @@ func (s *server) ChatWithOWL(req *gen.OWLRequest, stream gen.ChatService_ChatWit
 			username = uname
 		}
 		_, _ = s.db.Exec(
-			"INSERT INTO chats (id, name, type, participants, creator_username) VALUES ($1, $2, 'owl', $3, $4) ON CONFLICT (id) DO NOTHING",
-			chatID, "🤖 Чат с AI", "["+username+"]", username,
+			"INSERT INTO chats (id, name, type, participants, creator_username, creator_id) VALUES ($1, $2, 'owl', $3, $4, $5) ON CONFLICT (id) DO NOTHING",
+			chatID, "🤖 Чат с AI", "["+username+"]", username, userID,
 		)
 	}
 
@@ -3086,8 +3097,8 @@ func (s *server) CreateOwlChat(_ context.Context, req *gen.CreateOwlChatRequest)
 	log.Printf("CreateOwlChat: creating chat %q for user %q", chatID, username)
 
 	_, err := s.db.Exec(
-		"INSERT INTO chats (id, name, type, participants, creator_username) VALUES ($1, $2, 'owl', $3, $4)",
-		chatID, name, "["+username+"]", username,
+		"INSERT INTO chats (id, name, type, participants, creator_username, creator_id) VALUES ($1, $2, 'owl', $3, $4, $5)",
+		chatID, name, "["+username+"]", username, req.UserId,
 	)
 	if err != nil {
 		log.Printf("CreateOwlChat: DB error: %v", err)
@@ -3111,12 +3122,12 @@ func (s *server) DeleteOwlChat(_ context.Context, req *gen.DeleteOwlChatRequest)
 		return &gen.DeleteOwlChatResponse{Success: false, Message: "user_id is required"}, nil
 	}
 
-	var creator string
-	err := s.db.QueryRow("SELECT creator_username FROM chats WHERE id = $1 AND type = 'owl'", req.ChatId).Scan(&creator)
+	var creatorID string
+	err := s.db.QueryRow("SELECT creator_id FROM chats WHERE id = $1 AND type = 'owl'", req.ChatId).Scan(&creatorID)
 	if err != nil {
 		return &gen.DeleteOwlChatResponse{Success: false, Message: "chat not found"}, nil
 	}
-	if creator != req.UserId {
+	if creatorID != req.UserId {
 		return &gen.DeleteOwlChatResponse{Success: false, Message: "not your chat"}, nil
 	}
 
@@ -3167,15 +3178,41 @@ func (s *server) UpdateOwlSettings(_ context.Context, req *gen.UpdateOwlSettings
 		return &gen.UpdateOwlSettingsResponse{Success: false, Message: "chat_id and user_id required"}, nil
 	}
 
-	// Verify ownership
-	var creator string
-	err := s.db.QueryRow("SELECT creator_username FROM chats WHERE id = $1 AND type = 'owl'", req.ChatId).Scan(&creator)
-	if err != nil || creator != req.UserId {
+	// Verify ownership — only by creator_id (UUID). creator_username is unreliable (username can change).
+	var ownerID string
+	err := s.db.QueryRow("SELECT creator_id FROM chats WHERE id = $1 AND type = 'owl'", req.ChatId).Scan(&ownerID)
+	if err != nil {
+		return &gen.UpdateOwlSettingsResponse{Success: false, Message: "chat not found"}, nil
+	}
+	if ownerID != req.UserId {
 		return &gen.UpdateOwlSettingsResponse{Success: false, Message: "not your chat"}, nil
 	}
 
 	owlSessions.saveSettings(req.ChatId, req.ApiKey, req.Model)
 	return &gen.UpdateOwlSettingsResponse{Success: true, Message: "OK"}, nil
+}
+
+// GetOwlSettings returns per-chat settings (API key, model)
+func (s *server) GetOwlSettings(_ context.Context, req *gen.GetOwlSettingsRequest) (*gen.GetOwlSettingsResponse, error) {
+	if req.ChatId == "" || req.UserId == "" {
+		return &gen.GetOwlSettingsResponse{}, nil
+	}
+
+	// Verify ownership — only by creator_id (UUID)
+	var ownerID string
+	err := s.db.QueryRow("SELECT creator_id FROM chats WHERE id = $1 AND type = 'owl'", req.ChatId).Scan(&ownerID)
+	if err != nil {
+		return &gen.GetOwlSettingsResponse{}, nil
+	}
+	if ownerID != req.UserId {
+		return &gen.GetOwlSettingsResponse{}, nil
+	}
+
+	settings := owlSessions.getSettings(req.ChatId)
+	return &gen.GetOwlSettingsResponse{
+		ApiKey: settings.UserAPIKey,
+		Model:  settings.Model,
+	}, nil
 }
 
 // ======= Hermes Multi-Agent Orchestrator gRPC methods =======
@@ -3591,8 +3628,23 @@ func (s *server) CreateHermesSession(_ context.Context, req *gen.CreateHermesSes
 		sessionID, userID, name,
 	)
 	if err != nil {
-		log.Printf("[Lava] CreateHermesSession: DB error: %v", err)
+		log.Printf("[Lava] CreateHermesSession: DB error (hermes_sessions): %v", err)
 		return &gen.CreateHermesSessionResponse{Success: false, Error: err.Error()}, nil
+	}
+
+	// Also insert into chats so the session appears in chat list and can be deleted
+	// Resolve username for creator_username field
+	username := userID
+	if uname, err := s.db.GetUsernameByID(userID); err == nil && uname != "" {
+		username = uname
+	}
+	_, err = s.db.Exec(
+		"INSERT INTO chats (id, name, type, participants, creator_username, creator_id) VALUES ($1, $2, 'hermes', $3, $4, $5) ON CONFLICT (id) DO NOTHING",
+		sessionID, name, "["+username+"]", username, userID,
+	)
+	if err != nil {
+		log.Printf("[Lava] CreateHermesSession: WARNING failed to insert into chats: %v", err)
+		// Non-fatal: hermes_sessions row exists, user can still chat
 	}
 
 	log.Printf("[Lava] CreateHermesSession: OK session_id=%s", sessionID)

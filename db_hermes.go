@@ -64,6 +64,17 @@ func runHermesMigrations(db *sql.DB) {
 			completed_at TIMESTAMPTZ
 		)`,
 
+		// Добавляем creator_id в chats для хранения UUID создателя (creator_username ненадёжен — username может меняться)
+		`DO $$
+		BEGIN
+			IF NOT EXISTS (
+				SELECT 1 FROM information_schema.columns
+				WHERE table_name='chats' AND column_name='creator_id'
+			) THEN
+				ALTER TABLE chats ADD COLUMN creator_id TEXT DEFAULT '';
+			END IF;
+		END$$;`,
+
 		// Добавляем agent_id в chats для поддержки hermes типа
 		`DO $$
 		BEGIN
@@ -309,4 +320,20 @@ func (h *HermesDB) SaveSession(sessionID, userID, activeAgentID, mode string) {
 	if err != nil {
 		log.Printf("[HermesDB] save session error: %v", err)
 	}
+}
+
+// GetSessionID checks if a hermes session exists by ID (returns session ID or empty string)
+func (h *HermesDB) GetSessionID(sessionID string) string {
+	var id string
+	err := h.db.QueryRow("SELECT id FROM hermes_sessions WHERE id = $1", sessionID).Scan(&id)
+	if err != nil {
+		return ""
+	}
+	return id
+}
+
+// DeleteSession removes a hermes session by ID
+func (h *HermesDB) DeleteSession(sessionID string) error {
+	_, err := h.db.Exec("DELETE FROM hermes_sessions WHERE id = $1", sessionID)
+	return err
 }

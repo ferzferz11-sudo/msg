@@ -80,6 +80,7 @@ const (
 	ChatService_DeleteOwlChat_FullMethodName          = "/messenger.ChatService/DeleteOwlChat"
 	ChatService_GetOwlHistory_FullMethodName          = "/messenger.ChatService/GetOwlHistory"
 	ChatService_UpdateOwlSettings_FullMethodName      = "/messenger.ChatService/UpdateOwlSettings"
+	ChatService_GetOwlSettings_FullMethodName         = "/messenger.ChatService/GetOwlSettings"
 	ChatService_ChatWithOrchestrator_FullMethodName   = "/messenger.ChatService/ChatWithOrchestrator"
 	ChatService_GetOrchestratorHistory_FullMethodName = "/messenger.ChatService/GetOrchestratorHistory"
 	ChatService_ListAgents_FullMethodName             = "/messenger.ChatService/ListAgents"
@@ -169,6 +170,7 @@ type ChatServiceClient interface {
 	DeleteOwlChat(ctx context.Context, in *DeleteOwlChatRequest, opts ...grpc.CallOption) (*DeleteOwlChatResponse, error)
 	GetOwlHistory(ctx context.Context, in *GetOwlHistoryRequest, opts ...grpc.CallOption) (*GetOwlHistoryResponse, error)
 	UpdateOwlSettings(ctx context.Context, in *UpdateOwlSettingsRequest, opts ...grpc.CallOption) (*UpdateOwlSettingsResponse, error)
+	GetOwlSettings(ctx context.Context, in *GetOwlSettingsRequest, opts ...grpc.CallOption) (*GetOwlSettingsResponse, error)
 	// Hermes Multi-Agent Orchestrator
 	ChatWithOrchestrator(ctx context.Context, in *OrchestratorRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[OrchestratorResponse], error)
 	GetOrchestratorHistory(ctx context.Context, in *GetOrchestratorHistoryRequest, opts ...grpc.CallOption) (*GetOrchestratorHistoryResponse, error)
@@ -831,6 +833,16 @@ func (c *chatServiceClient) UpdateOwlSettings(ctx context.Context, in *UpdateOwl
 	return out, nil
 }
 
+func (c *chatServiceClient) GetOwlSettings(ctx context.Context, in *GetOwlSettingsRequest, opts ...grpc.CallOption) (*GetOwlSettingsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetOwlSettingsResponse)
+	err := c.cc.Invoke(ctx, ChatService_GetOwlSettings_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *chatServiceClient) ChatWithOrchestrator(ctx context.Context, in *OrchestratorRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[OrchestratorResponse], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	stream, err := c.cc.NewStream(ctx, &ChatService_ServiceDesc.Streams[4], ChatService_ChatWithOrchestrator_FullMethodName, cOpts...)
@@ -1125,6 +1137,7 @@ type ChatServiceServer interface {
 	DeleteOwlChat(context.Context, *DeleteOwlChatRequest) (*DeleteOwlChatResponse, error)
 	GetOwlHistory(context.Context, *GetOwlHistoryRequest) (*GetOwlHistoryResponse, error)
 	UpdateOwlSettings(context.Context, *UpdateOwlSettingsRequest) (*UpdateOwlSettingsResponse, error)
+	GetOwlSettings(context.Context, *GetOwlSettingsRequest) (*GetOwlSettingsResponse, error)
 	// Hermes Multi-Agent Orchestrator
 	ChatWithOrchestrator(*OrchestratorRequest, grpc.ServerStreamingServer[OrchestratorResponse]) error
 	GetOrchestratorHistory(context.Context, *GetOrchestratorHistoryRequest) (*GetOrchestratorHistoryResponse, error)
@@ -1341,6 +1354,9 @@ func (UnimplementedChatServiceServer) GetOwlHistory(context.Context, *GetOwlHist
 }
 func (UnimplementedChatServiceServer) UpdateOwlSettings(context.Context, *UpdateOwlSettingsRequest) (*UpdateOwlSettingsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateOwlSettings not implemented")
+}
+func (UnimplementedChatServiceServer) GetOwlSettings(context.Context, *GetOwlSettingsRequest) (*GetOwlSettingsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetOwlSettings not implemented")
 }
 func (UnimplementedChatServiceServer) ChatWithOrchestrator(*OrchestratorRequest, grpc.ServerStreamingServer[OrchestratorResponse]) error {
 	return status.Errorf(codes.Unimplemented, "method ChatWithOrchestrator not implemented")
@@ -2481,6 +2497,24 @@ func _ChatService_UpdateOwlSettings_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ChatService_GetOwlSettings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetOwlSettingsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).GetOwlSettings(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_GetOwlSettings_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).GetOwlSettings(ctx, req.(*GetOwlSettingsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ChatService_ChatWithOrchestrator_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(OrchestratorRequest)
 	if err := stream.RecvMsg(m); err != nil {
@@ -3054,6 +3088,10 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateOwlSettings",
 			Handler:    _ChatService_UpdateOwlSettings_Handler,
+		},
+		{
+			MethodName: "GetOwlSettings",
+			Handler:    _ChatService_GetOwlSettings_Handler,
 		},
 		{
 			MethodName: "GetOrchestratorHistory",

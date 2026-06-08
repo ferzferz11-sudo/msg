@@ -1,5 +1,19 @@
 # Lavender Messenger — Server Changelog
 
+## [1.1.1.5] - 2026-07-18
+- Версия обновлена до 1.1.1.5
+- **HermesSession → chats:** при создании HermesSession добавляется запись в таблицу `chats` (type="hermes") для корректного удаления и отображения в списке чатов
+- **DeleteChat для Hermes:** добавлен fallback — если чат не найден в `chats`, проверяется `hermes_sessions` и удаляется оттуда (исправляет `sql: no rows in result set`)
+- **GetOwlSettings RPC:** добавлен новый RPC для получения per-chat настроек (api_key, model) из `owl_chat_settings`
+- **UpdateOwlSettings fix:** исправлена проверка владельца — теперь по `creator_id` (UUID) вместо `creator_username`
+- **creator_id миграция:** добавлена колонка `creator_id` в таблицу `chats` для надёжной идентификации владельца по UUID
+- **Все проверки владельца** (DeleteOwlChat, UpdateOwlSettings, GetOwlSettings) теперь используют `creator_id` (UUID) вместо `creator_username`
+- **HermesDB:** добавлены методы `GetSessionID()` и `DeleteSession()`
+- **ChatWithOWL INSERT:** добавлен `creator_id` при создании OWL чата
+- **CreateOwlChat INSERT:** добавлен `creator_id` при создании OWL чата через RPC
+- **GetAllChats OWL SELECT:** поиск OWL чатов теперь через `creator_id` с subquery по `users.username`
+- **Multiple chats naming (подготовка):** chatID остаётся UUID-based, name будет генерироваться с номером (#1, #2...) — реализация в v1.1.1.6
+
 ## [1.1.1.4] - 2026-07-17
 - Версия обновлена до 1.1.1.4
 - **OWL FK fix:** авто-создание OWL чата в таблице `chats` при первом сообщении (исправляет `violates foreign key constraint "owl_messages_chat_id_fkey"`)

@@ -85,20 +85,39 @@
 
 ## ⏳ Не начато (по приоритету)
 
-### Высокий приоритет
+## ⏳ Не начато (по приоритету)
+
+### Высокий 1 (v1.1.1.5 — текущая сессия, частично сделано)
 1. **OWL Settings** — экран настроек OWL (API key, model selector), кнопка в [AI] шторке ведёт на него
-2. **DeleteChat для Hermes** — `sql: no rows in result set` при удалении hermes сессии
+   - Server: GetOwlSettings + UpdateOwlSettings handlers ✅, proto ✅, деплой ✅
+   - Android: OwlSettingsActivity ✅, layout ✅, MessengerProto ✅
+   - **НЕ ДОДЕЛАНО**: getOwlSettings()/updateOwlSettings() в OwlGrpc.kt, регистрация в AndroidManifest, подключение из AIBottomSheet
+2. **DeleteChat для Hermes** — исправлен ✅ (fallback на hermes_sessions через s.hermesDB)
+3. **HermesSession → chats** — сделано ✅ (INSERT INTO chats при создании сессии)
+4. **creator_id миграция** — сделано ✅ (добавлена колонка creator_id, все проверки владельца теперь по UUID)
+
+### Высокий 2 (v1.1.1.6 — новая версия)
+5. **Множественные OWL/Hermes чаты с нумерацией**
+   - Старый подход: один OWL чат на пользователя (chatId = "owl-$userId"), один Hermes чат ("hermes-$userId")
+   - **Новый подход**: каждый новый чат уникален с порядковым номером
+     - OWL: `Лава ИИ #1`, `Лава ИИ #2`, ... (русский) / `Lava AI #1`, `Lava AI #2`, ... (english)
+     - Hermes: `Оркестратор #1`, `Оркестратор #2`, ... (русский) / `Orchestrator #1`, `Orchestrator #2`, ... (english)
+   - Номер = MAX(existing) + 1 для данного пользователя и типа чата
+   - При удалении номера НЕ переиспользуются (всегда инкремент)
+   - Server: изменить CreateOwlChat и CreateHermesSession — генерировать имя с номером
+   - Android: изменить chatId генерацию (owl-$userId-$uuid8 → использовать серверное имя)
+   - Android: AIBottomSheet — добавлять новый чат, а не переоткрывать существующий
+   - Локализация: Locale.getDefault().language == "ru" → русский, иначе английский
 
 ### Средний приоритет
-3. **HermesSession → chats** — при создании сессии добавлять запись в таблицу `chats` (для корректного удаления и отображения в списке)
-4. **NotificationActivity badge** — счётчик непрочитанных на иконке колокольчика
-5. **Graceful reconnect** — переподключение без потери стримов
+6. **NotificationActivity badge** — счётчик непрочитанных на иконке колокольчика
+7. **Graceful reconnect** — переподключение без потери стримов
 
 ### Низкий приоритет
-6. **Auth токены для удалённых агентов** (JWT)
-7. **Qdrant + CLIP** (production RAG)
-8. **NewChatActivity** — миграция на ChatWidget
-9. **Деплой на prod** — только после завершения всех задач интеграции
+8. **Auth токены для удалённых агентов** (JWT)
+9. **Qdrant + CLIP** (production RAG)
+10. **NewChatActivity** — миграция на ChatWidget
+11. **Деплой на prod** — только после завершения всех задач интеграции
 
 ---
 
