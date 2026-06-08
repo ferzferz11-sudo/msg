@@ -1,5 +1,8 @@
 # Lavender Messenger — Server Changelog
 
+## [Unreleased] - 2026-06-08
+- **Исправлен невалидный JSON в participants:** при создании OWL/Hermes чатов поле participants содержало `[username]` вместо `["username"]`, что приводило к ошибке PostgreSQL `invalid input syntax for type json (22P02)` в `GetUserChats`. Исправлены все 3 места вставки — теперь используется `json.Marshal`.
+
 ## [1.1.1.7] - 2026-07-18
 - Версия обновлена до 1.1.1.7
 - **Notification badge (серверная часть):** добавлен per-user read tracking для серверных уведомлений
