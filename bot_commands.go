@@ -253,9 +253,9 @@ func handleBotDeploy(s *server, req *gen.BotCommandRequest) *gen.BotCommandRespo
 		map[string]string{"target": target, "user": req.Username})
 
 	go func() {
-		script := "/root/scripts/deploy-dev.sh"
+		script := "/root/msg/scripts/deploy-dev.sh"
 		if target == "prod" {
-			script = "/root/scripts/deploy-prod.sh"
+			script = "/root/msg/scripts/deploy-prod.sh"
 		}
 		out, err := exec.Command("bash", script).CombinedOutput()
 		if err != nil {
