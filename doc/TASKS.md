@@ -9,6 +9,9 @@
 ## ✅ Сделано (v1.1.1.7)
 
 ### Server
+- **Исправлен невалидный JSON в participants:** при создании OWL/Hermes чатов использовался `"["+username+"]"` вместо `json.Marshal([]string{username})`. Это приводило к ошибке `pq: invalid input syntax for type json (22P02)` в `GetUserChats` при касте `participants::jsonb`. Исправлены 3 места: ChatWithOWL auto-creation, CreateOwlChat RPC, CreateHermesSession RPC. Также очищены существующие невалидные данные в dev БД (2 строки).
+
+### Server (notification badge)
 - **Notification badge (серверная часть):** per-user read tracking для серверных уведомлений
 - **notificationService:** добавлено readStates — map[userID]map[notificationID]bool
 - **MarkNotificationsRead:** теперь реально отмечает уведомления как прочитанные
