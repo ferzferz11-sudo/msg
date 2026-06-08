@@ -795,6 +795,7 @@ message CreateOwlChatRequest {
 
 message CreateOwlChatResponse {
   string chat_id = 1;
+  string name = 4;
   bool success = 2;
   string message = 3;
 }
@@ -978,6 +979,7 @@ message CreateHermesSessionRequest {
 message CreateHermesSessionResponse {
   bool success = 1;
   string session_id = 2;
+  string name = 4;
   string error = 3;
 }
 

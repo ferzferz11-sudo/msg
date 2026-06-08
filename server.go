@@ -30,7 +30,7 @@ import (
 	"firebase.google.com/go/v4/messaging"
 )
 
-const ServerVersion = "1.1.1.5"
+const ServerVersion = "1.1.1.6"
 
 // server implements the gRPC ChatService interface
 type server struct {
@@ -3073,17 +3073,42 @@ func (s *server) ChatWithOWL(req *gen.OWLRequest, stream gen.ChatService_ChatWit
 	return nil
 }
 
-// CreateOwlChat creates a new OWL AI chat for the user
+// getNextChatNumber returns the next sequential number for a user's AI chat of given type.
+// Numbers are never reused after deletion — always MAX(existing) + 1.
+func (s *server) getNextChatNumber(userID, chatType string) int {
+	var maxNum sql.NullInt64
+	// Extract number from name like "Лава ИИ #3" or "Lava AI #3" or "Оркестратор #2"
+	// Pattern: " #<number>" at end of name
+	err := s.db.QueryRow(`
+		SELECT COALESCE(MAX(CAST(SUBSTRING(name FROM '#(\d+)$') AS INTEGER)), 0)
+		FROM chats
+		WHERE creator_id = $1 AND type = $2
+		AND name ~ '#\d+$'
+	`, userID, chatType).Scan(&maxNum)
+	if err != nil || !maxNum.Valid {
+		return 1
+	}
+	return int(maxNum.Int64) + 1
+}
+
+// generateChatName creates a localized name with sequential number for a new AI chat.
+func generateChatName(chatType string, number int) string {
+	switch chatType {
+	case "owl":
+		return fmt.Sprintf("Лава ИИ #%d", number)
+	case "hermes":
+		return fmt.Sprintf("Оркестратор #%d", number)
+	default:
+		return fmt.Sprintf("AI Chat #%d", number)
+	}
+}
+
+// CreateOwlChat creates a new OWL AI chat for the user with sequential numbering.
 func (s *server) CreateOwlChat(_ context.Context, req *gen.CreateOwlChatRequest) (*gen.CreateOwlChatResponse, error) {
 	log.Printf("CreateOwlChat: called user_id=%q name=%q", req.UserId, req.Name)
 	if req.UserId == "" {
 		log.Printf("CreateOwlChat: ERROR empty user_id")
 		return &gen.CreateOwlChatResponse{Success: false, Message: "user_id is required"}, nil
-	}
-
-	name := req.Name
-	if name == "" {
-		name = "🤖 Чат с AI"
 	}
 
 	// Look up username from users table by user_id
@@ -3093,8 +3118,15 @@ func (s *server) CreateOwlChat(_ context.Context, req *gen.CreateOwlChatRequest)
 	}
 	log.Printf("CreateOwlChat: resolved username=%q for user_id=%q", username, req.UserId)
 
-	chatID := "owl-" + username + "-" + uuid.New().String()[:8]
-	log.Printf("CreateOwlChat: creating chat %q for user %q", chatID, username)
+	// Generate sequential number for this user's OWL chats
+	num := s.getNextChatNumber(req.UserId, "owl")
+	name := req.Name
+	if name == "" {
+		name = generateChatName("owl", num)
+	}
+
+	chatID := "owl-" + uuid.New().String()
+	log.Printf("CreateOwlChat: creating chat %q name=%q for user %q", chatID, name, username)
 
 	_, err := s.db.Exec(
 		"INSERT INTO chats (id, name, type, participants, creator_username, creator_id) VALUES ($1, $2, 'owl', $3, $4, $5)",
@@ -3105,9 +3137,10 @@ func (s *server) CreateOwlChat(_ context.Context, req *gen.CreateOwlChatRequest)
 		return &gen.CreateOwlChatResponse{Success: false, Message: "failed to create chat: " + err.Error()}, nil
 	}
 
-	log.Printf("CreateOwlChat: SUCCESS chat_id=%q user=%q", chatID, username)
+	log.Printf("CreateOwlChat: SUCCESS chat_id=%q name=%q user=%q", chatID, name, username)
 	return &gen.CreateOwlChatResponse{
 		ChatId:  chatID,
+		Name:    name,
 		Success: true,
 		Message: "OK",
 	}, nil
@@ -3606,7 +3639,6 @@ func (s *server) CreateHermesSession(_ context.Context, req *gen.CreateHermesSes
 	}
 
 	// Resolve username → UUID if needed (hermes_sessions.user_id is UUID type)
-	// If userID is not a valid UUID, treat it as username and look up the UUID
 	if _, err := uuid.Parse(userID); err != nil {
 		if uid, err := s.db.GetUserIdByUsername(userID); err == nil && uid != "" {
 			log.Printf("[Lava] CreateHermesSession: resolved username %q → UUID %q", userID, uid)
@@ -3616,12 +3648,14 @@ func (s *server) CreateHermesSession(_ context.Context, req *gen.CreateHermesSes
 		}
 	}
 
-	sessionID := "hermes-" + userID + "-" + uuid.New().String()[:8]
-
+	// Generate sequential number for this user's Hermes sessions
+	num := s.getNextChatNumber(userID, "hermes")
 	name := req.Name
 	if name == "" {
-		name = "Lava AI"
+		name = generateChatName("hermes", num)
 	}
+
+	sessionID := "hermes-" + uuid.New().String()
 
 	_, err := s.db.Exec(
 		"INSERT INTO hermes_sessions (id, user_id, name) VALUES ($1, $2, $3)",
@@ -3633,7 +3667,6 @@ func (s *server) CreateHermesSession(_ context.Context, req *gen.CreateHermesSes
 	}
 
 	// Also insert into chats so the session appears in chat list and can be deleted
-	// Resolve username for creator_username field
 	username := userID
 	if uname, err := s.db.GetUsernameByID(userID); err == nil && uname != "" {
 		username = uname
@@ -3644,11 +3677,10 @@ func (s *server) CreateHermesSession(_ context.Context, req *gen.CreateHermesSes
 	)
 	if err != nil {
 		log.Printf("[Lava] CreateHermesSession: WARNING failed to insert into chats: %v", err)
-		// Non-fatal: hermes_sessions row exists, user can still chat
 	}
 
-	log.Printf("[Lava] CreateHermesSession: OK session_id=%s", sessionID)
-	return &gen.CreateHermesSessionResponse{Success: true, SessionId: sessionID}, nil
+	log.Printf("[Lava] CreateHermesSession: OK session_id=%s name=%s", sessionID, name)
+	return &gen.CreateHermesSessionResponse{Success: true, SessionId: sessionID, Name: name}, nil
 }
 
 // DeleteHermesSession — удаление сессии
