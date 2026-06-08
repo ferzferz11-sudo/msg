@@ -2,6 +2,18 @@
 
 **Author:** Pavel Davodov (ferz)
 
+## [1.1.1.4] - 2026-07-17
+- **Server:**
+  - Версия обновлена до 1.1.1.4
+- **Android:**
+  - **[AI] кнопка в списке чатов:** добавлена кнопка [AI] рядом с [+] в ChatListActivity
+  - **AIBottomSheet:** новая шторка с группировкой AI-сервисов (Оркестратор / OWL) и разделителем
+  - **Группа Оркестратор:** Lava AI, Агенты, Уведомления
+  - **Группа OWL:** OWL AI, Настройки OWL
+  - **AI-пункты перенесены** из [+] шторки в [AI] шторку
+  - **Новые файлы:** AIBottomSheet.kt, widget_ai_bottom_sheet.xml, widget_section_header.xml, widget_section_divider.xml
+  - **Новые ID:** action_owl_settings в ids.xml
+
 ## [1.1.1.3] - 2026-07-17
 - **Server:**
   - Версия обновлена до 1.1.1.3

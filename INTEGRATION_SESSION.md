@@ -32,9 +32,26 @@ ANDROID:
 
 ---
 
-## Статус: v1.1.1.3 ЗАВЕРШЕНА
+## Статус: v1.1.1.4 ЗАВЕРШЕНА
 
-### Сервер v1.1.1.3 (`/root/msg`)
+### Сервер v1.1.1.4 (`/root/msg`)
+
+| Компонент | Статус | Файл |
+|-----------|--------|------|
+| Версия 1.1.1.4 | ✅ | `server.go:33` |
+
+### Android v1.1.1.4 (`/root/msg.client.android`)
+
+| Компонент | Статус | Файл |
+|-----------|--------|------|
+| **[AI] кнопка** рядом с [+] | ✅ | `activity_chat_list.xml` |
+| **AIBottomSheet** (группы + divider) | ✅ | `ui/widget/AIBottomSheet.kt` |
+| **showAIActionSheet()** | ✅ | `ChatListActivity.kt` |
+| **AI-пункты перенесены** из [+] | ✅ | `ChatListActivity.kt` |
+| **widget_ai_bottom_sheet.xml** | ✅ | `res/layout/` |
+| **widget_section_header.xml** | ✅ | `res/layout/` |
+| **widget_section_divider.xml** | ✅ | `res/layout/` |
+| compileDebugKotlin | ✅ | passes |
 
 | Компонент | Статус | Файл |
 |-----------|--------|------|
@@ -94,6 +111,7 @@ ANDROID:
 | v1.1.1.1 | ✅ | ✅ |
 | v1.1.1.2 | ✅ | ✅ |
 | v1.1.1.3 | ✅ | ✅ |
+| v1.1.1.4 | ✅ | ✅ |
 
 ---
 
@@ -178,16 +196,16 @@ cd /root/msg.client.android
 
 ---
 
-## Промпт для следующей сессии (v1.1.1.4)
+## Промпт для следующей сессии (v1.1.1.5)
 
 ```
-Продолжаем работу над Lavender Messenger. v1.1.1.3 завершена.
-Новая версия: v1.1.1.4 (feat/1.1.1.x на обоих репозиториях)
+Продолжаем работу над Lavender Messenger. v1.1.1.4 завершена.
+Новая версия: v1.1.1.5 (feat/1.1.1.x на обоих репозиториях)
 
 Контекст:
 - Сервер: /root/msg, dev порт 50052, prod порт 50051
 - Android: /root/msg.client.android
-- Оба репозитория чистые, все запушены, теги v1.1.1.3
+- Оба репозитория чистые, все запушены, теги v1.1.1.4
 - Серверы работают (lavender-server-dev, lavender-server)
 - Сборка проходит: go build + compileDebugKotlin + go test
 
@@ -197,22 +215,18 @@ cd /root/msg.client.android
 - НЕ смешивать OWL и Hermes код — полная изоляция
 - Каждый сервис имеет свои SharedFlows, marshallers, rate limiters
 
-Что сделано (v1.1.1.3):
-- Server Notifications UI: NotificationActivity, NotificationAdapter, real-time подписка
-- OwlGrpc.kt: subscribeNotifications, getNotificationHistory, markNotificationsRead
-- ChatListActivity: кнопка "Уведомления" в bottom sheet
-- Bot commands unit tests (bot_commands_test.go)
-- Исправлен fmt.Sprintf в /logs handler
+Что сделано (v1.1.1.4):
+- [AI] кнопка в списке чатов: AIBottomSheet с группировкой (Оркестратор/OWL)
+- AI-пункты перенесены из [+] в [AI] шторку
+- Server version bump 1.1.1.3 → 1.1.1.4
 
-Следующие шаги для v1.1.1.4 (по приоритету):
-1. **[AI] кнопка в списке чатов** — создать кнопку [AI] рядом с [+] в ChatListActivity. При нажатии — шторка с группировкой AI-сервисов. Верхняя группа (Оркестратор): Lava AI, Агенты, Уведомления. Разделитель. Нижняя группа (OWL): OWL AI, Настройки OWL. Перенести AI-пункты из [+] в [AI] шторку.
-2. **Исправить пути скриптов деплоя** — бот-команда /deploy искала скрипты в /root/scripts/ (не существовало). Исправлено на /root/msg/scripts/. Проверить что /deploy dev и /prod работают корректно.
-3. APK сборка и тест на устройстве — полный цикл
-3. Улучшить NotificationActivity — badge с количеством непрочитанных
-4. Graceful reconnect при keepalive failed
-5. Auth токены для удалённых агентов (JWT)
-
-Детальный план [AI] кнопки см. в TASKS.md раздел "📋 План: [AI] кнопка в списке чатов"
+Следующие шаги для v1.1.1.5 (по приоритету):
+1. **Исправить пути скриптов деплоя** — проверить что /deploy dev и /prod работают корректно
+2. **NotificationActivity — badge с количеством непрочитанных**
+3. **Graceful reconnect** при keepalive failed
+4. **Auth токены для удалённых агентов** (JWT)
+5. APK сборка и тест на устройстве
+6. Деплой на prod
 
 Правила:
 - Коммитить после каждого изменения, пушить в feat/1.1.1.x
@@ -221,7 +235,7 @@ cd /root/msg.client.android
 - Не ломать существующий функционал
 - Версия сервера в server.go:33 — обновлять при релизе
 - assembleRelease НЕ запускать на сервере (OOM kill)
-- Теги: git tag v1.1.1.4 <commit> && git push origin feat/1.1.1.x --tags
+- Теги: git tag v1.1.1.5 <commit> && git push origin feat/1.1.1.x --tags
 - Разделение архитектуры: каждый AI-сервис в своём файле
 - Каждый значимый коммит — с описанием что и почему
 
