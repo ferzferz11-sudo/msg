@@ -719,6 +719,10 @@ service ChatService {
   rpc DeployAgentTask(DeployAgentTaskRequest) returns (DeployAgentTaskResponse);
   rpc GetRemoteAgentStatus(GetRemoteAgentStatusRequest) returns (GetRemoteAgentStatusResponse);
 
+  // AI Chats management (unified list for OWL + Hermes)
+  rpc GetAIChats(GetAIChatsRequest) returns (GetAIChatsResponse);
+  rpc RenameAIChat(RenameAIChatRequest) returns (RenameAIChatResponse);
+
   // Hermes AI Pipeline (RAG + LLM + Tool Calling)
   rpc ChatWithPipeline(PipelineRequest) returns (stream PipelineResponse);
 
@@ -1034,6 +1038,34 @@ message GetRemoteAgentStatusResponse {
   string status = 1;
   int32 active_tasks = 2;
   string last_heartbeat = 3;
+}
+
+// ======= AI Chats Management =======
+
+message GetAIChatsRequest {
+  string user_id = 1;
+}
+
+message AIChatInfo {
+  string id = 1;
+  string name = 2;
+  string type = 3; // "owl" or "hermes"
+  string created_at = 4;
+}
+
+message GetAIChatsResponse {
+  repeated AIChatInfo chats = 1;
+}
+
+message RenameAIChatRequest {
+  string chat_id = 1;
+  string user_id = 2;
+  string new_name = 3;
+}
+
+message RenameAIChatResponse {
+  bool success = 1;
+  string error = 2;
 }
 
 // ======= Bot Commands =======

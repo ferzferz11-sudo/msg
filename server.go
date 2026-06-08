@@ -1077,92 +1077,8 @@ func (s *server) GetChats(_ context.Context, req *gen.GetChatsRequest) (*gen.Get
 		})
 	}
 
-	// Add OWL AI chats from database — filter by creator_id (UUID) directly
-	if queryIdentifier != "" && queryIdentifier != "00000000-0000-0000-0000-000000000000" {
-		owlRows, err := s.db.Query(
-			"SELECT c.id, c.name, c.type, c.participants, c.created_at, c.creator_username, '' as last_message_text, c.created_at as last_message_time FROM chats c WHERE c.type = 'owl' AND c.creator_id = $1 ORDER BY c.created_at ASC",
-			queryIdentifier,
-		)
-		if err == nil {
-			for owlRows.Next() {
-				var c gen.ChatInfo
-				var createdAt time.Time
-				var lastMsg sql.NullString
-				var lastMsgTime sql.NullTime
-				if err := owlRows.Scan(&c.Id, &c.Name, &c.Type, &c.Participants, &createdAt, &c.Creator, &lastMsg, &lastMsgTime); err == nil {
-					c.CreatedAt = timestamppb.New(createdAt)
-					if lastMsgTime.Valid {
-						c.LastMessageTime = timestamppb.New(lastMsgTime.Time)
-					} else {
-						c.LastMessageTime = timestamppb.New(createdAt)
-					}
-					if lastMsg.Valid {
-						c.LastMessageText = lastMsg.String
-					}
-					chatInfos = append(chatInfos, &c)
-				}
-			}
-			owlRows.Close()
-		}
-	}
-
-	// Add Hermes sessions as hermes-type chats
-	if queryIdentifier != "" && queryIdentifier != "00000000-0000-0000-0000-000000000000" {
-		hermesRows, err := s.db.Query(`
-			SELECT s.id, s.name, s.active_agent_id, s.agent_mode, s.created_at, s.updated_at,
-			       COALESCE(m.content, '') as last_message_text,
-			       COALESCE(m.created_at, s.updated_at) as last_message_time
-			FROM hermes_sessions s
-			LEFT JOIN LATERAL (
-				SELECT content, created_at FROM hermes_messages
-				WHERE session_id = s.id AND role = 'assistant'
-				ORDER BY created_at DESC LIMIT 1
-			) m ON true
-			WHERE s.user_id = $1
-			ORDER BY s.updated_at DESC`, queryIdentifier)
-		if err == nil {
-			for hermesRows.Next() {
-				var id, name, agentID, mode, lastMsg string
-				var createdAt, updatedAt time.Time
-				var lastMsgTime sql.NullTime
-				if err := hermesRows.Scan(&id, &name, &agentID, &mode, &createdAt, &updatedAt, &lastMsg, &lastMsgTime); err == nil {
-					lastMsgTS := updatedAt
-					if lastMsgTime.Valid {
-						lastMsgTS = lastMsgTime.Time
-					}
-					chatInfos = append(chatInfos, &gen.ChatInfo{
-						Id:              id,
-						Name:            name,
-						Type:            "hermes",
-						ActiveAgentId:   agentID,
-						AgentMode:       mode,
-						CreatedAt:       timestamppb.New(createdAt),
-						LastMessageTime: timestamppb.New(lastMsgTS),
-						LastMessageText: lastMsg,
-					})
-				}
-			}
-			hermesRows.Close()
-		}
-	}
-
-	// Prepend OWL chats, append Hermes sessions at the end
-	// (owl chats are already in chatInfos from the DB query above,
-	//  hermes sessions were just added — rebuild the slice)
-	owlChats := make([]*gen.ChatInfo, 0)
-	regularChats := make([]*gen.ChatInfo, 0)
-	hermesChats := make([]*gen.ChatInfo, 0)
-	for _, c := range chatInfos {
-		if c.Type == "owl" {
-			owlChats = append(owlChats, c)
-		} else if c.Type == "hermes" {
-			hermesChats = append(hermesChats, c)
-		} else {
-			regularChats = append(regularChats, c)
-		}
-	}
-	chatInfos = append(owlChats, regularChats...)
-	chatInfos = append(chatInfos, hermesChats...)
+	// Note: AI chats (owl/hermes) are NOT included in GetAllChats.
+	// They are fetched separately via GetAIChats RPC and shown in AIBottomSheet.
 
 	return &gen.GetChatsResponse{Chats: chatInfos}, nil
 }
@@ -3765,6 +3681,92 @@ func (s *server) GetRemoteAgentStatus(_ context.Context, req *gen.GetRemoteAgent
 		ActiveTasks:   int32(agent.ActiveTasks),
 		LastHeartbeat: agent.LastHeartbeat.Format(time.RFC3339),
 	}, nil
+}
+
+// GetAIChats returns all AI chats (OWL + Hermes) for the user
+func (s *server) GetAIChats(_ context.Context, req *gen.GetAIChatsRequest) (*gen.GetAIChatsResponse, error) {
+	if req.UserId == "" {
+		return &gen.GetAIChatsResponse{}, nil
+	}
+
+	var chats []*gen.AIChatInfo
+
+	// OWL chats from chats table
+	owlRows, err := s.db.Query(
+		"SELECT id, name, type, created_at FROM chats WHERE type = 'owl' AND creator_id = $1 ORDER BY created_at ASC",
+		req.UserId,
+	)
+	if err == nil {
+		for owlRows.Next() {
+			var id, name, chatType string
+			var createdAt time.Time
+			if err := owlRows.Scan(&id, &name, &chatType, &createdAt); err == nil {
+				chats = append(chats, &gen.AIChatInfo{
+					Id:        id,
+					Name:      name,
+					Type:      chatType,
+					CreatedAt: createdAt.Format(time.RFC3339),
+				})
+			}
+		}
+		owlRows.Close()
+	}
+
+	// Hermes sessions from hermes_sessions table
+	hermesRows, err := s.db.Query(
+		"SELECT id, name, created_at FROM hermes_sessions WHERE user_id = $1 ORDER BY created_at ASC",
+		req.UserId,
+	)
+	if err == nil {
+		for hermesRows.Next() {
+			var id, name string
+			var createdAt time.Time
+			if err := hermesRows.Scan(&id, &name, &createdAt); err == nil {
+				chats = append(chats, &gen.AIChatInfo{
+					Id:        id,
+					Name:      name,
+					Type:      "hermes",
+					CreatedAt: createdAt.Format(time.RFC3339),
+				})
+			}
+		}
+		hermesRows.Close()
+	}
+
+	return &gen.GetAIChatsResponse{Chats: chats}, nil
+}
+
+// RenameAIChat renames an AI chat (OWL or Hermes)
+func (s *server) RenameAIChat(_ context.Context, req *gen.RenameAIChatRequest) (*gen.RenameAIChatResponse, error) {
+	if req.ChatId == "" || req.UserId == "" || req.NewName == "" {
+		return &gen.RenameAIChatResponse{Success: false, Error: "chat_id, user_id and new_name required"}, nil
+	}
+
+	// Try OWL chat first
+	var creatorID string
+	err := s.db.QueryRow("SELECT creator_id FROM chats WHERE id = $1 AND type = 'owl'", req.ChatId).Scan(&creatorID)
+	if err == nil && creatorID == req.UserId {
+		_, err = s.db.Exec("UPDATE chats SET name = $1 WHERE id = $2", req.NewName, req.ChatId)
+		if err != nil {
+			return &gen.RenameAIChatResponse{Success: false, Error: err.Error()}, nil
+		}
+		return &gen.RenameAIChatResponse{Success: true}, nil
+	}
+
+	// Try Hermes session
+	var userID string
+	err = s.db.QueryRow("SELECT user_id FROM hermes_sessions WHERE id = $1", req.ChatId).Scan(&userID)
+	if err == nil && userID == req.UserId {
+		_, err = s.db.Exec("UPDATE hermes_sessions SET name = $1 WHERE id = $2", req.NewName, req.ChatId)
+		if err != nil {
+			return &gen.RenameAIChatResponse{Success: false, Error: err.Error()}, nil
+		}
+		// Also update in chats if exists
+		_, _ = s.db.Exec("UPDATE chats SET name = $1 WHERE id = $2", req.NewName, req.ChatId)
+		return &gen.RenameAIChatResponse{Success: true}, nil
+	}
+
+	return &gen.RenameAIChatResponse{Success: false, Error: "chat not found or not your chat"}, nil
 }
 
 // truncateString truncates a string to maxLen characters, adding "..." if truncated

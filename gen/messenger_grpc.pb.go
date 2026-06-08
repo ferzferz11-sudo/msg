@@ -94,6 +94,8 @@ const (
 	ChatService_ListRemoteAgents_FullMethodName       = "/messenger.ChatService/ListRemoteAgents"
 	ChatService_DeployAgentTask_FullMethodName        = "/messenger.ChatService/DeployAgentTask"
 	ChatService_GetRemoteAgentStatus_FullMethodName   = "/messenger.ChatService/GetRemoteAgentStatus"
+	ChatService_GetAIChats_FullMethodName             = "/messenger.ChatService/GetAIChats"
+	ChatService_RenameAIChat_FullMethodName           = "/messenger.ChatService/RenameAIChat"
 	ChatService_ChatWithPipeline_FullMethodName       = "/messenger.ChatService/ChatWithPipeline"
 	ChatService_ProcessBotCommand_FullMethodName      = "/messenger.ChatService/ProcessBotCommand"
 	ChatService_GetBotCommands_FullMethodName         = "/messenger.ChatService/GetBotCommands"
@@ -186,6 +188,9 @@ type ChatServiceClient interface {
 	ListRemoteAgents(ctx context.Context, in *ListRemoteAgentsRequest, opts ...grpc.CallOption) (*ListRemoteAgentsResponse, error)
 	DeployAgentTask(ctx context.Context, in *DeployAgentTaskRequest, opts ...grpc.CallOption) (*DeployAgentTaskResponse, error)
 	GetRemoteAgentStatus(ctx context.Context, in *GetRemoteAgentStatusRequest, opts ...grpc.CallOption) (*GetRemoteAgentStatusResponse, error)
+	// AI Chats management (unified list for OWL + Hermes)
+	GetAIChats(ctx context.Context, in *GetAIChatsRequest, opts ...grpc.CallOption) (*GetAIChatsResponse, error)
+	RenameAIChat(ctx context.Context, in *RenameAIChatRequest, opts ...grpc.CallOption) (*RenameAIChatResponse, error)
 	// Hermes AI Pipeline (RAG + LLM + Tool Calling)
 	ChatWithPipeline(ctx context.Context, in *PipelineRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[PipelineResponse], error)
 	// Bot Commands
@@ -984,6 +989,26 @@ func (c *chatServiceClient) GetRemoteAgentStatus(ctx context.Context, in *GetRem
 	return out, nil
 }
 
+func (c *chatServiceClient) GetAIChats(ctx context.Context, in *GetAIChatsRequest, opts ...grpc.CallOption) (*GetAIChatsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetAIChatsResponse)
+	err := c.cc.Invoke(ctx, ChatService_GetAIChats_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) RenameAIChat(ctx context.Context, in *RenameAIChatRequest, opts ...grpc.CallOption) (*RenameAIChatResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RenameAIChatResponse)
+	err := c.cc.Invoke(ctx, ChatService_RenameAIChat_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *chatServiceClient) ChatWithPipeline(ctx context.Context, in *PipelineRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[PipelineResponse], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	stream, err := c.cc.NewStream(ctx, &ChatService_ServiceDesc.Streams[5], ChatService_ChatWithPipeline_FullMethodName, cOpts...)
@@ -1164,6 +1189,9 @@ type ChatServiceServer interface {
 	ListRemoteAgents(context.Context, *ListRemoteAgentsRequest) (*ListRemoteAgentsResponse, error)
 	DeployAgentTask(context.Context, *DeployAgentTaskRequest) (*DeployAgentTaskResponse, error)
 	GetRemoteAgentStatus(context.Context, *GetRemoteAgentStatusRequest) (*GetRemoteAgentStatusResponse, error)
+	// AI Chats management (unified list for OWL + Hermes)
+	GetAIChats(context.Context, *GetAIChatsRequest) (*GetAIChatsResponse, error)
+	RenameAIChat(context.Context, *RenameAIChatRequest) (*RenameAIChatResponse, error)
 	// Hermes AI Pipeline (RAG + LLM + Tool Calling)
 	ChatWithPipeline(*PipelineRequest, grpc.ServerStreamingServer[PipelineResponse]) error
 	// Bot Commands
@@ -1409,6 +1437,12 @@ func (UnimplementedChatServiceServer) DeployAgentTask(context.Context, *DeployAg
 }
 func (UnimplementedChatServiceServer) GetRemoteAgentStatus(context.Context, *GetRemoteAgentStatusRequest) (*GetRemoteAgentStatusResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetRemoteAgentStatus not implemented")
+}
+func (UnimplementedChatServiceServer) GetAIChats(context.Context, *GetAIChatsRequest) (*GetAIChatsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetAIChats not implemented")
+}
+func (UnimplementedChatServiceServer) RenameAIChat(context.Context, *RenameAIChatRequest) (*RenameAIChatResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RenameAIChat not implemented")
 }
 func (UnimplementedChatServiceServer) ChatWithPipeline(*PipelineRequest, grpc.ServerStreamingServer[PipelineResponse]) error {
 	return status.Errorf(codes.Unimplemented, "method ChatWithPipeline not implemented")
@@ -2758,6 +2792,42 @@ func _ChatService_GetRemoteAgentStatus_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ChatService_GetAIChats_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetAIChatsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).GetAIChats(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_GetAIChats_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).GetAIChats(ctx, req.(*GetAIChatsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_RenameAIChat_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RenameAIChatRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).RenameAIChat(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_RenameAIChat_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).RenameAIChat(ctx, req.(*RenameAIChatRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ChatService_ChatWithPipeline_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(PipelineRequest)
 	if err := stream.RecvMsg(m); err != nil {
@@ -3174,6 +3244,14 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetRemoteAgentStatus",
 			Handler:    _ChatService_GetRemoteAgentStatus_Handler,
+		},
+		{
+			MethodName: "GetAIChats",
+			Handler:    _ChatService_GetAIChats_Handler,
+		},
+		{
+			MethodName: "RenameAIChat",
+			Handler:    _ChatService_RenameAIChat_Handler,
 		},
 		{
 			MethodName: "ProcessBotCommand",
