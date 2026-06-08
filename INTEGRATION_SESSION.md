@@ -184,11 +184,32 @@ cd /root/msg.client.android
 - OWL чат — нет ошибки FK constraint ✅
 
 Следующие шаги для v1.1.1.5 (по приоритету):
-1. **Исправить DeleteChat для Hermes чатов** — при удалении hermes чата ошибка `sql: no rows in result set`. Чат есть в `hermes_sessions`, но не в `chats`. Нужно либо добавить запись в `chats` при создании сессии, либо обрабатывать удаление из `hermes_sessions` отдельно.
-2. **Деплой на prod** — после исправления DeleteChat
-3. NotificationActivity — badge с количеством непрочитанных
-4. Graceful reconnect при keepalive failed
-5. Auth токены для удалённых агентов (JWT)
+
+1. **OWL Settings (Android)** — экран настроек OWL:
+   - Поля: API key (TextInput), model selector (Spinner/Dropdown)
+   - Сохранение в owl_chat_settings через gRPC
+   - Кнопка "Настройки OWL" в [AI] шторке → открывает этот экран
+   - Layout: activity_owl_settings.xml
+   - Использовать существующий стиль (ThemeApplier, StandardBottomSheet)
+
+2. **DeleteChat для Hermes (Server)** — исправить ошибку:
+   - При удалении hermes сессии: `sql: no rows in result set`
+   - Причина: чат есть в hermes_sessions, но НЕ в chats
+   - Решение: при создании HermesSession добавлять запись в chats (type="hermes")
+   - Или: в DeleteChat обрабатывать hermes_sessions отдельно
+
+3. **HermesSession → chats (Server)** — при создании сессии:
+   - Добавлять INSERT INTO chats (id, name, type, participants, creator_username)
+   - type = "hermes"
+   - Это нужно для: корректного удаления, отображения в списке чатов
+
+4. **NotificationActivity badge (Android)** — счётчик непрочитанных:
+   - Показывать число на иконке колокольчика в toolbar
+   - Обновлять при получении новых уведомлений
+
+5. **Graceful reconnect (Android)** — переподключение:
+   - При keepalive failed — переподключение без потери стримов
+   - Не обрывать текущие сессии
 
 Правила:
 - Коммитить после каждого изменения, пушить в feat/1.1.1.x
@@ -203,6 +224,7 @@ cd /root/msg.client.android
 - Разделение архитектуры: каждый AI-сервис в своём файле
 - Каждый значимый коммит — с описанием что и почему
 - userId (UUID) — всегда использовать как ключ, не username
+- Деплой на prod — только после завершения ВСЕХ задач интеграции
 
 Документация: /root/msg/INTEGRATION_SESSION.md, /root/msg/TASKS.md
 Команды сборки: см. раздел "Команды" выше

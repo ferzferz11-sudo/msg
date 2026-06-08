@@ -86,18 +86,19 @@
 ## ⏳ Не начато (по приоритету)
 
 ### Высокий приоритет
-1. **Исправить DeleteChat для Hermes чатов** — `sql: no rows in result set` при удалении hermes чата (чат есть в `hermes_sessions`, но не в `chats`)
-2. **Деплой на prod** — после исправления DeleteChat
+1. **OWL Settings** — экран настроек OWL (API key, model selector), кнопка в [AI] шторке ведёт на него
+2. **DeleteChat для Hermes** — `sql: no rows in result set` при удалении hermes сессии
 
 ### Средний приоритет
-3. **NotificationActivity — badge с количеством непрочитанных** — показывать счётчик на иконке колокольчика
-4. **Graceful reconnect** при keepalive failed — переподключение без потери стримов
-5. **Модульные тесты для OWL streaming** — тестировать chatWithOwl gRPC
+3. **HermesSession → chats** — при создании сессии добавлять запись в таблицу `chats` (для корректного удаления и отображения в списке)
+4. **NotificationActivity badge** — счётчик непрочитанных на иконке колокольчика
+5. **Graceful reconnect** — переподключение без потери стримов
 
 ### Низкий приоритет
-6. **Auth токены для удалённых агентов** — JWT при регистрации
-7. **Qdrant + CLIP** — production RAG
-8. **NewChatActivity** — миграция на ChatWidget (рефакторинг)
+6. **Auth токены для удалённых агентов** (JWT)
+7. **Qdrant + CLIP** (production RAG)
+8. **NewChatActivity** — миграция на ChatWidget
+9. **Деплой на prod** — только после завершения всех задач интеграции
 
 ---
 
