@@ -1,32 +1,38 @@
 # Lavender Messenger — Задачи
 
-**Версия:** v1.1.1.8 (in progress)
+**Версия:** v1.1.1.8
 **Обновлено:** 2026-06-08
-**Статус:** 🔄 v1.1.1.8 — AI chats separation + JSON fix
+**Статус:** ✅ v1.1.1.8 — Завершена. AI chats separation + JSON fix
 
 ---
 
 ## ✅ Сделано (v1.1.1.8)
 
 ### Server
-- **Исправлен невалидный JSON в participants:** заменена конкатенация на `json.Marshal([]string{userId})` в 3 местах. Теперь хранится UUID вместо username.
-- **GetUserChats исключает AI-чаты:** `WHERE c.type NOT IN ('owl', 'hermes')` — убран jsonb-каст для AI-типов
-- **GetAllChats не включает AI-чаты:** OWL/Hermes полностью убраны из основного списка
-- **Новый RPC GetAIChats:** отдельный запрос для получения AI-чатов пользователя (OWL + Hermes)
+- **Исправлен невалидный JSON в participants:** заменена конкатенация на `json.Marshal([]string{userId})`. Теперь хранится UUID вместо username.
+- **GetUserChats исключает AI-чаты:** `WHERE c.type NOT IN ('owl', 'hermes')`
+- **GetAllChats не включает AI-чаты:** отдельный RPC GetAIChats
+- **Новый RPC GetAIChats:** возвращает все AI-чаты пользователя (OWL + Hermes)
 - **Новый RPC RenameAIChat:** переименование AI-чата с проверкой владельца
 - **DeleteChat:** убрано уведомление участников для AI-чатов
-- **Proto:** GetAIChatsRequest/Response, RenameAIChatRequest/Response, AIChatInfo
+- **Proto:** добавлены GetAIChatsRequest/Response, RenameAIChatRequest/Response, AIChatInfo
+- ServerVersion: 1.1.1.7 → 1.1.1.8
 
 ### Android
-- **refreshAiChats():** теперь загружает через GetAIChats RPC вместо фильтрации из getAllChats
-- **AIBottomSheet:** добавлен selection mode (долгий тап → режим выбора с тулбаром)
+- **refreshAiChats():** загружает через GetAIChats RPC
+- **AIBottomSheet:** selection mode с тулбаром удаления/переименования
 - **showAIActionSheet():** подключены кнопки удаления и переименования
-- **AIChatInfo:** новый data class для доменной модели
+- **AIChatInfo:** новый data class
 - **GrpcClient:** добавлены getAIChats(), renameAIChat(), deleteChat() overload
+- **RealGrpcClient:** новые RPC методы + marshallers
+- **MessengerProto.kt:** новые proto классы
+- **widget_ai_bottom_sheet.xml:** selection toolbar layout
+- compileDebugKotlin ✅
 
 ### Сборка и деплой
 - compileDebugKotlin ✅ | go build ✅
 - Dev сервер обновлён и работает
+- Теги v1.1.1.8 на обоих репозиториях
 
 ---
 

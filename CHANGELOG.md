@@ -1,6 +1,7 @@
 # Lavender Messenger — Server Changelog
 
-## [Unreleased] - 2026-06-08
+## [1.1.1.8] - 2026-06-08
+- Версия обновлена до 1.1.1.8
 - **Исправлен невалидный JSON в participants:** заменена конкатенация на `json.Marshal([]string{userId})`. Теперь хранится UUID вместо username — не зависит от символов в имени.
 - **GetUserChats исключает AI-чаты:** `WHERE c.type NOT IN ('owl', 'hermes')` — убран jsonb-каст для AI-типов
 - **GetAllChats не включает AI-чаты:** OWL/Hermes полностью убраны из основного списка, отдельный RPC GetAIChats

@@ -32,7 +32,7 @@ ANDROID:
 
 ---
 
-## Статус: v1.1.1.8 В РАБОТЕ
+## Статус: v1.1.1.8 ЗАВЕРШЕНА
 
 ### Сервер v1.1.1.8 (`/root/msg`)
 
@@ -45,6 +45,7 @@ ANDROID:
 | RenameAIChat RPC | ✅ | `server.go` |
 | DeleteChat skip AI notify | ✅ | `server.go:DeleteChat` |
 | Proto AI messages | ✅ | `messenger.proto` |
+| ServerVersion 1.1.1.8 | ✅ | `server.go:33` |
 
 ### Android v1.1.1.8 (`/root/msg.client.android`)
 
@@ -289,14 +290,20 @@ cd /root/msg.client.android
 - Android: refreshAiChats() через GetAIChats RPC ✅
 - Android: AIBottomSheet selection mode + тулбар удаления/переименования ✅
 
-Следующие шаги для v1.1.1.8 (по приоритету):
-1. **Graceful reconnect** — переподключение без потери стримов
+Следующие шаги для v1.1.1.9 (по приоритету):
+1. **Деплой на prod** — после тестирования v1.1.1.8 на dev
+2. **Graceful reconnect** — переподключение без потери стримов
    - При разрыве соединения (keepalive failed / network loss) автоматически
      переподключаться с экспоненциальным backoff
    - Не терять активные streaming calls (OWL chat, Hermes chat, notifications)
    - Показывать индикатор переподключения в UI
-2. **Тестирование AI chats flow** — проверить создание, удаление, переименование
-3. **Деплой на prod** — после завершения всех задач
+
+Что НЕ сделано (по приоритету):
+- Graceful reconnect → v1.1.1.9
+- Модульные тесты для OWL streaming
+- Auth токены для удалённых агентов (JWT)
+- Qdrant + CLIP (production RAG)
+- NewChatActivity → ChatWidget миграция
 
 Правила:
 - Коммитить после каждого изменения, пушить в feat/1.1.1.x
@@ -305,7 +312,7 @@ cd /root/msg.client.android
 - Не ломать существующий функционал
 - Версия сервера в server.go:33 — обновлять при релизе
 - assembleRelease НЕ запускать на сервере (OOM kill)
-- Теги: git tag v1.1.1.8 <commit> && git push origin feat/1.1.1.x --tags
+- Теги: git tag v1.1.1.9 <commit> && git push origin feat/1.1.1.x --tags
 - userId (UUID) — всегда как ключ, не username
 - creator_id (UUID) — всегда для проверки владельца
 - Деплой на prod — только после завершения ВСЕХ задач интеграции
