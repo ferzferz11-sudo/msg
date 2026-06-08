@@ -1662,11 +1662,16 @@ func (s *server) DeleteChat(_ context.Context, req *gen.DeleteChatRequest) (*gen
 		return &gen.DeleteChatResponse{Success: false, Message: err.Error()}, nil
 	}
 
-	log.Printf("DeleteChat success: Chat %s deleted. Notifying %d participants.", req.ChatId, len(participants))
+	log.Printf("DeleteChat success: Chat %s deleted.", req.ChatId)
 
 	// 5. Increment version for all former participants so their lists refresh
-	for _, p := range participants {
-		_ = s.db.IncrementUserChatListVersion(p)
+	// Skip for AI chats (owl/hermes) — participants contains UUIDs, not usernames,
+	// and the deleting user already knows the chat is gone. Broadcast below is enough.
+	if chat.Type != "owl" && chat.Type != "hermes" {
+		log.Printf("DeleteChat: Notifying %d participants.", len(participants))
+		for _, p := range participants {
+			_ = s.db.IncrementUserChatListVersion(p)
+		}
 	}
 
 	// 6. Send signal to clear cache for all participants
