@@ -152,6 +152,7 @@ ANDROID:
 ## Известные проблемы
 
 - Server migration warnings: `role "lavender" does not exist` (не критично)
+- ~~Невалидный JSON в participants при создании OWL/Hermes чатов~~ ✅ Исправлено
 
 ---
 
@@ -249,6 +250,7 @@ cd /root/msg.client.android
 - creator_id (UUID) — для проверки владельца, creator_username — только для отображения
 - Множественные чаты: каждый новый чат создаётся через серверный CreateOwlChat/CreateHermesSession
 - Нумерация: Лава ИИ #1, #2... / Оркестратор #1, #2... (MAX+1, не переиспользуется)
+- participants ВСЕГДА формировать через json.Marshal — никогда не собирать строку вручную
 
 Что сделано (v1.1.1.7):
 - Notification badge ✅
@@ -257,6 +259,7 @@ cd /root/msg.client.android
 - Badge на пункте "Уведомления" в AIBottomSheet ✅
 - Визуальное отличие непрочитанных в NotificationActivity ✅
 - Автоматическая отметка при открытии NotificationActivity ✅
+- Исправлен невалидный JSON в participants (json.Marshal) ✅
 
 Следующие шаги для v1.1.1.8 (по приоритету):
 1. **Graceful reconnect** — переподключение без потери стримов
@@ -277,6 +280,7 @@ cd /root/msg.client.android
 - userId (UUID) — всегда как ключ, не username
 - creator_id (UUID) — всегда для проверки владельца
 - Деплой на prod — только после завершения ВСЕХ задач интеграции
+- participants ВСЕГДА через json.Marshal, никогда вручную
 
 Документация:
 - Индекс: /root/msg/doc/INDEX.md (читать в начале сессии)
