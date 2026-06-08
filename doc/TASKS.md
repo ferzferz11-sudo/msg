@@ -1,17 +1,36 @@
 # Lavender Messenger — Задачи
 
-**Версия:** v1.1.1.7
-**Обновлено:** 2026-07-18
-**Статус:** ✅ v1.1.1.7 — Завершена. Notification badge
+**Версия:** v1.1.1.8 (in progress)
+**Обновлено:** 2026-06-08
+**Статус:** 🔄 v1.1.1.8 — AI chats separation + JSON fix
+
+---
+
+## ✅ Сделано (v1.1.1.8)
+
+### Server
+- **Исправлен невалидный JSON в participants:** заменена конкатенация на `json.Marshal([]string{userId})` в 3 местах. Теперь хранится UUID вместо username.
+- **GetUserChats исключает AI-чаты:** `WHERE c.type NOT IN ('owl', 'hermes')` — убран jsonb-каст для AI-типов
+- **GetAllChats не включает AI-чаты:** OWL/Hermes полностью убраны из основного списка
+- **Новый RPC GetAIChats:** отдельный запрос для получения AI-чатов пользователя (OWL + Hermes)
+- **Новый RPC RenameAIChat:** переименование AI-чата с проверкой владельца
+- **DeleteChat:** убрано уведомление участников для AI-чатов
+- **Proto:** GetAIChatsRequest/Response, RenameAIChatRequest/Response, AIChatInfo
+
+### Android
+- **refreshAiChats():** теперь загружает через GetAIChats RPC вместо фильтрации из getAllChats
+- **AIBottomSheet:** добавлен selection mode (долгий тап → режим выбора с тулбаром)
+- **showAIActionSheet():** подключены кнопки удаления и переименования
+- **AIChatInfo:** новый data class для доменной модели
+- **GrpcClient:** добавлены getAIChats(), renameAIChat(), deleteChat() overload
+
+### Сборка и деплой
+- compileDebugKotlin ✅ | go build ✅
+- Dev сервер обновлён и работает
 
 ---
 
 ## ✅ Сделано (v1.1.1.7)
-
-### Server
-- **Исправлен невалидный JSON в participants:** при создании OWL/Hermes чатов использовался `"["+username+"]"` вместо `json.Marshal([]string{username})`. Это приводило к ошибке `pq: invalid input syntax for type json (22P02)` в `GetUserChats` при касте `participants::jsonb`. Исправлены 3 места: ChatWithOWL auto-creation, CreateOwlChat RPC, CreateHermesSession RPC. Также очищены существующие невалидные данные в dev БД (2 строки).
-
-### Server (notification badge)
 - **Notification badge (серверная часть):** per-user read tracking для серверных уведомлений
 - **notificationService:** добавлено readStates — map[userID]map[notificationID]bool
 - **MarkNotificationsRead:** теперь реально отмечает уведомления как прочитанные

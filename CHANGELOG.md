@@ -1,7 +1,13 @@
 # Lavender Messenger — Server Changelog
 
 ## [Unreleased] - 2026-06-08
-- **Исправлен невалидный JSON в participants:** при создании OWL/Hermes чатов поле participants содержало `[username]` вместо `["username"]`, что приводило к ошибке PostgreSQL `invalid input syntax for type json (22P02)` в `GetUserChats`. Исправлены все 3 места вставки — теперь используется `json.Marshal`.
+- **Исправлен невалидный JSON в participants:** заменена конкатенация на `json.Marshal([]string{userId})`. Теперь хранится UUID вместо username — не зависит от символов в имени.
+- **GetUserChats исключает AI-чаты:** `WHERE c.type NOT IN ('owl', 'hermes')` — убран jsonb-каст для AI-типов
+- **GetAllChats не включает AI-чаты:** OWL/Hermes полностью убраны из основного списка, отдельный RPC GetAIChats
+- **Новый RPC GetAIChats:** возвращает все AI-чаты пользователя (OWL + Hermes)
+- **Новый RPC RenameAIChat:** переименование AI-чата с проверкой владельца
+- **DeleteChat:** убрано уведомление участников для AI-чатов
+- **Proto:** добавлены GetAIChatsRequest/Response, RenameAIChatRequest/Response, AIChatInfo
 
 ## [1.1.1.7] - 2026-07-18
 - Версия обновлена до 1.1.1.7

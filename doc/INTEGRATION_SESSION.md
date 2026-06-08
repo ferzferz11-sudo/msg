@@ -32,6 +32,33 @@ ANDROID:
 
 ---
 
+## Статус: v1.1.1.8 В РАБОТЕ
+
+### Сервер v1.1.1.8 (`/root/msg`)
+
+| Компонент | Статус | Файл |
+|-----------|--------|------|
+| participants хранит UUID | ✅ | `server.go` (3 места) |
+| GetUserChats исключает AI | ✅ | `db.go:GetUserChats` |
+| GetAllChats без AI | ✅ | `server.go:GetAllChats` |
+| GetAIChats RPC | ✅ | `server.go` |
+| RenameAIChat RPC | ✅ | `server.go` |
+| DeleteChat skip AI notify | ✅ | `server.go:DeleteChat` |
+| Proto AI messages | ✅ | `messenger.proto` |
+
+### Android v1.1.1.8 (`/root/msg.client.android`)
+
+| Компонент | Статус | Файл |
+|-----------|--------|------|
+| getAIChats() в GrpcClient | ✅ | `data/grpc/` |
+| refreshAiChats() через RPC | ✅ | `ChatListActivity.kt` |
+| AIBottomSheet selection mode | ✅ | `ui/widget/AIBottomSheet.kt` |
+| showAIActionSheet тулбар | ✅ | `ChatListActivity.kt` |
+| AIChatInfo data class | ✅ | `data/models/Message.kt` |
+| compileDebugKotlin | ✅ | passes |
+
+---
+
 ## Статус: v1.1.1.7 ЗАВЕРШЕНА
 
 ### Сервер v1.1.1.7 (`/root/msg`)
@@ -232,15 +259,13 @@ cd /root/msg.client.android
 ## Промпт для следующей сессии (v1.1.1.8)
 
 ```
-Продолжаем работу над Lavender Messenger. v1.1.1.7 завершена и протестирована.
-
-Новая версия: v1.1.1.8 (feat/1.1.1.x на обоих репозиториях)
+Продолжаем работу над Lavender Messenger. v1.1.1.8 в процессе разработки.
 
 Контекст:
 - Сервер: /root/msg, dev порт 50052, prod порт 50051
 - Android: /root/msg.client.android
 - Сервер обновлён и деплоен на dev, сборка проходит
-- Теги v1.1.1.7 на обоих репозиториях
+- compileDebugKotlin проходит
 
 Архитектура (важно!):
 - OwlGrpc.kt — отдельный файл для OWL
@@ -251,15 +276,18 @@ cd /root/msg.client.android
 - Множественные чаты: каждый новый чат создаётся через серверный CreateOwlChat/CreateHermesSession
 - Нумерация: Лава ИИ #1, #2... / Оркестратор #1, #2... (MAX+1, не переиспользуется)
 - participants ВСЕГДА формировать через json.Marshal — никогда не собирать строку вручную
+- participants для AI-чатов хранит userId (UUID), НЕ username
+- AI-чаты (owl/hermes) НЕ включаются в GetAllChats — отдельный RPC GetAIChats
 
-Что сделано (v1.1.1.7):
-- Notification badge ✅
-- Per-user read tracking на сервере (in-memory) ✅
-- GetUnreadCount RPC ✅
-- Badge на пункте "Уведомления" в AIBottomSheet ✅
-- Визуальное отличие непрочитанных в NotificationActivity ✅
-- Автоматическая отметка при открытии NotificationActivity ✅
-- Исправлен невалидный JSON в participants (json.Marshal) ✅
+Что сделано (v1.1.1.8):
+- Исправлен невалидный JSON в participants (json.Marshal + UUID) ✅
+- GetUserChats исключает AI-чаты ✅
+- GetAllChats не включает AI-чаты ✅
+- GetAIChats RPC ✅
+- RenameAIChat RPC ✅
+- DeleteChat skip AI notify ✅
+- Android: refreshAiChats() через GetAIChats RPC ✅
+- Android: AIBottomSheet selection mode + тулбар удаления/переименования ✅
 
 Следующие шаги для v1.1.1.8 (по приоритету):
 1. **Graceful reconnect** — переподключение без потери стримов
@@ -267,7 +295,8 @@ cd /root/msg.client.android
      переподключаться с экспоненциальным backoff
    - Не терять активные streaming calls (OWL chat, Hermes chat, notifications)
    - Показывать индикатор переподключения в UI
-2. **Деплой на prod** — после завершения graceful reconnect
+2. **Тестирование AI chats flow** — проверить создание, удаление, переименование
+3. **Деплой на prod** — после завершения всех задач
 
 Правила:
 - Коммитить после каждого изменения, пушить в feat/1.1.1.x
