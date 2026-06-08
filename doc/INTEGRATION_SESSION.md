@@ -32,6 +32,49 @@ ANDROID:
 
 ---
 
+## Статус: v1.1.1.10 ЗАВЕРШЕНА
+
+### Сервер v1.1.1.10 (`/root/msg`)
+
+| Компонент | Статус | Файл |
+|-----------|--------|------|
+| hermes_chat_settings таблица | ✅ | `db.go` |
+| GetHermesSettings RPC | ✅ | `server.go` |
+| UpdateHermesSettings RPC | ✅ | `server.go` |
+| hermesSettingsManager | ✅ | `owl.go` |
+| freeTierRateLimiter (20/час) | ✅ | `owl.go` |
+| Rate limit в ChatWithOWL (custom 10/min, free 20/hr) | ✅ | `server.go` |
+| Rate limit в ChatWithOrchestrator (custom 10/min, free 20/hr) | ✅ | `server.go` |
+| GetOwlSettings: is_using_custom_key | ✅ | `server.go` |
+| GetAIChats: is_using_custom_key + model | ✅ | `server.go` |
+| Proto: Hermes settings messages + fields | ✅ | `messenger.proto` |
+| ServerVersion 1.1.1.10 | ✅ | `server.go:33` |
+| Dev deployed | ✅ | работает |
+
+### Android v1.1.1.10 (`/root/msg.client.android`)
+
+| Компонент | Статус | Файл |
+|-----------|--------|------|
+| AIBottomSheet полный редизайн | ✅ | `ui/widget/AIBottomSheet.kt` |
+| widget_ai_chat_item.xml (нов layout) | ✅ | `res/layout/widget_ai_chat_item.xml` |
+| Шестерёнка настроек у каждого чата | ✅ | layout + AIBottomSheet |
+| Long-press → PopupMenu (Настройки / Удалить) | ✅ | AIBottomSheet |
+| Единый список AI чатов (OWL + Hermes) | ✅ | AIBottomSheet |
+| Divider + блоки "Лава ИИ" и "OWL агент" | ✅ | AIBottomSheet |
+| OwlSettingsActivity: unified OWL+Hermes | ✅ | `ui/owl/OwlSettingsActivity.kt` |
+| Key source indicator (свой/общий ключ) | ✅ | layout + activity |
+| Rate limit info (20/час для free tier) | ✅ | layout + activity |
+| Динамический список моделей по ключу | ✅ | OwlSettingsActivity |
+| HermesGrpc: get/updateSettings | ✅ | `data/grpc/HermesGrpc.kt` |
+| OwlGrpc: обновлённый парсер | ✅ | `data/grpc/OwlGrpc.kt` |
+| RealGrpcClient: AIChatInfo парсер | ✅ | `data/grpc/RealGrpcClient.kt` |
+| AIChatInfo: isUsingCustomKey + model | ✅ | `data/models/Message.kt` |
+| MessengerProto: новые классы | ✅ | `data/proto/MessengerProto.kt` |
+| compileDebugKotlin | ✅ | passes |
+| compileDebugKotlin | ✅ | passes |
+
+---
+
 ## Статус: v1.1.1.9 ЗАВЕРШЕНА
 
 ### Сервер v1.1.1.9 (`/root/msg`)
@@ -89,102 +132,60 @@ ANDROID:
 
 ## Статус: v1.1.1.7 ЗАВЕРШЕНА
 
-### Сервер v1.1.1.7 (`/root/msg`)
-
 | Компонент | Статус | Файл |
 |-----------|--------|------|
-| Версия 1.1.1.7 | ✅ | `server.go:33` |
-| notificationService readStates | ✅ | `bot_commands.go` |
-| GetNotificationHistory с is_read | ✅ | `bot_commands.go` |
-| MarkNotificationsRead (реальная логика) | ✅ | `bot_commands.go` |
+| Notification badge (сервер) | ✅ | `bot_commands.go` |
 | GetUnreadCount RPC | ✅ | `bot_commands.go` |
-| Proto is_read field | ✅ | `messenger.proto` |
-| Proto GetUnreadCount RPC | ✅ | `messenger.proto` |
-
-### Android v1.1.1.7 (`/root/msg.client.android`)
-
-| Компонент | Статус | Файл |
-|-----------|--------|------|
-| ServerNotificationProto isRead | ✅ | `data/proto/MessengerProto.kt` |
-| GetUnreadCount RPC client | ✅ | `data/grpc/OwlGrpc.kt` |
-| getUnreadCount() в GrpcClient | ✅ | `data/grpc/GrpcClient.kt` |
-| NotificationAdapter badge + isRead | ✅ | `ui/notification/NotificationAdapter.kt` |
-| NotificationActivity mark as read | ✅ | `ui/notification/NotificationActivity.kt` |
-| SheetAction badge field | ✅ | `ui/widget/WidgetSystem.kt` |
-| AIBottomSheet badge display | ✅ | `ui/widget/AIBottomSheet.kt` |
-| widget_action_item.xml badge | ✅ | `res/layout/widget_action_item.xml` |
-| badge_background.xml | ✅ | `res/drawable/badge_background.xml` |
-| notification_unread_bg color | ✅ | `res/values/colors.xml` |
-| ChatListActivity unreadNotifCount | ✅ | `ChatListActivity.kt` |
+| Notification badge (Android) | ✅ | `AIBottomSheet.kt`, `ChatListActivity.kt` |
 | compileDebugKotlin | ✅ | passes |
 
-### Статус: v1.1.1.6 ЗАВЕРШЕНА
+---
 
-### Сервер v1.1.1.6 (`/root/msg`)
-
-| Компонент | Статус | Файл |
-|-----------|--------|------|
-| Версия 1.1.1.6 | ✅ | `server.go:33` |
-| getNextChatNumber() | ✅ | `server.go` |
-| generateChatName() | ✅ | `server.go` |
-| CreateOwlChat нумерация | ✅ | `server.go` |
-| CreateHermesSession нумерация | ✅ | `server.go` |
-| Proto name field | ✅ | `messenger.proto` |
-
-### Android v1.1.1.6 (`/root/msg.client.android`)
+## Статус: v1.1.1.6 ЗАВЕРШЕНА
 
 | Компонент | Статус | Файл |
 |-----------|--------|------|
-| createOwlChat() | ✅ | `data/grpc/OwlGrpc.kt` |
-| OwlChatActivity CHAT_ID from intent | ✅ | `ui/owl/OwlChatActivity.kt` |
-| OwlSettingsActivity CHAT_ID from intent | ✅ | `ui/owl/OwlSettingsActivity.kt` |
+| Множественные OWL/Hermes чаты с нумерацией | ✅ | `server.go` |
+| createOwlChat() | ✅ | `OwlGrpc.kt` |
 | AIBottomSheet существующие чаты | ✅ | `ChatListActivity.kt` |
-| refreshAiChats() | ✅ | `ChatListActivity.kt` |
-| MessengerProto CreateOwlChat* | ✅ | `data/proto/MessengerProto.kt` |
-| HermesGrpc name parsing | ✅ | `data/grpc/HermesGrpc.kt` |
 | compileDebugKotlin | ✅ | passes |
 
-### Сервер v1.1.1.5 (`/root/msg`)
+---
 
-| Компонент | Статус | Файл |
-|-----------|--------|------|
-| Версия 1.1.1.5 | ✅ | `server.go:33` |
-| HermesSession → chats INSERT | ✅ | `server.go` |
-| DeleteChat Hermes fallback | ✅ | `server.go` |
-| GetOwlSettings RPC | ✅ | `server.go` |
-| creator_id миграция | ✅ | `db_hermes.go` |
-| Все проверки владельца по UUID | ✅ | `server.go` |
-
-### Android v1.1.1.5 (`/root/msg.client.android`)
+## Статус: v1.1.1.5 ЗАВЕРШЕНА
 
 | Компонент | Статус | Файл |
 |-----------|--------|------|
 | OwlSettingsActivity | ✅ | `ui/owl/OwlSettingsActivity.kt` |
-| activity_owl_settings.xml | ✅ | `res/layout/activity_owl_settings.xml` |
-| OwlGrpc.kt getOwlSettings/updateOwlSettings | ✅ | `data/grpc/OwlGrpc.kt` |
-| MessengerProto.kt OWL settings classes | ✅ | `data/proto/MessengerProto.kt` |
-| AndroidManifest регистрация | ✅ | `AndroidManifest.xml` |
-| AIBottomSheet → OwlSettingsActivity | ✅ | `ChatListActivity.kt` |
+| getOwlSettings/updateOwlSettings | ✅ | `OwlGrpc.kt` |
+| creator_id миграция | ✅ | `db_hermes.go` |
 | compileDebugKotlin | ✅ | passes |
 
-### Статус: v1.1.1.4 ЗАВЕРШЕНА
+---
 
-| Компонент | Статус | Файл |
-|-----------|--------|------|
-| Версия 1.1.1.4 | ✅ | `server.go:33` |
-| OWL FK fix (авто-создание чата) | ✅ | `server.go` |
-| HermesSession username→UUID | ✅ | `server.go` |
-
-### Android v1.1.1.4 (`/root/msg.client.android`)
+## Статус: v1.1.1.4 ЗАВЕРШЕНА
 
 | Компонент | Статус | Файл |
 |-----------|--------|------|
 | [AI] кнопка рядом с [+] | ✅ | `activity_chat_list.xml` |
 | AIBottomSheet (группы + divider) | ✅ | `ui/widget/AIBottomSheet.kt` |
-| showAIActionSheet() | ✅ | `ChatListActivity.kt` |
-| AI-пункты перенесены из [+] | ✅ | `ChatListActivity.kt` |
-| HermesChatActivity uses UUID | ✅ | `HermesChatActivity.kt` |
+| OWL FK fix | ✅ | `server.go` |
 | compileDebugKotlin | ✅ | passes |
+
+---
+
+## ✅ Сделано (ранее)
+
+- v1.1.1.3 — NotificationActivity, bot tests
+- v1.1.1.2 — SendServerNotification, OWL/Hermes разделение
+- v1.1.1.1 — Bot Commands, Rate Limiting, NotificationService
+- v1.1.0.16 — Favorites fix
+- v1.1.0.15 — Force reconnect + Registration fix + Cache clearing
+- v1.1.0.14 — Hermes sessions in chat list
+- v1.1.0.13 — ChatWidget + Mention system
+- v1.1.0.12 — Unified Chat Widget
+- v1.1.0.11 — Hermes Orchestrator
+- v1.1.0.10 — Agent Management gRPC
 
 ---
 
@@ -200,9 +201,12 @@ ANDROID:
 | v1.1.1.2 | ✅ | ✅ |
 | v1.1.1.3 | ✅ | ✅ |
 | v1.1.1.4 | ✅ | ✅ |
+| v1.1.1.5 | ✅ | ✅ |
+| v1.1.1.6 | ✅ | ✅ |
 | v1.1.1.7 | ✅ | ✅ |
 | v1.1.1.8 | ✅ | ✅ |
 | v1.1.1.9 | ✅ | ✅ |
+| v1.1.1.10 | ✅ | ✅ |
 
 ---
 
@@ -216,14 +220,16 @@ ANDROID:
 ## Что НЕ сделано (по приоритету)
 
 ### Перед деплоем на prod (обязательно)
-1. **Сессия: Дизайн Android** — ✅ AI Bottom Sheet редизайн, настройки OWL/Hermes, rate limit UI. Осталось: тестирование
-2. **Сессия: Тестирование** — полное тестирование graceful reconnect, notification retry, AI chats, новых настроек
-3. **Деплой на prod** — только после завершения дизайна и тестирования
+1. **Сессия: Тестирование (v1.1.1.11)** — полное тестирование всех новых фич: graceful reconnect, notification retry, AI chats, новых настроек (OwlSettings, rate limits, Hermes settings), edge cases. Затем деплой на prod.
+2. **Деплой на prod → v1.1.2.0** — только после завершения тестирования
 
 ### Средний приоритет
 - ~~NotificationActivity badge~~ ✅ v1.1.1.7
 - ~~Graceful reconnect~~ ✅ v1.1.1.9
-- ~~AI Bottom Sheet редизайн~~ ✅ v1.1.1.x (текущий)
+- ~~AI Bottom Sheet редизайн~~ ✅ v1.1.1.10
+- ~~Hermes per-chat settings~~ ✅ v1.1.1.10
+- ~~Rate limiting (free tier 20/hr)~~ ✅ v1.1.1.10
+- Показ ключа/модели в шапке чата (OwlChatActivity + HermesChatActivity)
 - Модульные тесты для OWL streaming
 
 ### Низкий приоритет
@@ -288,77 +294,63 @@ cd /root/msg.client.android
 
 ---
 
-## Промпт для следующей сессии (v1.1.1.9)
+## Промпт для следующей сессии (v1.1.1.11 — тестирование и полировка)
 
 ```
-Продолжаем работу над Lavender Messenger. v1.1.1.9 завершена — graceful reconnect реализован.
+Продолжаем работу над Lavender Messenger. v1.1.1.10 завершена:
+- AI Bottom Sheet полностью переписан (единый список, long-press popup menu, шестерёнки настроек)
+- Hermes per-chat settings (таблица, RPCs, UI)
+- Rate limiting: свой ключ = 10/min, бесплатный = 20/hour
+- Настройки показывают источник ключа и лимит запросов
 
 Контекст:
 - Сервер: /root/msg, dev порт 50052, prod порт 50051
 - Android: /root/msg.client.android
-- Сервер обновлён и деплоен на dev (v1.1.1.9), сборка проходит
-- compileDebugKotlin проходит
+- Оба репозитория на ветке feat/1.1.1.x
+- v1.1.1.10 тег на обоих репозиториях
+- Dev сервер обновлён и работает
+
+Текущая версия: v1.1.1.10
+
+Что нужно сделать (v1.1.1.11 — тестирование и доработка):
+
+1. **Показать информацию о ключе/модели в шапке AI чатов**
+   - OwlChatActivity: показать "Общий ключ / 20 запросов/час" или "Ваш ключ / все модели"
+   - HermesChatActivity: аналогично
+   - Маленький баннер/текст под toolbar
+
+2. **Протестировать весь флоу AI чатов**:
+   - Создание Hermes чата через AIBottomSheet → открытие → отправка сообщений → rate limit
+   - Создание OWL чата → то же самое
+   - Удаление чата через long-press
+   - Настройки: ввести свой ключ → проверить что модели расширились
+   - Настройки: убрать ключ → проверить что модели сузились, лимит 20/час
+   - Graceful reconnect: выключить сеть → включить → чаты не теряются
+   - Notification retry: убить соединение → уведомления приходят после reconnect
+
+3. **Исправить найденные баги**
+
+4. **После тестирования — деплой на prod и таг v1.1.2.0**
 
 Архитектура (важно!):
-- OwlGrpc.kt — отдельный файл для OWL (subscribeNotifications, chatWithOwl с retry)
-- HermesGrpc.kt — отдельный файл для Hermes (chatWithOrchestrator с retry)
+- OwlGrpc.kt — отдельный файл для OWL
+- HermesGrpc.kt — отдельный файл для Hermes
 - НЕ смешивать OWL и Hermes код — полная изоляция
 - userId (UUID) — всегда как ключ, НЕ username
-- creator_id (UUID) — для проверки владельца, creator_username — только для отображения
-- Множественные чаты: каждый новый чат создаётся через серверный CreateOwlChat/CreateHermesSession
-- Нумерация: Лава ИИ #1, #2... / Оркестратор #1, #2... (MAX+1, не переиспользуется)
-- participants ВСЕГДА формировать через json.Marshal — никогда не собирать строку вручную
-- participants для AI-чатов хранит userId (UUID), НЕ username
-- AI-чаты (owl/hermes) НЕ включаются в GetAllChats — отдельный RPC GetAIChats
+- creator_id (UUID) — для проверки владельца
+- participants ВСЕГДА через json.Marshal, никогда вручную
 - ConnectionStatus: DISCONNECTED, CONNECTING, READY, RECONNECTING, FAILED
-
-Что сделано (v1.1.1.9):
-- Server: grace period (30s) в hub при разрыве соединения ✅
-- Server: ClearGracePeriod при успешной ре-аутентификации ✅
-- Server: GetOnlineUsers включает пользователей в grace period ✅
-- Android: ConnectionStatus.RECONNECTING — новый enum ✅
-- Android: RealGrpcClient — exponential backoff reconnect (5s→60s) ✅
-- Android: subscribeNotifications — автоматический retry ✅
-- Android: chatWithOwl — автоматический retry (10 попыток, 3s→30s) ✅
-- Android: chatWithOrchestrator — автоматический retry (10 попыток, 3s→30s) ✅
-- Android: keepAliveTime 10s, keepAliveTimeout 5s для быстрого обнаружения разрыва ✅
-- Android: onError stream — RECONNECTING вместо FAILED, ускоренный retry ✅
-
-Что НЕ сделано (по приоритету):
-### Перед деплоем на prod (обязательно)
-1. **Сессия: Дизайн Android** — UI/UX улучшения, отображение RECONNECTING статуса в UI
-2. **Сессия: Тестирование** — полное тестирование graceful reconnect, notification retry, AI chats
-3. **Деплой на prod** — только после дизайна и тестирования
-
-### Средний приоритет
-- Модульные тесты для OWL streaming
-
-### Низкий приоритет
-- Auth токены для удалённых агентов (JWT)
-- Qdrant + CLIP (production RAG)
-- NewChatActivity → ChatWidget миграция
 
 Правила:
 - Коммитить после каждого изменения, пушить в feat/1.1.1.x
 - Деплоить на dev для тестирования
 - Обновлять CHANGELOG.md (новая версия наверху)
 - Не ломать существующий функционал
-- Версия сервера в server.go:33 — обновлять при релизе
 - assembleRelease НЕ запускать на сервере (OOM kill)
-- Теги: git tag v1.1.2.0 <commit> && git push origin feat/1.1.1.x --tags
-- userId (UUID) — всегда как ключ, не username
-- creator_id (UUID) — всегда для проверки владельца
-- Деплой на prod — после сессий "Дизайн Android" и "Тестирование"
-- participants ВСЕГДА через json.Marshal, никогда вручную
+- Версия сервера в server.go:33 — обновлять при релизе
 
 Документация:
 - Индекс: /root/msg/doc/INDEX.md (читать в начале сессии)
 - Сервер: /root/msg/doc/INTEGRATION_SESSION.md, /root/msg/doc/TASKS.md
 - Android: /root/msg.client.android/doc/TASKS.md
-Команды сборки: см. раздел "Команды" выше
-Документация:
-- Индекс: /root/msg/doc/INDEX.md (читать в начале сессии)
-- Сервер: /root/msg/doc/INTEGRATION_SESSION.md, /root/msg/doc/TASKS.md
-- Android: /root/msg.client.android/doc/TASKS.md
-Команды сборки: см. раздел "Команды" выше
 ```

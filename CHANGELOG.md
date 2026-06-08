@@ -1,5 +1,13 @@
 # Lavender Messenger — Server Changelog
 
+## [1.1.1.10] - 2026-06-08
+- Версия обновлена до 1.1.1.10
+- **Hermes per-chat settings:** таблица `hermes_chat_settings`, RPCs `GetHermesSettings`/`UpdateHermesSettings` — per-session API key + model
+- **Rate limiting:** свой ключ = 10 req/min, бесплатный тариф = 20 req/hour (`freeTierRateLimiter`)
+- **GetOwlSettings:** добавлено поле `is_using_custom_key`
+- **GetAIChats:** возвращает `is_using_custom_key` + `model` для всех типов чатов
+- **Proto:** новые сообщения `GetHermesSettingsRequest/Response`, `UpdateHermesSettingsRequest/Response`, поля добавлены к `AIChatInfo` и `GetOwlSettingsResponse`
+
 ## [1.1.1.9] - 2026-06-08
 - Версия обновлена до 1.1.1.9
 - **Graceful reconnect (сервер):** добавлен grace period (30s) в hub — при разрыве соединения пользователь не сразу считается offline, а переходит в состояние "reconnecting"
