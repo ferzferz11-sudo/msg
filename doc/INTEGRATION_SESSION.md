@@ -196,18 +196,18 @@ cd /root/msg.client.android
 
 ---
 
-## Промпт для следующей сессии (v1.1.1.6)
+## Промпт для следующей сессии (v1.1.1.7)
 
 ```
-Продолжаем работу над Lavender Messenger. v1.1.1.5 завершена.
+Продолжаем работу над Lavender Messenger. v1.1.1.6 завершена.
 
-Новая версия: v1.1.1.6 (feat/1.1.1.x на обоих репозиториях)
+Новая версия: v1.1.1.7 (feat/1.1.1.x на обоих репозиториях)
 
 Контекст:
 - Сервер: /root/msg, dev порт 50052, prod порт 50051
 - Android: /root/msg.client.android
 - Сервер обновлён и деплоен на dev, сборка проходит
-- Теги v1.1.1.5 на обоих репозиториях
+- Теги v1.1.1.6 на обоих репозиториях
 
 Архитектура (важно!):
 - OwlGrpc.kt — отдельный файл для OWL
@@ -215,49 +215,30 @@ cd /root/msg.client.android
 - НЕ смешивать OWL и Hermes код — полная изоляция
 - userId (UUID) — всегда как ключ, НЕ username
 - creator_id (UUID) — для проверки владельца, creator_username — только для отображения
+- Множественные чаты: каждый новый чат создаётся через серверный CreateOwlChat/CreateHermesSession
+- Нумерация: Лава ИИ #1, #2... / Оркестратор #1, #2... (MAX+1, не переиспользуется)
 
-Что сделано (v1.1.1.5):
-- HermesSession → chats INSERT ✅
-- DeleteChat Hermes fallback ✅
-- GetOwlSettings + UpdateOwlSettings RPC ✅
-- creator_id миграция ✅
-- Все проверки владельца по UUID ✅
-- OwlSettingsActivity (Android) ✅
-- getOwlSettings/updateOwlSettings в OwlGrpc.kt ✅
-- AIBottomSheet → OwlSettingsActivity ✅
+Что сделано (v1.1.1.6):
+- Множественные OWL/Hermes чаты с нумерацией ✅
+- getNextChatNumber() SQL MAX+1 ✅
+- generateChatName() локализованные имена ✅
+- createOwlChat() unary RPC ✅
+- AIBottomSheet показывает существующие чаты + кнопку создания ✅
+- OwlChatActivity/OwlSettingsActivity получают CHAT_ID из intent ✅
 
-Следующие шаги для v1.1.1.6 (по приоритету):
-
-1. **Множественные OWL/Hermes чаты с нумерацией (Server)**
-   - Старый: один OWL чат на пользователя (chatId = "owl-$userId"), один Hermes
-   - Новый: каждый новый чат уникален с порядковым номером
-   - OWL: Лава ИИ #1, Лава ИИ #2... (русский) / Lava AI #1, Lava AI #2... (english)
-   - Hermes: Оркестратор #1, Оркестратор #2... (русский) / Orchestrator #1, Orchestrator #2... (english)
-   - Номер = MAX(existing_number) + 1, не переиспользуется при удалении
-   - SQL: SELECT COALESCE(MAX(CAST(SUBSTRING(name FROM '#(\d+)$') AS INTEGER)), 0) + 1
-          FROM chats WHERE creator_id = $1 AND type = $2
-   - chatID оставляем UUID-based, меняем только name
-
-2. **Множественные OWL/Hermes чаты с нумерацией (Android)**
-   - Убрать генерацию chatId на клиенте (owl-$userId, hermes-$userId)
-   - Вызывать серверный CreateOwlChat/CreateHermesSession
-   - AIBottomSheet: показывать существующие чаты с номерами + кнопку "Создать новый"
-   - Локализация: Locale.getDefault().language == "ru" → русский
-
-3. **NotificationActivity badge (Android)** — счётчик непрочитанных
-
-4. **Graceful reconnect (Android)** — переподключение без потери стримов
+Следующие шаги для v1.1.1.7 (по приоритету):
+1. **NotificationActivity badge** — счётчик непрочитанных на иконке колокольчика
+2. **Graceful reconnect** — переподключение без потери стримов
+3. **Деплой на prod** — после завершения всех задач
 
 Правила:
 - Коммитить после каждого изменения, пушить в feat/1.1.1.x
 - Деплоить на dev для тестирования
 - Обновлять CHANGELOG.md (новая версия наверху)
-- Серверный CHANGELOG — только серверные изменения
-- Android CHANGELOG — только клиентские изменения
 - Не ломать существующий функционал
 - Версия сервера в server.go:33 — обновлять при релизе
 - assembleRelease НЕ запускать на сервере (OOM kill)
-- Теги: git tag v1.1.1.6 <commit> && git push origin feat/1.1.1.x --tags
+- Теги: git tag v1.1.1.7 <commit> && git push origin feat/1.1.1.x --tags
 - userId (UUID) — всегда как ключ, не username
 - creator_id (UUID) — всегда для проверки владельца
 - Деплой на prod — только после завершения ВСЕХ задач интеграции
