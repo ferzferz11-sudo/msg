@@ -1077,18 +1077,11 @@ func (s *server) GetChats(_ context.Context, req *gen.GetChatsRequest) (*gen.Get
 		})
 	}
 
-	// Add OWL AI chats from database
-	owlUsername := req.Username
-	if owlUsername == "" && queryIdentifier != "" && queryIdentifier != "00000000-0000-0000-0000-000000000000" {
-		if uname, err := s.db.GetUsernameByID(queryIdentifier); err == nil && uname != "" {
-			owlUsername = uname
-		}
-	}
-	if owlUsername != "" {
-		// Find OWL chats by username — resolve to creator_id via subquery
+	// Add OWL AI chats from database — filter by creator_id (UUID) directly
+	if queryIdentifier != "" && queryIdentifier != "00000000-0000-0000-0000-000000000000" {
 		owlRows, err := s.db.Query(
-			"SELECT c.id, c.name, c.type, c.participants, c.created_at, c.creator_username, '' as last_message_text, c.created_at as last_message_time FROM chats c WHERE c.type = 'owl' AND c.creator_id = (SELECT id FROM users WHERE username = $1 LIMIT 1) ORDER BY c.created_at ASC",
-			owlUsername,
+			"SELECT c.id, c.name, c.type, c.participants, c.created_at, c.creator_username, '' as last_message_text, c.created_at as last_message_time FROM chats c WHERE c.type = 'owl' AND c.creator_id = $1 ORDER BY c.created_at ASC",
+			queryIdentifier,
 		)
 		if err == nil {
 			for owlRows.Next() {
@@ -2989,7 +2982,7 @@ func (s *server) ChatWithOWL(req *gen.OWLRequest, stream gen.ChatService_ChatWit
 		if uname, err := s.db.GetUsernameByID(userID); err == nil && uname != "" {
 			username = uname
 		}
-		participantsJSON, _ := json.Marshal([]string{username})
+		participantsJSON, _ := json.Marshal([]string{userID})
 		_, _ = s.db.Exec(
 			"INSERT INTO chats (id, name, type, participants, creator_username, creator_id) VALUES ($1, $2, 'owl', $3, $4, $5) ON CONFLICT (id) DO NOTHING",
 			chatID, "🤖 Чат с AI", string(participantsJSON), username, userID,
@@ -3129,7 +3122,7 @@ func (s *server) CreateOwlChat(_ context.Context, req *gen.CreateOwlChatRequest)
 	chatID := "owl-" + uuid.New().String()
 	log.Printf("CreateOwlChat: creating chat %q name=%q for user %q", chatID, name, username)
 
-	participantsJSON, _ := json.Marshal([]string{username})
+	participantsJSON, _ := json.Marshal([]string{req.UserId})
 	_, err := s.db.Exec(
 		"INSERT INTO chats (id, name, type, participants, creator_username, creator_id) VALUES ($1, $2, 'owl', $3, $4, $5)",
 		chatID, name, string(participantsJSON), username, req.UserId,
@@ -3673,7 +3666,7 @@ func (s *server) CreateHermesSession(_ context.Context, req *gen.CreateHermesSes
 	if uname, err := s.db.GetUsernameByID(userID); err == nil && uname != "" {
 		username = uname
 	}
-	participantsJSON, _ := json.Marshal([]string{username})
+	participantsJSON, _ := json.Marshal([]string{userID})
 	_, err = s.db.Exec(
 		"INSERT INTO chats (id, name, type, participants, creator_username, creator_id) VALUES ($1, $2, 'hermes', $3, $4, $5) ON CONFLICT (id) DO NOTHING",
 		sessionID, name, string(participantsJSON), username, userID,
