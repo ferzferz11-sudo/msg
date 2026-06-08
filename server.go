@@ -2989,9 +2989,10 @@ func (s *server) ChatWithOWL(req *gen.OWLRequest, stream gen.ChatService_ChatWit
 		if uname, err := s.db.GetUsernameByID(userID); err == nil && uname != "" {
 			username = uname
 		}
+		participantsJSON, _ := json.Marshal([]string{username})
 		_, _ = s.db.Exec(
 			"INSERT INTO chats (id, name, type, participants, creator_username, creator_id) VALUES ($1, $2, 'owl', $3, $4, $5) ON CONFLICT (id) DO NOTHING",
-			chatID, "🤖 Чат с AI", "["+username+"]", username, userID,
+			chatID, "🤖 Чат с AI", string(participantsJSON), username, userID,
 		)
 	}
 
@@ -3128,9 +3129,10 @@ func (s *server) CreateOwlChat(_ context.Context, req *gen.CreateOwlChatRequest)
 	chatID := "owl-" + uuid.New().String()
 	log.Printf("CreateOwlChat: creating chat %q name=%q for user %q", chatID, name, username)
 
+	participantsJSON, _ := json.Marshal([]string{username})
 	_, err := s.db.Exec(
 		"INSERT INTO chats (id, name, type, participants, creator_username, creator_id) VALUES ($1, $2, 'owl', $3, $4, $5)",
-		chatID, name, "["+username+"]", username, req.UserId,
+		chatID, name, string(participantsJSON), username, req.UserId,
 	)
 	if err != nil {
 		log.Printf("CreateOwlChat: DB error: %v", err)
@@ -3671,9 +3673,10 @@ func (s *server) CreateHermesSession(_ context.Context, req *gen.CreateHermesSes
 	if uname, err := s.db.GetUsernameByID(userID); err == nil && uname != "" {
 		username = uname
 	}
+	participantsJSON, _ := json.Marshal([]string{username})
 	_, err = s.db.Exec(
 		"INSERT INTO chats (id, name, type, participants, creator_username, creator_id) VALUES ($1, $2, 'hermes', $3, $4, $5) ON CONFLICT (id) DO NOTHING",
-		sessionID, name, "["+username+"]", username, userID,
+		sessionID, name, string(participantsJSON), username, userID,
 	)
 	if err != nil {
 		log.Printf("[Lava] CreateHermesSession: WARNING failed to insert into chats: %v", err)
