@@ -450,11 +450,14 @@ type notificationService struct {
 	subscribers map[string]map[chan *gen.ServerNotification]bool
 	history     []*gen.ServerNotification
 	maxHistory  int
+	// Per-user read tracking: userID -> set of notification IDs
+	readStates map[string]map[string]bool
 }
 
 var notifications = &notificationService{
 	subscribers: make(map[string]map[chan *gen.ServerNotification]bool),
 	maxHistory:  100,
+	readStates:  make(map[string]map[string]bool),
 }
 
 func (ns *notificationService) subscribe(userID string, ch chan *gen.ServerNotification) {
@@ -505,13 +508,47 @@ func (ns *notificationService) getHistory(userID string, limit int32) []*gen.Ser
 		limit = 50
 	}
 
+	readSet := ns.readStates[userID]
 	start := len(ns.history) - int(limit)
 	if start < 0 {
 		start = 0
 	}
 	result := make([]*gen.ServerNotification, len(ns.history)-start)
 	copy(result, ns.history[start:])
+	// Mark each notification as read/unread for this user
+	for i := range result {
+		isRead := readSet != nil && readSet[result[i].Id]
+		result[i].IsRead = isRead
+	}
 	return result
+}
+
+// markRead marks specific notifications as read for a user
+func (ns *notificationService) markRead(userID string, notificationIDs []string) {
+	ns.mu.Lock()
+	defer ns.mu.Unlock()
+
+	if ns.readStates[userID] == nil {
+		ns.readStates[userID] = make(map[string]bool)
+	}
+	for _, id := range notificationIDs {
+		ns.readStates[userID][id] = true
+	}
+}
+
+// getUnreadCount returns the number of unread notifications for a user
+func (ns *notificationService) getUnreadCount(userID string) int32 {
+	ns.mu.Lock()
+	defer ns.mu.Unlock()
+
+	readSet := ns.readStates[userID]
+	unread := 0
+	for _, n := range ns.history {
+		if readSet == nil || !readSet[n.Id] {
+			unread++
+		}
+	}
+	return int32(unread)
 }
 
 // SendServerNotification — helper to send a notification from anywhere
@@ -555,5 +592,11 @@ func (s *server) GetNotificationHistory(ctx context.Context, req *gen.GetNotific
 }
 
 func (s *server) MarkNotificationsRead(ctx context.Context, req *gen.MarkNotificationReadRequest) (*gen.MarkNotificationReadResponse, error) {
+	notifications.markRead(req.UserId, req.NotificationIds)
 	return &gen.MarkNotificationReadResponse{Success: true}, nil
+}
+
+func (s *server) GetUnreadCount(ctx context.Context, req *gen.GetUnreadCountRequest) (*gen.GetUnreadCountResponse, error) {
+	count := notifications.getUnreadCount(req.UserId)
+	return &gen.GetUnreadCountResponse{Count: count}, nil
 }

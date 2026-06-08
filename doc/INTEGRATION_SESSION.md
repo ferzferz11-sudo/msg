@@ -32,7 +32,38 @@ ANDROID:
 
 ---
 
-## Статус: v1.1.1.6 ЗАВЕРШЕНА
+## Статус: v1.1.1.7 ЗАВЕРШЕНА
+
+### Сервер v1.1.1.7 (`/root/msg`)
+
+| Компонент | Статус | Файл |
+|-----------|--------|------|
+| Версия 1.1.1.7 | ✅ | `server.go:33` |
+| notificationService readStates | ✅ | `bot_commands.go` |
+| GetNotificationHistory с is_read | ✅ | `bot_commands.go` |
+| MarkNotificationsRead (реальная логика) | ✅ | `bot_commands.go` |
+| GetUnreadCount RPC | ✅ | `bot_commands.go` |
+| Proto is_read field | ✅ | `messenger.proto` |
+| Proto GetUnreadCount RPC | ✅ | `messenger.proto` |
+
+### Android v1.1.1.7 (`/root/msg.client.android`)
+
+| Компонент | Статус | Файл |
+|-----------|--------|------|
+| ServerNotificationProto isRead | ✅ | `data/proto/MessengerProto.kt` |
+| GetUnreadCount RPC client | ✅ | `data/grpc/OwlGrpc.kt` |
+| getUnreadCount() в GrpcClient | ✅ | `data/grpc/GrpcClient.kt` |
+| NotificationAdapter badge + isRead | ✅ | `ui/notification/NotificationAdapter.kt` |
+| NotificationActivity mark as read | ✅ | `ui/notification/NotificationActivity.kt` |
+| SheetAction badge field | ✅ | `ui/widget/WidgetSystem.kt` |
+| AIBottomSheet badge display | ✅ | `ui/widget/AIBottomSheet.kt` |
+| widget_action_item.xml badge | ✅ | `res/layout/widget_action_item.xml` |
+| badge_background.xml | ✅ | `res/drawable/badge_background.xml` |
+| notification_unread_bg color | ✅ | `res/values/colors.xml` |
+| ChatListActivity unreadNotifCount | ✅ | `ChatListActivity.kt` |
+| compileDebugKotlin | ✅ | passes |
+
+### Статус: v1.1.1.6 ЗАВЕРШЕНА
 
 ### Сервер v1.1.1.6 (`/root/msg`)
 
@@ -114,6 +145,7 @@ ANDROID:
 | v1.1.1.2 | ✅ | ✅ |
 | v1.1.1.3 | ✅ | ✅ |
 | v1.1.1.4 | ✅ | ✅ |
+| v1.1.1.7 | ✅ | ✅ |
 
 ---
 
@@ -130,8 +162,8 @@ ANDROID:
 - **Деплой на prod** — после исправления DeleteChat
 
 ### Средний приоритет
-- NotificationActivity — badge с количеством непрочитанных
-- Graceful reconnect при keepalive failed
+- ~~NotificationActivity — badge с количеством непрочитанных~~ ✅ v1.1.1.7
+- **Graceful reconnect** — переподключение без потери стримов → v1.1.1.8
 - Модульные тесты для OWL streaming
 
 ### Низкий приоритет

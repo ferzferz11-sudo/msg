@@ -731,6 +731,7 @@ service ChatService {
   rpc SubscribeNotifications(SubscribeNotificationsRequest) returns (stream ServerNotification);
   rpc GetNotificationHistory(GetNotificationHistoryRequest) returns (GetNotificationHistoryResponse);
   rpc MarkNotificationsRead(MarkNotificationReadRequest) returns (MarkNotificationReadResponse);
+  rpc GetUnreadCount(GetUnreadCountRequest) returns (GetUnreadCountResponse);
 }
 
 // ======= AI Pipeline Messages =======
@@ -1087,6 +1088,7 @@ message ServerNotification {
   string message = 4;
   string timestamp = 5;
   map<string, string> metadata = 6;
+  bool is_read = 7;
 }
 
 message SubscribeNotificationsRequest {
@@ -1110,4 +1112,12 @@ message MarkNotificationReadRequest {
 
 message MarkNotificationReadResponse {
   bool success = 1;
+}
+
+message GetUnreadCountRequest {
+  string user_id = 1;
+}
+
+message GetUnreadCountResponse {
+  int32 count = 1;
 }

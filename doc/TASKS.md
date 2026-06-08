@@ -1,8 +1,39 @@
 # Lavender Messenger — Задачи
 
-**Версия:** v1.1.1.6
+**Версия:** v1.1.1.7
 **Обновлено:** 2026-07-18
-**Статус:** ✅ v1.1.1.6 — Завершена. Множественные OWL/Hermes чаты с нумерацией
+**Статус:** ✅ v1.1.1.7 — Завершена. Notification badge
+
+---
+
+## ✅ Сделано (v1.1.1.7)
+
+### Server
+- **Notification badge (серверная часть):** per-user read tracking для серверных уведомлений
+- **notificationService:** добавлено readStates — map[userID]map[notificationID]bool
+- **MarkNotificationsRead:** теперь реально отмечает уведомления как прочитанные
+- **GetNotificationHistory:** возвращает уведомления с флагом is_read для текущего пользователя
+- **GetUnreadCount RPC:** новый RPC — возвращает количество непрочитанных уведомлений
+- **Proto:** добавлено поле is_read (field 7) в ServerNotification
+- **Proto:** добавлены GetUnreadCountRequest/Response
+- ServerVersion: 1.1.1.6 → 1.1.1.7
+
+### Android
+- **ServerNotificationProto:** добавлено поле isRead: Boolean
+- **OwlGrpc.kt:** getUnreadCount() + парсеры isRead для history и streaming
+- **GrpcClient.kt:** getUnreadCount() метод
+- **NotificationAdapter:** bold title + accent background для непрочитанных, click → mark read
+- **NotificationActivity:** отмечает все загруженные уведомления как прочитанные при открытии
+- **SheetAction:** добавлено поле badge: Int
+- **AIBottomSheet + ActionBottomSheet:** показывают badge (красный кружок с числом)
+- **Layouts:** widget_action_item.xml добавлен actionBadge, badge_background.xml
+- **Colors:** notification_unread_bg для accent-фона непрочитанных
+- **ChatListActivity:** unreadNotifCount + refreshUnreadCount(), badge на "Уведомления"
+- compileDebugKotlin ✅
+
+### Сборка и деплой
+- compileDebugKotlin ✅ | go build ✅
+- Dev сервер обновлён и работает (v1.1.1.7)
 
 ---
 

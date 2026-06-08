@@ -1,5 +1,15 @@
 # Lavender Messenger — Server Changelog
 
+## [1.1.1.7] - 2026-07-18
+- Версия обновлена до 1.1.1.7
+- **Notification badge (серверная часть):** добавлен per-user read tracking для серверных уведомлений
+- **notificationService:** добавлено поле `readStates` — map[userID]map[notificationID]bool для отслеживания прочитанных
+- **MarkNotificationsRead:** теперь реально отмечает уведомления как прочитанные для конкретного пользователя
+- **GetNotificationHistory:** возвращает уведомления с флагом `is_read` для текущего пользователя
+- **GetUnreadCount RPC:** новый RPC — возвращает количество непрочитанных уведомлений для пользователя
+- **Proto:** добавлено поле `is_read` (field 7) в `ServerNotification`
+- **Proto:** добавлены `GetUnreadCountRequest` и `GetUnreadCountResponse` сообщения
+
 ## [1.1.1.6] - 2026-07-18
 - Версия обновлена до 1.1.1.6
 - **Multiple OWL/Hermes chats with numbering:** каждый новый чат уникален с порядковым номером
