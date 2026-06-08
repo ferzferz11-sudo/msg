@@ -1,51 +1,89 @@
-# Lavender Chat — Интеграционная сессия
+# Lavender Messenger — Интеграционная сессия
 
 ## Контекст
 
-Интеграция полноценного чата в Lavender Messenger: OWL AI, бот-команды, серверные уведомления.
+Интеграция AI-чатов в Lavender Messenger: OWL AI (простой чат с AI) и Hermes Orchestrator (мульти-агентная система).
 
 **Текущая ветка:** `feat/1.1.1.x` (оба репозитория)
 **Сервер:** dev на порту 50052, prod на 50051
 
 ---
 
-## Статус: Фаза 1 ЗАВЕРШЕНА
+## Архитектура разделения
 
-### Сервер v1.1.1.1 (`/root/msg`)
+```
+СЕРВЕР:
+├── owl.go              — OWL AI: ChatWithOWL streaming, сессии, история
+├── bot_commands.go     — Bot Commands: /status, /deploy, /logs, /restart, /ai, /help, /version
+├── hermes_orchestrator.go — Hermes: оркестратор, маршрутизация агентов
+├── hermes_agent_service.go — Hermes: управление агентами
+└── server.go           — gRPC handlers, маршрутизация запросов
+
+ANDROID:
+├── OwlGrpc.kt          — OWL: chatWithOwl, processBotCommand, getBotCommands, getOWLStatus
+├── HermesGrpc.kt       — Hermes: chatWithOrchestrator, agent management
+├── GrpcClient.kt       — единая точка доступа
+├── OwlChatActivity.kt  — UI чата с OWL
+├── OwlChatViewModel.kt — ViewModel (отдельные owlTyping/owlResponses flows)
+└── HermesChatActivity.kt — UI чата с Hermes
+```
+
+Принцип: полная изоляция OWL и Hermes — разные файлы, разные SharedFlows, разные rate limiters.
+
+---
+
+## Статус: v1.1.1.3 ЗАВЕРШЕНА
+
+### Сервер v1.1.1.3 (`/root/msg`)
 
 | Компонент | Статус | Файл |
 |-----------|--------|------|
-| Bot Command Processor | ✅ | `bot_commands.go` |
-| 7 команд (/status, /deploy, /logs, /restart, /ai, /help, /version) | ✅ | `bot_commands.go` |
+| Bot Command Processor (7 команд) | ✅ | `bot_commands.go` |
 | Rate limiting (30 cmd/min, 10 AI/min) | ✅ | `bot_commands.go` |
-| Bot command detection в Chat stream | ✅ | `server.go:~300` |
+| Bot command detection в Chat stream | ✅ | `server.go` |
 | OWL Status RPC | ✅ | `bot_commands.go` |
 | NotificationService (broadcast + history) | ✅ | `bot_commands.go` |
-| Proto: BotCommand*, OWLStatus*, ServerNotification* | ✅ | `messenger.proto` |
-| Версия 1.1.1.1 | ✅ | `server.go:33` |
+| SendServerNotification в deploy/restart | ✅ | `bot_commands.go` |
+| /ai улучшенный промпт | ✅ | `bot_commands.go` |
+| OWL ChatWithOWL streaming | ✅ | `owl.go` |
+| Hermes Orchestrator | ✅ | `hermes_orchestrator.go` |
+| Unit tests для bot_commands | ✅ | `bot_commands_test.go` |
+| Исправлен fmt.Sprintf в /logs | ✅ | `bot_commands.go:320` |
+| Версия 1.1.1.3 | ✅ | `server.go:33` |
 
-### Android v1.1.1.1 (`/root/msg.client.android`)
+### Android v1.1.1.3 (`/root/msg.client.android`)
 
 | Компонент | Статус | Файл |
 |-----------|--------|------|
+| **OwlGrpc.kt** (отдельный файл) | ✅ | `data/grpc/OwlGrpc.kt` |
+| — chatWithOwl() streaming | ✅ | `OwlGrpc.kt` |
+| — processBotCommand() | ✅ | `OwlGrpc.kt` |
+| — getBotCommands() | ✅ | `OwlGrpc.kt` |
+| — getOWLStatus() | ✅ | `OwlGrpc.kt` |
+| — subscribeNotifications() streaming | ✅ | `OwlGrpc.kt` |
+| — getNotificationHistory() | ✅ | `OwlGrpc.kt` |
+| — markNotificationsRead() | ✅ | `OwlGrpc.kt` |
+| — serverNotifications SharedFlow | ✅ | `OwlGrpc.kt` |
+| **HermesGrpc.kt** (очищен от OWL) | ✅ | `data/grpc/HermesGrpc.kt` |
 | OwlChatActivity | ✅ | `ui/owl/OwlChatActivity.kt` |
-| OwlChatViewModel | ✅ | `ui/owl/OwlChatViewModel.kt` |
-| Slash command detection (/) | ✅ | `OwlChatActivity.kt:~270` |
-| Bot Commands UI (dialog) | ✅ | `OwlChatActivity.kt:~230` |
-| OWL AI кнопка в bottom sheet | ✅ | `ChatListActivity.kt:~2001` |
-| gRPC: processBotCommand, getBotCommands, getOWLStatus | ✅ | `data/grpc/HermesGrpc.kt:~837` |
-| Proto: BotCommand*, OWLStatus*, ServerNotification* | ✅ | `data/proto/MessengerProto.kt:~1055` |
-| OwlMessage data class | ✅ | `data/models/HermesModel.kt:~55` |
-| activity_owl_chat.xml | ✅ | `res/layout/activity_owl_chat.xml` |
-| ic_owl.xml | ✅ | `res/drawable/ic_owl.xml` |
-| AndroidManifest registration | ✅ | `AndroidManifest.xml:~109` |
+| OwlChatViewModel (отдельный поток) | ✅ | `ui/owl/OwlChatViewModel.kt` |
+| Slash command detection (/) | ✅ | `OwlChatActivity.kt` |
+| Bot Commands UI (dialog) | ✅ | `OwlChatActivity.kt` |
+| OWL AI кнопка в bottom sheet | ✅ | `ChatListActivity.kt` |
+| **NotificationActivity** | ✅ | `ui/notification/NotificationActivity.kt` |
+| **NotificationAdapter** | ✅ | `ui/notification/NotificationAdapter.kt` |
+| Кнопка "Уведомления" в bottom sheet | ✅ | `ChatListActivity.kt` |
+| Proto: BotCommand*, OWLStatus*, ServerNotification* | ✅ | `data/proto/MessengerProto.kt` |
+| Proto: OwlRequestProto, OwlResponseProto | ✅ | `data/proto/MessengerProto.kt` |
+| OwlMessage data class | ✅ | `data/models/HermesModel.kt` |
+| activity_owl_chat.xml, ic_owl.xml | ✅ | `res/layout/`, `res/drawable/` |
+| activity_notification.xml, item_notification.xml | ✅ | `res/layout/` |
+| ic_notifications.xml, ic_arrow_back.xml, circle_background.xml | ✅ | `res/drawable/` |
 | compileDebugKotlin | ✅ | passes |
 
 ---
 
 ## Теги
-
-Схема: `v1.1.0.X` → `v1.1.1.X` (по возрастанию)
 
 | Версия | Сервер | Android |
 |--------|--------|---------|
@@ -54,36 +92,35 @@
 | v1.1.0.15 | ✅ | ✅ |
 | v1.1.0.16 | ✅ | ✅ |
 | v1.1.1.1 | ✅ | ✅ |
-
-```bash
-# Создать тег
-git tag v1.1.1.2 <commit_hash>
-git push origin feat/1.1.1.x --tags
-
-# Удалить тег
-git tag -d v1.1.1.2
-git push origin :refs/tags/v1.1.1.2
-```
+| v1.1.1.2 | ✅ | ✅ |
+| v1.1.1.3 | ✅ | ✅ |
 
 ---
 
-## Известные проблемы (не критично)
+## Известные проблемы
 
-1. **OwlChatViewModel** переиспользует `hermesTyping/hermesResponses` SharedFlows из HermesGrpc — для прототипа ок, потом нужен отдельный OWL streaming
-2. **Server migration warnings** при запуске: `role "lavender" does not exist` — не критично, сервер работает
-3. **/ai команда** в bot_commands.go вызывает `callOpenRouterContext` напрямую (не через оркестратор)
-4. **SendServerNotification** определена но не используется в deploy/restart handlers
+- Server migration warnings: `role "lavender" does not exist` (не критично)
 
 ---
 
-## Что НЕ сделано (будущие фазы)
+## Что НЕ сделано (по приоритету)
 
-- Отдельный OWL streaming gRPC для Android (сейчас переиспользует Hermes flows)
-- UI для серверных уведомлений на Android (SubscribeNotifications)
-- Модульное тестирование бот-команд
-- Интеграция с deploy скриптами (deploy-dev.sh / deploy-prod.sh)
-- Сборка APK и тестирование на устройстве
+### Высокий приоритет
+- Тестирование на dev — проверить бот-команды, OWL чат, ChatWithOWL streaming
+- Проверить deploy-dev.sh / deploy-prod.sh
 - Деплой на prod
+
+### Средний приоритет
+- Server Notifications UI на Android (SubscribeNotifications)
+- Rate limiting для уведомлений
+- Модульные тесты для бот-команд
+- APK сборка и тест на устройстве
+
+### Низкий приоритет
+- Auth токены для удалённых агентов (JWT)
+- Qdrant + CLIP (production RAG)
+- Graceful reconnect при keepalive failed
+- NewChatActivity → ChatWidget миграция
 
 ---
 
@@ -95,6 +132,7 @@ git push origin :refs/tags/v1.1.1.2
 4. **Обновлять CHANGELOG.md** с каждым фиксом
 5. **Не ломать существующий функционал**
 6. **Версия сервера** в `server.go:33` — всегда обновлять при релизе
+7. **Разделение архитектуры** — каждый AI-сервис в своём файле, не смешивать
 
 ---
 
@@ -140,44 +178,48 @@ cd /root/msg.client.android
 
 ---
 
-## Промпт для следующей сессии (v1.1.1.2)
+## Промпт для следующей сессии (v1.1.1.4)
 
 ```
-Продолжаем работу над Lavender Messenger. Фаза 1 (Bot Commands, OWL Bot UI, Server Notifications) завершена в v1.1.1.1.
-
-Текущая версия: v1.1.1.2 (feat/1.1.1.x на обоих репозиториях)
+Продолжаем работу над Lavender Messenger. v1.1.1.3 завершена.
+Новая версия: v1.1.1.4 (feat/1.1.1.x на обоих репозиториях)
 
 Контекст:
 - Сервер: /root/msg, dev порт 50052, prod порт 50051
 - Android: /root/msg.client.android
-- Оба репозитория чистые, все запушены
+- Оба репозитория чистые, все запушены, теги v1.1.1.3
 - Серверы работают (lavender-server-dev, lavender-server)
+- Сборка проходит: go build + compileDebugKotlin + go test
 
-Что сделано (v1.1.1.1):
-- Сервер: bot_commands.go (7 команд), notification service, OWL status, bot command detection в Chat stream
-- Android: OwlChatActivity + ViewModel, slash command UI, bot command gRPC, OWL AI button
-- Proto: BotCommand*, OWLStatus*, ServerNotification* на обоих сторонах
+Архитектура (важно!):
+- OwlGrpc.kt — отдельный файл для OWL (chatWithOwl, bot commands, OWL status, notifications)
+- HermesGrpc.kt — отдельный файл для Hermes (orchestrator, agent management)
+- НЕ смешивать OWL и Hermes код — полная изоляция
+- Каждый сервис имеет свои SharedFlows, marshallers, rate limiters
 
-Известные проблемы v1.1.1.1:
-- OwlChatViewModel переиспользует hermesTyping/hermesResponses SharedFlows (нужен отдельный OWL streaming)
-- Server migration warnings: "role lavender does not exist" (не критично, сервер работает)
-- /ai команда вызывает OpenRouter напрямую (не через оркестратор)
-- SendServerNotification не используется в deploy/restart handlers
-- Нет модульных тестов для бот-команд
+Что сделано (v1.1.1.3):
+- Server Notifications UI: NotificationActivity, NotificationAdapter, real-time подписка
+- OwlGrpc.kt: subscribeNotifications, getNotificationHistory, markNotificationsRead
+- ChatListActivity: кнопка "Уведомления" в bottom sheet
+- Bot commands unit tests (bot_commands_test.go)
+- Исправлен fmt.Sprintf в /logs handler
 
-Следующие шаги (v1.1.1.2):
-1. Известные проблемы v1.1.1.1 (см. выше)
-2. Тестирование — проверить бот-команды на dev сервере
-3. Подготовка к деплою на prod
+Следующие шаги для v1.1.1.4 (по приоритету):
+1. APK сборка и тест на устройстве — полный цикл
+2. Улучшить NotificationActivity — badge с количеством непрочитанных
+3. Graceful reconnect при keepalive failed
+4. Auth токены для удалённых агентов (JWT)
 
 Правила:
 - Коммитить после каждого изменения, пушить в feat/1.1.1.x
 - Деплоить на dev для тестирования
 - Обновлять CHANGELOG.md (новая версия наверху)
 - Не ломать существующий функционал
-- Версия сервера в server.go:33
+- Версия сервера в server.go:33 — обновлять при релизе
 - assembleRelease НЕ запускать на сервере (OOM kill)
-- Теги: git tag v1.1.1.2 <commit> && git push origin feat/1.1.1.x --tags
+- Теги: git tag v1.1.1.4 <commit> && git push origin feat/1.1.1.x --tags
+- Разделение архитектуры: каждый AI-сервис в своём файле
+- Каждый значимый коммит — с описанием что и почему
 
 Документация: /root/msg/INTEGRATION_SESSION.md, /root/msg/TASKS.md
 Команды сборки: см. раздел "Команды" выше

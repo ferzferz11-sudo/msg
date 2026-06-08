@@ -317,7 +317,7 @@ func handleBotLogs(s *server, req *gen.BotCommandRequest) *gen.BotCommandRespons
 	result, err := readLastLines(logFile, lines)
 	if err != nil || result == "" {
 		out, jerr := exec.Command("journalctl", "-u", "lavender-server-dev",
-			"-n", fmt.Sprintf("%d"), "--no-pager", "-q").CombinedOutput()
+			"-n", fmt.Sprintf("%d", lines), "--no-pager", "-q").CombinedOutput()
 		if jerr != nil || len(out) == 0 {
 			return &gen.BotCommandResponse{
 				Success:      true,

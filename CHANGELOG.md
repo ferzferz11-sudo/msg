@@ -2,6 +2,21 @@
 
 **Author:** Pavel Davodov (ferz)
 
+## [1.1.1.3] - 2026-07-17
+- **Server:**
+  - Версия обновлена до 1.1.1.3
+  - **Bot Commands:** исправлен fmt.Sprintf в /logs handler (добавлен 缺失ющий lines аргумент)
+  - **Unit Tests:** добавлены модульные тесты для bot_commands.go (rate limiter, command handlers, dispatcher, notification service, utility functions)
+- **Android:**
+  - **Server Notifications UI:** добавлен NotificationActivity — экран просмотра серверных уведомлений
+  - **NotificationAdapter:** адаптер для списка уведомлений с иконками по типу
+  - **OwlGrpc.kt:** добавлены gRPC методы subscribeNotifications (server streaming), getNotificationHistory, markNotificationsRead
+  - **OwlGrpc.kt:** добавлен serverNotifications SharedFlow для real-time уведомлений
+  - **GrpcClient:** добавлены публичные методы для работы с уведомлениями
+  - **ChatListActivity:** добавлена кнопка "Уведомления" в ActionBottomSheet меню
+  - **Новые layout:** activity_notification.xml, item_notification.xml
+  - **Новые drawable:** ic_notifications.xml, ic_arrow_back.xml, circle_background.xml
+
 ## [1.1.1.2] - 2026-07-17
 - **Server:**
   - Версия обновлена до 1.1.1.2
