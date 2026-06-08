@@ -726,6 +726,10 @@ service ChatService {
   // Hermes AI Pipeline (RAG + LLM + Tool Calling)
   rpc ChatWithPipeline(PipelineRequest) returns (stream PipelineResponse);
 
+  // Hermes Chat Settings
+  rpc GetHermesSettings(GetHermesSettingsRequest) returns (GetHermesSettingsResponse);
+  rpc UpdateHermesSettings(UpdateHermesSettingsRequest) returns (UpdateHermesSettingsResponse);
+
   // Bot Commands
   rpc ProcessBotCommand(BotCommandRequest) returns (BotCommandResponse);
   rpc GetBotCommands(GetBotCommandsRequest) returns (GetBotCommandsResponse);
@@ -845,6 +849,7 @@ message GetOwlSettingsRequest {
 message GetOwlSettingsResponse {
   string api_key = 1;
   string model = 2;
+  bool is_using_custom_key = 3;
 }
 
 message UpdateOwlSettingsResponse {
@@ -1051,6 +1056,8 @@ message AIChatInfo {
   string name = 2;
   string type = 3; // "owl" or "hermes"
   string created_at = 4;
+  bool is_using_custom_key = 5;
+  string model = 6;
 }
 
 message GetAIChatsResponse {
@@ -1152,4 +1159,29 @@ message GetUnreadCountRequest {
 
 message GetUnreadCountResponse {
   int32 count = 1;
+}
+
+// ======= Hermes Chat Settings (per-chat API key + model) =======
+
+message GetHermesSettingsRequest {
+  string session_id = 1;
+  string user_id = 2;
+}
+
+message GetHermesSettingsResponse {
+  string api_key = 1;
+  string model = 2;
+  bool is_using_custom_key = 3;
+}
+
+message UpdateHermesSettingsRequest {
+  string session_id = 1;
+  string user_id = 2;
+  string api_key = 3;
+  string model = 4;
+}
+
+message UpdateHermesSettingsResponse {
+  bool success = 1;
+  string message = 2;
 }

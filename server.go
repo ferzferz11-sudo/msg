@@ -2913,9 +2913,17 @@ func (s *server) ChatWithOWL(req *gen.OWLRequest, stream gen.ChatService_ChatWit
 		)
 	}
 
-	// Rate limit check
-	if !owlRateLimiter.allow(userID) {
-		return fmt.Errorf("rate limit exceeded: max 10 requests per minute")
+	// Rate limit check: custom key users get 10/min, free tier gets 20/hour
+	settings := owlSessions.getSettings(chatID)
+	hasCustomKey := settings.UserAPIKey != ""
+	if hasCustomKey {
+		if !owlRateLimiter.allow(userID) {
+			return fmt.Errorf("rate limit exceeded: max 10 requests per minute")
+		}
+	} else {
+		if !freeTierRateLimiter.allow(userID) {
+			return fmt.Errorf("rate limit exceeded: max 20 requests per hour for free tier. Set your own API key in chat settings for unlimited access")
+		}
 	}
 
 	// System prompt
@@ -2928,9 +2936,6 @@ func (s *server) ChatWithOWL(req *gen.OWLRequest, stream gen.ChatService_ChatWit
 
 	// Build context from history
 	history := owlSessions.getHistory(chatID)
-
-	// Get per-chat settings from DB
-	settings := owlSessions.getSettings(chatID)
 
 	// Use model from request, then per-chat setting, then server default
 	model := req.Model
@@ -3162,9 +3167,54 @@ func (s *server) GetOwlSettings(_ context.Context, req *gen.GetOwlSettingsReques
 
 	settings := owlSessions.getSettings(req.ChatId)
 	return &gen.GetOwlSettingsResponse{
-		ApiKey: settings.UserAPIKey,
-		Model:  settings.Model,
+		ApiKey:           settings.UserAPIKey,
+		Model:            settings.Model,
+		IsUsingCustomKey: settings.UserAPIKey != "",
 	}, nil
+}
+
+// ======= Hermes Chat Settings gRPC methods =======
+
+func (s *server) GetHermesSettings(_ context.Context, req *gen.GetHermesSettingsRequest) (*gen.GetHermesSettingsResponse, error) {
+	if req.SessionId == "" || req.UserId == "" {
+		return &gen.GetHermesSettingsResponse{}, nil
+	}
+
+	// Verify ownership — only by creator_id (UUID)
+	var ownerID string
+	err := s.db.QueryRow("SELECT creator_id FROM chats WHERE id = $1 AND type = 'hermes'", req.SessionId).Scan(&ownerID)
+	if err != nil {
+		return &gen.GetHermesSettingsResponse{}, nil
+	}
+	if ownerID != req.UserId {
+		return &gen.GetHermesSettingsResponse{}, nil
+	}
+
+	settings := hermesSettings.getSettings(req.SessionId)
+	return &gen.GetHermesSettingsResponse{
+		ApiKey:           settings.UserAPIKey,
+		Model:            settings.Model,
+		IsUsingCustomKey: settings.UserAPIKey != "",
+	}, nil
+}
+
+func (s *server) UpdateHermesSettings(_ context.Context, req *gen.UpdateHermesSettingsRequest) (*gen.UpdateHermesSettingsResponse, error) {
+	if req.SessionId == "" || req.UserId == "" {
+		return &gen.UpdateHermesSettingsResponse{Success: false, Message: "session_id and user_id required"}, nil
+	}
+
+	// Verify ownership — only by creator_id (UUID)
+	var ownerID string
+	err := s.db.QueryRow("SELECT creator_id FROM chats WHERE id = $1 AND type = 'hermes'", req.SessionId).Scan(&ownerID)
+	if err != nil {
+		return &gen.UpdateHermesSettingsResponse{Success: false, Message: "session not found"}, nil
+	}
+	if ownerID != req.UserId {
+		return &gen.UpdateHermesSettingsResponse{Success: false, Message: "not your session"}, nil
+	}
+
+	hermesSettings.saveSettings(req.SessionId, req.ApiKey, req.Model)
+	return &gen.UpdateHermesSettingsResponse{Success: true, Message: "OK"}, nil
 }
 
 // ======= Hermes Multi-Agent Orchestrator gRPC methods =======
@@ -3183,9 +3233,17 @@ func (s *server) ChatWithOrchestrator(req *gen.OrchestratorRequest, stream gen.C
 
 	log.Printf("[Lava] chat=%s user=%s session=%s msg=%q", chatID, userID, req.SessionId, truncateString(req.Message, 80))
 
-	// Rate limit check (reuse OWL rate limiter)
-	if !owlRateLimiter.allow(userID) {
-		return status.Error(codes.ResourceExhausted, "rate limit exceeded: max 10 requests per minute")
+	// Rate limit check: custom key users get 10/min, free tier gets 20/hour
+	hermSet := hermesSettings.getSettings(chatID)
+	hasCustomHermesKey := hermSet.UserAPIKey != ""
+	if hasCustomHermesKey {
+		if !owlRateLimiter.allow(userID) {
+			return status.Error(codes.ResourceExhausted, "rate limit exceeded: max 10 requests per minute")
+		}
+	} else {
+		if !freeTierRateLimiter.allow(userID) {
+			return status.Error(codes.ResourceExhausted, "rate limit exceeded: max 20 requests per hour for free tier. Set your own API key in chat settings for unlimited access")
+		}
 	}
 
 	// Check if orchestrator is initialized
@@ -3704,11 +3762,14 @@ func (s *server) GetAIChats(_ context.Context, req *gen.GetAIChatsRequest) (*gen
 			var id, name, chatType string
 			var createdAt time.Time
 			if err := owlRows.Scan(&id, &name, &chatType, &createdAt); err == nil {
+				owlSet := owlSessions.getSettings(id)
 				chats = append(chats, &gen.AIChatInfo{
-					Id:        id,
-					Name:      name,
-					Type:      chatType,
-					CreatedAt: createdAt.Format(time.RFC3339),
+					Id:               id,
+					Name:             name,
+					Type:             chatType,
+					CreatedAt:        createdAt.Format(time.RFC3339),
+					IsUsingCustomKey: owlSet.UserAPIKey != "",
+					Model:            owlSet.Model,
 				})
 			}
 		}
@@ -3725,11 +3786,14 @@ func (s *server) GetAIChats(_ context.Context, req *gen.GetAIChatsRequest) (*gen
 			var id, name string
 			var createdAt time.Time
 			if err := hermesRows.Scan(&id, &name, &createdAt); err == nil {
+				hermSet := hermesSettings.getSettings(id)
 				chats = append(chats, &gen.AIChatInfo{
-					Id:        id,
-					Name:      name,
-					Type:      "hermes",
-					CreatedAt: createdAt.Format(time.RFC3339),
+					Id:               id,
+					Name:             name,
+					Type:             "hermes",
+					CreatedAt:        createdAt.Format(time.RFC3339),
+					IsUsingCustomKey: hermSet.UserAPIKey != "",
+					Model:            hermSet.Model,
 				})
 			}
 		}

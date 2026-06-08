@@ -97,6 +97,8 @@ const (
 	ChatService_GetAIChats_FullMethodName             = "/messenger.ChatService/GetAIChats"
 	ChatService_RenameAIChat_FullMethodName           = "/messenger.ChatService/RenameAIChat"
 	ChatService_ChatWithPipeline_FullMethodName       = "/messenger.ChatService/ChatWithPipeline"
+	ChatService_GetHermesSettings_FullMethodName      = "/messenger.ChatService/GetHermesSettings"
+	ChatService_UpdateHermesSettings_FullMethodName   = "/messenger.ChatService/UpdateHermesSettings"
 	ChatService_ProcessBotCommand_FullMethodName      = "/messenger.ChatService/ProcessBotCommand"
 	ChatService_GetBotCommands_FullMethodName         = "/messenger.ChatService/GetBotCommands"
 	ChatService_GetOWLStatus_FullMethodName           = "/messenger.ChatService/GetOWLStatus"
@@ -193,6 +195,9 @@ type ChatServiceClient interface {
 	RenameAIChat(ctx context.Context, in *RenameAIChatRequest, opts ...grpc.CallOption) (*RenameAIChatResponse, error)
 	// Hermes AI Pipeline (RAG + LLM + Tool Calling)
 	ChatWithPipeline(ctx context.Context, in *PipelineRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[PipelineResponse], error)
+	// Hermes Chat Settings
+	GetHermesSettings(ctx context.Context, in *GetHermesSettingsRequest, opts ...grpc.CallOption) (*GetHermesSettingsResponse, error)
+	UpdateHermesSettings(ctx context.Context, in *UpdateHermesSettingsRequest, opts ...grpc.CallOption) (*UpdateHermesSettingsResponse, error)
 	// Bot Commands
 	ProcessBotCommand(ctx context.Context, in *BotCommandRequest, opts ...grpc.CallOption) (*BotCommandResponse, error)
 	GetBotCommands(ctx context.Context, in *GetBotCommandsRequest, opts ...grpc.CallOption) (*GetBotCommandsResponse, error)
@@ -1028,6 +1033,26 @@ func (c *chatServiceClient) ChatWithPipeline(ctx context.Context, in *PipelineRe
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type ChatService_ChatWithPipelineClient = grpc.ServerStreamingClient[PipelineResponse]
 
+func (c *chatServiceClient) GetHermesSettings(ctx context.Context, in *GetHermesSettingsRequest, opts ...grpc.CallOption) (*GetHermesSettingsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetHermesSettingsResponse)
+	err := c.cc.Invoke(ctx, ChatService_GetHermesSettings_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) UpdateHermesSettings(ctx context.Context, in *UpdateHermesSettingsRequest, opts ...grpc.CallOption) (*UpdateHermesSettingsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateHermesSettingsResponse)
+	err := c.cc.Invoke(ctx, ChatService_UpdateHermesSettings_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *chatServiceClient) ProcessBotCommand(ctx context.Context, in *BotCommandRequest, opts ...grpc.CallOption) (*BotCommandResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(BotCommandResponse)
@@ -1194,6 +1219,9 @@ type ChatServiceServer interface {
 	RenameAIChat(context.Context, *RenameAIChatRequest) (*RenameAIChatResponse, error)
 	// Hermes AI Pipeline (RAG + LLM + Tool Calling)
 	ChatWithPipeline(*PipelineRequest, grpc.ServerStreamingServer[PipelineResponse]) error
+	// Hermes Chat Settings
+	GetHermesSettings(context.Context, *GetHermesSettingsRequest) (*GetHermesSettingsResponse, error)
+	UpdateHermesSettings(context.Context, *UpdateHermesSettingsRequest) (*UpdateHermesSettingsResponse, error)
 	// Bot Commands
 	ProcessBotCommand(context.Context, *BotCommandRequest) (*BotCommandResponse, error)
 	GetBotCommands(context.Context, *GetBotCommandsRequest) (*GetBotCommandsResponse, error)
@@ -1446,6 +1474,12 @@ func (UnimplementedChatServiceServer) RenameAIChat(context.Context, *RenameAICha
 }
 func (UnimplementedChatServiceServer) ChatWithPipeline(*PipelineRequest, grpc.ServerStreamingServer[PipelineResponse]) error {
 	return status.Errorf(codes.Unimplemented, "method ChatWithPipeline not implemented")
+}
+func (UnimplementedChatServiceServer) GetHermesSettings(context.Context, *GetHermesSettingsRequest) (*GetHermesSettingsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetHermesSettings not implemented")
+}
+func (UnimplementedChatServiceServer) UpdateHermesSettings(context.Context, *UpdateHermesSettingsRequest) (*UpdateHermesSettingsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateHermesSettings not implemented")
 }
 func (UnimplementedChatServiceServer) ProcessBotCommand(context.Context, *BotCommandRequest) (*BotCommandResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ProcessBotCommand not implemented")
@@ -2839,6 +2873,42 @@ func _ChatService_ChatWithPipeline_Handler(srv interface{}, stream grpc.ServerSt
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type ChatService_ChatWithPipelineServer = grpc.ServerStreamingServer[PipelineResponse]
 
+func _ChatService_GetHermesSettings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetHermesSettingsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).GetHermesSettings(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_GetHermesSettings_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).GetHermesSettings(ctx, req.(*GetHermesSettingsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_UpdateHermesSettings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateHermesSettingsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).UpdateHermesSettings(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_UpdateHermesSettings_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).UpdateHermesSettings(ctx, req.(*UpdateHermesSettingsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ChatService_ProcessBotCommand_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(BotCommandRequest)
 	if err := dec(in); err != nil {
@@ -3252,6 +3322,14 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RenameAIChat",
 			Handler:    _ChatService_RenameAIChat_Handler,
+		},
+		{
+			MethodName: "GetHermesSettings",
+			Handler:    _ChatService_GetHermesSettings_Handler,
+		},
+		{
+			MethodName: "UpdateHermesSettings",
+			Handler:    _ChatService_UpdateHermesSettings_Handler,
 		},
 		{
 			MethodName: "ProcessBotCommand",

@@ -319,3 +319,41 @@ func (rl *rateLimiter) allow(userID string) bool {
 	rl.requests[userID] = append(valid, now)
 	return true
 }
+
+// ======= Hermes Chat Settings (per-session API key + model) =======
+
+type hermesSettingsManager struct {
+	mu sync.Mutex
+	db *sql.DB
+}
+
+func newHermesSettingsManager(db *sql.DB) *hermesSettingsManager {
+	return &hermesSettingsManager{db: db}
+}
+
+func (h *hermesSettingsManager) getSettings(chatID string) owlChatSettings {
+	var settings owlChatSettings
+	err := h.db.QueryRow(
+		"SELECT chat_id, COALESCE(user_api_key, ''), COALESCE(model, '') FROM hermes_chat_settings WHERE chat_id = $1",
+		chatID,
+	).Scan(&settings.ChatID, &settings.UserAPIKey, &settings.Model)
+	if err != nil {
+		return owlChatSettings{ChatID: chatID}
+	}
+	return settings
+}
+
+func (h *hermesSettingsManager) saveSettings(chatID, apiKey, model string) {
+	_, err := h.db.Exec(
+		`INSERT INTO hermes_chat_settings (chat_id, user_api_key, model, updated_at)
+		 VALUES ($1, $2, $3, NOW())
+		 ON CONFLICT (chat_id) DO UPDATE SET user_api_key=$2, model=$3, updated_at=NOW()`,
+		chatID, apiKey, model,
+	)
+	if err != nil {
+		log.Printf("hermesSettingsManager: failed to save settings: %v", err)
+	}
+}
+
+// Free tier rate limiter: 20 requests per hour per user
+var freeTierRateLimiter = newRateLimiter(20, time.Hour)
