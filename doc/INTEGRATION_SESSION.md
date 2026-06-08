@@ -175,60 +175,52 @@ cd /root/msg.client.android
 ## Промпт для следующей сессии (v1.1.1.6)
 
 ```
-Продолжаем работу над Lavender Messenger. v1.1.1.5 частично завершена (HermesSession→chats, DeleteChat fix, creator_id migration — сделаны).
+Продолжаем работу над Lavender Messenger. v1.1.1.5 завершена.
 
 Новая версия: v1.1.1.6 (feat/1.1.1.x на обоих репозиториях)
 
 Контекст:
 - Сервер: /root/msg, dev порт 50052, prod порт 50051
 - Android: /root/msg.client.android
-- Сервер обновлён и деплоен на dev
-- Сборка проходит: go build + compileDebugKotlin
+- Сервер обновлён и деплоен на dev, сборка проходит
+- Теги v1.1.1.5 на обоих репозиториях
 
 Архитектура (важно!):
-- OwlGrpc.kt — отдельный файл для OWL (chatWithOwl, bot commands, OWL status, notifications)
-- HermesGrpc.kt — отдельный файл для Hermes (orchestrator, agent management)
+- OwlGrpc.kt — отдельный файл для OWL
+- HermesGrpc.kt — отдельный файл для Hermes
 - НЕ смешивать OWL и Hermes код — полная изоляция
-- userId (UUID) — всегда использовать как ключ, НЕ username
-- creator_id (UUID) — для проверки владельца чата, creator_username — только для отображения
+- userId (UUID) — всегда как ключ, НЕ username
+- creator_id (UUID) — для проверки владельца, creator_username — только для отображения
 
-Что сделано (v1.1.1.5, server):
-- GetOwlSettings + UpdateOwlSettings handlers ✅
-- DeleteChat для Hermes fallback ✅
+Что сделано (v1.1.1.5):
 - HermesSession → chats INSERT ✅
-- creator_id колонка + миграция ✅
-- Все проверки владельца теперь по creator_id (UUID) ✅
-- UpdateOwlSettings: исправлен баг creator_username vs UUID ✅
-
-Что НЕ доделано (v1.1.1.5, Android — нужно доделать в начале сессии):
-1. getOwlSettings()/updateOwlSettings() в OwlGrpc.kt — НЕ ДОДЕЛАНО
-2. Регистрация OwlSettingsActivity в AndroidManifest.xml — НЕ ДОДЕЛАНО
-3. Подключение AIBottomSheet → OwlSettingsActivity (вместо Toast) — НЕ ДОДЕЛАНО
-
-Эти 3 пункта доделать ПЕРВЫМИ, потом переходить к v1.1.1.6.
+- DeleteChat Hermes fallback ✅
+- GetOwlSettings + UpdateOwlSettings RPC ✅
+- creator_id миграция ✅
+- Все проверки владельца по UUID ✅
+- OwlSettingsActivity (Android) ✅
+- getOwlSettings/updateOwlSettings в OwlGrpc.kt ✅
+- AIBottomSheet → OwlSettingsActivity ✅
 
 Следующие шаги для v1.1.1.6 (по приоритету):
 
 1. **Множественные OWL/Hermes чаты с нумерацией (Server)**
-   - Старый подход: один OWL чат на пользователя (chatId = "owl-$userId"), один Hermes
+   - Старый: один OWL чат на пользователя (chatId = "owl-$userId"), один Hermes
    - Новый: каждый новый чат уникален с порядковым номером
-   - OWL: `Лава ИИ #1`, `Лава ИИ #2`, ... (русский) / `Lava AI #1`, `Lava AI #2`, ... (english)
-   - Hermes: `Оркестратор #1`, `Оркестратор #2`, ... (русский) / `Orchestrator #1`, `Orchestrator #2`, ... (english)
-   - Номер = MAX(existing_number) + 1 для данного user_id и type в chats
-   - При удалении номера НЕ переиспользуются (всегда инкремент от максимального)
-   - SQL для определения следующего номера:
-     SELECT COALESCE(MAX(CAST(SUBSTRING(name FROM '#(\d+)$') AS INTEGER)), 0) + 1
-     FROM chats WHERE user_id = $1 AND type = $2
-   - chatID оставляем UUID-based (owl-$userId-$uuid8), меняем только name
+   - OWL: Лава ИИ #1, Лава ИИ #2... (русский) / Lava AI #1, Lava AI #2... (english)
+   - Hermes: Оркестратор #1, Оркестратор #2... (русский) / Orchestrator #1, Orchestrator #2... (english)
+   - Номер = MAX(existing_number) + 1, не переиспользуется при удалении
+   - SQL: SELECT COALESCE(MAX(CAST(SUBSTRING(name FROM '#(\d+)$') AS INTEGER)), 0) + 1
+          FROM chats WHERE creator_id = $1 AND type = $2
+   - chatID оставляем UUID-based, меняем только name
 
 2. **Множественные OWL/Hermes чаты с нумерацией (Android)**
    - Убрать генерацию chatId на клиенте (owl-$userId, hermes-$userId)
-   - Для "Создать новый" — вызывать серверный CreateOwlChat/CreateHermesSession
-   - Сервер вернёт chatID и name — использовать их
-   - AIBottomSheet: "Lava AI" → создать новый чат (первый раз или +1)
-   - AIBottomSheet: показывать существующие чаты с номерами
+   - Вызывать серверный CreateOwlChat/CreateHermesSession
+   - AIBottomSheet: показывать существующие чаты с номерами + кнопку "Создать новый"
+   - Локализация: Locale.getDefault().language == "ru" → русский
 
-3. **NotificationActivity badge (Android)** — счётчик непрочитанных на иконке колокольчика
+3. **NotificationActivity badge (Android)** — счётчик непрочитанных
 
 4. **Graceful reconnect (Android)** — переподключение без потери стримов
 
@@ -242,12 +234,13 @@ cd /root/msg.client.android
 - Версия сервера в server.go:33 — обновлять при релизе
 - assembleRelease НЕ запускать на сервере (OOM kill)
 - Теги: git tag v1.1.1.6 <commit> && git push origin feat/1.1.1.x --tags
-- userId (UUID) — всегда использовать как ключ, не username
+- userId (UUID) — всегда как ключ, не username
 - creator_id (UUID) — всегда для проверки владельца
 - Деплой на prod — только после завершения ВСЕХ задач интеграции
 
-Документация: /root/msg/doc/INTEGRATION_SESSION.md, /root/msg/doc/TASKS.md
-Документация Android: /root/msg.client.android/doc/TASKS.md
-Индекс документации: /root/msg/doc/INDEX.md
+Документация:
+- Индекс: /root/msg/doc/INDEX.md (читать в начале сессии)
+- Сервер: /root/msg/doc/INTEGRATION_SESSION.md, /root/msg/doc/TASKS.md
+- Android: /root/msg.client.android/doc/TASKS.md
 Команды сборки: см. раздел "Команды" выше
 ```
