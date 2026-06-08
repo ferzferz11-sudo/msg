@@ -228,18 +228,18 @@ cd /root/msg.client.android
 
 ---
 
-## Промпт для следующей сессии (v1.1.1.7)
+## Промпт для следующей сессии (v1.1.1.8)
 
 ```
-Продолжаем работу над Lavender Messenger. v1.1.1.6 завершена.
+Продолжаем работу над Lavender Messenger. v1.1.1.7 завершена и протестирована.
 
-Новая версия: v1.1.1.7 (feat/1.1.1.x на обоих репозиториях)
+Новая версия: v1.1.1.8 (feat/1.1.1.x на обоих репозиториях)
 
 Контекст:
 - Сервер: /root/msg, dev порт 50052, prod порт 50051
 - Android: /root/msg.client.android
 - Сервер обновлён и деплоен на dev, сборка проходит
-- Теги v1.1.1.6 на обоих репозиториях
+- Теги v1.1.1.7 на обоих репозиториях
 
 Архитектура (важно!):
 - OwlGrpc.kt — отдельный файл для OWL
@@ -250,18 +250,21 @@ cd /root/msg.client.android
 - Множественные чаты: каждый новый чат создаётся через серверный CreateOwlChat/CreateHermesSession
 - Нумерация: Лава ИИ #1, #2... / Оркестратор #1, #2... (MAX+1, не переиспользуется)
 
-Что сделано (v1.1.1.6):
-- Множественные OWL/Hermes чаты с нумерацией ✅
-- getNextChatNumber() SQL MAX+1 ✅
-- generateChatName() локализованные имена ✅
-- createOwlChat() unary RPC ✅
-- AIBottomSheet показывает существующие чаты + кнопку создания ✅
-- OwlChatActivity/OwlSettingsActivity получают CHAT_ID из intent ✅
+Что сделано (v1.1.1.7):
+- Notification badge ✅
+- Per-user read tracking на сервере (in-memory) ✅
+- GetUnreadCount RPC ✅
+- Badge на пункте "Уведомления" в AIBottomSheet ✅
+- Визуальное отличие непрочитанных в NotificationActivity ✅
+- Автоматическая отметка при открытии NotificationActivity ✅
 
-Следующие шаги для v1.1.1.7 (по приоритету):
-1. **NotificationActivity badge** — счётчик непрочитанных на иконке колокольчика
-2. **Graceful reconnect** — переподключение без потери стримов
-3. **Деплой на prod** — после завершения всех задач
+Следующие шаги для v1.1.1.8 (по приоритету):
+1. **Graceful reconnect** — переподключение без потери стримов
+   - При разрыве соединения (keepalive failed / network loss) автоматически
+     переподключаться с экспоненциальным backoff
+   - Не терять активные streaming calls (OWL chat, Hermes chat, notifications)
+   - Показывать индикатор переподключения в UI
+2. **Деплой на prod** — после завершения graceful reconnect
 
 Правила:
 - Коммитить после каждого изменения, пушить в feat/1.1.1.x
@@ -270,7 +273,7 @@ cd /root/msg.client.android
 - Не ломать существующий функционал
 - Версия сервера в server.go:33 — обновлять при релизе
 - assembleRelease НЕ запускать на сервере (OOM kill)
-- Теги: git tag v1.1.1.7 <commit> && git push origin feat/1.1.1.x --tags
+- Теги: git tag v1.1.1.8 <commit> && git push origin feat/1.1.1.x --tags
 - userId (UUID) — всегда как ключ, не username
 - creator_id (UUID) — всегда для проверки владельца
 - Деплой на prod — только после завершения ВСЕХ задач интеграции
