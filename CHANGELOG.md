@@ -1,5 +1,13 @@
 # Lavender Messenger — Server Changelog
 
+## [1.1.1.9] - 2026-06-08
+- Версия обновлена до 1.1.1.9
+- **Graceful reconnect (сервер):** добавлен grace period (30s) в hub — при разрыве соединения пользователь не сразу считается offline, а переходит в состояние "reconnecting"
+- **Grace period API:** `StartGracePeriod()`, `IsInGracePeriod()`, `ClearGracePeriod()`, `GetGracePeriodRemaining()` методы в hub
+- **GetOnlineUsers:** пользователи в grace period по-прежнему отображаются как online
+- **ClearGracePeriod:** вызывается при успешной ре-аутентификации в Chat handler
+- **Keepalive:** серверные параметры без изменений (MinTime=5s, Time=20s, Timeout=20s)
+
 ## [1.1.1.8] - 2026-06-08
 - Версия обновлена до 1.1.1.8
 - **Исправлен невалидный JSON в participants:** заменена конкатенация на `json.Marshal([]string{userId})`. Теперь хранится UUID вместо username — не зависит от символов в имени.

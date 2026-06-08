@@ -30,7 +30,7 @@ import (
 	"firebase.google.com/go/v4/messaging"
 )
 
-const ServerVersion = "1.1.1.8"
+const ServerVersion = "1.1.1.9"
 
 // server implements the gRPC ChatService interface
 type server struct {
@@ -189,6 +189,9 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 			s.hub.UpdateName(stream, msg.User)
 			s.hub.SetAuthenticated(stream, true)
 			connectedUser = msg.User
+
+			// Clear grace period on successful reconnect
+			s.hub.ClearGracePeriod(msg.User)
 
 			// Fetch and store user ID for session tracking
 			uid, _ := s.db.GetUserIdByUsername(msg.User)

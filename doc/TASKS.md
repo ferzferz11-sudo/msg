@@ -1,8 +1,34 @@
 # Lavender Messenger — Задачи
 
-**Версия:** v1.1.1.8
+**Версия:** v1.1.1.9
 **Обновлено:** 2026-06-08
-**Статус:** ✅ v1.1.1.8 — Завершена. AI chats separation + JSON fix
+**Статус:** ✅ v1.1.1.9 — Graceful reconnect
+
+---
+
+## ✅ Сделано (v1.1.1.9)
+
+### Server
+- **Grace period в hub:** при разрыве соединения пользователь переходит в grace period (30s) вместо немедленного удаления
+- **Grace Period API:** `StartGracePeriod()`, `IsInGracePeriod()`, `ClearGracePeriod()`, `GetGracePeriodRemaining()`
+- **GetOnlineUsers:** пользователи в grace period отображаются как online
+- **ClearGracePeriod:** вызывается при успешной ре-аутентификации
+- ServerVersion: 1.1.1.8 → 1.1.1.9
+
+### Android
+- **ConnectionStatus.RECONNECTING:** новый enum — промежуточный статус при переподключении
+- **RealGrpcClient.connect():** RECONNECTING вместо CONNECTING при повторном подключении
+- **Exponential backoff:** 5s → 60s для channel reconnect, 3s → 30s для stream retry
+- **subscribeNotifications:** автоматический retry с backoff — уведомления не теряются
+- **chatWithOwl:** автоматический retry (10 попыток, 3s → 30s backoff)
+- **chatWithOrchestrator:** автоматический retry (10 попыток, 3s → 30s backoff)
+- **onError:** FAILED заменён на RECONNECTING, ускоренный retry
+- **Keep-alive:** keepAliveTime 10s, keepAliveTimeout 5s
+- compileDebugKotlin ✅ | go build ✅
+
+### Сборка и деплой
+- compileDebugKotlin ✅ | go build ✅
+- Dev сервер обновлён и работает (v1.1.1.9)
 
 ---
 

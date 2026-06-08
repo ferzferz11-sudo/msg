@@ -32,6 +32,33 @@ ANDROID:
 
 ---
 
+## Статус: v1.1.1.9 ЗАВЕРШЕНА
+
+### Сервер v1.1.1.9 (`/root/msg`)
+
+| Компонент | Статус | Файл |
+|-----------|--------|------|
+| Grace period (30s) в hub | ✅ | `hub.go` |
+| StartGracePeriod / IsInGracePeriod / ClearGracePeriod | ✅ | `hub.go` |
+| GetOnlineUsers включает grace period users | ✅ | `hub.go` |
+| ClearGracePeriod при re-auth | ✅ | `server.go:Chat` |
+| ServerVersion 1.1.1.9 | ✅ | `server.go:33` |
+
+### Android v1.1.1.9 (`/root/msg.client.android`)
+
+| Компонент | Статус | Файл |
+|-----------|--------|------|
+| ConnectionStatus.RECONNECTING | ✅ | `RealGrpcClient.kt` |
+| Exponential backoff reconnect | ✅ | `RealGrpcClient.kt` |
+| subscribeNotifications retry | ✅ | `OwlGrpc.kt` |
+| chatWithOwl retry | ✅ | `OwlGrpc.kt` |
+| chatWithOrchestrator retry | ✅ | `HermesGrpc.kt` |
+| onError → RECONNECTING | ✅ | `RealGrpcClient.kt` |
+| Keep-alive 10s/5s | ✅ | `RealGrpcClient.kt` |
+| compileDebugKotlin | ✅ | passes |
+
+---
+
 ## Статус: v1.1.1.8 ЗАВЕРШЕНА
 
 ### Сервер v1.1.1.8 (`/root/msg`)
@@ -258,20 +285,20 @@ cd /root/msg.client.android
 
 ---
 
-## Промпт для следующей сессии (v1.1.1.8)
+## Промпт для следующей сессии (v1.1.1.9)
 
 ```
-Продолжаем работу над Lavender Messenger. v1.1.1.8 в процессе разработки.
+Продолжаем работу над Lavender Messenger. v1.1.1.9 завершена — graceful reconnect реализован.
 
 Контекст:
 - Сервер: /root/msg, dev порт 50052, prod порт 50051
 - Android: /root/msg.client.android
-- Сервер обновлён и деплоен на dev, сборка проходит
+- Сервер обновлён и деплоен на dev (v1.1.1.9), сборка проходит
 - compileDebugKotlin проходит
 
 Архитектура (важно!):
-- OwlGrpc.kt — отдельный файл для OWL
-- HermesGrpc.kt — отдельный файл для Hermes
+- OwlGrpc.kt — отдельный файл для OWL (subscribeNotifications, chatWithOwl с retry)
+- HermesGrpc.kt — отдельный файл для Hermes (chatWithOrchestrator с retry)
 - НЕ смешивать OWL и Hermes код — полная изоляция
 - userId (UUID) — всегда как ключ, НЕ username
 - creator_id (UUID) — для проверки владельца, creator_username — только для отображения
@@ -280,33 +307,46 @@ cd /root/msg.client.android
 - participants ВСЕГДА формировать через json.Marshal — никогда не собирать строку вручную
 - participants для AI-чатов хранит userId (UUID), НЕ username
 - AI-чаты (owl/hermes) НЕ включаются в GetAllChats — отдельный RPC GetAIChats
+- ConnectionStatus: DISCONNECTED, CONNECTING, READY, RECONNECTING, FAILED
 
-Что сделано (v1.1.1.8):
-- Исправлен невалидный JSON в participants (json.Marshal + UUID) ✅
-- GetUserChats исключает AI-чаты ✅
-- GetAllChats не включает AI-чаты ✅
-- GetAIChats RPC ✅
-- RenameAIChat RPC ✅
-- DeleteChat skip AI notify ✅
-- Android: refreshAiChats() через GetAIChats RPC ✅
-- Android: AIBottomSheet selection mode + тулбар удаления/переименования ✅
-
-Следующие шаги для v1.1.1.9 (по приоритету):
-1. **Деплой на prod** — после тестирования v1.1.1.8 на dev
-2. **Graceful reconnect** — переподключение без потери стримов
-   - При разрыве соединения (keepalive failed / network loss) автоматически
-     переподключаться с экспоненциальным backoff
-   - Не терять активные streaming calls (OWL chat, Hermes chat, notifications)
-   - Показывать индикатор переподключения в UI
+Что сделано (v1.1.1.9):
+- Server: grace period (30s) в hub при разрыве соединения ✅
+- Server: ClearGracePeriod при успешной ре-аутентификации ✅
+- Server: GetOnlineUsers включает пользователей в grace period ✅
+- Android: ConnectionStatus.RECONNECTING — новый enum ✅
+- Android: RealGrpcClient — exponential backoff reconnect (5s→60s) ✅
+- Android: subscribeNotifications — автоматический retry ✅
+- Android: chatWithOrчат — автоматический retry (10 попыток, 3s→30s) ✅
+- Android: chatWithOrchestrator — автоматический retry (10 попыток, 3s→30s) ✅
+- Android: keepAliveTime 10s, keepAliveTimeout 5s для быстрого обнаружения разрыва ✅
+- Android: onError stream — RECONNECTING вместо FAILED, ускоренный retry ✅
 
 Что НЕ сделано (по приоритету):
-- Graceful reconnect → v1.1.1.9
+- Деплой на prod
 - Модульные тесты для OWL streaming
 - Auth токены для удалённых агентов (JWT)
 - Qdrant + CLIP (production RAG)
 - NewChatActivity → ChatWidget миграция
 
 Правила:
+- Коммитить после каждого изменения, пушить в feat/1.1.1.x
+- Деплоить на dev для тестирования
+- Обновлять CHANGELOG.md (новая версия наверху)
+- Не ломать существующий функционал
+- Версия сервера в server.go:33 — обновлять при релизе
+- assembleRelease НЕ запускать на сервере (OOM kill)
+- Теги: git tag v1.1.2.0 <commit> && git push origin feat/1.1.1.x --tags
+- userId (UUID) — всегда как ключ, не username
+- creator_id (UUID) — всегда для проверки владельца
+- Деплой на prod — только после завершения ВСЕХ задач интеграции
+- participants ВСЕГДА через json.Marshal, никогда вручную
+
+Документация:
+- Индекс: /root/msg/doc/INDEX.md (читать в начале сессии)
+- Сервер: /root/msg/doc/INTEGRATION_SESSION.md, /root/msg/doc/TASKS.md
+- Android: /root/msg.client.android/doc/TASKS.md
+Команды сборки: см. раздел "Команды" выше
+```
 - Коммитить после каждого изменения, пушить в feat/1.1.1.x
 - Деплоить на dev для тестирования
 - Обновлять CHANGELOG.md (новая версия наверху)
