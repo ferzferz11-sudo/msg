@@ -1,5 +1,15 @@
 # Lavender Messenger — Server Changelog
 
+## [1.1.1.6] - 2026-07-18
+- Версия обновлена до 1.1.1.6
+- **Multiple OWL/Hermes chats with numbering:** каждый новый чат уникален с порядковым номером
+- **CreateOwlChat:** генерирует UUID-based chatID + имя с номером (#1, #2, ...), добавлен `name` в ответ
+- **CreateHermesSession:** генерирует UUID-based sessionID + имя с номером (#1, #2, ...), добавлен `name` в ответ
+- **getNextChatNumber():** SQL MAX(existing)+1 — номера не переиспользуются при удалении
+- **generateChatName():** локализованные имена по умолчанию (русский: "Лава ИИ #N", "Оркестратор #N")
+- **Proto:** добавлено поле `name` в `CreateOwlChatResponse` (field 4) и `CreateHermesSessionResponse` (field 4)
+- **Proto:** добавлены `CreateOwlChatRequest` и `CreateOwlChatResponse` сообщения
+
 ## [1.1.1.5] - 2026-07-18
 - Версия обновлена до 1.1.1.5
 - **HermesSession → chats:** при создании HermesSession добавляется запись в таблицу `chats` (type="hermes") для корректного удаления и отображения в списке чатов

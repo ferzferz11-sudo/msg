@@ -32,7 +32,31 @@ ANDROID:
 
 ---
 
-## Статус: v1.1.1.5 ЗАВЕРШЕНА
+## Статус: v1.1.1.6 В РАБОТЕ
+
+### Сервер v1.1.1.6 (`/root/msg`)
+
+| Компонент | Статус | Файл |
+|-----------|--------|------|
+| Версия 1.1.1.6 | ✅ | `server.go:33` |
+| getNextChatNumber() | ✅ | `server.go` |
+| generateChatName() | ✅ | `server.go` |
+| CreateOwlChat нумерация | ✅ | `server.go` |
+| CreateHermesSession нумерация | ✅ | `server.go` |
+| Proto name field | ✅ | `messenger.proto` |
+
+### Android v1.1.1.6 (`/root/msg.client.android`)
+
+| Компонент | Статус | Файл |
+|-----------|--------|------|
+| createOwlChat() | ✅ | `data/grpc/OwlGrpc.kt` |
+| OwlChatActivity CHAT_ID from intent | ✅ | `ui/owl/OwlChatActivity.kt` |
+| OwlSettingsActivity CHAT_ID from intent | ✅ | `ui/owl/OwlSettingsActivity.kt` |
+| AIBottomSheet существующие чаты | ✅ | `ChatListActivity.kt` |
+| refreshAiChats() | ✅ | `ChatListActivity.kt` |
+| MessengerProto CreateOwlChat* | ✅ | `data/proto/MessengerProto.kt` |
+| HermesGrpc name parsing | ✅ | `data/grpc/HermesGrpc.kt` |
+| compileDebugKotlin | ✅ | passes |
 
 ### Сервер v1.1.1.5 (`/root/msg`)
 

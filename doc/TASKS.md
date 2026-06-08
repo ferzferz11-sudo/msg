@@ -1,8 +1,37 @@
 # Lavender Messenger — Задачи
 
-**Версия:** v1.1.1.5
+**Версия:** v1.1.1.6
 **Обновлено:** 2026-07-18
-**Статус:** ✅ v1.1.1.5 — Завершена. OWL Settings, HermesSession→chats, DeleteChat fix, creator_id migration
+**Статус:** 🔨 v1.1.1.6 — В работе. Множественные OWL/Hermes чаты с нумерацией
+
+---
+
+## ✅ Сделано (v1.1.1.6)
+
+### Server
+- **Множественные OWL/Hermes чаты с нумерацией**: каждый новый чат уникален с порядковым номером
+- **getNextChatNumber()**: SQL MAX(existing)+1, номера не переиспользуются при удалении
+- **generateChatName()**: локализованные имена (русский: "Лава ИИ #N", "Оркестратор #N")
+- **CreateOwlChat**: UUID-based chatID + имя с номером, возвращает name в ответе
+- **CreateHermesSession**: UUID-based sessionID + имя с номером, возвращает name в ответе
+- **Proto**: добавлено поле name в CreateOwlChatResponse и CreateHermesSessionResponse
+- ServerVersion: 1.1.1.5 → 1.1.1.6
+
+### Android
+- **createOwlChat()**: новый unary RPC для создания пронумерованных OWL чатов на сервере
+- **OwlChatActivity**: убрана локальная генерация chatId, вызывает createOwlChat если пустой
+- **OwlSettingsActivity**: убрана локальная генерация chatId, читает из intent
+- **ChatListActivity**: AIBottomSheet показывает существующие чаты с номерами + кнопку "Создать новый"
+- **refreshAiChats()**: фильтрует owl/hermes чаты из основного списка для AIBottomSheet
+- **MessengerProto**: добавлены CreateOwlChatRequestProto, CreateOwlChatResponseProto
+- **HermesGrpc**: добавлен парсинг name в CreateHermesSessionResponseProto
+- compileDebugKotlin ✅
+
+### Сборка и деплой
+- compileDebugKotlin ✅ | go build ✅
+- Dev сервер обновлён и работает
+- Оба репозитория запушены
+- Теги v1.1.1.6 на обоих репозиториях
 
 ---
 
