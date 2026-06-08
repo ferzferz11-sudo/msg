@@ -2969,6 +2969,21 @@ func (s *server) ChatWithOWL(req *gen.OWLRequest, stream gen.ChatService_ChatWit
 		chatID = "owl-" + userID
 	}
 
+	// Auto-create OWL chat in DB if it doesn't exist (fixes FK constraint on owl_messages)
+	var existingChat string
+	err := s.db.QueryRow("SELECT id FROM chats WHERE id = $1", chatID).Scan(&existingChat)
+	if err != nil {
+		// Chat doesn't exist — create it
+		username := userID
+		if uname, err := s.db.GetUsernameByID(userID); err == nil && uname != "" {
+			username = uname
+		}
+		_, _ = s.db.Exec(
+			"INSERT INTO chats (id, name, type, participants, creator_username) VALUES ($1, $2, 'owl', $3, $4) ON CONFLICT (id) DO NOTHING",
+			chatID, "🤖 Чат с AI", "["+username+"]", username,
+		)
+	}
+
 	// Rate limit check
 	if !owlRateLimiter.allow(userID) {
 		return fmt.Errorf("rate limit exceeded: max 10 requests per minute")
