@@ -1,82 +1,112 @@
 # Hermes Orchestrator — Задачи
 
-**Версия:** v1.1.0.14
-**Обновлено:** 2026-06-05
-**Статус:** ✅ Hermes сессии в списке чатов — сервер + Android готовы
+**Версия:** v1.1.1.1
+**Обновлено:** 2026-07-17
+**Статус:** ✅ Фаза 1 завершена — Bot Commands, OWL Bot UI, Server Notifications
 
 ---
 
-## ✅ Сделано (v1.1.0.14)
+## ✅ Сделано (v1.1.1.1)
 
-### Hermes сессии в списке чатов
-- **Сервер:** `GetChats` теперь включает hermes_sessions как `type="hermes"`
-- **Сервер:** `db_hermes.go` — `GetUserHermesSessions()` с LATERAL JOIN для последнего сообщения
-- **Proto:** `ChatInfo` расширен — `active_agent_id = 20`, `agent_mode = 21`
-- **Android:** `ChatInfoProto`, `ChatInfo`, `ChatEntity` обновлены с новыми полями
-- **Android:** `RealGrpcClient` — оба парсера парсят fields 21/22
-- **Android:** `ChatListActivity.onChatClick` — при `type == "hermes"` → `HermesChatActivity`
-- **Android:** `HermesChatActivity` — принимает существующую сессию из intent
-- **Android:** `HermesChatViewModel` — `setExistingSession(sessionId, userId, agentId, mode)`
+### Bot Commands (сервер)
+- Bot Command Processor (`bot_commands.go`) с 7 командами: /status, /deploy, /logs, /restart, /ai, /help, /version
+- Rate limiting: 30 cmd/min для бота, 10 req/min для AI
+- Bot command detection в Chat stream (сообщения начинающиеся с /)
+- Super admin проверка для /deploy и /restart
+- /ai команда вызывает OpenRouter напрямую
+
+### OWL Status (сервер)
+- GetOWLStatus RPC для проверки доступности AI
+- Возвращает available, model, status
+
+### Server Notifications (сервер)
+- NotificationService с broadcast и history (100 max)
+- SubscribeNotifications, GetNotificationHistory, MarkNotificationsRead RPCs
+- SendServerNotification хелпер
+
+### Proto (сервер)
+- BotCommandRequest/Response/Info, GetBotCommandsRequest/Response
+- OWLStatusRequest/Response
+- ServerNotification, SubscribeNotificationsRequest, GetNotificationHistoryRequest/Response, MarkNotificationReadRequest/Response
+- ProcessBotCommand, GetBotCommands, GetOWLStatus RPCs в ChatService
+
+### OWL Bot UI (Android)
+- OwlChatActivity — экран чата с OWL AI
+- OwlChatViewModel — ViewModel для OWL чата
+- Slash command detection (/) в поле ввода
+- Bot Commands UI (dialog со списком команд)
+- OWL AI кнопка в bottom sheet меню
+- processBotCommand, getBotCommands, getOWLStatus gRPC методы
+- BotCommand*, OWLStatus*, ServerNotification* proto классы
+- OwlMessage data class
+- activity_owl_chat.xml, ic_owl.xml
+- compileDebugKotlin passes
 
 ---
 
-## ✅ Сделано (v1.1.0.13)
+## ✅ Сделано (v1.1.0.16)
 
-### Android — ChatWidget refactor
-- HermesChatActivity переписан на ChatWidget (убрано дублирование findViewById)
-- activity_hermes_chat.xml → FrameLayout + ChatWidget + ProgressBar (было 178 строк → 20)
-- Agent chips: активный агент выделен (фон + обводка primary color)
-- ProgressBar для loading state
-- Typing indicator с именем агента
-
-### Android — Mention system
-- @ в поле ввода → popup со списком агентов
-- MentionAdapter + MentionItem в ui.chat.widget
-- item_mention_agent.xml — emoji + name + description + tag
-- Исправлен SpannableBuilder IndexOutOfBoundsException
-- Исправлена рекursion в MentionAdapter (submitList → setItems)
-
-### Два отдельных MentionAdapter
-- ui.chat.widget.MentionAdapter — агенты (emoji, item_mention_agent.xml)
-- ui.adapter.MentionAdapter — пользователи (аватары, item_mention.xml)
+### Favorites
+- Favorites вынесен из серверного GetChats (клиент создаёт placeholder)
+- Favorites добавлен в начало списка чатов как статический элемент
+- Серверная инъекция Favorites удалена
 
 ---
 
 ## ✅ Сделано (ранее)
 
+### v1.1.0.15 — Force reconnect + Registration fix
+- Force reconnect не убивает активные стримы
+- Registration crash fix (recreate vs startActivity+finish)
+- Cache clearing только в logout()/deleteProfile()
+
+### v1.1.0.14 — Hermes sessions in chat list
+- GetChats возвращает hermes_sessions как type="hermes"
+- Room DB version 8→9 (activeAgentId, agentMode)
+
+### v1.1.0.13 — ChatWidget + Mention system
+- HermesChatActivity переписан на ChatWidget
+- Mention system (@ в поле ввода → popup)
+- Agent chips с активным состоянием
+
 ### v1.1.0.12 — Unified Chat Widget
-- widget_chat.xml, item_chat_message.xml, ChatMessageAdapter, ChatWidget.kt
+- widget_chat.xml, ChatMessageAdapter, ChatWidget.kt
 - HermesChatActivity: агенты как участники
-- HermesChatViewModel: agents registry, initPresetAgents()
+- OWL полностью удалён (-2425 строк)
 
-### v1.1.0.12 — OWL удалён
-- OwlActivity, OwlGrpc, OwlMessageAdapter, все OWL layouts/drawables/menu/proto (-2425 строк)
+### v1.1.0.11 — Hermes Orchestrator
+- Оркестратор отвечает на Android
+- CreateHermesSession, ChatWithOrchestrator работают
 
-### v1.1.0.15 — Сервер
-- LLM Router, RAG Pipeline, Tool Executor, Pipeline
-- HermesAgentService + remote agent routing
-- GRANT ALL PRIVILEGES для lavender user
+### v1.1.0.10 — Agent Management gRPC
+- ListAgentPresets, ListAgents, CreateAgent, UpdateAgent, DeleteAgent
+- 8 пресет-агентов
 
 ---
 
 ## ⏳ Не начато (по приоритету)
 
 ### Высокий приоритет
-1. **Тестирование** — проверить что hermes сессии появляются в списке чатов, открываются, история загружается
+1. **Тестирование** — собрать APK, проверить бот-команды, OWL чат, уведомления
+2. **OWL streaming** — отдельный gRPC поток для OWL на Android (сейчас переиспользует Hermes flows)
+3. **Deploy интеграция** — подключить deploy-dev.sh / deploy-prod.sh к бот-командам
 
 ### Средний приоритет
-2. **Auth токены для удалённых агентов** — JWT при регистрации, валидация при каждом запросе
-3. **Qdrant + CLIP** — production RAG
+4. **Server Notifications UI** — SubscribeNotifications на Android
+5. **Rate limiting для уведомлений**
+6. **Модульные тесты** для бот-команд
 
 ### Низкий приоритет
-4. **Graceful reconnect** при keepalive failed
-5. **NewChatActivity** — миграция на ChatWidget (рефакторинг)
+7. **Auth токены для удалённых агентов** — JWT при регистрации
+8. **Qdrant + CLIP** — production RAG
+9. **Graceful reconnect** при keepalive failed
+10. **NewChatActivity** — миграция на ChatWidget (рефакторинг)
 
 ---
 
-## Следующий шаг
+## Известные проблемы
 
-**Тестирование** — после сборки APK пользователем, проверить:
-1. Hermes сессия появляется в списке чатов после первого диалога с оркестратором
-2. Тап на hermes чат открывает HermesChatActivity с загрузкой истории
-3. При выходе из HermesChatActivity чат остаётся в списке
+- `OwlChatViewModel` переиспользует `hermesTyping/hermesResponses` SharedFlows (не идеально)
+- Server migration warnings: `role "lavender" does not exist` (не критично)
+- `/ai` команда вызывает OpenRouter напрямую (не через оркестратор)
+- `SendServerNotification` не используется в deploy/restart handlers
