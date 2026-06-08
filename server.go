@@ -3568,6 +3568,17 @@ func (s *server) CreateHermesSession(_ context.Context, req *gen.CreateHermesSes
 		return &gen.CreateHermesSessionResponse{Success: false, Error: "user_id is required"}, nil
 	}
 
+	// Resolve username → UUID if needed (hermes_sessions.user_id is UUID type)
+	// If userID is not a valid UUID, treat it as username and look up the UUID
+	if _, err := uuid.Parse(userID); err != nil {
+		if uid, err := s.db.GetUserIdByUsername(userID); err == nil && uid != "" {
+			log.Printf("[Lava] CreateHermesSession: resolved username %q → UUID %q", userID, uid)
+			userID = uid
+		} else {
+			log.Printf("[Lava] CreateHermesSession: WARNING could not resolve username %q to UUID, using as-is", userID)
+		}
+	}
+
 	sessionID := "hermes-" + userID + "-" + uuid.New().String()[:8]
 
 	name := req.Name
