@@ -202,6 +202,7 @@ ANDROID:
 | v1.1.1.4 | ✅ | ✅ |
 | v1.1.1.7 | ✅ | ✅ |
 | v1.1.1.8 | ✅ | ✅ |
+| v1.1.1.9 | ✅ | ✅ |
 
 ---
 
@@ -214,13 +215,14 @@ ANDROID:
 
 ## Что НЕ сделано (по приоритету)
 
-### Высокий приоритет
-- **Исправить DeleteChat для Hermes чатов** — `sql: no rows in result set` при удалении hermes чата (чат есть в `hermes_sessions`, но не в `chats`)
-- **Деплой на prod** — после исправления DeleteChat
+### Перед деплоем на prod (обязательно)
+1. **Сессия: Дизайн Android** — UI/UX улучшения, отображение RECONNECTING статуса
+2. **Сессия: Тестирование** — полное тестирование graceful reconnect, notification retry, AI chats
+3. **Деплой на prod** — только после завершения дизайна и тестирования
 
 ### Средний приоритет
-- ~~NotificationActivity — badge с количеством непрочитанных~~ ✅ v1.1.1.7
-- **Graceful reconnect** — переподключение без потери стримов → v1.1.1.8
+- ~~NotificationActivity badge~~ ✅ v1.1.1.7
+- ~~Graceful reconnect~~ ✅ v1.1.1.9
 - Модульные тесты для OWL streaming
 
 ### Низкий приоритет
@@ -316,14 +318,21 @@ cd /root/msg.client.android
 - Android: ConnectionStatus.RECONNECTING — новый enum ✅
 - Android: RealGrpcClient — exponential backoff reconnect (5s→60s) ✅
 - Android: subscribeNotifications — автоматический retry ✅
-- Android: chatWithOrчат — автоматический retry (10 попыток, 3s→30s) ✅
+- Android: chatWithOwl — автоматический retry (10 попыток, 3s→30s) ✅
 - Android: chatWithOrchestrator — автоматический retry (10 попыток, 3s→30s) ✅
 - Android: keepAliveTime 10s, keepAliveTimeout 5s для быстрого обнаружения разрыва ✅
 - Android: onError stream — RECONNECTING вместо FAILED, ускоренный retry ✅
 
 Что НЕ сделано (по приоритету):
-- Деплой на prod
+### Перед деплоем на prod (обязательно)
+1. **Сессия: Дизайн Android** — UI/UX улучшения, отображение RECONNECTING статуса в UI
+2. **Сессия: Тестирование** — полное тестирование graceful reconnect, notification retry, AI chats
+3. **Деплой на prod** — только после дизайна и тестирования
+
+### Средний приоритет
 - Модульные тесты для OWL streaming
+
+### Низкий приоритет
 - Auth токены для удалённых агентов (JWT)
 - Qdrant + CLIP (production RAG)
 - NewChatActivity → ChatWidget миграция
@@ -338,7 +347,7 @@ cd /root/msg.client.android
 - Теги: git tag v1.1.2.0 <commit> && git push origin feat/1.1.1.x --tags
 - userId (UUID) — всегда как ключ, не username
 - creator_id (UUID) — всегда для проверки владельца
-- Деплой на prod — только после завершения ВСЕХ задач интеграции
+- Деплой на prod — после сессий "Дизайн Android" и "Тестирование"
 - participants ВСЕГДА через json.Marshal, никогда вручную
 
 Документация:
@@ -346,19 +355,6 @@ cd /root/msg.client.android
 - Сервер: /root/msg/doc/INTEGRATION_SESSION.md, /root/msg/doc/TASKS.md
 - Android: /root/msg.client.android/doc/TASKS.md
 Команды сборки: см. раздел "Команды" выше
-```
-- Коммитить после каждого изменения, пушить в feat/1.1.1.x
-- Деплоить на dev для тестирования
-- Обновлять CHANGELOG.md (новая версия наверху)
-- Не ломать существующий функционал
-- Версия сервера в server.go:33 — обновлять при релизе
-- assembleRelease НЕ запускать на сервере (OOM kill)
-- Теги: git tag v1.1.1.9 <commit> && git push origin feat/1.1.1.x --tags
-- userId (UUID) — всегда как ключ, не username
-- creator_id (UUID) — всегда для проверки владельца
-- Деплой на prod — только после завершения ВСЕХ задач интеграции
-- participants ВСЕГДА через json.Marshal, никогда вручную
-
 Документация:
 - Индекс: /root/msg/doc/INDEX.md (читать в начале сессии)
 - Сервер: /root/msg/doc/INTEGRATION_SESSION.md, /root/msg/doc/TASKS.md
