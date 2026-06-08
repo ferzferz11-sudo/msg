@@ -1,130 +1,62 @@
-# Lavender Messenger - Changelog
-
-**Author:** Pavel Davodov (ferz)
+# Lavender Messenger — Server Changelog
 
 ## [1.1.1.4] - 2026-07-17
-- **Server:**
-  - Версия обновлена до 1.1.1.4
-  - **OWL FK fix:** авто-создание OWL чата в таблице `chats` при первом сообщении (исправляет `violates foreign key constraint "owl_messages_chat_id_fkey"`)
-- **Android:**
-  - **[AI] кнопка в списке чатов:** добавлена кнопка [AI] рядом с [+] в ChatListActivity
-  - **AIBottomSheet:** новая шторка с группировкой AI-сервисов (Оркестратор / OWL) и разделителем
-  - **Группа Оркестратор:** Lava AI, Агенты, Уведомления
-  - **Группа OWL:** OWL AI, Настройки OWL
-  - **AI-пункты перенесены** из [+] шторки в [AI] шторку
-  - **Новые файлы:** AIBottomSheet.kt, widget_ai_bottom_sheet.xml, widget_section_header.xml, widget_section_divider.xml
-  - **Новые ID:** action_owl_settings в ids.xml
+- Версия обновлена до 1.1.1.4
+- **OWL FK fix:** авто-создание OWL чата в таблице `chats` при первом сообщении (исправляет `violates foreign key constraint "owl_messages_chat_id_fkey"`)
+- **HermesSession username→UUID:** добавлен резолвинг username в UUID в `CreateHermesSession` для совместимости со старыми клиентами
 
 ## [1.1.1.3] - 2026-07-17
-- **Server:**
-  - Версия обновлена до 1.1.1.3
-  - **Bot Commands:** исправлен fmt.Sprintf в /logs handler
-  - **Unit Tests:** добавлены модульные тесты для bot_commands.go (rate limiter, command handlers, dispatcher, notification service, utility functions)
-- **Android:**
-  - **Server Notifications UI:** добавлен NotificationActivity — экран просмотра серверных уведомлений
-  - **NotificationAdapter:** адаптер для списка уведомлений с иконками по типу
-  - **OwlGrpc.kt:** добавлены gRPC методы subscribeNotifications (server streaming), getNotificationHistory, markNotificationsRead
-  - **OwlGrpc.kt:** добавлен serverNotifications SharedFlow для real-time уведомлений
-  - **GrpcClient:** добавлены публичные методы для работы с уведомлениями
-  - **ChatListActivity:** добавлена кнопка "Уведомления" в ActionBottomSheet меню
-  - **Новые layout:** activity_notification.xml, item_notification.xml
-  - **Новые drawable:** ic_notifications.xml, ic_arrow_back.xml, circle_background.xml
+- Версия обновлена до 1.1.1.3
+- **Bot Commands:** исправлен fmt.Sprintf в /logs handler
+- **Unit Tests:** добавлены модульные тесты для bot_commands.go (rate limiter, command handlers, dispatcher, notification service, utility functions)
 
 ## [1.1.1.2] - 2026-07-17
-- **Server:**
-  - Версия обновлена до 1.1.1.2
-  - **SendServerNotification:** добавлены уведомления в `/deploy` и `/restart` handlers (start, success, error)
-  - **/ai команда:** улучшен системный промпт с именем пользователя
-- **Android:**
-  - Версия обновлена до 1.1.1.2
-  - **OWL streaming:** добавлены отдельные `owlTyping`/`owlResponses` SharedFlows (не переиспользуют Hermes flows)
-  - **ChatWithOWL:** добавлен `chatWithOwl()` метод — реальный gRPC вызов вместо пустого stub
-  - **OwlChatViewModel:** собирает OWL ответы из отдельного потока, аккумулирует streaming chunks
-  - **OwlRequestProto/OwlResponseProto:** новые data classes для OWL gRPC
+- Версия обновлена до 1.1.1.2
+- **SendServerNotification:** добавлены уведомления в `/deploy` и `/restart` handlers (start, success, error)
+- **/ai команда:** улучшен системный промпт с именем пользователя
 
 ## [1.1.1.1] - 2026-07-17
-- **Server:**
-  - Версия обновлена до 1.1.1.1
-  - **Bot Commands:** добавлен Bot Command Processor (`bot_commands.go`) с командами: `/status`, `/deploy`, `/logs`, `/restart`, `/ai`, `/help`, `/version`
-  - **Bot Commands:** rate limiting 30 cmd/min per user, AI rate limit 10 req/min
-  - **Bot Commands:** интеграция в Chat stream — сообщения начинающиеся с `/` автоматически обрабатываются сервером
-  - **OWL Status:** добавлен `GetOWLStatus` RPC для проверки доступности AI
-  - **Server Notifications:** добавлен `NotificationService` с broadcast и history (100 max)
-  - **Server Notifications:** добавлены `SubscribeNotifications`, `GetNotificationHistory`, `MarkNotificationsRead` RPCs
-  - **Proto:** добавлены `BotCommandRequest/Response/Info`, `OWLStatusRequest/Response`, `ServerNotification` сообщения
-  - **Proto:** добавлены `ProcessBotCommand`, `GetBotCommands`, `GetOWLStatus` RPCs в ChatService
-- **Android:**
-  - Версия обновлена до 1.1.1.1
-  - **OwlChatActivity:** новый экран чата с OWL AI ассистентом
-  - **OwlChatViewModel:** ViewModel для управления состоянием OWL чата
-  - **OWL AI кнопка:** добавлена в bottom sheet меню ChatListActivity
-  - **Slash command detection:** при вводе `/` в поле ввода показываются подсказки команд
-  - **Bot Commands UI:** диалог со списком доступных команд
-  - **gRPC:** добавлены `processBotCommand`, `getBotCommands`, `getOWLStatus` методы
-  - **Proto:** добавлены `BotCommandRequest/Response/Info`, `OWLStatusRequest/Response`, `ServerNotification` классы
-  - **OwlMessage:** новая data class для сообщений OWL чата
+- Версия обновлена до 1.1.1.1
+- **Bot Commands:** добавлен Bot Command Processor (`bot_commands.go`) с командами: `/status`, `/deploy`, `/logs`, `/restart`, `/ai`, `/help`, `/version`
+- **Bot Commands:** rate limiting 30 cmd/min per user, AI rate limit 10 req/min
+- **Bot Commands:** интеграция в Chat stream — сообщения начинающиеся с `/` автоматически обрабатываются сервером
+- **OWL Status:** добавлен `GetOWLStatus` RPC для проверки доступности AI
+- **Server Notifications:** добавлен `NotificationService` с broadcast и history (100 max)
+- **Server Notifications:** добавлены `SubscribeNotifications`, `GetNotificationHistory`, `MarkNotificationsRead` RPCs
+- **Proto:** добавлены `BotCommandRequest/Response/Info`, `OWLStatusRequest/Response`, `ServerNotification` сообщения
+- **Proto:** добавлены `ProcessBotCommand`, `GetBotCommands`, `GetOWLStatus` RPCs в ChatService
 
 ## [1.1.0.16] - 2026-06-07
-- **Android:**
-  - **Favorites flicker fix:** Favorites вынесен из RecyclerView в статический view выше списка
-  - **Favorites:** использование ImageView вместо ShapeableImageView, AppCompatImageView с srcCompat
-  - **Favorites:** стилизация выровнена с элементами списка чатов (margins, corner radius, theme colors)
-- **Server:**
-  - Удалена серверная инъекция Favorites из GetChats (клиент сам создаёт placeholder)
+- Удалена серверная инъекция Favorites из GetChats (клиент сам создаёт placeholder)
 
 ## [1.1.0.15] - 2026-06-05
-- **Server:**
-  - **LLM Router + RAG Pipeline:** добавлены интерфейсы и реализации
-  - **Hermes local provider:** in-memory RAG + Tool Executor
-  - **HermesAgentService:** подключение к remote agent routing
-  - **IsSuperAdmin:** проверка по user_id с fallback на username
-  - **Log-monitor:** добавлен source code, docs, deploy guide
-  - **Rebrand:** Hermes → Lava AI (Лава ИИ) в server logs и session names
-- **Android:**
-  - **Force reconnect fix:** `connect(force=true)` больше не убивает активные стримы
-  - **Registration crash fix:** `startActivity+finish` → `recreate()` (focus race)
-  - **Cache cleanup:** очистка кэша в logout()/deleteProfile(), не при login
-  - **Logout:** `FLAG_ACTIVITY_NEW_TASK|CLEAR_TASK` + синхронная очистка Room DB
+- **LLM Router + RAG Pipeline:** добавлены интерфейсы и реализации
+- **Hermes local provider:** in-memory RAG + Tool Executor
+- **HermesAgentService:** подключение к remote agent routing
+- **IsSuperAdmin:** проверка по user_id с fallback на username
+- **Log-monitor:** добавлен source code, docs, deploy guide
+- **Rebrand:** Hermes → Lava AI (Лава ИИ) в server logs и session names
 
 ## [1.1.0.14] - 2026-06-05
-- **Server:**
-  - **Hermes sessions in chat list:** `GetChats` теперь возвращает hermes_sessions как `type="hermes"`
-  - **DB migration:** добавлены колонки `user_id`, `preset_id` в `hermes_custom_agents`
-- **Android:**
-  - **Hermes sessions in chat list:** Room DB version 8→9 (activeAgentId, agentMode)
-  - **Navigation:** тап по hermes чату → HermesChatActivity с CHAT_ID, ACTIVE_AGENT_ID, AGENT_MODE
+- **Hermes sessions in chat list:** `GetChats` теперь возвращает hermes_sessions как `type="hermes"`
+- **DB migration:** добавлены колонки `user_id`, `preset_id` в `hermes_custom_agents`
 
 ## [1.1.0.13] - 2026-06-05
-- **Android:**
-  - **Mention system:** `@` в поле ввода → popup со списком агентов
-  - **HermesChatActivity:** переписан на ChatWidget
-  - **UI polish:** активный агент выделен, typing indicator с именем агента
-  - **Два MentionAdapter:** agents/emojis и users/avatars — не объединять
-- **Server:**
-  - **SSE parser fix:** `json.NewDecoder` → `bufio.Reader` + построчный разбор
-  - **Agent Management gRPC:** добавлены ListAgentPresets, ListAgents, CreateAgent, UpdateAgent, DeleteAgent
-  - **Hermes sessions:** CreateHermesSession создаёт запись и в hermes_sessions, и в chats
-  - **IsSuperAdmin:** проверка по userId (UUID)
+- **SSE parser fix:** `json.NewDecoder` → `bufio.Reader` + построчный разбор
+- **Agent Management gRPC:** добавлены ListAgentPresets, ListAgents, CreateAgent, UpdateAgent, DeleteAgent
+- **Hermes sessions:** CreateHermesSession создаёт запись и в hermes_sessions, и в chats
+- **IsSuperAdmin:** проверка по userId (UUID)
 
 ## [1.1.0.12] - 2026-06-04
-- **Android:**
-  - **Unified Chat Widget:** widget_chat.xml, item_chat_message.xml, ChatMessageAdapter, ChatWidget.kt
-  - **HermesChatActivity:** агенты как участники группового чата
-  - **OWL removed:** -2425 строк (OwlActivity, OwlGrpc, OWL layouts)
-  - **Bottom Sheet:** "Hermes AI" + "Агенты" вместо "Чат с AI"
-- **Server:**
-  - **GRANT permissions:** для lavender user на hermes-таблицы
+- **GRANT permissions:** для lavender user на hermes-таблицы
 
 ## [1.1.0.11] - 2026-06-04
-- **Android + Server:** Hermes Orchestrator работает
-- **Android:** Proto mismatch fix в CreateHermesSession response
+- Hermes Orchestrator работает
 
 ## [1.1.0.10] - 2026-06-04
-- **Server:**
-  - Hermes: CreateHermesSession резолвит username → userId
-  - DB maintenance script: integrity check, orphaned records
-  - OWL init log показывает provider и model
-- **Android:** CreateHermesSession response marshaller fix
+- Hermes: CreateHermesSession резолвит username → userId
+- DB maintenance script: integrity check, orphaned records
+- OWL init log показывает provider и model
 
 ## [1.1.0.9] и ранее
 - Предыдущие версии...

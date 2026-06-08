@@ -39,63 +39,18 @@ ANDROID:
 | Компонент | Статус | Файл |
 |-----------|--------|------|
 | Версия 1.1.1.4 | ✅ | `server.go:33` |
+| OWL FK fix (авто-создание чата) | ✅ | `server.go` |
+| HermesSession username→UUID | ✅ | `server.go` |
 
 ### Android v1.1.1.4 (`/root/msg.client.android`)
 
 | Компонент | Статус | Файл |
 |-----------|--------|------|
-| **[AI] кнопка** рядом с [+] | ✅ | `activity_chat_list.xml` |
-| **AIBottomSheet** (группы + divider) | ✅ | `ui/widget/AIBottomSheet.kt` |
-| **showAIActionSheet()** | ✅ | `ChatListActivity.kt` |
-| **AI-пункты перенесены** из [+] | ✅ | `ChatListActivity.kt` |
-| **widget_ai_bottom_sheet.xml** | ✅ | `res/layout/` |
-| **widget_section_header.xml** | ✅ | `res/layout/` |
-| **widget_section_divider.xml** | ✅ | `res/layout/` |
-| compileDebugKotlin | ✅ | passes |
-
-| Компонент | Статус | Файл |
-|-----------|--------|------|
-| Bot Command Processor (7 команд) | ✅ | `bot_commands.go` |
-| Rate limiting (30 cmd/min, 10 AI/min) | ✅ | `bot_commands.go` |
-| Bot command detection в Chat stream | ✅ | `server.go` |
-| OWL Status RPC | ✅ | `bot_commands.go` |
-| NotificationService (broadcast + history) | ✅ | `bot_commands.go` |
-| SendServerNotification в deploy/restart | ✅ | `bot_commands.go` |
-| /ai улучшенный промпт | ✅ | `bot_commands.go` |
-| OWL ChatWithOWL streaming | ✅ | `owl.go` |
-| Hermes Orchestrator | ✅ | `hermes_orchestrator.go` |
-| Unit tests для bot_commands | ✅ | `bot_commands_test.go` |
-| Исправлен fmt.Sprintf в /logs | ✅ | `bot_commands.go:320` |
-| Версия 1.1.1.3 | ✅ | `server.go:33` |
-
-### Android v1.1.1.3 (`/root/msg.client.android`)
-
-| Компонент | Статус | Файл |
-|-----------|--------|------|
-| **OwlGrpc.kt** (отдельный файл) | ✅ | `data/grpc/OwlGrpc.kt` |
-| — chatWithOwl() streaming | ✅ | `OwlGrpc.kt` |
-| — processBotCommand() | ✅ | `OwlGrpc.kt` |
-| — getBotCommands() | ✅ | `OwlGrpc.kt` |
-| — getOWLStatus() | ✅ | `OwlGrpc.kt` |
-| — subscribeNotifications() streaming | ✅ | `OwlGrpc.kt` |
-| — getNotificationHistory() | ✅ | `OwlGrpc.kt` |
-| — markNotificationsRead() | ✅ | `OwlGrpc.kt` |
-| — serverNotifications SharedFlow | ✅ | `OwlGrpc.kt` |
-| **HermesGrpc.kt** (очищен от OWL) | ✅ | `data/grpc/HermesGrpc.kt` |
-| OwlChatActivity | ✅ | `ui/owl/OwlChatActivity.kt` |
-| OwlChatViewModel (отдельный поток) | ✅ | `ui/owl/OwlChatViewModel.kt` |
-| Slash command detection (/) | ✅ | `OwlChatActivity.kt` |
-| Bot Commands UI (dialog) | ✅ | `OwlChatActivity.kt` |
-| OWL AI кнопка в bottom sheet | ✅ | `ChatListActivity.kt` |
-| **NotificationActivity** | ✅ | `ui/notification/NotificationActivity.kt` |
-| **NotificationAdapter** | ✅ | `ui/notification/NotificationAdapter.kt` |
-| Кнопка "Уведомления" в bottom sheet | ✅ | `ChatListActivity.kt` |
-| Proto: BotCommand*, OWLStatus*, ServerNotification* | ✅ | `data/proto/MessengerProto.kt` |
-| Proto: OwlRequestProto, OwlResponseProto | ✅ | `data/proto/MessengerProto.kt` |
-| OwlMessage data class | ✅ | `data/models/HermesModel.kt` |
-| activity_owl_chat.xml, ic_owl.xml | ✅ | `res/layout/`, `res/drawable/` |
-| activity_notification.xml, item_notification.xml | ✅ | `res/layout/` |
-| ic_notifications.xml, ic_arrow_back.xml, circle_background.xml | ✅ | `res/drawable/` |
+| [AI] кнопка рядом с [+] | ✅ | `activity_chat_list.xml` |
+| AIBottomSheet (группы + divider) | ✅ | `ui/widget/AIBottomSheet.kt` |
+| showAIActionSheet() | ✅ | `ChatListActivity.kt` |
+| AI-пункты перенесены из [+] | ✅ | `ChatListActivity.kt` |
+| HermesChatActivity uses UUID | ✅ | `HermesChatActivity.kt` |
 | compileDebugKotlin | ✅ | passes |
 
 ---
@@ -124,20 +79,17 @@ ANDROID:
 ## Что НЕ сделано (по приоритету)
 
 ### Высокий приоритет
-- Тестирование на dev — проверить бот-команды, OWL чат, ChatWithOWL streaming
-- Проверить deploy-dev.sh / deploy-prod.sh
+- Тестирование на устройстве — собрать APK, проверить все функции
 - Деплой на prod
 
 ### Средний приоритет
-- Server Notifications UI на Android (SubscribeNotifications)
-- Rate limiting для уведомлений
-- Модульные тесты для бот-команд
-- APK сборка и тест на устройстве
+- NotificationActivity — badge с количеством непрочитанных
+- Graceful reconnect при keepalive failed
+- Модульные тесты для OWL streaming
 
 ### Низкий приоритет
 - Auth токены для удалённых агентов (JWT)
 - Qdrant + CLIP (production RAG)
-- Graceful reconnect при keepalive failed
 - NewChatActivity → ChatWidget миграция
 
 ---
@@ -147,10 +99,11 @@ ANDROID:
 1. **Коммитить после каждого значимого изменения**
 2. **Пушить в `feat/1.1.1.x`** (не в main!)
 3. **Деплоить на dev сервер для тестирования**
-4. **Обновлять CHANGELOG.md** с каждым фиксом
+4. **Обновлять CHANGELOG.md** с каждым фиксом (серверный — только сервер, клиентский — только клиент)
 5. **Не ломать существующий функционал**
 6. **Версия сервера** в `server.go:33` — всегда обновлять при релизе
 7. **Разделение архитектуры** — каждый AI-сервис в своём файле, не смешивать
+8. **userId (UUID)** — всегда использовать UUID как ключ, не username
 
 ---
 
@@ -214,30 +167,40 @@ cd /root/msg.client.android
 - HermesGrpc.kt — отдельный файл для Hermes (orchestrator, agent management)
 - НЕ смешивать OWL и Hermes код — полная изоляция
 - Каждый сервис имеет свои SharedFlows, marshallers, rate limiters
+- userId (UUID) — всегда использовать как ключ, НЕ username
 
 Что сделано (v1.1.1.4):
 - [AI] кнопка в списке чатов: AIBottomSheet с группировкой (Оркестратор/OWL)
 - AI-пункты перенесены из [+] в [AI] шторку
+- OWL FK fix: авто-создание OWL чата в chats при первом сообщении
+- HermesSession: резолвинг username→UUID для совместимости
+- HermesChatActivity: использует userId (UUID) из сессии
 - Server version bump 1.1.1.3 → 1.1.1.4
 
 Следующие шаги для v1.1.1.5 (по приоритету):
-1. **Исправить пути скриптов деплоя** — проверить что /deploy dev и /prod работают корректно
-2. **NotificationActivity — badge с количеством непрочитанных**
-3. **Graceful reconnect** при keepalive failed
-4. **Auth токены для удалённых агентов** (JWT)
-5. APK сборка и тест на устройстве
-6. Деплой на prod
+1. **Тестирование на устройстве** — собрать APK (assembleDebug локально!), проверить:
+   - [AI] кнопка и шторка
+   - OWL чат (сообщения сохраняются в БД)
+   - Hermes чат (сессия создаётся с UUID)
+   - Уведомления
+2. **Деплой на prod** — проверить на dev, потом деплой
+3. NotificationActivity — badge с количеством непрочитанных
+4. Graceful reconnect при keepalive failed
+5. Auth токены для удалённых агентов (JWT)
 
 Правила:
 - Коммитить после каждого изменения, пушить в feat/1.1.1.x
 - Деплоить на dev для тестирования
 - Обновлять CHANGELOG.md (новая версия наверху)
+- Серверный CHANGELOG — только серверные изменения
+- Android CHANGELOG — только клиентские изменения
 - Не ломать существующий функционал
 - Версия сервера в server.go:33 — обновлять при релизе
 - assembleRelease НЕ запускать на сервере (OOM kill)
 - Теги: git tag v1.1.1.5 <commit> && git push origin feat/1.1.1.x --tags
 - Разделение архитектуры: каждый AI-сервис в своём файле
 - Каждый значимый коммит — с описанием что и почему
+- userId (UUID) — всегда использовать как ключ, не username
 
 Документация: /root/msg/INTEGRATION_SESSION.md, /root/msg/TASKS.md
 Команды сборки: см. раздел "Команды" выше
