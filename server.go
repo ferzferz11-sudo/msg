@@ -3790,21 +3790,21 @@ func (s *server) GetAIChats(_ context.Context, req *gen.GetAIChatsRequest) (*gen
 		owlRows.Close()
 	}
 
-	// Hermes sessions from hermes_sessions table
+	// Hermes chats from chats table (unified with OWL)
 	hermesRows, err := s.db.Query(
-		"SELECT id, name, created_at FROM hermes_sessions WHERE user_id = $1 ORDER BY created_at ASC",
+		"SELECT id, name, type, created_at FROM chats WHERE type = 'hermes' AND creator_id = $1 ORDER BY created_at ASC",
 		req.UserId,
 	)
 	if err == nil {
 		for hermesRows.Next() {
-			var id, name string
+			var id, name, chatType string
 			var createdAt time.Time
-			if err := hermesRows.Scan(&id, &name, &createdAt); err == nil {
+			if err := hermesRows.Scan(&id, &name, &chatType, &createdAt); err == nil {
 				hermSet := hermesSettings.getSettings(id)
 				chats = append(chats, &gen.AIChatInfo{
 					Id:               id,
 					Name:             name,
-					Type:             "hermes",
+					Type:             chatType,
 					CreatedAt:        createdAt.Format(time.RFC3339),
 					IsUsingCustomKey: hermSet.UserAPIKey != "",
 					Model:            hermSet.Model,
