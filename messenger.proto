@@ -856,6 +856,9 @@ message GetOwlSettingsResponse {
   string model = 2;
   bool is_using_custom_key = 3;
   repeated FreeModelInfo free_models = 4;
+  int32 remaining = 5;
+  int32 limit = 6;
+  int32 window_seconds = 7;
 }
 
 message UpdateOwlSettingsResponse {
@@ -1214,6 +1217,9 @@ message GetHermesSettingsResponse {
   string api_key = 1;
   string model = 2;
   bool is_using_custom_key = 3;
+  int32 remaining = 4;
+  int32 limit = 5;
+  int32 window_seconds = 6;
 }
 
 message UpdateHermesSettingsRequest {

@@ -1,5 +1,13 @@
 # Lavender Messenger — Server Changelog
 
+## [1.1.2.1] - 2026-06-09
+- Версия обновлена до 1.1.2.1
+- **Bugfix: Hermes история из БД** — `GetOrchestratorHistory` теперь загружает из `hermes_messages` через `HermesDB.GetOrchestratorHistory()` вместо in-memory `session.Messages`. История сохраняется после рестарта сервера.
+- **Security: проверка владельца в GetOwlHistory** — добавлена проверка `creator_id` по `req.UserId`
+- **Rate limiter: remaining count** — добавлен метод `remaining(userID)` в `rateLimiter`, возвращает количество оставшихся запросов в текущем окне
+- **GetOwlSettings / GetHermesSettings** — теперь возвращают `remaining`, `limit`, `window_seconds` в ответе
+- **Proto:** добавлены поля `remaining`, `limit`, `window_seconds` в `GetOwlSettingsResponse` и `GetHermesSettingsResponse`
+
 ## [1.1.2.0] - 2026-06-09
 - Версия обновлена до 1.1.2.0
 - **Prod релиз:** все фичи v1.1.1.x задеплоены на prod

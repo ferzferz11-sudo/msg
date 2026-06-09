@@ -323,6 +323,29 @@ func (rl *rateLimiter) allow(userID string) bool {
 	return true
 }
 
+// remaining returns how many requests the user has left in the current window
+func (rl *rateLimiter) remaining(userID string) int {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+
+	now := time.Now()
+	cutoff := now.Add(-rl.window)
+
+	var valid []time.Time
+	for _, t := range rl.requests[userID] {
+		if t.After(cutoff) {
+			valid = append(valid, t)
+		}
+	}
+	rl.requests[userID] = valid
+
+	left := rl.limit - len(valid)
+	if left < 0 {
+		return 0
+	}
+	return left
+}
+
 // ======= Hermes Chat Settings (per-session API key + model) =======
 
 type hermesSettingsManager struct {

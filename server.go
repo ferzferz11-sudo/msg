@@ -30,7 +30,7 @@ import (
 	"firebase.google.com/go/v4/messaging"
 )
 
-const ServerVersion = "1.1.2.0"
+const ServerVersion = "1.1.2.1"
 
 // server implements the gRPC ChatService interface
 type server struct {
@@ -3104,6 +3104,16 @@ func (s *server) GetOwlHistory(_ context.Context, req *gen.GetOwlHistoryRequest)
 		return &gen.GetOwlHistoryResponse{}, nil
 	}
 
+	// Verify ownership — only by creator_id (UUID)
+	var ownerID string
+	err := s.db.QueryRow("SELECT creator_id FROM chats WHERE id = $1 AND type = 'owl'", req.ChatId).Scan(&ownerID)
+	if err != nil {
+		return &gen.GetOwlHistoryResponse{}, nil
+	}
+	if req.UserId != "" && ownerID != req.UserId {
+		return &gen.GetOwlHistoryResponse{}, nil
+	}
+
 	rows, err := s.db.Query(
 		"SELECT role, content, created_at FROM owl_messages WHERE chat_id = $1 ORDER BY created_at ASC",
 		req.ChatId,
@@ -3175,11 +3185,25 @@ func (s *server) GetOwlSettings(_ context.Context, req *gen.GetOwlSettingsReques
 			SortOrder:   int32(m.SortOrder),
 		})
 	}
+
+	// Calculate remaining requests
+	remaining := int32(freeTierRateLimiter.remaining(req.UserId))
+	limit := int32(20)
+	windowSec := int32(3600)
+	if settings.UserAPIKey != "" {
+		remaining = int32(owlRateLimiter.remaining(req.UserId))
+		limit = 10
+		windowSec = 60
+	}
+
 	return &gen.GetOwlSettingsResponse{
 		ApiKey:           settings.UserAPIKey,
 		Model:            settings.Model,
 		IsUsingCustomKey: settings.UserAPIKey != "",
 		FreeModels:       fmInfos,
+		Remaining:        remaining,
+		Limit:            limit,
+		WindowSeconds:    windowSec,
 	}, nil
 }
 
@@ -3201,10 +3225,24 @@ func (s *server) GetHermesSettings(_ context.Context, req *gen.GetHermesSettings
 	}
 
 	settings := hermesSettings.getSettings(req.SessionId)
+
+	// Calculate remaining requests
+	remaining := int32(freeTierRateLimiter.remaining(req.UserId))
+	limit := int32(20)
+	windowSec := int32(3600)
+	if settings.UserAPIKey != "" {
+		remaining = int32(owlRateLimiter.remaining(req.UserId))
+		limit = 10
+		windowSec = 60
+	}
+
 	return &gen.GetHermesSettingsResponse{
 		ApiKey:           settings.UserAPIKey,
 		Model:            settings.Model,
 		IsUsingCustomKey: settings.UserAPIKey != "",
+		Remaining:        remaining,
+		Limit:            limit,
+		WindowSeconds:    windowSec,
 	}, nil
 }
 
@@ -3401,23 +3439,22 @@ func (s *server) buildWelcomeMessage() string {
 	return sb.String()
 }
 
-// GetOrchestratorHistory — история сообщений с оркестратором
+// GetOrchestratorHistory — история сообщений с оркестратором (из БД)
 func (s *server) GetOrchestratorHistory(_ context.Context, req *gen.GetOrchestratorHistoryRequest) (*gen.GetOrchestratorHistoryResponse, error) {
 	userID := req.UserId
 	if userID == "" {
 		return nil, status.Error(codes.InvalidArgument, "user_id is required")
 	}
 
-	if s.hermesOrchestrator == nil {
+	if s.hermesDB == nil {
 		return &gen.GetOrchestratorHistoryResponse{}, nil
 	}
 
-	session := s.hermesOrchestrator.getOrCreateSession(userID)
-	session.mu.Lock()
-	defer session.mu.Unlock()
+	// Load from DB via HermesDB
+	dbMessages := s.hermesDB.GetOrchestratorHistory(req.SessionId, 50)
 
-	messages := make([]*gen.HermesChatMessage, 0, len(session.Messages))
-	for _, msg := range session.Messages {
+	messages := make([]*gen.HermesChatMessage, 0, len(dbMessages))
+	for _, msg := range dbMessages {
 		messages = append(messages, &gen.HermesChatMessage{
 			Role:      msg.Role,
 			Content:   msg.Content,
