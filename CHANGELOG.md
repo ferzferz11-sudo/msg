@@ -1,5 +1,10 @@
 # Lavender Messenger — Server Changelog
 
+## [1.1.2.2] - 2026-06-09
+- Версия обновлена до 1.1.2.2
+- **Bugfix: DeleteChat не удалял hermes_sessions** — добавлено каскадное удаление из hermes_sessions + hermes_messages для hermes-чатов, owl_messages + owl_chat_settings для owl-чатов
+- **Cleanup:** полная очистка всех AI-чатов на dev и prod (orphaned записи)
+
 ## [1.1.2.1] - 2026-06-09
 - Версия обновлена до 1.1.2.1
 - **Bugfix: Hermes история из БД** — `GetOrchestratorHistory` теперь загружает из `hermes_messages` через `HermesDB.GetOrchestratorHistory()` вместо in-memory `session.Messages`. История сохраняется после рестарта сервера.

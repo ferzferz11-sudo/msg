@@ -219,6 +219,19 @@ cd /root/msg.client.android
 
 ---
 
+## Статус: v1.1.2.2 — DeleteChat cascade fix
+
+### Сервер v1.1.2.2
+- DeleteChat: каскадное удаление из hermes_sessions + hermes_messages для hermes-чатов
+- DeleteChat: каскадное удаление owl_messages + owl_chat_settings для owl-чатов
+- Полная очистка всех AI-чатов на dev и prod (orphaned записи)
+- Dev и prod обновлены
+
+### Android v1.1.2.2
+- Без изменений
+
+---
+
 ## Статус: v1.1.2.1 — Prod Релиз
 
 ### Сервер v1.1.2.1

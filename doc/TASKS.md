@@ -7,6 +7,20 @@
 
 ---
 
+## ✅ v1.1.2.2 — DeleteChat cascade + очистка AI чатов
+
+### 1. DeleteChat не удалял hermes_sessions ✅
+- **Причина:** DeleteChat удалял только из chats, но не из hermes_sessions — оставались orphan-записи
+- **Исправлено:** добавлено каскадное удаление из hermes_sessions + hermes_messages для hermes, owl_messages + owl_chat_settings для owl
+- **Статус:** исправлено, деплоено на dev и prod
+
+### 2. Очистка всех AI чатов на dev и prod ✅
+- **Причина:** накопились orphan-записи в hermes_sessions/hermes_messages после удаления чатов
+- **Исправлено:** полная очистка chats, owl_messages, owl_chat_settings, hermes_sessions, hermes_messages, hermes_chat_settings на обоих серверах
+- **Статус:** выполнено — 0 AI-записей на dev и prod
+
+---
+
 ## ✅ v1.1.2.1 — История из БД + счётчик запросов
 
 ### 1. Hermes история из БД ✅

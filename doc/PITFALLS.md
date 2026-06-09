@@ -48,6 +48,11 @@
 - Никогда не собирайте JSON через конкатенацию: `"["+username+"]"` → невалидный JSON
 - Всегда `json.Marshal`
 
+### DeleteChat и AI чаты
+- DeleteChat удаляет из chats, но НЕ из hermes_sessions (orphaned sessions копятся)
+- Исправлено в v1.1.2.2: каскадное удаление из hermes_sessions + hermes_messages
+- Для OWL: FK CASCADE на owl_messages срабатывает, но owl_chat_settings — нет, нужно явное удаление
+
 ### Prod vs Dev
 - Dev: порт 50052, DB `chat_db_dev`, config `.env.dev`
 - Prod: порт 50051, DB `chat_db`, config `.env`
