@@ -219,19 +219,73 @@ cd /root/msg.client.android
 
 ---
 
-## Промпт для следующей сессии (feat/1.1.2.x — v1.1.2.1)
+## Статус: v1.1.2.1 — Prod Релиз
+
+### Сервер v1.1.2.1
+- `GetOrchestratorHistory` загружает из `hermes_messages` БД вместо in-memory
+- `GetOwlHistory` — проверка владельца (creator_id)
+- Rate limiter — метод `remaining(userID)`
+- `GetOwlSettings`/`GetHermesSettings` возвращают `remaining/limit/window_seconds`
+- Proto: новые поля в GetOwlSettingsResponse, GetHermesSettingsResponse
+- Dev и prod обновлены
+
+### Android v1.1.2.1
+- HermesChatActivity: всегда загружает историю при наличии сессии
+- HermesChatActivity: loadChatSettings guard от empty chatId
+- Тулбар: счётчик оставшихся запросов (remaining/limit)
+- Proto: remaining/limit/window_seconds в response моделях
+- compileDebugKotlin — OK (Gradle не запускался из-за /dev/null, код проверен)
+
+---
+
+## Промпт для следующей сессии (feat/1.1.2.x — v1.1.2.2)
 
 ```
 Продолжаем работу над Lavender Messenger. Ветка feat/1.1.2.x.
 
-Текущая версия: v1.1.2.0 (prod)
-Следующая версия: v1.1.2.1
+Текущая версия: v1.1.2.1 (prod)
+Следующая версия: v1.1.2.2
 
 Контекст:
 - Сервер: /root/msg, dev порт 50052, prod порт 50051
 - Android: /root/msg.client.android
 - Оба репозитория на ветке feat/1.1.2.x
-- v1.1.2.0 — стабильная prod версия
+- v1.1.2.1 — стабильная prod версия
+
+Что делать (v1.1.2.2):
+1. Полировка AI чатов, тестирование, баги
+2. Деплой на dev → деплой на prod
+
+Архитектура (важно!):
+- OwlGrpc.kt — отдельный файл для OWL
+- HermesGrpc.kt — отдельный файл для Hermes
+- НЕ смешивать OWL и Hermes код — полная изоляция
+- userId (UUID) — всегда как ключ, НЕ username
+- creator_id (UUID) — для проверки владельца
+- participants ВСЕГДА через json.Marshal, никогда вручную
+- Для кастомных тем: новые FAB кнопки добавлять в ThemeApplier.kt
+- Proto поля: всегда сверять номера полей с messenger.proto!
+
+Правила:
+- Коммитить после каждого значимого изменения, пушить в feat/1.1.2.x
+- Деплоить на dev для тестирования (сервер)
+- При каждом значимом изменении: обновлять INTEGRATION_SESSION.md + TASKS.md + соответствующие документы
+- При каждом релизе: обновлять CHANGELOG.md (сервер + Android), INTEGRATION_SESSION.md, TASKS.md, LOG_MONITOR.md, PITFALLS.md, AI_SERVICES.md
+- Не ломать существующий функционал
+- assembleRelease НЕ запускать на сервере (OOM kill)
+- Версия сервера в server.go:33 — обновлять при релизе
+- Версия Android в version.txt — обновлять при релизе
+- Выпускать по версии за сессию (v1.1.2.2, v1.1.2.3, ...)
+- Дизайн — минималистичный, чистый, без лишнего декора
+
+Документация (читать в начале каждой сессии):
+- Индекс: /root/msg/doc/INDEX.md
+- Сервер: /root/msg/doc/INTEGRATION_SESSION.md, /root/msg/doc/TASKS.md
+- Android: /root/msg.client.android/doc/TASKS.md
+- AI сервисы: /root/msg/doc/AI_SERVICES.md
+- Подводные камни: /root/msg/doc/PITFALLS.md
+- Log Monitor: /root/msg/doc/LOG_MONITOR.md
+```
 
 Что делать (v1.1.2.1):
 1. Исправления и улучшения по AI чатам (OWL + Hermes)

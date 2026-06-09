@@ -132,6 +132,8 @@ Client                          Server
 ### Rate Limiting
 - С ключом: 10 запросов/минуту
 - Без ключа: 20 запросов/час
+- `rateLimiter.remaining(userID)` — возвращает количество оставшихся запросов
+- `GetOwlSettings` / `GetHermesSettings` возвращают `remaining`, `limit`, `window_seconds`
 
 ---
 

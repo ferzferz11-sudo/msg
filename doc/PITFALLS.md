@@ -53,6 +53,15 @@
 - Prod: порт 50051, DB `chat_db`, config `.env`
 - Версия сервера в `server.go:33`
 
+### Hermes история — всегда из БД
+- `GetOrchestratorHistory` должен загружать из `hermes_messages` через `HermesDB.GetOrchestratorHistory()`
+- НЕ использовать `session.Messages` (in-memory) — пропадает после рестарта сервера
+- `getOrCreateSession` создаёт пустую сессию без загрузки истории из БД
+
+### /dev/null сломан после OOM
+- Если `/dev/null` стал файлом вместо device node: `rm /dev/null && mknod /dev/null c 1 3 && chmod 666 /dev/null`
+- Без этого `go build` падает с "open /dev/null: no such file or directory"
+
 ---
 
 ## ThemeApplier
