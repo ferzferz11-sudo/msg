@@ -104,15 +104,36 @@ func NewOrchestrator(registry *HermesAgentRegistry, db *sql.DB, apiKey, model st
 }
 
 // getOrCreateSession возвращает существующую сессию или создаёт новую
+// Ищет в hermes_sessions по user_id, чтобы не создавать дубли
 func (o *Orchestrator) getOrCreateSession(userID string) *OrchestratorSession {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 
+	// Check in-memory cache first
 	if s, ok := o.sessions[userID]; ok {
 		s.LastActivity = time.Now()
 		return s
 	}
 
+	// Check DB for existing session
+	if o.db != nil {
+		var existingID string
+		err := o.db.QueryRow(
+			"SELECT id FROM hermes_sessions WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1", userID,
+		).Scan(&existingID)
+		if err == nil && existingID != "" {
+			s := &OrchestratorSession{
+				UserID:       userID,
+				Messages:     make([]OrchestratorMessage, 0),
+				LastActivity: time.Now(),
+			}
+			o.sessions[userID] = s
+			log.Printf("[ORCHESTRATOR] reusing existing session %s for user %s", existingID, userID)
+			return s
+		}
+	}
+
+	// Create new session
 	s := &OrchestratorSession{
 		UserID:       userID,
 		Messages:     make([]OrchestratorMessage, 0),
@@ -120,11 +141,12 @@ func (o *Orchestrator) getOrCreateSession(userID string) *OrchestratorSession {
 	}
 	o.sessions[userID] = s
 
-	// Persist session to DB
+	// Persist to DB
 	if o.db != nil {
+		sessionID := "hermes-" + userID
 		_, _ = o.db.Exec(
 			"INSERT INTO hermes_sessions (id, user_id, name) VALUES ($1, $2, $3) ON CONFLICT (id) DO UPDATE SET updated_at = NOW()",
-			"hermes-"+userID, userID, "Lava AI",
+			sessionID, userID, "Lava AI",
 		)
 	}
 
