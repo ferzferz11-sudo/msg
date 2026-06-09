@@ -144,6 +144,58 @@ func runHermesMigrations(db *sql.DB) {
 		`GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO lavender`,
 		`ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO lavender`,
 		`ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO lavender`,
+
+		// === AI Chat Refactor v1.1.2.3 — unified tables ===
+		// Drop old AI tables if they exist (clean migration)
+		`DROP TABLE IF EXISTS ai_chat_messages CASCADE`,
+		`DROP TABLE IF EXISTS ai_chat_settings CASCADE`,
+		`DROP TABLE IF EXISTS ai_chat_sessions CASCADE`,
+
+		// AI Chat Sessions — unified for OWL + Hermes
+		`CREATE TABLE IF NOT EXISTS ai_chat_sessions (
+			id              VARCHAR(255) PRIMARY KEY,
+			user_id         TEXT        NOT NULL,
+			agent_type      TEXT        NOT NULL DEFAULT 'owl',
+			model           TEXT        DEFAULT '',
+			system_prompt   TEXT        DEFAULT '',
+			active_agent_id TEXT        DEFAULT '',
+			agent_mode      TEXT        DEFAULT 'single',
+			created_at      TIMESTAMPTZ DEFAULT NOW(),
+			updated_at      TIMESTAMPTZ DEFAULT NOW(),
+			CONSTRAINT fk_ai_sessions_chat
+				FOREIGN KEY (id) REFERENCES chats(id) ON DELETE CASCADE
+		)`,
+		`CREATE INDEX IF NOT EXISTS idx_ai_chat_sessions_user ON ai_chat_sessions(user_id, created_at DESC)`,
+		`CREATE INDEX IF NOT EXISTS idx_ai_chat_sessions_type ON ai_chat_sessions(agent_type)`,
+
+		// AI Chat Messages
+		`CREATE TABLE IF NOT EXISTS ai_chat_messages (
+			id              BIGSERIAL   PRIMARY KEY,
+			session_id      VARCHAR(255) NOT NULL,
+			role            TEXT        NOT NULL,
+			content         TEXT        NOT NULL DEFAULT '',
+			agent_id        TEXT        DEFAULT '',
+			created_at      TIMESTAMPTZ DEFAULT NOW(),
+			CONSTRAINT fk_ai_messages_session
+				FOREIGN KEY (session_id) REFERENCES ai_chat_sessions(id) ON DELETE CASCADE
+		)`,
+		`CREATE INDEX IF NOT EXISTS idx_ai_messages_session ON ai_chat_messages(session_id, created_at ASC)`,
+
+		// AI Chat Settings
+		`CREATE TABLE IF NOT EXISTS ai_chat_settings (
+			session_id      VARCHAR(255) PRIMARY KEY,
+			user_api_key    TEXT        DEFAULT '',
+			model_override  TEXT        DEFAULT '',
+			updated_at      TIMESTAMPTZ DEFAULT NOW(),
+			CONSTRAINT fk_ai_settings_session
+				FOREIGN KEY (session_id) REFERENCES ai_chat_sessions(id) ON DELETE CASCADE
+		)`,
+
+		// Grant permissions for new tables
+		`GRANT ALL PRIVILEGES ON ai_chat_sessions TO lavender`,
+		`GRANT ALL PRIVILEGES ON ai_chat_messages TO lavender`,
+		`GRANT ALL PRIVILEGES ON ai_chat_settings TO lavender`,
+		`GRANT ALL PRIVILEGES ON ai_chat_messages_id_seq TO lavender`,
 	}
 
 	for _, q := range queries {

@@ -94,6 +94,10 @@ const (
 	ChatService_ListRemoteAgents_FullMethodName       = "/messenger.ChatService/ListRemoteAgents"
 	ChatService_DeployAgentTask_FullMethodName        = "/messenger.ChatService/DeployAgentTask"
 	ChatService_GetRemoteAgentStatus_FullMethodName   = "/messenger.ChatService/GetRemoteAgentStatus"
+	ChatService_ChatWithAI_FullMethodName             = "/messenger.ChatService/ChatWithAI"
+	ChatService_GetAIChatHistory_FullMethodName       = "/messenger.ChatService/GetAIChatHistory"
+	ChatService_GetAIChatSettings_FullMethodName      = "/messenger.ChatService/GetAIChatSettings"
+	ChatService_UpdateAIChatSettings_FullMethodName   = "/messenger.ChatService/UpdateAIChatSettings"
 	ChatService_GetAIChats_FullMethodName             = "/messenger.ChatService/GetAIChats"
 	ChatService_RenameAIChat_FullMethodName           = "/messenger.ChatService/RenameAIChat"
 	ChatService_ChatWithPipeline_FullMethodName       = "/messenger.ChatService/ChatWithPipeline"
@@ -172,14 +176,14 @@ type ChatServiceClient interface {
 	CreateSecretChat(ctx context.Context, in *CreateSecretChatRequest, opts ...grpc.CallOption) (*CreateSecretChatResponse, error)
 	ExchangeSecretKey(ctx context.Context, in *ExchangeSecretKeyRequest, opts ...grpc.CallOption) (*ExchangeSecretKeyResponse, error)
 	GetSecretChatKey(ctx context.Context, in *GetSecretChatKeyRequest, opts ...grpc.CallOption) (*GetSecretChatKeyResponse, error)
-	// OWL AI Assistant
+	// OWL AI Assistant (deprecated — use ChatWithAI with session_id)
 	ChatWithOWL(ctx context.Context, in *OWLRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[OWLResponse], error)
 	CreateOwlChat(ctx context.Context, in *CreateOwlChatRequest, opts ...grpc.CallOption) (*CreateOwlChatResponse, error)
 	DeleteOwlChat(ctx context.Context, in *DeleteOwlChatRequest, opts ...grpc.CallOption) (*DeleteOwlChatResponse, error)
 	GetOwlHistory(ctx context.Context, in *GetOwlHistoryRequest, opts ...grpc.CallOption) (*GetOwlHistoryResponse, error)
 	UpdateOwlSettings(ctx context.Context, in *UpdateOwlSettingsRequest, opts ...grpc.CallOption) (*UpdateOwlSettingsResponse, error)
 	GetOwlSettings(ctx context.Context, in *GetOwlSettingsRequest, opts ...grpc.CallOption) (*GetOwlSettingsResponse, error)
-	// Hermes Multi-Agent Orchestrator
+	// Hermes Multi-Agent Orchestrator (deprecated — use ChatWithAI with session_id)
 	ChatWithOrchestrator(ctx context.Context, in *OrchestratorRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[OrchestratorResponse], error)
 	GetOrchestratorHistory(ctx context.Context, in *GetOrchestratorHistoryRequest, opts ...grpc.CallOption) (*GetOrchestratorHistoryResponse, error)
 	ListAgents(ctx context.Context, in *ListAgentsRequest, opts ...grpc.CallOption) (*ListAgentsResponse, error)
@@ -193,6 +197,11 @@ type ChatServiceClient interface {
 	ListRemoteAgents(ctx context.Context, in *ListRemoteAgentsRequest, opts ...grpc.CallOption) (*ListRemoteAgentsResponse, error)
 	DeployAgentTask(ctx context.Context, in *DeployAgentTaskRequest, opts ...grpc.CallOption) (*DeployAgentTaskResponse, error)
 	GetRemoteAgentStatus(ctx context.Context, in *GetRemoteAgentStatusRequest, opts ...grpc.CallOption) (*GetRemoteAgentStatusResponse, error)
+	// AI Chat (unified for OWL + Hermes)
+	ChatWithAI(ctx context.Context, in *AIChatRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[AIChatResponse], error)
+	GetAIChatHistory(ctx context.Context, in *GetAIChatHistoryRequest, opts ...grpc.CallOption) (*GetAIChatHistoryResponse, error)
+	GetAIChatSettings(ctx context.Context, in *GetAIChatSettingsRequest, opts ...grpc.CallOption) (*AIChatSettings, error)
+	UpdateAIChatSettings(ctx context.Context, in *UpdateAIChatSettingsRequest, opts ...grpc.CallOption) (*UpdateAIChatSettingsResponse, error)
 	// AI Chats management (unified list for OWL + Hermes)
 	GetAIChats(ctx context.Context, in *GetAIChatsRequest, opts ...grpc.CallOption) (*GetAIChatsResponse, error)
 	RenameAIChat(ctx context.Context, in *RenameAIChatRequest, opts ...grpc.CallOption) (*RenameAIChatResponse, error)
@@ -1001,6 +1010,55 @@ func (c *chatServiceClient) GetRemoteAgentStatus(ctx context.Context, in *GetRem
 	return out, nil
 }
 
+func (c *chatServiceClient) ChatWithAI(ctx context.Context, in *AIChatRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[AIChatResponse], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &ChatService_ServiceDesc.Streams[5], ChatService_ChatWithAI_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[AIChatRequest, AIChatResponse]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type ChatService_ChatWithAIClient = grpc.ServerStreamingClient[AIChatResponse]
+
+func (c *chatServiceClient) GetAIChatHistory(ctx context.Context, in *GetAIChatHistoryRequest, opts ...grpc.CallOption) (*GetAIChatHistoryResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetAIChatHistoryResponse)
+	err := c.cc.Invoke(ctx, ChatService_GetAIChatHistory_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) GetAIChatSettings(ctx context.Context, in *GetAIChatSettingsRequest, opts ...grpc.CallOption) (*AIChatSettings, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AIChatSettings)
+	err := c.cc.Invoke(ctx, ChatService_GetAIChatSettings_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) UpdateAIChatSettings(ctx context.Context, in *UpdateAIChatSettingsRequest, opts ...grpc.CallOption) (*UpdateAIChatSettingsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateAIChatSettingsResponse)
+	err := c.cc.Invoke(ctx, ChatService_UpdateAIChatSettings_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *chatServiceClient) GetAIChats(ctx context.Context, in *GetAIChatsRequest, opts ...grpc.CallOption) (*GetAIChatsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetAIChatsResponse)
@@ -1023,7 +1081,7 @@ func (c *chatServiceClient) RenameAIChat(ctx context.Context, in *RenameAIChatRe
 
 func (c *chatServiceClient) ChatWithPipeline(ctx context.Context, in *PipelineRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[PipelineResponse], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &ChatService_ServiceDesc.Streams[5], ChatService_ChatWithPipeline_FullMethodName, cOpts...)
+	stream, err := c.cc.NewStream(ctx, &ChatService_ServiceDesc.Streams[6], ChatService_ChatWithPipeline_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1092,7 +1150,7 @@ func (c *chatServiceClient) GetOWLStatus(ctx context.Context, in *OWLStatusReque
 
 func (c *chatServiceClient) SubscribeNotifications(ctx context.Context, in *SubscribeNotificationsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[ServerNotification], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &ChatService_ServiceDesc.Streams[6], ChatService_SubscribeNotifications_FullMethodName, cOpts...)
+	stream, err := c.cc.NewStream(ctx, &ChatService_ServiceDesc.Streams[7], ChatService_SubscribeNotifications_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1230,14 +1288,14 @@ type ChatServiceServer interface {
 	CreateSecretChat(context.Context, *CreateSecretChatRequest) (*CreateSecretChatResponse, error)
 	ExchangeSecretKey(context.Context, *ExchangeSecretKeyRequest) (*ExchangeSecretKeyResponse, error)
 	GetSecretChatKey(context.Context, *GetSecretChatKeyRequest) (*GetSecretChatKeyResponse, error)
-	// OWL AI Assistant
+	// OWL AI Assistant (deprecated — use ChatWithAI with session_id)
 	ChatWithOWL(*OWLRequest, grpc.ServerStreamingServer[OWLResponse]) error
 	CreateOwlChat(context.Context, *CreateOwlChatRequest) (*CreateOwlChatResponse, error)
 	DeleteOwlChat(context.Context, *DeleteOwlChatRequest) (*DeleteOwlChatResponse, error)
 	GetOwlHistory(context.Context, *GetOwlHistoryRequest) (*GetOwlHistoryResponse, error)
 	UpdateOwlSettings(context.Context, *UpdateOwlSettingsRequest) (*UpdateOwlSettingsResponse, error)
 	GetOwlSettings(context.Context, *GetOwlSettingsRequest) (*GetOwlSettingsResponse, error)
-	// Hermes Multi-Agent Orchestrator
+	// Hermes Multi-Agent Orchestrator (deprecated — use ChatWithAI with session_id)
 	ChatWithOrchestrator(*OrchestratorRequest, grpc.ServerStreamingServer[OrchestratorResponse]) error
 	GetOrchestratorHistory(context.Context, *GetOrchestratorHistoryRequest) (*GetOrchestratorHistoryResponse, error)
 	ListAgents(context.Context, *ListAgentsRequest) (*ListAgentsResponse, error)
@@ -1251,6 +1309,11 @@ type ChatServiceServer interface {
 	ListRemoteAgents(context.Context, *ListRemoteAgentsRequest) (*ListRemoteAgentsResponse, error)
 	DeployAgentTask(context.Context, *DeployAgentTaskRequest) (*DeployAgentTaskResponse, error)
 	GetRemoteAgentStatus(context.Context, *GetRemoteAgentStatusRequest) (*GetRemoteAgentStatusResponse, error)
+	// AI Chat (unified for OWL + Hermes)
+	ChatWithAI(*AIChatRequest, grpc.ServerStreamingServer[AIChatResponse]) error
+	GetAIChatHistory(context.Context, *GetAIChatHistoryRequest) (*GetAIChatHistoryResponse, error)
+	GetAIChatSettings(context.Context, *GetAIChatSettingsRequest) (*AIChatSettings, error)
+	UpdateAIChatSettings(context.Context, *UpdateAIChatSettingsRequest) (*UpdateAIChatSettingsResponse, error)
 	// AI Chats management (unified list for OWL + Hermes)
 	GetAIChats(context.Context, *GetAIChatsRequest) (*GetAIChatsResponse, error)
 	RenameAIChat(context.Context, *RenameAIChatRequest) (*RenameAIChatResponse, error)
@@ -1506,6 +1569,18 @@ func (UnimplementedChatServiceServer) DeployAgentTask(context.Context, *DeployAg
 }
 func (UnimplementedChatServiceServer) GetRemoteAgentStatus(context.Context, *GetRemoteAgentStatusRequest) (*GetRemoteAgentStatusResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetRemoteAgentStatus not implemented")
+}
+func (UnimplementedChatServiceServer) ChatWithAI(*AIChatRequest, grpc.ServerStreamingServer[AIChatResponse]) error {
+	return status.Errorf(codes.Unimplemented, "method ChatWithAI not implemented")
+}
+func (UnimplementedChatServiceServer) GetAIChatHistory(context.Context, *GetAIChatHistoryRequest) (*GetAIChatHistoryResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetAIChatHistory not implemented")
+}
+func (UnimplementedChatServiceServer) GetAIChatSettings(context.Context, *GetAIChatSettingsRequest) (*AIChatSettings, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetAIChatSettings not implemented")
+}
+func (UnimplementedChatServiceServer) UpdateAIChatSettings(context.Context, *UpdateAIChatSettingsRequest) (*UpdateAIChatSettingsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateAIChatSettings not implemented")
 }
 func (UnimplementedChatServiceServer) GetAIChats(context.Context, *GetAIChatsRequest) (*GetAIChatsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetAIChats not implemented")
@@ -2876,6 +2951,71 @@ func _ChatService_GetRemoteAgentStatus_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ChatService_ChatWithAI_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(AIChatRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(ChatServiceServer).ChatWithAI(m, &grpc.GenericServerStream[AIChatRequest, AIChatResponse]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type ChatService_ChatWithAIServer = grpc.ServerStreamingServer[AIChatResponse]
+
+func _ChatService_GetAIChatHistory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetAIChatHistoryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).GetAIChatHistory(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_GetAIChatHistory_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).GetAIChatHistory(ctx, req.(*GetAIChatHistoryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_GetAIChatSettings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetAIChatSettingsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).GetAIChatSettings(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_GetAIChatSettings_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).GetAIChatSettings(ctx, req.(*GetAIChatSettingsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_UpdateAIChatSettings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateAIChatSettingsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).UpdateAIChatSettings(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_UpdateAIChatSettings_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).UpdateAIChatSettings(ctx, req.(*UpdateAIChatSettingsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ChatService_GetAIChats_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetAIChatsRequest)
 	if err := dec(in); err != nil {
@@ -3420,6 +3560,18 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _ChatService_GetRemoteAgentStatus_Handler,
 		},
 		{
+			MethodName: "GetAIChatHistory",
+			Handler:    _ChatService_GetAIChatHistory_Handler,
+		},
+		{
+			MethodName: "GetAIChatSettings",
+			Handler:    _ChatService_GetAIChatSettings_Handler,
+		},
+		{
+			MethodName: "UpdateAIChatSettings",
+			Handler:    _ChatService_UpdateAIChatSettings_Handler,
+		},
+		{
 			MethodName: "GetAIChats",
 			Handler:    _ChatService_GetAIChats_Handler,
 		},
@@ -3499,6 +3651,11 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "ChatWithOrchestrator",
 			Handler:       _ChatService_ChatWithOrchestrator_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "ChatWithAI",
+			Handler:       _ChatService_ChatWithAI_Handler,
 			ServerStreams: true,
 		},
 		{

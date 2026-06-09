@@ -139,6 +139,11 @@ func main() {
 	hermesSettings = newHermesSettingsManager(db.DB)
 	log.Println("OWL AI assistant initialized (rate limit: 10 req/min, history: 50 msgs, DB-backed)")
 
+	// Initialize AI Chat Manager (unified for OWL + Hermes)
+	aiChatManager := NewAIChatManager(db.DB)
+	srv.aiChatManager = aiChatManager
+	log.Println("AI Chat Manager initialized (unified sessions, messages, settings)")
+
 	// Initialize Hermes Multi-Agent Orchestrator
 	hermesRegistry := NewAgentRegistry(db.DB)
 	srv.hermesDB = NewHermesDB(db.DB)

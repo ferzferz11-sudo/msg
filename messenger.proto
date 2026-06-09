@@ -696,7 +696,7 @@ service ChatService {
   rpc ExchangeSecretKey(ExchangeSecretKeyRequest) returns (ExchangeSecretKeyResponse);
   rpc GetSecretChatKey(GetSecretChatKeyRequest) returns (GetSecretChatKeyResponse);
 
-  // OWL AI Assistant
+  // OWL AI Assistant (deprecated — use ChatWithAI with session_id)
   rpc ChatWithOWL(OWLRequest) returns (stream OWLResponse);
   rpc CreateOwlChat(CreateOwlChatRequest) returns (CreateOwlChatResponse);
   rpc DeleteOwlChat(DeleteOwlChatRequest) returns (DeleteOwlChatResponse);
@@ -704,7 +704,7 @@ service ChatService {
   rpc UpdateOwlSettings(UpdateOwlSettingsRequest) returns (UpdateOwlSettingsResponse);
   rpc GetOwlSettings(GetOwlSettingsRequest) returns (GetOwlSettingsResponse);
 
-  // Hermes Multi-Agent Orchestrator
+  // Hermes Multi-Agent Orchestrator (deprecated — use ChatWithAI with session_id)
   rpc ChatWithOrchestrator(OrchestratorRequest) returns (stream OrchestratorResponse);
   rpc GetOrchestratorHistory(GetOrchestratorHistoryRequest) returns (GetOrchestratorHistoryResponse);
   rpc ListAgents(ListAgentsRequest) returns (ListAgentsResponse);
@@ -718,6 +718,12 @@ service ChatService {
   rpc ListRemoteAgents(ListRemoteAgentsRequest) returns (ListRemoteAgentsResponse);
   rpc DeployAgentTask(DeployAgentTaskRequest) returns (DeployAgentTaskResponse);
   rpc GetRemoteAgentStatus(GetRemoteAgentStatusRequest) returns (GetRemoteAgentStatusResponse);
+
+  // AI Chat (unified for OWL + Hermes)
+  rpc ChatWithAI(AIChatRequest) returns (stream AIChatResponse);
+  rpc GetAIChatHistory(GetAIChatHistoryRequest) returns (GetAIChatHistoryResponse);
+  rpc GetAIChatSettings(GetAIChatSettingsRequest) returns (AIChatSettings);
+  rpc UpdateAIChatSettings(UpdateAIChatSettingsRequest) returns (UpdateAIChatSettingsResponse);
 
   // AI Chats management (unified list for OWL + Hermes)
   rpc GetAIChats(GetAIChatsRequest) returns (GetAIChatsResponse);
@@ -1204,6 +1210,65 @@ message GetUnreadCountRequest {
 
 message GetUnreadCountResponse {
   int32 count = 1;
+}
+
+// ======= AI Chat (unified for OWL + Hermes) =======
+
+message AIChatRequest {
+  string user_id = 1;
+  string session_id = 2;  // empty = new chat
+  string message = 3;
+  string agent_id = 4;    // optional: force specific agent (hermes)
+}
+
+message AIChatResponse {
+  string token = 1;
+  bool finished = 2;
+  string error = 3;
+}
+
+message AIChatMessage {
+  string role = 1;
+  string content = 2;
+  string agent_id = 3;
+  string created_at = 4;
+}
+
+message AIChatSettings {
+  string session_id = 1;
+  string user_api_key = 2;
+  string model = 3;
+  bool is_using_custom_key = 4;
+  int32 remaining = 5;
+  int32 limit = 6;
+  int32 window_seconds = 7;
+}
+
+message GetAIChatHistoryRequest {
+  string session_id = 1;
+  string user_id = 2;
+  int32 limit = 3;
+}
+
+message GetAIChatHistoryResponse {
+  repeated AIChatMessage messages = 1;
+}
+
+message GetAIChatSettingsRequest {
+  string session_id = 1;
+  string user_id = 2;
+}
+
+message UpdateAIChatSettingsRequest {
+  string session_id = 1;
+  string user_id = 2;
+  string api_key = 3;
+  string model = 4;
+}
+
+message UpdateAIChatSettingsResponse {
+  bool success = 1;
+  string message = 2;
 }
 
 // ======= Hermes Chat Settings (per-chat API key + model) =======

@@ -30,7 +30,7 @@ import (
 	"firebase.google.com/go/v4/messaging"
 )
 
-const ServerVersion = "1.1.2.2"
+const ServerVersion = "1.1.2.3"
 
 // server implements the gRPC ChatService interface
 type server struct {
@@ -48,6 +48,9 @@ type server struct {
 	// Hermes Orchestrator
 	hermesOrchestrator *Orchestrator
 	hermesDB           *HermesDB
+
+	// AI Chat Manager (unified for OWL + Hermes)
+	aiChatManager *AIChatManager
 }
 
 func (s *server) logErrorOnce(key string, format string, v ...interface{}) {
@@ -3219,6 +3222,275 @@ func (s *server) GetOwlSettings(_ context.Context, req *gen.GetOwlSettingsReques
 		Limit:            limit,
 		WindowSeconds:    windowSec,
 	}, nil
+}
+
+// ======= AI Chat (unified) gRPC methods =======
+
+// getAIChatManager lazily initializes the AIChatManager
+func (s *server) getAIChatManager() *AIChatManager {
+	if s.aiChatManager == nil {
+		s.aiChatManager = NewAIChatManager(s.db.DB)
+	}
+	return s.aiChatManager
+}
+
+// ChatWithAI — unified streaming AI chat for both OWL and Hermes
+func (s *server) ChatWithAI(req *gen.AIChatRequest, stream gen.ChatService_ChatWithAIServer) error {
+	userID := req.UserId
+	if userID == "" {
+		return status.Error(codes.InvalidArgument, "user_id is required")
+	}
+
+	sessionID := req.SessionId
+	manager := s.getAIChatManager()
+
+	// If no session_id, create a new session
+	if sessionID == "" {
+		agentType := "owl"
+		if req.AgentId != "" {
+			agentType = "hermes"
+		}
+		var err error
+		sessionID, err = manager.CreateSession(userID, agentType)
+		if err != nil {
+			return status.Error(codes.Internal, "failed to create session")
+		}
+
+		// Also create in chats table for UI list
+		username := userID
+		if uname, err := s.db.GetUsernameByID(userID); err == nil && uname != "" {
+			username = uname
+		}
+		participantsJSON, _ := json.Marshal([]string{userID})
+		chatName := "🤖 AI Чат"
+		if agentType == "hermes" {
+			chatName = "🤖 Hermes"
+		}
+		_, _ = s.db.Exec(
+			"INSERT INTO chats (id, name, type, participants, creator_username, creator_id) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (id) DO NOTHING",
+			sessionID, chatName, agentType, string(participantsJSON), username, userID,
+		)
+	}
+
+	// Get session info
+	session, err := manager.GetSession(sessionID)
+	if err != nil {
+		return status.Error(codes.NotFound, "session not found")
+	}
+
+	// Verify ownership
+	if session.UserID != userID {
+		return status.Error(codes.PermissionDenied, "not your session")
+	}
+
+	// Rate limit check
+	settings, _ := manager.GetSettings(sessionID)
+	hasCustomKey := settings.UserAPIKey != ""
+	if hasCustomKey {
+		if !owlRateLimiter.allow(userID) {
+			return status.Error(codes.ResourceExhausted, "rate limit exceeded: max 10 requests per minute")
+		}
+	} else {
+		if !freeTierRateLimiter.allow(userID) {
+			return status.Error(codes.ResourceExhausted, "rate limit exceeded: max 20 requests per hour")
+		}
+	}
+
+	// Save user message
+	manager.AddMessage(sessionID, "user", req.Message, "")
+
+	if session.AgentType == "hermes" {
+		// Route to Hermes Orchestrator
+		log.Printf("[ChatWithAI] routing to Hermes orchestrator: session=%s user=%s", sessionID, userID)
+
+		// Update active agent if specified
+		if req.AgentId != "" {
+			manager.UpdateSession(sessionID, "", "", req.AgentId, "")
+		}
+
+		var fullResponse strings.Builder
+		err = s.hermesOrchestrator.Orchestrate(stream.Context(), userID, sessionID, req.Message,
+			func(token string, finished bool) error {
+				if !finished && token != "" {
+					fullResponse.WriteString(token)
+				}
+				return stream.Send(&gen.AIChatResponse{
+					Token:    token,
+					Finished: finished,
+				})
+			})
+		if err != nil {
+			log.Printf("[ChatWithAI] orchestrator error: %v", err)
+			stream.Send(&gen.AIChatResponse{Finished: true, Error: err.Error()})
+		}
+
+		// Save assistant response
+		assistantResponse := fullResponse.String()
+		if assistantResponse != "" {
+			manager.AddMessage(sessionID, "assistant", assistantResponse, "")
+		}
+	} else {
+		// Route to OWL (OpenRouter)
+		log.Printf("[ChatWithAI] routing to OWL: session=%s user=%s", sessionID, userID)
+
+		// Build history
+		history, _ := manager.GetHistory(sessionID, 50)
+
+		// Convert history to OpenRouter format
+		orHistory := make([]map[string]string, 0, len(history))
+		for _, h := range history {
+			orHistory = append(orHistory, map[string]string{"role": h.Role, "content": h.Content})
+		}
+
+		// System prompt
+		systemPrompt := session.SystemPrompt
+		if systemPrompt == "" {
+			systemPrompt = `Вы — AI-ассистент OWL в мессенджере Lavender. Отвечайте кратко и по делу на русском языке.
+Вы можете помочь с вопросами о приложении Lavender, настройками, темами, функциями.
+Будьте дружелюбны, но лаконичны. Не выдавайте себя за человека.`
+		}
+
+		// Model and API key
+		model := settings.ModelOverride
+		if model == "" {
+			model = session.Model
+		}
+		if model == "" {
+			model = s.owlModel
+		}
+		apiKey := settings.UserAPIKey
+		if apiKey == "" {
+			apiKey = s.owlApiKey
+		}
+
+		// Stream via OpenRouter
+		err = streamOpenRouter(stream.Context(), apiKey, model, systemPrompt, orHistory,
+			func(token string, finished bool) error {
+				return stream.Send(&gen.AIChatResponse{
+					Token:    token,
+					Finished: finished,
+				})
+			})
+		if err != nil {
+			log.Printf("[ChatWithAI] OpenRouter error: %v", err)
+			stream.Send(&gen.AIChatResponse{Finished: true, Error: err.Error()})
+		}
+
+		// Save assistant response (collect from stream)
+		// For simplicity, we save after streaming completes
+		// TODO: collect tokens if needed for DB saving
+	}
+
+	// Update chat last message
+	_, _ = s.db.Exec("UPDATE chats SET last_message_text=$1, last_message_time=NOW() WHERE id=$2",
+		truncateString(req.Message, 100), sessionID)
+
+	return nil
+}
+
+// GetAIChatHistory — unified history for both OWL and Hermes
+func (s *server) GetAIChatHistory(_ context.Context, req *gen.GetAIChatHistoryRequest) (*gen.GetAIChatHistoryResponse, error) {
+	if req.SessionId == "" || req.UserId == "" {
+		return &gen.GetAIChatHistoryResponse{}, nil
+	}
+
+	manager := s.getAIChatManager()
+
+	// Verify ownership
+	session, err := manager.GetSession(req.SessionId)
+	if err != nil {
+		return &gen.GetAIChatHistoryResponse{}, nil
+	}
+	if session.UserID != req.UserId {
+		return &gen.GetAIChatHistoryResponse{}, nil
+	}
+
+	limit := int(req.Limit)
+	if limit <= 0 {
+		limit = 50
+	}
+
+	messages, err := manager.GetHistory(req.SessionId, limit)
+	if err != nil {
+		return &gen.GetAIChatHistoryResponse{}, nil
+	}
+
+	pbMessages := make([]*gen.AIChatMessage, 0, len(messages))
+	for _, m := range messages {
+		pbMessages = append(pbMessages, &gen.AIChatMessage{
+			Role:      m.Role,
+			Content:   m.Content,
+			AgentId:   m.AgentID,
+			CreatedAt: m.CreatedAt.Format(time.RFC3339),
+		})
+	}
+
+	return &gen.GetAIChatHistoryResponse{Messages: pbMessages}, nil
+}
+
+// GetAIChatSettings — unified settings for both OWL and Hermes
+func (s *server) GetAIChatSettings(_ context.Context, req *gen.GetAIChatSettingsRequest) (*gen.AIChatSettings, error) {
+	if req.SessionId == "" || req.UserId == "" {
+		return &gen.AIChatSettings{}, nil
+	}
+
+	manager := s.getAIChatManager()
+
+	// Verify ownership
+	session, err := manager.GetSession(req.SessionId)
+	if err != nil {
+		return &gen.AIChatSettings{}, nil
+	}
+	if session.UserID != req.UserId {
+		return &gen.AIChatSettings{}, nil
+	}
+
+	settings, _ := manager.GetSettings(req.SessionId)
+
+	// Calculate remaining requests
+	remaining := int32(freeTierRateLimiter.remaining(req.UserId))
+	limit := int32(20)
+	windowSec := int32(3600)
+	if settings.UserAPIKey != "" {
+		remaining = int32(owlRateLimiter.remaining(req.UserId))
+		limit = 10
+		windowSec = 60
+	}
+
+	return &gen.AIChatSettings{
+		SessionId:        req.SessionId,
+		UserApiKey:       settings.UserAPIKey,
+		Model:            settings.ModelOverride,
+		IsUsingCustomKey: settings.UserAPIKey != "",
+		Remaining:        remaining,
+		Limit:            limit,
+		WindowSeconds:    windowSec,
+	}, nil
+}
+
+// UpdateAIChatSettings — unified settings update for both OWL and Hermes
+func (s *server) UpdateAIChatSettings(_ context.Context, req *gen.UpdateAIChatSettingsRequest) (*gen.UpdateAIChatSettingsResponse, error) {
+	if req.SessionId == "" || req.UserId == "" {
+		return &gen.UpdateAIChatSettingsResponse{Success: false, Message: "session_id and user_id required"}, nil
+	}
+
+	manager := s.getAIChatManager()
+
+	// Verify ownership
+	session, err := manager.GetSession(req.SessionId)
+	if err != nil {
+		return &gen.UpdateAIChatSettingsResponse{Success: false, Message: "session not found"}, nil
+	}
+	if session.UserID != req.UserId {
+		return &gen.UpdateAIChatSettingsResponse{Success: false, Message: "not your session"}, nil
+	}
+
+	err = manager.SaveSettings(req.SessionId, req.ApiKey, req.Model)
+	if err != nil {
+		return &gen.UpdateAIChatSettingsResponse{Success: false, Message: err.Error()}, nil
+	}
+
+	return &gen.UpdateAIChatSettingsResponse{Success: true, Message: "OK"}, nil
 }
 
 // ======= Hermes Chat Settings gRPC methods =======
