@@ -76,12 +76,15 @@ func (s *owlSessionManager) getHistory(chatID string) []map[string]string {
 }
 
 func (s *owlSessionManager) addMessage(chatID, role, content string) {
+	log.Printf("owlSessionManager.addMessage: chatID=%s role=%s content_len=%d", chatID, role, len(content))
 	_, err := s.db.Exec(
 		"INSERT INTO owl_messages (chat_id, role, content) VALUES ($1, $2, $3)",
 		chatID, role, content,
 	)
 	if err != nil {
 		log.Printf("owlSessionManager: failed to save message: %v", err)
+	} else {
+		log.Printf("owlSessionManager: message saved OK chatID=%s role=%s", chatID, role)
 	}
 }
 
