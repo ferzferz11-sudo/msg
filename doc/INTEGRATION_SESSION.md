@@ -251,14 +251,14 @@ cd /root/msg.client.android
 Правила:
 - Коммитить после каждого значимого изменения, пушить в feat/1.1.2.x
 - Деплоить на dev для тестирования (сервер)
-- Обновлять CHANGELOG.md (новая версия наверху)
-- Обновлять INTEGRATION_SESSION.md и TASKS.md при каждом релизе
+- При каждом значимом изменении: обновлять INTEGRATION_SESSION.md + TASKS.md + соответствующие документы
+- При каждом релизе: обновлять CHANGELOG.md (сервер + Android), INTEGRATION_SESSION.md, TASKS.md, LOG_MONITOR.md, PITFALLS.md, AI_SERVICES.md
 - Не ломать существующий функционал
 - assembleRelease НЕ запускать на сервере (OOM kill)
 - Версия сервера в server.go:33 — обновлять при релизе
 - Версия Android в version.txt — обновлять при релизе
-- Дизайн — минималистичный, чистый, без лишнего декора
 - Выпускать по версии за сессию (v1.1.2.1, v1.1.2.2, ...)
+- Дизайн — минималистичный, чистый, без лишнего декора
 
 Документация (читать в начале каждой сессии):
 - Индекс: /root/msg/doc/INDEX.md
@@ -268,6 +268,7 @@ cd /root/msg.client.android
 - Подводные камни: /root/msg/doc/PITFALLS.md
 - Log Monitor: /root/msg/doc/LOG_MONITOR.md
 ```
+
 Продолжаем работу над Lavender Messenger. v1.1.1.14 завершена:
 - Дизайн + полировка UI: анимации сообщений, typing indicator, bottom sheets, splash screen
 - Dev сервер обновлён и работает

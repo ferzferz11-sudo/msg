@@ -48,7 +48,10 @@
 
 ## Правила
 
-- При старте новой сессии: читать INTEGRATION_SESSION.md + TASKS.md
-- После каждого значимого изменения: обновлять INTEGRATION_SESSION.md и TASKS.md
+- При старте новой сессии: читать цепочку INDEX.md → AI_SERVICES.md → INTEGRATION_SESSION.md → TASKS.md → PITFALLS.md → LOG_MONITOR.md
+- После каждого значимого изменения: обновлять INTEGRATION_SESSION.md + TASKS.md + соответствующие документы
+- При каждом релизе: обновлять CHANGELOG.md (сервер + Android), INTEGRATION_SESSION.md, TASKS.md, LOG_MONITOR.md, PITFALLS.md, AI_SERVICES.md
 - Промпт для следующей сессии всегда внизу INTEGRATION_SESSION.md
-- CHANGELOG.md — только серверные изменения, обновлять с каждым релизом
+- CHANGELOG.md — серверные изменения в корне /root/msg/CHANGELOG.md, Android в /root/msg.client.android/changelog.txt
+- Версия сервера в server.go:33, версия Android в version.txt
+- Документация распределена по файлам и проиндексирована в INDEX.md
