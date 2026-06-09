@@ -1,6 +1,6 @@
 # Lavender Messenger — Интеграционная сессия
 
-**Текущая версия:** v1.1.1.15
+**Текущая версия:** v1.1.1.16
 **Обновлено:** 2026-06-09
 
 ## Контекст
@@ -32,6 +32,22 @@ ANDROID:
 ```
 
 Принцип: полная изоляция OWL и Hermes — разные файлы, разные SharedFlows, разные rate limiters.
+
+---
+
+## Статус: v1.1.1.16 ЗАВЕРШЕНА
+
+### Android v1.1.1.16 (`/root/msg.client.android`)
+- version.txt 1.1.1.16, changelog.txt обновлён
+- SplashActivity: логотип 🦞 → ic_notification_logo (как в шторке логина)
+- SplashActivity: надпись "Lavender" → "Лава" (ru) / "Lava" (en) по языку
+- AIBottomSheet: rebuildContent() + updateChats() для перестройки без закрытия
+- AIBottomSheet: popup menu delete/settings больше не закрывает шторку
+- ChatListActivity: shouldShowAiSheetOnResume флаг для возврата из AI активити
+- ChatListActivity: return из OwlChat/HermesChat/Settings/Notifications → AI шторка открывается снова
+- ThemeApplier: aiFab добавлен в список FAB для кастомных тем
+- activity_owl_settings.xml: Save button использует style="@style/PrimaryButton"
+- compileDebugKotlin passes
 
 ---
 
@@ -104,7 +120,9 @@ ANDROID:
 3. ~~Bug fix: unread counter~~ ✅ v1.1.1.12
 4. ~~Полное тестирование v1.1.1.13~~ ✅
 5. ~~Дизайн + полировка v1.1.1.14~~ ✅
-6. **Деплой на prod → v1.1.2.0** — после подтверждения стабильности
+6. ~~Бесплатные модели v1.1.1.15~~ ✅
+7. ~~Багфикс + полировка v1.1.1.16~~ ✅
+8. **Деплой на prod → v1.1.2.0** — после подтверждения стабильности
 
 ### Средний приоритет
 - Модульные тесты для OWL streaming
@@ -170,35 +188,54 @@ cd /root/msg.client.android
 
 ---
 
-## Промпт для следующей сессии (v1.1.1.16 — Тестирование + багфикс перед релизом)
+## Промпт для следующей сессии (v1.1.2.0 — Релиз на prod)
 
 ```
-Продолжаем работу над Lavender Messenger. v1.1.1.15 завершена:
-- Бесплатные модели загружаются с сервера (таблица free_openrouter_models)
-- Без ключа: только бесплатные модели, OWL Alpha первая
-- С ключом: бесплатные + «Своя модель» (текстовый ввод ID)
-- Favorites flickering fix
-- Dev сервер обновлён и работает
+Продолжаем работу над Lavender Messenger. v1.1.1.16 завершена:
+- SplashActivity: логотип 🦞 → ic_notification_logo, надпись "Лава"/"Lava"
+- AI навигация: return из OwlChat/HermesChat/Settings/Notifications → AI шторка открывается снова
+- AIBottomSheet: после удаления чата шторка перестраивается, не закрывается
+- ThemeApplier: aiFab добавлен в список FAB для кастомных тем
+- Save button в OWL settings использует style="@style/PrimaryButton"
 - compileDebugKotlin проходит
+- Тег v1.1.1.16 на Android репозитории
 
 Контекст:
 - Сервер: /root/msg, dev порт 50052, prod порт 50051
 - Android: /root/msg.client.android
 - Оба репозитория на ветке feat/1.1.1.x
-- v1.1.1.15 тег на обоих репозиториях
+- v1.1.1.16 тег на Android, серверная часть без изменений (v1.1.1.15)
 
-Текущая версия: v1.1.1.15
+Текущая версия: v1.1.1.16
 
-Что нужно сделать (v1.1.1.16):
-1. ТЕСТИРОВАНИЕ ФИШЕК (end-to-end на dev сервере)
-2. ИСПРАВЛЕНИЕ НАЙДЕННЫХ БАГОВ
-3. Если багов нет → деплой на prod → v1.1.2.0
+Что нужно сделать (v1.1.2.0):
+1. ДЕПЛОЙ КЛИЕНТА НА PROD — собрать APK, залить на сервер для клиентов
+2. Деплой сервера на prod (если нужны изменения) — после клиента
+3. Тестирование на prod
 
 Архитектура (важно!):
 - OwlGrpc.kt — отдельный файл для OWL
 - HermesGrpc.kt — отдельный файл для Hermes
 - НЕ смешивать OWL и Hermes код — полная изоляция
 - userId (UUID) — всегда как ключ, НЕ username
+- creator_id (UUID) — для проверки владельца
+- participants ВСЕГДА через json.Marshal, никогда вручную
+- Для кастомных тем: новые FAB кнопки добавлять в ThemeApplier.kt в список FABs
+
+Правила:
+- Коммитить после каждого значимого изменения, пушить в feat/1.1.1.x
+- Деплоить на dev для тестирования (сервер)
+- Обновлять CHANGELOG.md (новая версия наверху)
+- Не ломать существующий функционал
+- assembleRelease НЕ запускать на сервере (OOM kill)
+- Версия сервера в server.go:33 — обновлять при релизе
+- Дизайн — минималистичный, чистый, без лишнего декора
+
+Документация:
+- Индекс: /root/msg/doc/INDEX.md (читать в начале сессии)
+- Сервер: /root/msg/doc/INTEGRATION_SESSION.md, /root/msg/doc/TASKS.md
+- Android: /root/msg.client.android/doc/TASKS.md
+```
 - creator_id (UUID) — для проверки владельца
 - participants ВСЕГДА через json.Marshal, никогда вручную
 
