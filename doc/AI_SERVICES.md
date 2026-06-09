@@ -266,6 +266,80 @@ message OrchestratorResponse {
 
 ---
 
+## Архитектурные правила
+
+### creator_id — единственный надёжный идентификатор владельца
+**Правило:** `creator_id` (UUID) — ЕДИНСТВЕННЫЙ надёжный owner identifier.
+- `creator_username` — ТОЛЬКО для отображения, username может меняться
+- Все ownership checks (`DeleteOwlChat`, `UpdateOwlSettings`, `GetOwlSettings`, `GetAllChats` filter) должны использовать `creator_id`
+
+### Никогда не собирайте JSON через конкатенацию строк
+**Правило:** `NEVER assemble JSON strings via Go string concatenation for SQL parameters.`
+- Всегда используйте `json.Marshal`
+- Ручная конкатенация типа `"["+username+"]"` создаёт невалидный JSON `[username]`
+- INSERT может пройти, но SELECT с `::jsonb` cast упадёт (PostgreSQL error 22P02)
+- Это относится к любой JSON/text колонке которая может быть приведена к jsonb позднее
+
+### DB owner — всегда lavender
+Право собственности на таблицы PostgreSQL должно быть `lavender`, не `postgres`:
+```bash
+cd /tmp && sudo -u postgres psql -d chat_db -c "ALTER TABLE hermes_sessions OWNER TO lavender;"
+```
+Запускать из `/tmp` чтобы избежать "could not change directory" ошибки.
+
+### Prod vs Dev версии
+- Всегда проверяйте версии на обоих серверах
+- Dev DB: `chat_db_dev`, Prod DB: `chat_db`
+- Версия сервера в `server.go:33` — обновлять при каждом релизе
+
+---
+
+## Proto field mapping
+
+**ВАЖНО:** при изменении `.proto` файлов всегда сверять номера полей с кодом клиента!
+
+### CreateHermesSessionResponse
+```
+message CreateHermesSessionResponse {
+  bool success = 1;        // field 1 = success (bool)
+  string session_id = 2;   // field 2 = session_id (string)
+  string error = 3;        // field 3 = error (string)
+  string name = 4;         // field 4 = name (string)
+}
+```
+
+### CreateAgentResponse
+```
+message CreateAgentResponse {
+  bool success = 1;        // field 1 = success (bool)
+  string agent_id = 2;     // field 2 = agent_id (string)
+  string error = 3;        // field 3 = error (string)
+}
+```
+
+### AgentInfo
+```
+message AgentInfo {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  bool is_preset = 4;
+  string system_prompt = 5;
+  string model = 6;
+}
+```
+
+### OrchestratorResponse
+```
+message OrchestratorResponse {
+  string token = 1;
+  bool finished = 2;
+  string error = 3;
+}
+```
+
+---
+
 ## Команды
 
 ```bash

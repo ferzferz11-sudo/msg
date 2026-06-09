@@ -26,6 +26,7 @@
 | Файл | Назначение | Когда читать |
 |------|-----------|-------------|
 | `AI_SERVICES.md` | AI-сервисы: архитектура, API, потоки данных, proto mapping | **При работе с AI чатами** |
+| `PITFALLS.md` | Подводные камни и известные проблемы | **Перед началом работы** |
 | `HERMES_ORCHESTRATOR_DOC.md` | Документация Hermes Orchestrator: архитектура, API, агенты, маршрутизация | При работе с Hermes |
 | `HERMES_ORCHESTRATOR_PROMPT.md` | Промпт для сессий с Hermes Orchestrator | При деве Hermes |
 | `LAVENDER_CHAT_PROJECT.md` | Проект Lavender Chat — полноценная замена Telegram | При работе над ChatWidget |
