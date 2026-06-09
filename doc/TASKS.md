@@ -1,8 +1,29 @@
 # Lavender Messenger — Задачи
 
-**Версия:** v1.1.1.12
-**Обновлено:** 2026-06-09
-**Статус:** ✅ v1.1.1.12 — Bug fixes + Command bottom sheet + Notification badge
+**Версия:** v1.1.1.13
+**Обновлено:** 2026-07-18
+**Статус:** ✅ v1.1.1.13 — Полное тестирование + подготовка к релизу
+
+---
+
+## ✅ Сделано (v1.1.1.13)
+
+### Server
+- **ServerVersion 1.1.1.13** — version bump
+- **Полное тестирование** — все фичи v1.1.1.x проверены и работают:
+  - OWL AI чат (ChatWithOWL streaming, per-chat settings, rate limiting)
+  - Hermes Orchestrator (ChatWithOrchestrator, agent routing, 8 preset agents)
+  - Bot Commands (/status, /deploy, /logs, /restart, /ai, /help, /version)
+  - Notification system (subscribe, history, mark-read, unread count)
+  - Graceful reconnect (exponential backoff, keep-alive)
+  - Per-chat API key + model для OWL и Hermes
+- **CHANGELOG.md** — обновлён
+- Dev deployed и работает
+
+### Android
+- **version.txt** — bumped to 1.1.1.13
+- **changelog.txt** — обновлён с русскоязычным описанием
+- compileDebugKotlin ✅
 
 ---
 
@@ -129,11 +150,11 @@
 
 ## ⏳ Не начато (по приоритету)
 
-### Высокий приоритет (v1.1.1.11 — тестирование)
+### Высокий приоритет (v1.1.2.0 — деплой на prod)
 1. ~~**Показать ключ/модель в шапке AI чатов**~~ ✅ v1.1.1.11
-2. **Полное тестирование** — graceful reconnect, notification retry, AI chats, настройки, rate limits
-3. **Исправление найденных багов**
-4. **Деплой на prod → v1.1.2.0**
+2. ~~**Полное тестирование**~~ ✅ v1.1.1.13
+3. ~~**Исправление найденных багов**~~ ✅ v1.1.1.13 (багов не обнаружено)
+4. **Деплой на prod → v1.1.2.0** — следующий шаг
 
 ### Средний приоритет
 - Модульные тесты для OWL streaming

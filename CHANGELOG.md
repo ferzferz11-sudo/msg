@@ -1,5 +1,11 @@
 # Lavender Messenger — Server Changelog
 
+## [1.1.1.13] - 2026-07-18
+- Версия обновлена до 1.1.1.13
+- Полное тестирование всех фич v1.1.1.x: AI чаты (OWL + Hermes), бот-команды, rate limiting, per-chat settings, reconnect, notifications
+- Документация: обновлены INTEGRATION_SESSION.md, TASKS.md
+- Подготовка к деплою на prod → v1.1.2.0
+
 ## [1.1.1.12] - 2026-06-09
 - Версия обновлена до 1.1.1.12
 - **Нет серверных изменений** — все фичи предыдущих версий работают
