@@ -3321,6 +3321,10 @@ func (s *server) ChatWithOrchestrator(req *gen.OrchestratorRequest, stream gen.C
 		s.hermesDB.SaveOrchestratorMessage(chatID, userID, "assistant", "", assistantResponse)
 	}
 
+	// Update chat last message
+	_, _ = s.db.Exec("UPDATE chats SET last_message_text=$1, last_message_time=NOW() WHERE id=$2",
+		truncateString(assistantResponse, 100), chatID)
+
 	log.Printf("[Lava] Orchestrate completed for user=%s", userID)
 	return nil
 }
