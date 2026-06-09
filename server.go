@@ -1581,7 +1581,21 @@ func (s *server) DeleteChat(_ context.Context, req *gen.DeleteChatRequest) (*gen
 		return &gen.DeleteChatResponse{Success: false, Message: err.Error()}, nil
 	}
 
-	log.Printf("DeleteChat success: Chat %s deleted.", req.ChatId)
+	// 4b. Cascade delete AI-specific data for hermes chats
+	if chat.Type == "hermes" {
+		if s.hermesDB != nil {
+			s.hermesDB.DeleteSession(req.ChatId)
+			log.Printf("DeleteChat: Hermes session %s deleted from hermes_sessions", req.ChatId)
+		}
+		// Also clean up any orphaned hermes_messages for this session
+		_, _ = s.db.Exec("DELETE FROM hermes_messages WHERE session_id = $1", req.ChatId)
+	} else if chat.Type == "owl" {
+		// Clean up orphaned owl_messages (FK CASCADE handles settings)
+		_, _ = s.db.Exec("DELETE FROM owl_messages WHERE chat_id = $1", req.ChatId)
+		_, _ = s.db.Exec("DELETE FROM owl_chat_settings WHERE chat_id = $1", req.ChatId)
+	}
+
+	log.Printf("DeleteChat success: Chat %s deleted (type=%s).", req.ChatId, chat.Type)
 
 	// 5. Increment version for all former participants so their lists refresh
 	// Skip for AI chats (owl/hermes) — participants contains UUIDs, not usernames,
