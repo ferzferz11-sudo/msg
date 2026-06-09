@@ -740,6 +740,11 @@ service ChatService {
   rpc GetNotificationHistory(GetNotificationHistoryRequest) returns (GetNotificationHistoryResponse);
   rpc MarkNotificationsRead(MarkNotificationReadRequest) returns (MarkNotificationReadResponse);
   rpc GetUnreadCount(GetUnreadCountRequest) returns (GetUnreadCountResponse);
+
+  // Free OpenRouter Models (admin-managed list for free tier)
+  rpc GetFreeModels(GetFreeModelsRequest) returns (GetFreeModelsResponse);
+  rpc SetFreeModel(SetFreeModelRequest) returns (SetFreeModelResponse);
+  rpc RemoveFreeModel(RemoveFreeModelRequest) returns (RemoveFreeModelResponse);
 }
 
 // ======= AI Pipeline Messages =======
@@ -850,6 +855,7 @@ message GetOwlSettingsResponse {
   string api_key = 1;
   string model = 2;
   bool is_using_custom_key = 3;
+  repeated FreeModelInfo free_models = 4;
 }
 
 message UpdateOwlSettingsResponse {
@@ -869,6 +875,42 @@ message OWLResponse {
   string text = 1;
   bool finished = 2;
   string error = 3;
+}
+
+// ======= Free OpenRouter Models =======
+
+message FreeModelInfo {
+  string model_id = 1;
+  string display_name = 2;
+  int32 sort_order = 3;
+}
+
+message GetFreeModelsRequest {}
+
+message GetFreeModelsResponse {
+  repeated FreeModelInfo models = 1;
+}
+
+message SetFreeModelRequest {
+  string model_id = 1;
+  string display_name = 2;
+  int32 sort_order = 3;
+  string admin_user_id = 4;
+}
+
+message SetFreeModelResponse {
+  bool success = 1;
+  string error = 2;
+}
+
+message RemoveFreeModelRequest {
+  string model_id = 1;
+  string admin_user_id = 2;
+}
+
+message RemoveFreeModelResponse {
+  bool success = 1;
+  string error = 2;
 }
 
 // ======= Hermes Multi-Agent Orchestrator messages =======

@@ -124,6 +124,14 @@ func ConnectDB() (*DB, error) {
 		`CREATE TABLE IF NOT EXISTS password_reset_tokens (token VARCHAR(255) PRIMARY KEY, user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE, expires_at TIMESTAMP NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT NOW())`,
 		`CREATE TABLE IF NOT EXISTS owl_chat_settings (chat_id VARCHAR(255) PRIMARY KEY REFERENCES chats(id) ON DELETE CASCADE, user_api_key TEXT DEFAULT '', model VARCHAR(255) DEFAULT '', updated_at TIMESTAMP NOT NULL DEFAULT NOW())`,
 		`CREATE TABLE IF NOT EXISTS hermes_chat_settings (chat_id VARCHAR(255) PRIMARY KEY REFERENCES chats(id) ON DELETE CASCADE, user_api_key TEXT DEFAULT '', model VARCHAR(255) DEFAULT '', updated_at TIMESTAMP NOT NULL DEFAULT NOW())`,
+		`CREATE TABLE IF NOT EXISTS free_openrouter_models (
+			id SERIAL PRIMARY KEY,
+			model_id VARCHAR(255) UNIQUE NOT NULL,
+			display_name VARCHAR(255) NOT NULL,
+			is_active BOOLEAN DEFAULT TRUE,
+			sort_order INTEGER DEFAULT 0,
+			created_at TIMESTAMP NOT NULL DEFAULT NOW()
+		)`,
 		`CREATE TABLE IF NOT EXISTS owl_messages (id SERIAL PRIMARY KEY, chat_id VARCHAR(255) NOT NULL REFERENCES chats(id) ON DELETE CASCADE, role VARCHAR(20) NOT NULL, content TEXT NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT NOW())`,
 		`CREATE TABLE IF NOT EXISTS calls (
 			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -1347,5 +1355,44 @@ func (db *DB) DeleteServer(id string) error {
 		return fmt.Errorf("cannot delete protected server")
 	}
 	_, err = db.Exec(`DELETE FROM servers WHERE id = $1`, id)
+	return err
+}
+
+// ======= Free OpenRouter Models =======
+
+type freeModel struct {
+	ID          int    `json:"id"`
+	ModelID     string `json:"model_id"`
+	DisplayName string `json:"display_name"`
+	IsActive    bool   `json:"is_active"`
+	SortOrder   int    `json:"sort_order"`
+}
+
+func (db *DB) GetFreeModels() ([]freeModel, error) {
+	rows, err := db.Query("SELECT id, model_id, display_name, is_active, sort_order FROM free_openrouter_models WHERE is_active = TRUE ORDER BY sort_order, display_name")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var models []freeModel
+	for rows.Next() {
+		var m freeModel
+		if err := rows.Scan(&m.ID, &m.ModelID, &m.DisplayName, &m.IsActive, &m.SortOrder); err == nil {
+			models = append(models, m)
+		}
+	}
+	return models, nil
+}
+
+func (db *DB) AddFreeModel(modelID, displayName string, sortOrder int) error {
+	_, err := db.Exec(
+		"INSERT INTO free_openrouter_models (model_id, display_name, sort_order) VALUES ($1, $2, $3) ON CONFLICT (model_id) DO UPDATE SET display_name=$2, sort_order=$3, is_active=TRUE",
+		modelID, displayName, sortOrder,
+	)
+	return err
+}
+
+func (db *DB) RemoveFreeModel(modelID string) error {
+	_, err := db.Exec("UPDATE free_openrouter_models SET is_active = FALSE WHERE model_id = $1", modelID)
 	return err
 }

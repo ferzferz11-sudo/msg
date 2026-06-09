@@ -106,6 +106,9 @@ const (
 	ChatService_GetNotificationHistory_FullMethodName = "/messenger.ChatService/GetNotificationHistory"
 	ChatService_MarkNotificationsRead_FullMethodName  = "/messenger.ChatService/MarkNotificationsRead"
 	ChatService_GetUnreadCount_FullMethodName         = "/messenger.ChatService/GetUnreadCount"
+	ChatService_GetFreeModels_FullMethodName          = "/messenger.ChatService/GetFreeModels"
+	ChatService_SetFreeModel_FullMethodName           = "/messenger.ChatService/SetFreeModel"
+	ChatService_RemoveFreeModel_FullMethodName        = "/messenger.ChatService/RemoveFreeModel"
 )
 
 // ChatServiceClient is the client API for ChatService service.
@@ -207,6 +210,10 @@ type ChatServiceClient interface {
 	GetNotificationHistory(ctx context.Context, in *GetNotificationHistoryRequest, opts ...grpc.CallOption) (*GetNotificationHistoryResponse, error)
 	MarkNotificationsRead(ctx context.Context, in *MarkNotificationReadRequest, opts ...grpc.CallOption) (*MarkNotificationReadResponse, error)
 	GetUnreadCount(ctx context.Context, in *GetUnreadCountRequest, opts ...grpc.CallOption) (*GetUnreadCountResponse, error)
+	// Free OpenRouter Models (admin-managed list for free tier)
+	GetFreeModels(ctx context.Context, in *GetFreeModelsRequest, opts ...grpc.CallOption) (*GetFreeModelsResponse, error)
+	SetFreeModel(ctx context.Context, in *SetFreeModelRequest, opts ...grpc.CallOption) (*SetFreeModelResponse, error)
+	RemoveFreeModel(ctx context.Context, in *RemoveFreeModelRequest, opts ...grpc.CallOption) (*RemoveFreeModelResponse, error)
 }
 
 type chatServiceClient struct {
@@ -1132,6 +1139,36 @@ func (c *chatServiceClient) GetUnreadCount(ctx context.Context, in *GetUnreadCou
 	return out, nil
 }
 
+func (c *chatServiceClient) GetFreeModels(ctx context.Context, in *GetFreeModelsRequest, opts ...grpc.CallOption) (*GetFreeModelsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetFreeModelsResponse)
+	err := c.cc.Invoke(ctx, ChatService_GetFreeModels_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) SetFreeModel(ctx context.Context, in *SetFreeModelRequest, opts ...grpc.CallOption) (*SetFreeModelResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SetFreeModelResponse)
+	err := c.cc.Invoke(ctx, ChatService_SetFreeModel_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) RemoveFreeModel(ctx context.Context, in *RemoveFreeModelRequest, opts ...grpc.CallOption) (*RemoveFreeModelResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RemoveFreeModelResponse)
+	err := c.cc.Invoke(ctx, ChatService_RemoveFreeModel_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ChatServiceServer is the server API for ChatService service.
 // All implementations must embed UnimplementedChatServiceServer
 // for forward compatibility.
@@ -1231,6 +1268,10 @@ type ChatServiceServer interface {
 	GetNotificationHistory(context.Context, *GetNotificationHistoryRequest) (*GetNotificationHistoryResponse, error)
 	MarkNotificationsRead(context.Context, *MarkNotificationReadRequest) (*MarkNotificationReadResponse, error)
 	GetUnreadCount(context.Context, *GetUnreadCountRequest) (*GetUnreadCountResponse, error)
+	// Free OpenRouter Models (admin-managed list for free tier)
+	GetFreeModels(context.Context, *GetFreeModelsRequest) (*GetFreeModelsResponse, error)
+	SetFreeModel(context.Context, *SetFreeModelRequest) (*SetFreeModelResponse, error)
+	RemoveFreeModel(context.Context, *RemoveFreeModelRequest) (*RemoveFreeModelResponse, error)
 	mustEmbedUnimplementedChatServiceServer()
 }
 
@@ -1501,6 +1542,15 @@ func (UnimplementedChatServiceServer) MarkNotificationsRead(context.Context, *Ma
 }
 func (UnimplementedChatServiceServer) GetUnreadCount(context.Context, *GetUnreadCountRequest) (*GetUnreadCountResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetUnreadCount not implemented")
+}
+func (UnimplementedChatServiceServer) GetFreeModels(context.Context, *GetFreeModelsRequest) (*GetFreeModelsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetFreeModels not implemented")
+}
+func (UnimplementedChatServiceServer) SetFreeModel(context.Context, *SetFreeModelRequest) (*SetFreeModelResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SetFreeModel not implemented")
+}
+func (UnimplementedChatServiceServer) RemoveFreeModel(context.Context, *RemoveFreeModelRequest) (*RemoveFreeModelResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RemoveFreeModel not implemented")
 }
 func (UnimplementedChatServiceServer) mustEmbedUnimplementedChatServiceServer() {}
 func (UnimplementedChatServiceServer) testEmbeddedByValue()                     {}
@@ -3028,6 +3078,60 @@ func _ChatService_GetUnreadCount_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ChatService_GetFreeModels_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetFreeModelsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).GetFreeModels(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_GetFreeModels_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).GetFreeModels(ctx, req.(*GetFreeModelsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_SetFreeModel_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetFreeModelRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).SetFreeModel(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_SetFreeModel_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).SetFreeModel(ctx, req.(*SetFreeModelRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_RemoveFreeModel_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveFreeModelRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).RemoveFreeModel(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_RemoveFreeModel_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).RemoveFreeModel(ctx, req.(*RemoveFreeModelRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ChatService_ServiceDesc is the grpc.ServiceDesc for ChatService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -3354,6 +3458,18 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetUnreadCount",
 			Handler:    _ChatService_GetUnreadCount_Handler,
+		},
+		{
+			MethodName: "GetFreeModels",
+			Handler:    _ChatService_GetFreeModels_Handler,
+		},
+		{
+			MethodName: "SetFreeModel",
+			Handler:    _ChatService_SetFreeModel_Handler,
+		},
+		{
+			MethodName: "RemoveFreeModel",
+			Handler:    _ChatService_RemoveFreeModel_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

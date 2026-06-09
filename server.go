@@ -3166,10 +3166,20 @@ func (s *server) GetOwlSettings(_ context.Context, req *gen.GetOwlSettingsReques
 	}
 
 	settings := owlSessions.getSettings(req.ChatId)
+	freeModels, _ := s.db.GetFreeModels()
+	fmInfos := make([]*gen.FreeModelInfo, 0, len(freeModels))
+	for _, m := range freeModels {
+		fmInfos = append(fmInfos, &gen.FreeModelInfo{
+			ModelId:     m.ModelID,
+			DisplayName: m.DisplayName,
+			SortOrder:   int32(m.SortOrder),
+		})
+	}
 	return &gen.GetOwlSettingsResponse{
 		ApiKey:           settings.UserAPIKey,
 		Model:            settings.Model,
 		IsUsingCustomKey: settings.UserAPIKey != "",
+		FreeModels:       fmInfos,
 	}, nil
 }
 
@@ -3834,6 +3844,54 @@ func (s *server) RenameAIChat(_ context.Context, req *gen.RenameAIChatRequest) (
 	}
 
 	return &gen.RenameAIChatResponse{Success: false, Error: "chat not found or not your chat"}, nil
+}
+
+// ======= Free OpenRouter Models gRPC methods =======
+
+func (s *server) GetFreeModels(_ context.Context, _ *gen.GetFreeModelsRequest) (*gen.GetFreeModelsResponse, error) {
+	models, err := s.db.GetFreeModels()
+	if err != nil {
+		log.Printf("[FreeModels] GetFreeModels error: %v", err)
+		return &gen.GetFreeModelsResponse{}, nil
+	}
+	result := make([]*gen.FreeModelInfo, 0, len(models))
+	for _, m := range models {
+		result = append(result, &gen.FreeModelInfo{
+			ModelId:     m.ModelID,
+			DisplayName: m.DisplayName,
+			SortOrder:   int32(m.SortOrder),
+		})
+	}
+	return &gen.GetFreeModelsResponse{Models: result}, nil
+}
+
+func (s *server) SetFreeModel(_ context.Context, req *gen.SetFreeModelRequest) (*gen.SetFreeModelResponse, error) {
+	if req.AdminUserId == "" {
+		return &gen.SetFreeModelResponse{Success: false, Error: "admin_user_id required"}, nil
+	}
+	if !s.db.IsSuperAdmin(req.AdminUserId) {
+		return &gen.SetFreeModelResponse{Success: false, Error: "admin only"}, nil
+	}
+	if req.ModelId == "" {
+		return &gen.SetFreeModelResponse{Success: false, Error: "model_id required"}, nil
+	}
+	if err := s.db.AddFreeModel(req.ModelId, req.DisplayName, int(req.SortOrder)); err != nil {
+		return &gen.SetFreeModelResponse{Success: false, Error: err.Error()}, nil
+	}
+	return &gen.SetFreeModelResponse{Success: true}, nil
+}
+
+func (s *server) RemoveFreeModel(_ context.Context, req *gen.RemoveFreeModelRequest) (*gen.RemoveFreeModelResponse, error) {
+	if req.AdminUserId == "" {
+		return &gen.RemoveFreeModelResponse{Success: false, Error: "admin_user_id required"}, nil
+	}
+	if !s.db.IsSuperAdmin(req.AdminUserId) {
+		return &gen.RemoveFreeModelResponse{Success: false, Error: "admin only"}, nil
+	}
+	if err := s.db.RemoveFreeModel(req.ModelId); err != nil {
+		return &gen.RemoveFreeModelResponse{Success: false, Error: err.Error()}, nil
+	}
+	return &gen.RemoveFreeModelResponse{Success: true}, nil
 }
 
 // truncateString truncates a string to maxLen characters, adding "..." if truncated

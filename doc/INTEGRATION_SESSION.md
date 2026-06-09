@@ -5,14 +5,14 @@
 
 ## Контекст
 
-Интеграция AI-чатов в Lavender Messenger: OWL AI (простой чат с AI) и Hermes Orchestrator (мульти-агентная система).
+Интеграция AI-чатов в Lavender Messenger: OWL AI и Hermes Orchestrator.
 
 **Текущая ветка:** `feat/1.1.1.x` (оба репозитория)
 **Сервер:** dev на порту 50052, prod на 50051
 
 ---
 
-## Архитектура разделения
+## Архитектура
 
 ```
 СЕРВЕР:
@@ -38,302 +38,54 @@ ANDROID:
 ## Статус: v1.1.1.14 ЗАВЕРШЕНА
 
 ### Сервер v1.1.1.14 (`/root/msg`)
-
-| Компонент | Статус | Файл |
-|-----------|--------|------|
-| ServerVersion 1.1.1.14 | ✅ | `server.go:33` |
-| Серверных изменений нет | — | все фичи v1.1.1.13 работают |
-| Dev deployed | ✅ | работает |
+- ServerVersion 1.1.1.14 — version bump
+- Серверных изменений нет, все фичи v1.1.1.13 работают
+- Dev deployed и работает
 
 ### Android v1.1.1.14 (`/root/msg.client.android`)
-
-| Компонент | Статус | Файл |
-|-----------|--------|------|
-| version.txt 1.1.1.14 | ✅ | `version.txt` |
-| changelog.txt обновлён | ✅ | `changelog.txt` |
-| Анимации сообщений (fade-in + slide) | ✅ | `ChatMessageAdapter.kt` |
-| Анимированный typing indicator | ✅ | `ChatMessageAdapter.kt` TypingHolder |
-| Bottom sheet полировка (тени, скругления, hover) | ✅ | `WidgetSystem.kt`, `AIBottomSheet.kt`, `CommandBottomSheet.kt` |
-| Splash screen анимация | ✅ | `SplashActivity.kt` + `themes_splash.xml` |
-| Статус бар под тему | ✅ | `ThemeApplier.kt` |
-| Тёмная тема AI экранов | ✅ | `colors.xml` |
-| compileDebugKotlin | ✅ | passes |
+- version.txt 1.1.1.14, changelog.txt обновлён
+- Анимации сообщений (fade-in + slide), typing indicator (ValueAnimator)
+- Bottom sheets полировка (MaterialCardView, hover-эффекты, per-command иконки)
+- Splash screen анимация, statusBarColor = bgColor
+- compileDebugKotlin passes
 
 ---
 
-## Статус: v1.1.1.13 ЗАВЕРШЕНА
+## История версий (кратко)
 
-### Сервер v1.1.1.13 (`/root/msg`)
-
-| Компонент | Статус | Файл |
-|-----------|--------|------|
-| ServerVersion 1.1.1.13 | ✅ | `server.go:33` |
-| Полное тестирование всех фич | ✅ | AI чаты, бот-команды, rate limits, reconnect, notifications |
-| Dev deployed | ✅ | работает |
-
-### Android v1.1.1.13 (`/root/msg.client.android`)
-
-| Компонент | Статус | Файл |
-|-----------|--------|------|
-| version.txt 1.1.1.13 | ✅ | `version.txt` |
-| changelog.txt обновлён | ✅ | `changelog.txt` |
-| compileDebugKotlin | ✅ | passes |
-
----
-
-## Статус: v1.1.1.12 ЗАВЕРШЕНА
-
-### Сервер v1.1.1.12 (`/root/msg`)
-
-| Компонент | Статус | Файл |
-|-----------|--------|------|
-| ServerVersion 1.1.1.12 | ✅ | `server.go:33` |
-| Нет серверных изменений | — | все фичи v1.1.1.11 работают |
-| Dev deployed | ✅ | работает |
-
-### Android v1.1.1.12 (`/root/msg.client.android`)
-
-| Компонент | Статус | Файл |
-|-----------|--------|------|
-| User messages не пропадают из OWL чата | ✅ | `OwlChatViewModel.kt` addUserMessage/addBotMessage |
-| User messages не пропадают из Hermes чата | ✅ | `HermesChatActivity.kt` — убран дубль в adapter |
-| refreshUnreadCount() в onResume() | ✅ | `ChatListActivity.kt` |
-| CommandBottomSheet — единая шторка команд | ✅ | `ui/widget/CommandBottomSheet.kt` |
-| Notifications + badge в AIBottomSheet | ✅ | `AIBottomSheet.kt` |
-| version.txt 1.1.1.12 | ✅ | `version.txt` |
-| changelog.txt обновлён | ✅ | `changelog.txt` |
-| compileDebugKotlin | ✅ | passes |
-
----
-
-## Статус: v1.1.1.11 ЗАВЕРШЕНА
-
-### Сервер v1.1.1.11 (`/root/msg`)
-
-| Компонент | Статус | Файл |
-|-----------|--------|------|
-| ServerVersion 1.1.1.11 | ✅ | `server.go:33` |
-
-### Android v1.1.1.11 (`/root/msg.client.android`)
-
-| Компонент | Статус | Файл |
-|-----------|--------|------|
-| ic_ai.xml — robot icon | ✅ | `res/drawable/ic_ai.xml` |
-| toolbarInfo в widget_chat.xml | ✅ | `res/layout/widget_chat.xml` |
-| ChatWidget.setToolbarInfo() | ✅ | `ui/chat/widget/ChatWidget.kt` |
-| OwlChatActivity — key/model banner | ✅ | `ui/owl/OwlChatActivity.kt` |
-| HermesChatActivity — key/model banner | ✅ | `ui/hermes/HermesChatActivity.kt` |
-| compileDebugKotlin | ✅ | passes |
-
----
-
-## Статус: v1.1.1.10 ЗАВЕРШЕНА
-
-### Сервер v1.1.1.10 (`/root/msg`)
-
-| Компонент | Статус | Файл |
-|-----------|--------|------|
-| hermes_chat_settings таблица | ✅ | `db.go` |
-| GetHermesSettings RPC | ✅ | `server.go` |
-| UpdateHermesSettings RPC | ✅ | `server.go` |
-| hermesSettingsManager | ✅ | `owl.go` |
-| freeTierRateLimiter (20/час) | ✅ | `owl.go` |
-| Rate limit в ChatWithOWL (custom 10/min, free 20/hr) | ✅ | `server.go` |
-| Rate limit в ChatWithOrchestrator (custom 10/min, free 20/hr) | ✅ | `server.go` |
-| GetOwlSettings: is_using_custom_key | ✅ | `server.go` |
-| GetAIChats: is_using_custom_key + model | ✅ | `server.go` |
-| Proto: Hermes settings messages + fields | ✅ | `messenger.proto` |
-| ServerVersion 1.1.1.10 | ✅ | `server.go:33` |
-| Dev deployed | ✅ | работает |
-
-### Android v1.1.1.10 (`/root/msg.client.android`)
-
-| Компонент | Статус | Файл |
-|-----------|--------|------|
-| AIBottomSheet полный редизайн | ✅ | `ui/widget/AIBottomSheet.kt` |
-| widget_ai_chat_item.xml (нов layout) | ✅ | `res/layout/widget_ai_chat_item.xml` |
-| Шестерёнка настроек у каждого чата | ✅ | layout + AIBottomSheet |
-| Long-press → PopupMenu (Настройки / Удалить) | ✅ | AIBottomSheet |
-| Единый список AI чатов (OWL + Hermes) | ✅ | AIBottomSheet |
-| Divider + блоки "Лава ИИ" и "OWL агент" | ✅ | AIBottomSheet |
-| OwlSettingsActivity: unified OWL+Hermes | ✅ | `ui/owl/OwlSettingsActivity.kt` |
-| Key source indicator (свой/общий ключ) | ✅ | layout + activity |
-| Rate limit info (20/час для free tier) | ✅ | layout + activity |
-| Динамический список моделей по ключу | ✅ | OwlSettingsActivity |
-| HermesGrpc: get/updateSettings | ✅ | `data/grpc/HermesGrpc.kt` |
-| OwlGrpc: обновлённый парсер | ✅ | `data/grpc/OwlGrpc.kt` |
-| RealGrpcClient: AIChatInfo парсер | ✅ | `data/grpc/RealGrpcClient.kt` |
-| AIChatInfo: isUsingCustomKey + model | ✅ | `data/models/Message.kt` |
-| MessengerProto: новые классы | ✅ | `data/proto/MessengerProto.kt` |
-| compileDebugKotlin | ✅ | passes |
-| compileDebugKotlin | ✅ | passes |
-
----
-
-## Статус: v1.1.1.9 ЗАВЕРШЕНА
-
-### Сервер v1.1.1.9 (`/root/msg`)
-
-| Компонент | Статус | Файл |
-|-----------|--------|------|
-| Grace period (30s) в hub | ✅ | `hub.go` |
-| StartGracePeriod / IsInGracePeriod / ClearGracePeriod | ✅ | `hub.go` |
-| GetOnlineUsers включает grace period users | ✅ | `hub.go` |
-| ClearGracePeriod при re-auth | ✅ | `server.go:Chat` |
-| ServerVersion 1.1.1.9 | ✅ | `server.go:33` |
-
-### Android v1.1.1.9 (`/root/msg.client.android`)
-
-| Компонент | Статус | Файл |
-|-----------|--------|------|
-| ConnectionStatus.RECONNECTING | ✅ | `RealGrpcClient.kt` |
-| Exponential backoff reconnect | ✅ | `RealGrpcClient.kt` |
-| subscribeNotifications retry | ✅ | `OwlGrpc.kt` |
-| chatWithOwl retry | ✅ | `OwlGrpc.kt` |
-| chatWithOrchestrator retry | ✅ | `HermesGrpc.kt` |
-| onError → RECONNECTING | ✅ | `RealGrpcClient.kt` |
-| Keep-alive 10s/5s | ✅ | `RealGrpcClient.kt` |
-| compileDebugKotlin | ✅ | passes |
-
----
-
-## Статус: v1.1.1.8 ЗАВЕРШЕНА
-
-### Сервер v1.1.1.8 (`/root/msg`)
-
-| Компонент | Статус | Файл |
-|-----------|--------|------|
-| participants хранит UUID | ✅ | `server.go` (3 места) |
-| GetUserChats исключает AI | ✅ | `db.go:GetUserChats` |
-| GetAllChats без AI | ✅ | `server.go:GetAllChats` |
-| GetAIChats RPC | ✅ | `server.go` |
-| RenameAIChat RPC | ✅ | `server.go` |
-| DeleteChat skip AI notify | ✅ | `server.go:DeleteChat` |
-| Proto AI messages | ✅ | `messenger.proto` |
-| ServerVersion 1.1.1.8 | ✅ | `server.go:33` |
-
-### Android v1.1.1.8 (`/root/msg.client.android`)
-
-| Компонент | Статус | Файл |
-|-----------|--------|------|
-| getAIChats() в GrpcClient | ✅ | `data/grpc/` |
-| refreshAiChats() через RPC | ✅ | `ChatListActivity.kt` |
-| AIBottomSheet selection mode | ✅ | `ui/widget/AIBottomSheet.kt` |
-| showAIActionSheet тулбар | ✅ | `ChatListActivity.kt` |
-| AIChatInfo data class | ✅ | `data/models/Message.kt` |
-| compileDebugKotlin | ✅ | passes |
-
----
-
-## Статус: v1.1.1.7 ЗАВЕРШЕНА
-
-| Компонент | Статус | Файл |
-|-----------|--------|------|
-| Notification badge (сервер) | ✅ | `bot_commands.go` |
-| GetUnreadCount RPC | ✅ | `bot_commands.go` |
-| Notification badge (Android) | ✅ | `AIBottomSheet.kt`, `ChatListActivity.kt` |
-| compileDebugKotlin | ✅ | passes |
-
----
-
-## Статус: v1.1.1.6 ЗАВЕРШЕНА
-
-| Компонент | Статус | Файл |
-|-----------|--------|------|
-| Множественные OWL/Hermes чаты с нумерацией | ✅ | `server.go` |
-| createOwlChat() | ✅ | `OwlGrpc.kt` |
-| AIBottomSheet существующие чаты | ✅ | `ChatListActivity.kt` |
-| compileDebugKotlin | ✅ | passes |
-
----
-
-## Статус: v1.1.1.5 ЗАВЕРШЕНА
-
-| Компонент | Статус | Файл |
-|-----------|--------|------|
-| OwlSettingsActivity | ✅ | `ui/owl/OwlSettingsActivity.kt` |
-| getOwlSettings/updateOwlSettings | ✅ | `OwlGrpc.kt` |
-| creator_id миграция | ✅ | `db_hermes.go` |
-| compileDebugKotlin | ✅ | passes |
-
----
-
-## Статус: v1.1.1.4 ЗАВЕРШЕНА
-
-| Компонент | Статус | Файл |
-|-----------|--------|------|
-| [AI] кнопка рядом с [+] | ✅ | `activity_chat_list.xml` |
-| AIBottomSheet (группы + divider) | ✅ | `ui/widget/AIBottomSheet.kt` |
-| OWL FK fix | ✅ | `server.go` |
-| compileDebugKotlin | ✅ | passes |
-
----
-
-## ✅ Сделано (ранее)
-
-- v1.1.1.3 — NotificationActivity, bot tests
-- v1.1.1.2 — SendServerNotification, OWL/Hermes разделение
-- v1.1.1.1 — Bot Commands, Rate Limiting, NotificationService
-- v1.1.0.16 — Favorites fix
-- v1.1.0.15 — Force reconnect + Registration fix + Cache clearing
-- v1.1.0.14 — Hermes sessions in chat list
-- v1.1.0.13 — ChatWidget + Mention system
-- v1.1.0.12 — Unified Chat Widget
-- v1.1.0.11 — Hermes Orchestrator
-- v1.1.0.10 — Agent Management gRPC
-
----
-
-## Теги
-
-| Версия | Сервер | Android |
-|--------|--------|---------|
-| v1.1.1.14 | ✅ | ✅ |
-| v1.1.1.13 | ✅ | ✅ |
-| v1.1.0.14 | ✅ | ✅ |
-| v1.1.0.15 | ✅ | ✅ |
-| v1.1.0.16 | ✅ | ✅ |
-| v1.1.1.1 | ✅ | ✅ |
-| v1.1.1.2 | ✅ | ✅ |
-| v1.1.1.3 | ✅ | ✅ |
-| v1.1.1.4 | ✅ | ✅ |
-| v1.1.1.5 | ✅ | ✅ |
-| v1.1.1.6 | ✅ | ✅ |
-| v1.1.1.7 | ✅ | ✅ |
-| v1.1.1.8 | ✅ | ✅ |
-| v1.1.1.9 | ✅ | ✅ |
-| v1.1.1.10 | ✅ | ✅ |
-|| v1.1.1.10 | ✅ | ✅ |
-|| v1.1.1.11 | ✅ | ✅ |
-|| v1.1.1.12 | ✅ | ✅ |
-|| v1.1.1.13 | ✅ | ✅ |
+| Версия | Что сделано |
+|--------|------------|
+| v1.1.1.14 | Дизайн + полировка UI (анимации, typing, bottom sheets, splash) |
+| v1.1.1.13 | Полное тестирование всех фич |
+| v1.1.1.12 | Bugfix: messages disappearing, unread counter, CommandBottomSheet |
+| v1.1.1.11 | Key/model banner в шапке AI чатов, robot icon |
+| v1.1.1.10 | Per-chat settings, rate limiting (free 20/hr), AIBottomSheet redesign |
+| v1.1.1.9 | Graceful reconnect (exponential backoff, keep-alive) |
+| v1.1.1.8 | Participants UUID, GetAIChats/RenameAIChat RPCs |
+| v1.1.1.7 | Notification badge, GetUnreadCount RPC |
+| v1.1.1.6 | Множественные OWL/Hermes чаты с нумерацией |
+| v1.1.1.5 | OwlSettingsActivity, creator_id миграция |
 
 ---
 
 ## Известные проблемы
 
 - Server migration warnings: `role "lavender" does not exist` (не критично)
+- Favorites мерцание при обновлении списка чатов (DiffUtil пересоздаёт Favorites)
 
 ---
 
 ## Что НЕ сделано (по приоритету)
 
-### Перед деплоем на prod (обязательно)
-1. ~~**Сессия: Тестирование (v1.1.1.11)**~~ ✅ — key/model banner + robot icon done
-2. ~~**Bug fix: messages disappearing**~~ ✅ v1.1.1.12
-3. ~~**Bug fix: unread counter**~~ ✅ v1.1.1.12
-4. ~~**Полное тестирование + v1.1.1.13**~~ ✅ — все фичи проверены, dev deployed
-5. ~~**Дизайн + полировка v1.1.1.14**~~ ✅ — анимации, typing indicator, bottom sheets, splash, status bar
+### Перед деплоем на prod
+1. ~~Тестирование v1.1.1.11~~ ✅
+2. ~~Bug fix: messages disappearing~~ ✅ v1.1.1.12
+3. ~~Bug fix: unread counter~~ ✅ v1.1.1.12
+4. ~~Полное тестирование v1.1.1.13~~ ✅
+5. ~~Дизайн + полировка v1.1.1.14~~ ✅
 6. **Деплой на prod → v1.1.2.0** — после подтверждения стабильности
 
 ### Средний приоритет
-- ~~NotificationActivity badge~~ ✅ v1.1.1.7
-- ~~Graceful reconnect~~ ✅ v1.1.1.9
-- ~~AI Bottom Sheet редизайн~~ ✅ v1.1.1.10
-- ~~Hermes per-chat settings~~ ✅ v1.1.1.10
-- ~~Rate limiting (free tier 20/hr)~~ ✅ v1.1.1.10
-- ~~Показ ключа/модели в шапке чата~~ ✅ v1.1.1.11
-- ~~Дизайн + полировка UI~~ ✅ v1.1.1.14
 - Модульные тесты для OWL streaming
 
 ### Низкий приоритет
@@ -345,14 +97,14 @@ ANDROID:
 
 ## Правила работы
 
-1. **Коммитить после каждого значимого изменения**
-2. **Пушить в `feat/1.1.1.x`** (не в main!)
-3. **Деплоить на dev сервер для тестирования**
-4. **Обновлять CHANGELOG.md** с каждым фиксом (серверный — только сервер, клиентский — только клиент)
-5. **Не ломать существующий функционал**
-6. **Версия сервера** в `server.go:33` — всегда обновлять при релизе
-7. **Разделение архитектуры** — каждый AI-сервис в своём файле, не смешивать
-8. **userId (UUID)** — всегда использовать UUID как ключ, не username
+1. Коммитить после каждого значимого изменения
+2. Пушить в `feat/1.1.1.x` (не в main!)
+3. Деплоить на dev сервер для тестирования
+4. Обновлять CHANGELOG.md с каждым фиксом
+5. Не ломать существующий функционал
+6. Версия сервера в `server.go:33` — всегда обновлять при релизе
+7. Разделение архитектуры — каждый AI-сервис в своём файле
+8. userId (UUID) — всегда как ключ, НЕ username
 
 ---
 
@@ -381,7 +133,6 @@ cd /root/msg && protoc --go_out=./gen --go_opt=paths=source_relative --go-grpc_o
 # === ANDROID ===
 cd /root/msg.client.android
 ./gradlew compileDebugKotlin    # проверка компиляции
-./gradlew assembleDebug         # сборка APK (локально!)
 # assembleRelease НЕ запускать на сервере — OOM
 ```
 
@@ -389,12 +140,12 @@ cd /root/msg.client.android
 
 ## Важно
 
-- **НЕ использовать `--go_out=.`** при proto gen (генерирует в корень, ломает сборку)
-- **go PATH:** `export PATH=$PATH:/usr/local/go/bin:~/go/bin`
-- **Dev DB:** `chat_db_dev` (порт 5432, user: lavender)
-- **Prod DB:** `chat_db` (порт 5432, user: lavender)
-- **Dev config:** `/root/LavenderMessenger/run/.env.dev`
-- **Prod config:** `/root/LavenderMessenger/run/.env`
+- НЕ использовать `--go_out=.` при proto gen (генерирует в корень, ломает сборку)
+- go PATH: `export PATH=$PATH:/usr/local/go/bin:~/go/bin`
+- Dev DB: `chat_db_dev` (порт 5432, user: lavender)
+- Prod DB: `chat_db` (порт 5432, user: lavender)
+- Dev config: `/root/LavenderMessenger/run/.env.dev`
+- Prod config: `/root/LavenderMessenger/run/.env`
 
 ---
 
@@ -411,7 +162,6 @@ cd /root/msg.client.android
 - Android: /root/msg.client.android
 - Оба репозитория на ветке feat/1.1.1.x
 - v1.1.1.14 тег на обоих репозиториях
-- Dev сервер обновлён и работает
 
 Текущая версия: v1.1.1.14
 
