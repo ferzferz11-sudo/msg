@@ -1,5 +1,17 @@
 # Lavender Messenger — Server Changelog
 
+## [1.1.2.0] - 2026-06-09
+- Версия обновлена до 1.1.2.0
+- **Prod релиз:** все фичи v1.1.1.x задеплоены на prod
+- **Bugfix: Hermes permission denied** — `ALTER TABLE hermes_sessions OWNER TO lavender` на prod DB
+- **Bugfix: HermesGrpc proto mapping** — исправлены номера полей в CreateHermesSessionResponse, CreateAgentResponse, AgentInfo
+- **Bugfix: last_message_text пустой для Hermes** — добавлен `UPDATE chats SET last_message_text` после ответа оркестратора
+- **Bugfix: дубли чатов в UI** — GetAIChats берёт оба типа из chats таблицы
+- **Bugfix: getOrCreateSession создаёт дубли** — ищет существующую сессию по user_id вместо создания новой
+- **Bugfix: Log-monitor JS split escape** — исправлено экранирование `\n` в Go raw string для prod log-monitor
+- **Bugfix: Log-monitor показывал старые логи** — убран `--since "24 hours ago"` из journalctl
+- **Docs:** добавлена документация LOG_MONITOR.md, обновлён INDEX.md
+
 ## [1.1.1.15] - 2026-06-09
 - Версия обновлена до 1.1.1.15
 - **Free OpenRouter Models:** новая таблица `free_openrouter_models` — управляемый список бесплатных моделей
