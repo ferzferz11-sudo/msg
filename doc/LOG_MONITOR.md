@@ -3,7 +3,7 @@
 Документация по веб-интерфейсу для просмотра логов сервера в реальном времени.
 
 **Обновлено:** 2026-06-09
-**Версия:** 1.1.1
+**Версия:** 1.1.2
 
 ---
 
@@ -11,12 +11,14 @@
 
 Log Monitor — легковесный HTTP-сервер на Go, который читает логи systemd-сервисов через `journalctl` и отдаёт их через веб-UI с автообновлением, фильтрацией и цветовой подсветкой.
 
-Два экземпляра:
+Два экземпляра (prod и dev) используют **один и тот же бинарь** `log-monitor`, различаясь только переменными окружения:
 
-| | Файл исходника | Бинарник | Порт | URL путь | Сервис |
-|---|---|---|---|---|---|
-| **Prod** | `log-monitor/log-monitor.go` | `log-monitor` | 8090 | `/server-logs/*` | `lavender-server` |
-| **Dev** | `log-monitor/log-monitor-dev.go` | `log-monitor-dev` | 8091 | `/server-logs-dev/*` | `lavender-server-dev` |
+| | Prod | Dev |
+|---|---|---|
+| **Порт** | 8090 | 8091 |
+| **URL путь** | `/server-logs/*` | `/server-logs-dev/*` |
+| **Сервис** | `lavender-server` | `lavender-server-dev` |
+| **Цвета** | Синий | Жёлтый |
 
 ---
 
@@ -24,7 +26,7 @@ Log Monitor — легковесный HTTP-сервер на Go, который
 
 ```
 Браузер ──► Nginx (80) ──┬── :8090 ──► log-monitor (prod)
-                         └── :8091 ──► log-monitor-dev (dev)
+                         └── :8091 ──► log-monitor (dev)
                                               │
                                               ▼
                                         journalctl -u <service>
@@ -67,11 +69,7 @@ Nginx проксирует HTTP-запросы на log-monitor, который 
 cd /root/msg/log-monitor
 export PATH=$PATH:/usr/local/go/bin:~/go/bin
 
-# Prod
-go build -o /root/LavenderMessenger/run/log-monitor log-monitor.go
-
-# Dev
-go build -o /root/LavenderMessenger/run/log-monitor-dev log-monitor-dev.go
+go build -o /tmp/log-monitor log-monitor.go
 ```
 
 ---
@@ -85,7 +83,6 @@ cp /tmp/log-monitor /root/LavenderMessenger/run/log-monitor
 systemctl start log-monitor
 
 systemctl stop log-monitor-dev
-cp /tmp/log-monitor-dev /root/LavenderMessenger/run/log-monitor-dev
 systemctl start log-monitor-dev
 ```
 
@@ -95,17 +92,28 @@ systemctl start log-monitor-dev
 
 | Переменная | По умолчанию | Описание |
 |-----------|-------------|----------|
-| `LOG_PORT` | `8090` (prod) / `8091` (dev) | Порт HTTP-сервера |
-| `LOG_SERVICE` | `lavender-server` / `lavender-server-dev` | Имя systemd-сервиса для journalctl |
-| `LOG_TITLE` | `Lava Dev Server Logs` | Заголовок страницы (только dev) |
+| `LOG_PORT` | `8090` | Порт HTTP-сервера |
+| `LOG_SERVICE` | `lavender-server` | Имя systemd-сервиса для journalctl |
+| `LOG_TITLE` | `Lava Server Logs` | Заголовок страницы |
+| `LOG_PATH_PREFIX` | `/server-logs` | URL prefix для endpoints |
+| `LOG_COLOR_SCHEME` | `blue` | Цветовая схема: `blue` (prod) или `yellow` (dev) |
 | `LOG_FILE` | `/root/LavenderMessenger/run/server.log` | Fallback-файл (только prod) |
+
+---
+
+## Systemd units
+
+Prod: `/etc/systemd/system/log-monitor.service`
+Dev: `/etc/systemd/system/log-monitor-dev.service`
+
+Оба используют один бинарь `/root/LavenderMessenger/run/log-monitor` с разными Environment.
 
 ---
 
 ## Известные проблемы и решения
 
 ### Все логи красным (prod)
-**Причина:** В Go raw string literal (`backtick`) последовательность `\\n` передаётся в браузер как literal `\n`, а не как newline character. JS `text.split('\\n')` не разбивал текст на строки — весь лог был одной строкой и классифицировался как "error".
+**Причина:** В Go raw string literal (backtick) последовательность `\\n` передаётся в браузер как literal `\n`, а не как newline character. JS `text.split('\\n')` не разбивал текст на строки — весь лог был одной строкой и классифицировался как "error".
 
 **Решение:** В Go raw string использовать один бэкслеш: `\n`. Это передаётся в браузер как `\n` (newline character в JS).
 
@@ -123,7 +131,7 @@ systemctl start log-monitor-dev
 
 ## Связанные файлы
 
-- Исходники: `/root/msg/log-monitor/log-monitor.go` (prod), `log-monitor-dev.go` (dev)
+- Исходник: `/root/msg/log-monitor/log-monitor.go` (единый для prod и dev)
 - Dev guide: `/root/msg/log-monitor/DEPLOY.md`
 - Changelog: `/root/msg/log-monitor/CHANGELOG.md`
 - Readme: `/root/msg/log-monitor/README.md`
