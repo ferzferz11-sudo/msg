@@ -266,12 +266,12 @@ restartTimer();
 </html>`, title, title)
 	})
 
-	// Raw log endpoint
+	// Raw log endpoint — last 100 lines
 	http.HandleFunc("/server-logs-dev/raw", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.Header().Set("Cache-Control", "no-cache")
 
-		cmd := exec.Command("journalctl", "-u", serviceName, "--no-pager", "-n", "100", "--since", "24 hours ago", "--output=short-iso")
+		cmd := exec.Command("journalctl", "-u", serviceName, "--no-pager", "-n", "100", "--output=short-iso")
 		out, err := cmd.Output()
 		if err != nil || len(out) == 0 {
 			fmt.Fprintf(w, "No logs for service: %s\n", serviceName)

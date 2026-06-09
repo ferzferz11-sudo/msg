@@ -273,12 +273,12 @@ restartTimer();
 		fmt.Fprintf(w, `{"status":"ok"}`)
 	})
 
-	// Raw log endpoint — only last 100 lines, last 24h
+	// Raw log endpoint — last 100 lines (newest first, then reversed for display)
 	http.HandleFunc("/server-logs/raw", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.Header().Set("Cache-Control", "no-cache")
 
-		cmd := exec.Command("journalctl", "-u", "lavender-server", "--no-pager", "-n", "100", "--since", "24 hours ago", "--output=short-iso")
+		cmd := exec.Command("journalctl", "-u", "lavender-server", "--no-pager", "-n", "100", "--output=short-iso")
 		out, err := cmd.Output()
 		if err != nil || len(out) == 0 {
 			logFile := os.Getenv("LOG_FILE")
