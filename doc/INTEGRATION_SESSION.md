@@ -251,10 +251,12 @@ cd /root/msg.client.android
 - Android: /root/msg.client.android
 - Оба репозитория на ветке feat/1.1.2.x
 - v1.1.2.1 — стабильная prod версия
+- Релизы: по версии за сессию (v1.1.2.2, v1.1.2.3, ...)
 
 Что делать (v1.1.2.2):
-1. Полировка AI чатов, тестирование, баги
-2. Деплой на dev → деплой на prod
+1. Исправления и улучшения по AI чатам (OWL + Hermes)
+2. Тестирование на dev → деплой на prod
+3. Обновлять документацию при каждом изменении
 
 Архитектура (важно!):
 - OwlGrpc.kt — отдельный файл для OWL
@@ -265,6 +267,7 @@ cd /root/msg.client.android
 - participants ВСЕГДА через json.Marshal, никогда вручную
 - Для кастомных тем: новые FAB кнопки добавлять в ThemeApplier.kt
 - Proto поля: всегда сверять номера полей с messenger.proto!
+- Log-monitor: единый бинарь, конфигурация через env (LOG_PORT, LOG_SERVICE, LOG_PATH_PREFIX, LOG_COLOR_SCHEME)
 
 Правила:
 - Коммитить после каждого значимого изменения, пушить в feat/1.1.2.x
@@ -275,8 +278,8 @@ cd /root/msg.client.android
 - assembleRelease НЕ запускать на сервере (OOM kill)
 - Версия сервера в server.go:33 — обновлять при релизе
 - Версия Android в version.txt — обновлять при релизе
-- Выпускать по версии за сессию (v1.1.2.2, v1.1.2.3, ...)
 - Дизайн — минималистичный, чистый, без лишнего декора
+- Документация распределена по файлам и проиндексирована в INDEX.md
 
 Документация (читать в начале каждой сессии):
 - Индекс: /root/msg/doc/INDEX.md
@@ -285,6 +288,9 @@ cd /root/msg.client.android
 - AI сервисы: /root/msg/doc/AI_SERVICES.md
 - Подводные камни: /root/msg/doc/PITFALLS.md
 - Log Monitor: /root/msg/doc/LOG_MONITOR.md
+- Hermes Orchestrator: /root/msg/doc/HERMES_ORCHESTRATOR_DOC.md
+- Проектная память: /root/msg/doc/PROJECT_MEMORY.md
+- Memory pad: /root/.hermes/memory/pad.md
 ```
 
 Что делать (v1.1.2.1):
