@@ -254,7 +254,10 @@ cd /root/msg.client.android
 ## Промпт для следующей сессии (feat/1.1.2.x — v1.1.2.3)
 
 ```
-Продолжаем работу над Lavender Messenger. Ветка feat/1.1.2.x.
+ЗАДАЧА: Реализовать AI Chat Refactor проект. Это ПРИОРИТЕТ номер 1.
+
+Детальный план в /root/msg/doc/AI_CHAT_REFACTOR.md
+Промпт для автономной работы в /root/msg/doc/AI_CHAT_REFACTOR_PROMPT.md
 
 Текущая версия: v1.1.2.2 (prod)
 Следующая версия: v1.1.2.3
@@ -263,46 +266,40 @@ cd /root/msg.client.android
 - Сервер: /root/msg, dev порт 50052, prod порт 50051
 - Android: /root/msg.client.android
 - Оба репозитория на ветке feat/1.1.2.x
-- v1.1.2.1 — стабильная prod версия
-- Релизы: по версии за сессию (v1.1.2.2, v1.1.2.3, ...)
+- v1.1.2.2 — стабильная prod версия (таг выпущен)
 
-Что делать (v1.1.2.2):
-1. Исправления и улучшения по AI чатам (OWL + Hermes)
-2. Тестирование на dev → деплой на prod
-3. Обновлять документацию при каждом изменении
+Что делать (v1.1.2.3):
+1. Прочитать /root/msg/doc/AI_CHAT_REFACTOR.md и AI_CHAT_REFACTOR_PROMPT.md
+2. Реализовать проект полностью — SQL, proto, Go, Android
+3. Деплой на dev → тестирование → деплой на prod
+4. Обновить версию в server.go:33, CHANGELOG.md, INTEGRATION_SESSION.md
 
 Архитектура (важно!):
-- OwlGrpc.kt — отдельный файл для OWL
-- HermesGrpc.kt — отдельный файл для Hermes
-- НЕ смешивать OWL и Hermes код — полная изоляция
+- Создать ai_chat_manager.go — единый менеджер для всех AI чатов
+- Единые таблицы: ai_chat_sessions, ai_chat_messages, ai_chat_settings
+- ChatWithAI RPC вместо отдельных ChatWithOWL/ChatWithOrchestrator
+- AiChatGrpc.kt — единый файл на клиенте
 - userId (UUID) — всегда как ключ, НЕ username
 - creator_id (UUID) — для проверки владельца
-- participants ВСЕГДА через json.Marshal, никогда вручную
-- Для кастомных тем: новые FAB кнопки добавлять в ThemeApplier.kt
-- Proto поля: всегда сверять номера полей с messenger.proto!
-- Log-monitor: единый бинарь, конфигурация через env (LOG_PORT, LOG_SERVICE, LOG_PATH_PREFIX, LOG_COLOR_SCHEME)
+- Старый код (OwlGrpc, HermesGrpc, ChatWithOWL, ChatWithOrchestrator) оставить deprecated
 
 Правила:
+- Читать AI_CHAT_REFACTOR_PROMPT.md в первую очередь — там пошаговый план
 - Коммитить после каждого значимого изменения, пушить в feat/1.1.2.x
 - Деплоить на dev для тестирования (сервер)
-- При каждом значимом изменении: обновлять INTEGRATION_SESSION.md + TASKS.md + соответствующие документы
-- При каждом релизе: обновлять CHANGELOG.md (сервер + Android), INTEGRATION_SESSION.md, TASKS.md, LOG_MONITOR.md, PITFALLS.md, AI_SERVICES.md
-- Не ломать существующий функционал
 - assembleRelease НЕ запускать на сервере (OOM kill)
-- Версия сервера в server.go:33 — обновлять при релизе
-- Версия Android в version.txt — обновлять при релизе
-- Дизайн — минималистичный, чистый, без лишнего декора
+- compileDebugKotlin OK
+- Не ломать существующий функционал
 - Документация распределена по файлам и проиндексирована в INDEX.md
 
 Документация (читать в начале каждой сессии):
 - Индекс: /root/msg/doc/INDEX.md
+- Проект: /root/msg/doc/AI_CHAT_REFACTOR.md
+- Промпт: /root/msg/doc/AI_CHAT_REFACTOR_PROMPT.md
 - Сервер: /root/msg/doc/INTEGRATION_SESSION.md, /root/msg/doc/TASKS.md
 - Android: /root/msg.client.android/doc/TASKS.md
 - AI сервисы: /root/msg/doc/AI_SERVICES.md
 - Подводные камни: /root/msg/doc/PITFALLS.md
-- Log Monitor: /root/msg/doc/LOG_MONITOR.md
-- Hermes Orchestrator: /root/msg/doc/HERMES_ORCHESTRATOR_DOC.md
-- Проектная память: /root/msg/doc/PROJECT_MEMORY.md
 - Memory pad: /root/.hermes/memory/pad.md
 ```
 
