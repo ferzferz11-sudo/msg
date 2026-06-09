@@ -1,8 +1,32 @@
 # Lavender Messenger — Задачи
 
-**Версия:** v1.1.1.13
-**Обновлено:** 2026-07-18
-**Статус:** ✅ v1.1.1.13 — Полное тестирование + подготовка к релизу
+**Версия:** v1.1.1.14
+**Обновлено:** 2026-06-09
+**Статус:** ✅ v1.1.1.14 — Дизайн + полировка UI
+
+---
+
+## ✅ Сделано (v1.1.1.14 — Дизайн + полировка)
+
+### Server
+- **ServerVersion 1.1.1.14** — version bump
+- Серверных изменений нет, все фичи v1.1.1.13 работают
+- Dev deployed и работает
+
+### Android
+- **version.txt** — bumped to 1.1.1.14
+- **changelog.txt** — обновлён
+- **Анимации сообщений** — fade-in + slide в ChatMessageAdapter
+- **Typing indicator** — анимированные точки (ValueAnimator)
+- **Bottom sheets полировка**:
+  - StandardBottomSheet → MaterialCardView (elevation 8dp, cornerRadius 28dp)
+  - AIBottomSheet: иконки ic_hermes/ic_owl, hover-эффекты, emoji в заголовках
+  - CommandBottomSheet: per-command иконки, hover-эффекты
+  - widget_action_item.xml: ripple hover background
+- **Splash screen** — fade-in анимация логотипа + "Lavender"
+- **Статус бар** — statusBarColor = bgColor в ThemeApplier
+- **Тёмная тема** — AI-специфичные цвета в colors.xml
+- compileDebugKotlin ✅
 
 ---
 
@@ -153,8 +177,8 @@
 ### Высокий приоритет (v1.1.2.0 — деплой на prod)
 1. ~~**Показать ключ/модель в шапке AI чатов**~~ ✅ v1.1.1.11
 2. ~~**Полное тестирование**~~ ✅ v1.1.1.13
-3. ~~**Исправление найденных багов**~~ ✅ v1.1.1.13 (багов не обнаружено)
-4. **Деплой на prod → v1.1.2.0** — следующий шаг
+3. ~~**Дизайн + полировка UI**~~ ✅ v1.1.1.14
+4. **Деплой на prod → v1.1.2.0** — следующий шаг (после тестирований)
 
 ### Средний приоритет
 - Модульные тесты для OWL streaming
