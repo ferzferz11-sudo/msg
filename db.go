@@ -123,6 +123,15 @@ func ConnectDB() (*DB, error) {
 		`CREATE TABLE IF NOT EXISTS favorites (user_id UUID REFERENCES users(id) ON DELETE CASCADE, message_id VARCHAR(255) REFERENCES messages(message_id) ON DELETE CASCADE, created_at TIMESTAMP NOT NULL DEFAULT NOW(), PRIMARY KEY (user_id, message_id))`,
 		`CREATE TABLE IF NOT EXISTS password_reset_tokens (token VARCHAR(255) PRIMARY KEY, user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE, expires_at TIMESTAMP NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT NOW())`,
 		`CREATE TABLE IF NOT EXISTS owl_chat_settings (chat_id VARCHAR(255) PRIMARY KEY REFERENCES chats(id) ON DELETE CASCADE, user_api_key TEXT DEFAULT '', model VARCHAR(255) DEFAULT '', updated_at TIMESTAMP NOT NULL DEFAULT NOW())`,
+		`CREATE TABLE IF NOT EXISTS hermes_chat_settings (chat_id VARCHAR(255) PRIMARY KEY REFERENCES chats(id) ON DELETE CASCADE, user_api_key TEXT DEFAULT '', model VARCHAR(255) DEFAULT '', updated_at TIMESTAMP NOT NULL DEFAULT NOW())`,
+		`CREATE TABLE IF NOT EXISTS free_openrouter_models (
+			id SERIAL PRIMARY KEY,
+			model_id VARCHAR(255) UNIQUE NOT NULL,
+			display_name VARCHAR(255) NOT NULL,
+			is_active BOOLEAN DEFAULT TRUE,
+			sort_order INTEGER DEFAULT 0,
+			created_at TIMESTAMP NOT NULL DEFAULT NOW()
+		)`,
 		`CREATE TABLE IF NOT EXISTS owl_messages (id SERIAL PRIMARY KEY, chat_id VARCHAR(255) NOT NULL REFERENCES chats(id) ON DELETE CASCADE, role VARCHAR(20) NOT NULL, content TEXT NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT NOW())`,
 		`CREATE TABLE IF NOT EXISTS calls (
 			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -484,7 +493,7 @@ func (db *DB) GetUserChats(uid, user string) ([]struct {
 	UnreadCount                                                                                           int
 	LastMessageHasImage, AllowMembersToAdd                                                                bool
 }, error) {
-	query := `WITH last_messages AS (SELECT DISTINCT ON (room_id) room_id, created_at, encrypted_text, username, image_url, image_urls FROM messages ORDER BY room_id, created_at DESC), unread_counts AS (SELECT room_id, COUNT(*) as count FROM messages WHERE is_read = FALSE AND username != $1 GROUP BY room_id) SELECT c.id, c.name, c.type, c.participants, c.created_at, COALESCE(uc.count, 0), COALESCE(lm.created_at, c.created_at), COALESCE(c.creator_username, ''), COALESCE(lm.encrypted_text, ''::bytea), COALESCE(c.avatar_url, ''), COALESCE(c.full_avatar_url, ''), COALESCE(lm.username, ''), (COALESCE(lm.image_url, '') != '' OR COALESCE(lm.image_urls, '[]') != '[]'), COALESCE(c.allow_members_to_add, FALSE) FROM chats c LEFT JOIN last_messages lm ON c.id = lm.room_id LEFT JOIN unread_counts uc ON c.id = uc.room_id WHERE c.type != 'owl' AND c.participants::jsonb @> jsonb_build_array($2::text) ORDER BY 7 DESC`
+	query := `WITH last_messages AS (SELECT DISTINCT ON (room_id) room_id, created_at, encrypted_text, username, image_url, image_urls FROM messages ORDER BY room_id, created_at DESC), unread_counts AS (SELECT room_id, COUNT(*) as count FROM messages WHERE is_read = FALSE AND username != $1 GROUP BY room_id) SELECT c.id, c.name, c.type, c.participants, c.created_at, COALESCE(uc.count, 0), COALESCE(lm.created_at, c.created_at), COALESCE(c.creator_username, ''), COALESCE(lm.encrypted_text, ''::bytea), COALESCE(c.avatar_url, ''), COALESCE(c.full_avatar_url, ''), COALESCE(lm.username, ''), (COALESCE(lm.image_url, '') != '' OR COALESCE(lm.image_urls, '[]') != '[]'), COALESCE(c.allow_members_to_add, FALSE) FROM chats c LEFT JOIN last_messages lm ON c.id = lm.room_id LEFT JOIN unread_counts uc ON c.id = uc.room_id WHERE c.type NOT IN ('owl', 'hermes') AND c.participants::jsonb @> jsonb_build_array($2::text) ORDER BY 7 DESC`
 	rows, err := db.Query(query, user, user)
 	if err != nil {
 		return nil, err
@@ -1346,5 +1355,44 @@ func (db *DB) DeleteServer(id string) error {
 		return fmt.Errorf("cannot delete protected server")
 	}
 	_, err = db.Exec(`DELETE FROM servers WHERE id = $1`, id)
+	return err
+}
+
+// ======= Free OpenRouter Models =======
+
+type freeModel struct {
+	ID          int    `json:"id"`
+	ModelID     string `json:"model_id"`
+	DisplayName string `json:"display_name"`
+	IsActive    bool   `json:"is_active"`
+	SortOrder   int    `json:"sort_order"`
+}
+
+func (db *DB) GetFreeModels() ([]freeModel, error) {
+	rows, err := db.Query("SELECT id, model_id, display_name, is_active, sort_order FROM free_openrouter_models WHERE is_active = TRUE ORDER BY sort_order, display_name")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var models []freeModel
+	for rows.Next() {
+		var m freeModel
+		if err := rows.Scan(&m.ID, &m.ModelID, &m.DisplayName, &m.IsActive, &m.SortOrder); err == nil {
+			models = append(models, m)
+		}
+	}
+	return models, nil
+}
+
+func (db *DB) AddFreeModel(modelID, displayName string, sortOrder int) error {
+	_, err := db.Exec(
+		"INSERT INTO free_openrouter_models (model_id, display_name, sort_order) VALUES ($1, $2, $3) ON CONFLICT (model_id) DO UPDATE SET display_name=$2, sort_order=$3, is_active=TRUE",
+		modelID, displayName, sortOrder,
+	)
+	return err
+}
+
+func (db *DB) RemoveFreeModel(modelID string) error {
+	_, err := db.Exec("UPDATE free_openrouter_models SET is_active = FALSE WHERE model_id = $1", modelID)
 	return err
 }

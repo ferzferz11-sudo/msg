@@ -30,7 +30,7 @@ import (
 	"firebase.google.com/go/v4/messaging"
 )
 
-const ServerVersion = "1.1.0.15"
+const ServerVersion = "1.1.1.15"
 
 // server implements the gRPC ChatService interface
 type server struct {
@@ -190,6 +190,9 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 			s.hub.SetAuthenticated(stream, true)
 			connectedUser = msg.User
 
+			// Clear grace period on successful reconnect
+			s.hub.ClearGracePeriod(msg.User)
+
 			// Fetch and store user ID for session tracking
 			uid, _ := s.db.GetUserIdByUsername(msg.User)
 			connectedUserID = uid
@@ -298,6 +301,48 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 		// Skip empty messages (unless they have an image or voice)
 		if strings.TrimSpace(msg.Text) == "" && msg.ImageUrl == "" && len(msg.ImageUrls) == 0 && msg.VoiceUrl == "" {
 			// Don't log empty messages if they are just room switches (which we now log on auth)
+			continue
+		}
+
+		// Bot command detection — messages starting with "/"
+		if strings.HasPrefix(strings.TrimSpace(msg.Text), "/") {
+			log.Printf("[BotCommand] %s in %s: %s", msg.User, roomID, msg.Text)
+
+			// Parse command and args
+			parts := strings.Fields(msg.Text)
+			cmd := parts[0]
+			var args []string
+			if len(parts) > 1 {
+				args = parts[1:]
+			}
+
+			// Process bot command
+			botReq := &gen.BotCommandRequest{
+				UserId:   connectedUserID,
+				Username: connectedUser,
+				ChatId:   roomID,
+				Command:  cmd,
+				Args:     args,
+			}
+			botResp, err := s.ProcessBotCommand(nil, botReq)
+			if err != nil {
+				log.Printf("[BotCommand] Error: %v", err)
+			} else if botResp != nil {
+				// Send bot response as a system message to the room
+				botMsg := &gen.Message{
+					User:      "🤖 OWL Bot",
+					Text:      botResp.ResponseText,
+					Id:        fmt.Sprintf("bot_%d", time.Now().UnixNano()),
+					CreatedAt: timestamppb.Now(),
+					RoomId:    roomID,
+				}
+				if botResp.IsError && botResp.ErrorMessage != "" {
+					botMsg.Text = "⚠️ " + botResp.ErrorMessage
+				}
+				// Broadcast to room
+				s.hub.Broadcast(botMsg)
+			}
+			// Don't save bot commands to DB, just respond
 			continue
 		}
 
@@ -446,7 +491,7 @@ func (s *server) Typing(stream gen.ChatService_TypingServer) error {
 				RoomId:   currentRoomID,
 				Username: currentTypingUser,
 				IsTyping: false,
-			}); err != nil { log.Printf("Failed to send server info: %v", err) }
+			})
 		}
 		s.hub.UnregisterTyping(stream)
 	}()
@@ -1035,98 +1080,8 @@ func (s *server) GetChats(_ context.Context, req *gen.GetChatsRequest) (*gen.Get
 		})
 	}
 
-	// Add OWL AI chats from database
-	owlUsername := req.Username
-	if owlUsername == "" && queryIdentifier != "" && queryIdentifier != "00000000-0000-0000-0000-000000000000" {
-		if uname, err := s.db.GetUsernameByID(queryIdentifier); err == nil && uname != "" {
-			owlUsername = uname
-		}
-	}
-	if owlUsername != "" {
-		owlRows, err := s.db.Query(
-			"SELECT id, name, type, participants, created_at, creator_username, last_message_text, last_message_time FROM chats WHERE type = 'owl' AND creator_username = $1 ORDER BY created_at ASC",
-			owlUsername,
-		)
-		if err == nil {
-			for owlRows.Next() {
-				var c gen.ChatInfo
-				var createdAt time.Time
-				var lastMsg sql.NullString
-				var lastMsgTime sql.NullTime
-				if err := owlRows.Scan(&c.Id, &c.Name, &c.Type, &c.Participants, &createdAt, &c.Creator, &lastMsg, &lastMsgTime); err == nil {
-					c.CreatedAt = timestamppb.New(createdAt)
-					if lastMsgTime.Valid {
-						c.LastMessageTime = timestamppb.New(lastMsgTime.Time)
-					} else {
-						c.LastMessageTime = timestamppb.New(createdAt)
-					}
-					if lastMsg.Valid {
-						c.LastMessageText = lastMsg.String
-					}
-					chatInfos = append(chatInfos, &c)
-				}
-			}
-			owlRows.Close()
-		}
-	}
-
-	// Add Hermes sessions as hermes-type chats
-	if queryIdentifier != "" && queryIdentifier != "00000000-0000-0000-0000-000000000000" {
-		hermesRows, err := s.db.Query(`
-			SELECT s.id, s.name, s.active_agent_id, s.agent_mode, s.created_at, s.updated_at,
-			       COALESCE(m.content, '') as last_message_text,
-			       COALESCE(m.created_at, s.updated_at) as last_message_time
-			FROM hermes_sessions s
-			LEFT JOIN LATERAL (
-				SELECT content, created_at FROM hermes_messages
-				WHERE session_id = s.id AND role = 'assistant'
-				ORDER BY created_at DESC LIMIT 1
-			) m ON true
-			WHERE s.user_id = $1
-			ORDER BY s.updated_at DESC`, queryIdentifier)
-		if err == nil {
-			for hermesRows.Next() {
-				var id, name, agentID, mode, lastMsg string
-				var createdAt, updatedAt time.Time
-				var lastMsgTime sql.NullTime
-				if err := hermesRows.Scan(&id, &name, &agentID, &mode, &createdAt, &updatedAt, &lastMsg, &lastMsgTime); err == nil {
-					lastMsgTS := updatedAt
-					if lastMsgTime.Valid {
-						lastMsgTS = lastMsgTime.Time
-					}
-					chatInfos = append(chatInfos, &gen.ChatInfo{
-						Id:              id,
-						Name:            name,
-						Type:            "hermes",
-						ActiveAgentId:   agentID,
-						AgentMode:       mode,
-						CreatedAt:       timestamppb.New(createdAt),
-						LastMessageTime: timestamppb.New(lastMsgTS),
-						LastMessageText: lastMsg,
-					})
-				}
-			}
-			hermesRows.Close()
-		}
-	}
-
-	// Prepend OWL chats, append Hermes sessions at the end
-	// (owl chats are already in chatInfos from the DB query above,
-	//  hermes sessions were just added — rebuild the slice)
-	owlChats := make([]*gen.ChatInfo, 0)
-	regularChats := make([]*gen.ChatInfo, 0)
-	hermesChats := make([]*gen.ChatInfo, 0)
-	for _, c := range chatInfos {
-		if c.Type == "owl" {
-			owlChats = append(owlChats, c)
-		} else if c.Type == "hermes" {
-			hermesChats = append(hermesChats, c)
-		} else {
-			regularChats = append(regularChats, c)
-		}
-	}
-	chatInfos = append(owlChats, regularChats...)
-	chatInfos = append(chatInfos, hermesChats...)
+	// Note: AI chats (owl/hermes) are NOT included in GetAllChats.
+	// They are fetched separately via GetAIChats RPC and shown in AIBottomSheet.
 
 	return &gen.GetChatsResponse{Chats: chatInfos}, nil
 }
@@ -1575,6 +1530,16 @@ func (s *server) DeleteChat(_ context.Context, req *gen.DeleteChatRequest) (*gen
 	// 1. Get all participants and creator before deletion
 	chat, err := s.db.GetChat(req.ChatId)
 	if err != nil {
+		// Fallback: check if this is a hermes session that wasn't synced to chats
+		if s.hermesDB != nil {
+			if sessionID := s.hermesDB.GetSessionID(req.ChatId); sessionID != "" {
+				log.Printf("DeleteChat: Chat %s not in chats but found in hermes_sessions, cleaning up", req.ChatId)
+				s.hermesDB.DeleteSession(req.ChatId)
+				// Also try to delete from chats (may not exist, that's OK)
+				_ = s.db.DeleteChat(req.ChatId)
+				return &gen.DeleteChatResponse{Success: true, Message: "Hermes session deleted"}, nil
+			}
+		}
 		log.Printf("DeleteChat warning: Chat %s not found or DB error: %v", req.ChatId, err)
 		// Return error to inform user that chat is already deleted
 		return &gen.DeleteChatResponse{Success: false, Message: "Chat or group already deleted"}, nil
@@ -1616,11 +1581,16 @@ func (s *server) DeleteChat(_ context.Context, req *gen.DeleteChatRequest) (*gen
 		return &gen.DeleteChatResponse{Success: false, Message: err.Error()}, nil
 	}
 
-	log.Printf("DeleteChat success: Chat %s deleted. Notifying %d participants.", req.ChatId, len(participants))
+	log.Printf("DeleteChat success: Chat %s deleted.", req.ChatId)
 
 	// 5. Increment version for all former participants so their lists refresh
-	for _, p := range participants {
-		_ = s.db.IncrementUserChatListVersion(p)
+	// Skip for AI chats (owl/hermes) — participants contains UUIDs, not usernames,
+	// and the deleting user already knows the chat is gone. Broadcast below is enough.
+	if chat.Type != "owl" && chat.Type != "hermes" {
+		log.Printf("DeleteChat: Notifying %d participants.", len(participants))
+		for _, p := range participants {
+			_ = s.db.IncrementUserChatListVersion(p)
+		}
 	}
 
 	// 6. Send signal to clear cache for all participants
@@ -2927,9 +2897,33 @@ func (s *server) ChatWithOWL(req *gen.OWLRequest, stream gen.ChatService_ChatWit
 		chatID = "owl-" + userID
 	}
 
-	// Rate limit check
-	if !owlRateLimiter.allow(userID) {
-		return fmt.Errorf("rate limit exceeded: max 10 requests per minute")
+	// Auto-create OWL chat in DB if it doesn't exist (fixes FK constraint on owl_messages)
+	var existingChat string
+	err := s.db.QueryRow("SELECT id FROM chats WHERE id = $1", chatID).Scan(&existingChat)
+	if err != nil {
+		// Chat doesn't exist — create it
+		username := userID
+		if uname, err := s.db.GetUsernameByID(userID); err == nil && uname != "" {
+			username = uname
+		}
+		participantsJSON, _ := json.Marshal([]string{userID})
+		_, _ = s.db.Exec(
+			"INSERT INTO chats (id, name, type, participants, creator_username, creator_id) VALUES ($1, $2, 'owl', $3, $4, $5) ON CONFLICT (id) DO NOTHING",
+			chatID, "🤖 Чат с AI", string(participantsJSON), username, userID,
+		)
+	}
+
+	// Rate limit check: custom key users get 10/min, free tier gets 20/hour
+	settings := owlSessions.getSettings(chatID)
+	hasCustomKey := settings.UserAPIKey != ""
+	if hasCustomKey {
+		if !owlRateLimiter.allow(userID) {
+			return fmt.Errorf("rate limit exceeded: max 10 requests per minute")
+		}
+	} else {
+		if !freeTierRateLimiter.allow(userID) {
+			return fmt.Errorf("rate limit exceeded: max 20 requests per hour for free tier. Set your own API key in chat settings for unlimited access")
+		}
 	}
 
 	// System prompt
@@ -2942,9 +2936,6 @@ func (s *server) ChatWithOWL(req *gen.OWLRequest, stream gen.ChatService_ChatWit
 
 	// Build context from history
 	history := owlSessions.getHistory(chatID)
-
-	// Get per-chat settings from DB
-	settings := owlSessions.getSettings(chatID)
 
 	// Use model from request, then per-chat setting, then server default
 	model := req.Model
@@ -2969,7 +2960,7 @@ func (s *server) ChatWithOWL(req *gen.OWLRequest, stream gen.ChatService_ChatWit
 
 	// Call OpenRouter
 	log.Printf("OWL: calling OpenRouter for chat %s, model=%s, history_len=%d", chatID, model, len(history))
-	response, err := callOpenRouter(apiKey, model, systemPrompt, history)
+	response, err := callOpenRouterContext(context.Background(), apiKey, model, systemPrompt, history)
 	if err != nil {
 		log.Printf("OWL: OpenRouter error for chat %s: %v", chatID, err)
 		return fmt.Errorf("AI service error: %w", err)
@@ -3005,17 +2996,42 @@ func (s *server) ChatWithOWL(req *gen.OWLRequest, stream gen.ChatService_ChatWit
 	return nil
 }
 
-// CreateOwlChat creates a new OWL AI chat for the user
+// getNextChatNumber returns the next sequential number for a user's AI chat of given type.
+// Numbers are never reused after deletion — always MAX(existing) + 1.
+func (s *server) getNextChatNumber(userID, chatType string) int {
+	var maxNum sql.NullInt64
+	// Extract number from name like "Лава ИИ #3" or "Lava AI #3" or "Оркестратор #2"
+	// Pattern: " #<number>" at end of name
+	err := s.db.QueryRow(`
+		SELECT COALESCE(MAX(CAST(SUBSTRING(name FROM '#(\d+)$') AS INTEGER)), 0)
+		FROM chats
+		WHERE creator_id = $1 AND type = $2
+		AND name ~ '#\d+$'
+	`, userID, chatType).Scan(&maxNum)
+	if err != nil || !maxNum.Valid {
+		return 1
+	}
+	return int(maxNum.Int64) + 1
+}
+
+// generateChatName creates a localized name with sequential number for a new AI chat.
+func generateChatName(chatType string, number int) string {
+	switch chatType {
+	case "owl":
+		return fmt.Sprintf("Лава ИИ #%d", number)
+	case "hermes":
+		return fmt.Sprintf("Оркестратор #%d", number)
+	default:
+		return fmt.Sprintf("AI Chat #%d", number)
+	}
+}
+
+// CreateOwlChat creates a new OWL AI chat for the user with sequential numbering.
 func (s *server) CreateOwlChat(_ context.Context, req *gen.CreateOwlChatRequest) (*gen.CreateOwlChatResponse, error) {
 	log.Printf("CreateOwlChat: called user_id=%q name=%q", req.UserId, req.Name)
 	if req.UserId == "" {
 		log.Printf("CreateOwlChat: ERROR empty user_id")
 		return &gen.CreateOwlChatResponse{Success: false, Message: "user_id is required"}, nil
-	}
-
-	name := req.Name
-	if name == "" {
-		name = "🤖 Чат с AI"
 	}
 
 	// Look up username from users table by user_id
@@ -3025,21 +3041,30 @@ func (s *server) CreateOwlChat(_ context.Context, req *gen.CreateOwlChatRequest)
 	}
 	log.Printf("CreateOwlChat: resolved username=%q for user_id=%q", username, req.UserId)
 
-	chatID := "owl-" + username + "-" + uuid.New().String()[:8]
-	log.Printf("CreateOwlChat: creating chat %q for user %q", chatID, username)
+	// Generate sequential number for this user's OWL chats
+	num := s.getNextChatNumber(req.UserId, "owl")
+	name := req.Name
+	if name == "" {
+		name = generateChatName("owl", num)
+	}
 
+	chatID := "owl-" + uuid.New().String()
+	log.Printf("CreateOwlChat: creating chat %q name=%q for user %q", chatID, name, username)
+
+	participantsJSON, _ := json.Marshal([]string{req.UserId})
 	_, err := s.db.Exec(
-		"INSERT INTO chats (id, name, type, participants, creator_username) VALUES ($1, $2, 'owl', $3, $4)",
-		chatID, name, "["+username+"]", username,
+		"INSERT INTO chats (id, name, type, participants, creator_username, creator_id) VALUES ($1, $2, 'owl', $3, $4, $5)",
+		chatID, name, string(participantsJSON), username, req.UserId,
 	)
 	if err != nil {
 		log.Printf("CreateOwlChat: DB error: %v", err)
 		return &gen.CreateOwlChatResponse{Success: false, Message: "failed to create chat: " + err.Error()}, nil
 	}
 
-	log.Printf("CreateOwlChat: SUCCESS chat_id=%q user=%q", chatID, username)
+	log.Printf("CreateOwlChat: SUCCESS chat_id=%q name=%q user=%q", chatID, name, username)
 	return &gen.CreateOwlChatResponse{
 		ChatId:  chatID,
+		Name:    name,
 		Success: true,
 		Message: "OK",
 	}, nil
@@ -3054,12 +3079,12 @@ func (s *server) DeleteOwlChat(_ context.Context, req *gen.DeleteOwlChatRequest)
 		return &gen.DeleteOwlChatResponse{Success: false, Message: "user_id is required"}, nil
 	}
 
-	var creator string
-	err := s.db.QueryRow("SELECT creator_username FROM chats WHERE id = $1 AND type = 'owl'", req.ChatId).Scan(&creator)
+	var creatorID string
+	err := s.db.QueryRow("SELECT creator_id FROM chats WHERE id = $1 AND type = 'owl'", req.ChatId).Scan(&creatorID)
 	if err != nil {
 		return &gen.DeleteOwlChatResponse{Success: false, Message: "chat not found"}, nil
 	}
-	if creator != req.UserId {
+	if creatorID != req.UserId {
 		return &gen.DeleteOwlChatResponse{Success: false, Message: "not your chat"}, nil
 	}
 
@@ -3110,15 +3135,96 @@ func (s *server) UpdateOwlSettings(_ context.Context, req *gen.UpdateOwlSettings
 		return &gen.UpdateOwlSettingsResponse{Success: false, Message: "chat_id and user_id required"}, nil
 	}
 
-	// Verify ownership
-	var creator string
-	err := s.db.QueryRow("SELECT creator_username FROM chats WHERE id = $1 AND type = 'owl'", req.ChatId).Scan(&creator)
-	if err != nil || creator != req.UserId {
+	// Verify ownership — only by creator_id (UUID). creator_username is unreliable (username can change).
+	var ownerID string
+	err := s.db.QueryRow("SELECT creator_id FROM chats WHERE id = $1 AND type = 'owl'", req.ChatId).Scan(&ownerID)
+	if err != nil {
+		return &gen.UpdateOwlSettingsResponse{Success: false, Message: "chat not found"}, nil
+	}
+	if ownerID != req.UserId {
 		return &gen.UpdateOwlSettingsResponse{Success: false, Message: "not your chat"}, nil
 	}
 
 	owlSessions.saveSettings(req.ChatId, req.ApiKey, req.Model)
 	return &gen.UpdateOwlSettingsResponse{Success: true, Message: "OK"}, nil
+}
+
+// GetOwlSettings returns per-chat settings (API key, model)
+func (s *server) GetOwlSettings(_ context.Context, req *gen.GetOwlSettingsRequest) (*gen.GetOwlSettingsResponse, error) {
+	if req.ChatId == "" || req.UserId == "" {
+		return &gen.GetOwlSettingsResponse{}, nil
+	}
+
+	// Verify ownership — only by creator_id (UUID)
+	var ownerID string
+	err := s.db.QueryRow("SELECT creator_id FROM chats WHERE id = $1 AND type = 'owl'", req.ChatId).Scan(&ownerID)
+	if err != nil {
+		return &gen.GetOwlSettingsResponse{}, nil
+	}
+	if ownerID != req.UserId {
+		return &gen.GetOwlSettingsResponse{}, nil
+	}
+
+	settings := owlSessions.getSettings(req.ChatId)
+	freeModels, _ := s.db.GetFreeModels()
+	fmInfos := make([]*gen.FreeModelInfo, 0, len(freeModels))
+	for _, m := range freeModels {
+		fmInfos = append(fmInfos, &gen.FreeModelInfo{
+			ModelId:     m.ModelID,
+			DisplayName: m.DisplayName,
+			SortOrder:   int32(m.SortOrder),
+		})
+	}
+	return &gen.GetOwlSettingsResponse{
+		ApiKey:           settings.UserAPIKey,
+		Model:            settings.Model,
+		IsUsingCustomKey: settings.UserAPIKey != "",
+		FreeModels:       fmInfos,
+	}, nil
+}
+
+// ======= Hermes Chat Settings gRPC methods =======
+
+func (s *server) GetHermesSettings(_ context.Context, req *gen.GetHermesSettingsRequest) (*gen.GetHermesSettingsResponse, error) {
+	if req.SessionId == "" || req.UserId == "" {
+		return &gen.GetHermesSettingsResponse{}, nil
+	}
+
+	// Verify ownership — only by creator_id (UUID)
+	var ownerID string
+	err := s.db.QueryRow("SELECT creator_id FROM chats WHERE id = $1 AND type = 'hermes'", req.SessionId).Scan(&ownerID)
+	if err != nil {
+		return &gen.GetHermesSettingsResponse{}, nil
+	}
+	if ownerID != req.UserId {
+		return &gen.GetHermesSettingsResponse{}, nil
+	}
+
+	settings := hermesSettings.getSettings(req.SessionId)
+	return &gen.GetHermesSettingsResponse{
+		ApiKey:           settings.UserAPIKey,
+		Model:            settings.Model,
+		IsUsingCustomKey: settings.UserAPIKey != "",
+	}, nil
+}
+
+func (s *server) UpdateHermesSettings(_ context.Context, req *gen.UpdateHermesSettingsRequest) (*gen.UpdateHermesSettingsResponse, error) {
+	if req.SessionId == "" || req.UserId == "" {
+		return &gen.UpdateHermesSettingsResponse{Success: false, Message: "session_id and user_id required"}, nil
+	}
+
+	// Verify ownership — only by creator_id (UUID)
+	var ownerID string
+	err := s.db.QueryRow("SELECT creator_id FROM chats WHERE id = $1 AND type = 'hermes'", req.SessionId).Scan(&ownerID)
+	if err != nil {
+		return &gen.UpdateHermesSettingsResponse{Success: false, Message: "session not found"}, nil
+	}
+	if ownerID != req.UserId {
+		return &gen.UpdateHermesSettingsResponse{Success: false, Message: "not your session"}, nil
+	}
+
+	hermesSettings.saveSettings(req.SessionId, req.ApiKey, req.Model)
+	return &gen.UpdateHermesSettingsResponse{Success: true, Message: "OK"}, nil
 }
 
 // ======= Hermes Multi-Agent Orchestrator gRPC methods =======
@@ -3137,9 +3243,17 @@ func (s *server) ChatWithOrchestrator(req *gen.OrchestratorRequest, stream gen.C
 
 	log.Printf("[Lava] chat=%s user=%s session=%s msg=%q", chatID, userID, req.SessionId, truncateString(req.Message, 80))
 
-	// Rate limit check (reuse OWL rate limiter)
-	if !owlRateLimiter.allow(userID) {
-		return status.Error(codes.ResourceExhausted, "rate limit exceeded: max 10 requests per minute")
+	// Rate limit check: custom key users get 10/min, free tier gets 20/hour
+	hermSet := hermesSettings.getSettings(chatID)
+	hasCustomHermesKey := hermSet.UserAPIKey != ""
+	if hasCustomHermesKey {
+		if !owlRateLimiter.allow(userID) {
+			return status.Error(codes.ResourceExhausted, "rate limit exceeded: max 10 requests per minute")
+		}
+	} else {
+		if !freeTierRateLimiter.allow(userID) {
+			return status.Error(codes.ResourceExhausted, "rate limit exceeded: max 20 requests per hour for free tier. Set your own API key in chat settings for unlimited access")
+		}
 	}
 
 	// Check if orchestrator is initialized
@@ -3240,7 +3354,7 @@ func (s *server) ChatWithPipeline(req *gen.PipelineRequest, stream gen.ChatServi
 			return stream.Send(&gen.PipelineResponse{
 				Token:    token,
 				Finished: finished,
-			}); err != nil { log.Printf("Failed to send orchestrator response: %v", err) }
+			})
 		},
 	)
 
@@ -3249,7 +3363,9 @@ func (s *server) ChatWithPipeline(req *gen.PipelineRequest, stream gen.ChatServi
 		if err := stream.Send(&gen.PipelineResponse{
 			Finished: true,
 			Error:    err.Error(),
-		}); err != nil { log.Printf("Failed to send pipeline response: %v", err) }
+		}); err != nil {
+			log.Printf("Failed to send pipeline response: %v", err)
+		}
 		return nil
 	}
 
@@ -3509,24 +3625,50 @@ func (s *server) CreateHermesSession(_ context.Context, req *gen.CreateHermesSes
 		return &gen.CreateHermesSessionResponse{Success: false, Error: "user_id is required"}, nil
 	}
 
-	sessionID := "hermes-" + userID + "-" + uuid.New().String()[:8]
+	// Resolve username → UUID if needed (hermes_sessions.user_id is UUID type)
+	if _, err := uuid.Parse(userID); err != nil {
+		if uid, err := s.db.GetUserIdByUsername(userID); err == nil && uid != "" {
+			log.Printf("[Lava] CreateHermesSession: resolved username %q → UUID %q", userID, uid)
+			userID = uid
+		} else {
+			log.Printf("[Lava] CreateHermesSession: WARNING could not resolve username %q to UUID, using as-is", userID)
+		}
+	}
 
+	// Generate sequential number for this user's Hermes sessions
+	num := s.getNextChatNumber(userID, "hermes")
 	name := req.Name
 	if name == "" {
-		name = "Lava AI"
+		name = generateChatName("hermes", num)
 	}
+
+	sessionID := "hermes-" + uuid.New().String()
 
 	_, err := s.db.Exec(
 		"INSERT INTO hermes_sessions (id, user_id, name) VALUES ($1, $2, $3)",
 		sessionID, userID, name,
 	)
 	if err != nil {
-		log.Printf("[Lava] CreateHermesSession: DB error: %v", err)
+		log.Printf("[Lava] CreateHermesSession: DB error (hermes_sessions): %v", err)
 		return &gen.CreateHermesSessionResponse{Success: false, Error: err.Error()}, nil
 	}
 
-	log.Printf("[Lava] CreateHermesSession: OK session_id=%s", sessionID)
-	return &gen.CreateHermesSessionResponse{Success: true, SessionId: sessionID}, nil
+	// Also insert into chats so the session appears in chat list and can be deleted
+	username := userID
+	if uname, err := s.db.GetUsernameByID(userID); err == nil && uname != "" {
+		username = uname
+	}
+	participantsJSON, _ := json.Marshal([]string{userID})
+	_, err = s.db.Exec(
+		"INSERT INTO chats (id, name, type, participants, creator_username, creator_id) VALUES ($1, $2, 'hermes', $3, $4, $5) ON CONFLICT (id) DO NOTHING",
+		sessionID, name, string(participantsJSON), username, userID,
+	)
+	if err != nil {
+		log.Printf("[Lava] CreateHermesSession: WARNING failed to insert into chats: %v", err)
+	}
+
+	log.Printf("[Lava] CreateHermesSession: OK session_id=%s name=%s", sessionID, name)
+	return &gen.CreateHermesSessionResponse{Success: true, SessionId: sessionID, Name: name}, nil
 }
 
 // DeleteHermesSession — удаление сессии
@@ -3610,6 +3752,146 @@ func (s *server) GetRemoteAgentStatus(_ context.Context, req *gen.GetRemoteAgent
 		ActiveTasks:   int32(agent.ActiveTasks),
 		LastHeartbeat: agent.LastHeartbeat.Format(time.RFC3339),
 	}, nil
+}
+
+// GetAIChats returns all AI chats (OWL + Hermes) for the user
+func (s *server) GetAIChats(_ context.Context, req *gen.GetAIChatsRequest) (*gen.GetAIChatsResponse, error) {
+	if req.UserId == "" {
+		return &gen.GetAIChatsResponse{}, nil
+	}
+
+	var chats []*gen.AIChatInfo
+
+	// OWL chats from chats table
+	owlRows, err := s.db.Query(
+		"SELECT id, name, type, created_at FROM chats WHERE type = 'owl' AND creator_id = $1 ORDER BY created_at ASC",
+		req.UserId,
+	)
+	if err == nil {
+		for owlRows.Next() {
+			var id, name, chatType string
+			var createdAt time.Time
+			if err := owlRows.Scan(&id, &name, &chatType, &createdAt); err == nil {
+				owlSet := owlSessions.getSettings(id)
+				chats = append(chats, &gen.AIChatInfo{
+					Id:               id,
+					Name:             name,
+					Type:             chatType,
+					CreatedAt:        createdAt.Format(time.RFC3339),
+					IsUsingCustomKey: owlSet.UserAPIKey != "",
+					Model:            owlSet.Model,
+				})
+			}
+		}
+		owlRows.Close()
+	}
+
+	// Hermes sessions from hermes_sessions table
+	hermesRows, err := s.db.Query(
+		"SELECT id, name, created_at FROM hermes_sessions WHERE user_id = $1 ORDER BY created_at ASC",
+		req.UserId,
+	)
+	if err == nil {
+		for hermesRows.Next() {
+			var id, name string
+			var createdAt time.Time
+			if err := hermesRows.Scan(&id, &name, &createdAt); err == nil {
+				hermSet := hermesSettings.getSettings(id)
+				chats = append(chats, &gen.AIChatInfo{
+					Id:               id,
+					Name:             name,
+					Type:             "hermes",
+					CreatedAt:        createdAt.Format(time.RFC3339),
+					IsUsingCustomKey: hermSet.UserAPIKey != "",
+					Model:            hermSet.Model,
+				})
+			}
+		}
+		hermesRows.Close()
+	}
+
+	return &gen.GetAIChatsResponse{Chats: chats}, nil
+}
+
+// RenameAIChat renames an AI chat (OWL or Hermes)
+func (s *server) RenameAIChat(_ context.Context, req *gen.RenameAIChatRequest) (*gen.RenameAIChatResponse, error) {
+	if req.ChatId == "" || req.UserId == "" || req.NewName == "" {
+		return &gen.RenameAIChatResponse{Success: false, Error: "chat_id, user_id and new_name required"}, nil
+	}
+
+	// Try OWL chat first
+	var creatorID string
+	err := s.db.QueryRow("SELECT creator_id FROM chats WHERE id = $1 AND type = 'owl'", req.ChatId).Scan(&creatorID)
+	if err == nil && creatorID == req.UserId {
+		_, err = s.db.Exec("UPDATE chats SET name = $1 WHERE id = $2", req.NewName, req.ChatId)
+		if err != nil {
+			return &gen.RenameAIChatResponse{Success: false, Error: err.Error()}, nil
+		}
+		return &gen.RenameAIChatResponse{Success: true}, nil
+	}
+
+	// Try Hermes session
+	var userID string
+	err = s.db.QueryRow("SELECT user_id FROM hermes_sessions WHERE id = $1", req.ChatId).Scan(&userID)
+	if err == nil && userID == req.UserId {
+		_, err = s.db.Exec("UPDATE hermes_sessions SET name = $1 WHERE id = $2", req.NewName, req.ChatId)
+		if err != nil {
+			return &gen.RenameAIChatResponse{Success: false, Error: err.Error()}, nil
+		}
+		// Also update in chats if exists
+		_, _ = s.db.Exec("UPDATE chats SET name = $1 WHERE id = $2", req.NewName, req.ChatId)
+		return &gen.RenameAIChatResponse{Success: true}, nil
+	}
+
+	return &gen.RenameAIChatResponse{Success: false, Error: "chat not found or not your chat"}, nil
+}
+
+// ======= Free OpenRouter Models gRPC methods =======
+
+func (s *server) GetFreeModels(_ context.Context, _ *gen.GetFreeModelsRequest) (*gen.GetFreeModelsResponse, error) {
+	models, err := s.db.GetFreeModels()
+	if err != nil {
+		log.Printf("[FreeModels] GetFreeModels error: %v", err)
+		return &gen.GetFreeModelsResponse{}, nil
+	}
+	result := make([]*gen.FreeModelInfo, 0, len(models))
+	for _, m := range models {
+		result = append(result, &gen.FreeModelInfo{
+			ModelId:     m.ModelID,
+			DisplayName: m.DisplayName,
+			SortOrder:   int32(m.SortOrder),
+		})
+	}
+	return &gen.GetFreeModelsResponse{Models: result}, nil
+}
+
+func (s *server) SetFreeModel(_ context.Context, req *gen.SetFreeModelRequest) (*gen.SetFreeModelResponse, error) {
+	if req.AdminUserId == "" {
+		return &gen.SetFreeModelResponse{Success: false, Error: "admin_user_id required"}, nil
+	}
+	if !s.db.IsSuperAdmin(req.AdminUserId) {
+		return &gen.SetFreeModelResponse{Success: false, Error: "admin only"}, nil
+	}
+	if req.ModelId == "" {
+		return &gen.SetFreeModelResponse{Success: false, Error: "model_id required"}, nil
+	}
+	if err := s.db.AddFreeModel(req.ModelId, req.DisplayName, int(req.SortOrder)); err != nil {
+		return &gen.SetFreeModelResponse{Success: false, Error: err.Error()}, nil
+	}
+	return &gen.SetFreeModelResponse{Success: true}, nil
+}
+
+func (s *server) RemoveFreeModel(_ context.Context, req *gen.RemoveFreeModelRequest) (*gen.RemoveFreeModelResponse, error) {
+	if req.AdminUserId == "" {
+		return &gen.RemoveFreeModelResponse{Success: false, Error: "admin_user_id required"}, nil
+	}
+	if !s.db.IsSuperAdmin(req.AdminUserId) {
+		return &gen.RemoveFreeModelResponse{Success: false, Error: "admin only"}, nil
+	}
+	if err := s.db.RemoveFreeModel(req.ModelId); err != nil {
+		return &gen.RemoveFreeModelResponse{Success: false, Error: err.Error()}, nil
+	}
+	return &gen.RemoveFreeModelResponse{Success: true}, nil
 }
 
 // truncateString truncates a string to maxLen characters, adding "..." if truncated

@@ -702,6 +702,7 @@ service ChatService {
   rpc DeleteOwlChat(DeleteOwlChatRequest) returns (DeleteOwlChatResponse);
   rpc GetOwlHistory(GetOwlHistoryRequest) returns (GetOwlHistoryResponse);
   rpc UpdateOwlSettings(UpdateOwlSettingsRequest) returns (UpdateOwlSettingsResponse);
+  rpc GetOwlSettings(GetOwlSettingsRequest) returns (GetOwlSettingsResponse);
 
   // Hermes Multi-Agent Orchestrator
   rpc ChatWithOrchestrator(OrchestratorRequest) returns (stream OrchestratorResponse);
@@ -718,8 +719,32 @@ service ChatService {
   rpc DeployAgentTask(DeployAgentTaskRequest) returns (DeployAgentTaskResponse);
   rpc GetRemoteAgentStatus(GetRemoteAgentStatusRequest) returns (GetRemoteAgentStatusResponse);
 
+  // AI Chats management (unified list for OWL + Hermes)
+  rpc GetAIChats(GetAIChatsRequest) returns (GetAIChatsResponse);
+  rpc RenameAIChat(RenameAIChatRequest) returns (RenameAIChatResponse);
+
   // Hermes AI Pipeline (RAG + LLM + Tool Calling)
   rpc ChatWithPipeline(PipelineRequest) returns (stream PipelineResponse);
+
+  // Hermes Chat Settings
+  rpc GetHermesSettings(GetHermesSettingsRequest) returns (GetHermesSettingsResponse);
+  rpc UpdateHermesSettings(UpdateHermesSettingsRequest) returns (UpdateHermesSettingsResponse);
+
+  // Bot Commands
+  rpc ProcessBotCommand(BotCommandRequest) returns (BotCommandResponse);
+  rpc GetBotCommands(GetBotCommandsRequest) returns (GetBotCommandsResponse);
+  rpc GetOWLStatus(OWLStatusRequest) returns (OWLStatusResponse);
+
+  // Server Notifications
+  rpc SubscribeNotifications(SubscribeNotificationsRequest) returns (stream ServerNotification);
+  rpc GetNotificationHistory(GetNotificationHistoryRequest) returns (GetNotificationHistoryResponse);
+  rpc MarkNotificationsRead(MarkNotificationReadRequest) returns (MarkNotificationReadResponse);
+  rpc GetUnreadCount(GetUnreadCountRequest) returns (GetUnreadCountResponse);
+
+  // Free OpenRouter Models (admin-managed list for free tier)
+  rpc GetFreeModels(GetFreeModelsRequest) returns (GetFreeModelsResponse);
+  rpc SetFreeModel(SetFreeModelRequest) returns (SetFreeModelResponse);
+  rpc RemoveFreeModel(RemoveFreeModelRequest) returns (RemoveFreeModelResponse);
 }
 
 // ======= AI Pipeline Messages =======
@@ -784,6 +809,7 @@ message CreateOwlChatRequest {
 
 message CreateOwlChatResponse {
   string chat_id = 1;
+  string name = 4;
   bool success = 2;
   string message = 3;
 }
@@ -820,6 +846,18 @@ message UpdateOwlSettingsRequest {
   string model = 4;
 }
 
+message GetOwlSettingsRequest {
+  string chat_id = 1;
+  string user_id = 2;
+}
+
+message GetOwlSettingsResponse {
+  string api_key = 1;
+  string model = 2;
+  bool is_using_custom_key = 3;
+  repeated FreeModelInfo free_models = 4;
+}
+
 message UpdateOwlSettingsResponse {
   bool success = 1;
   string message = 2;
@@ -837,6 +875,42 @@ message OWLResponse {
   string text = 1;
   bool finished = 2;
   string error = 3;
+}
+
+// ======= Free OpenRouter Models =======
+
+message FreeModelInfo {
+  string model_id = 1;
+  string display_name = 2;
+  int32 sort_order = 3;
+}
+
+message GetFreeModelsRequest {}
+
+message GetFreeModelsResponse {
+  repeated FreeModelInfo models = 1;
+}
+
+message SetFreeModelRequest {
+  string model_id = 1;
+  string display_name = 2;
+  int32 sort_order = 3;
+  string admin_user_id = 4;
+}
+
+message SetFreeModelResponse {
+  bool success = 1;
+  string error = 2;
+}
+
+message RemoveFreeModelRequest {
+  string model_id = 1;
+  string admin_user_id = 2;
+}
+
+message RemoveFreeModelResponse {
+  bool success = 1;
+  string error = 2;
 }
 
 // ======= Hermes Multi-Agent Orchestrator messages =======
@@ -957,6 +1031,7 @@ message CreateHermesSessionRequest {
 message CreateHermesSessionResponse {
   bool success = 1;
   string session_id = 2;
+  string name = 4;
   string error = 3;
 }
 
@@ -1010,4 +1085,145 @@ message GetRemoteAgentStatusResponse {
   string status = 1;
   int32 active_tasks = 2;
   string last_heartbeat = 3;
+}
+
+// ======= AI Chats Management =======
+
+message GetAIChatsRequest {
+  string user_id = 1;
+}
+
+message AIChatInfo {
+  string id = 1;
+  string name = 2;
+  string type = 3; // "owl" or "hermes"
+  string created_at = 4;
+  bool is_using_custom_key = 5;
+  string model = 6;
+}
+
+message GetAIChatsResponse {
+  repeated AIChatInfo chats = 1;
+}
+
+message RenameAIChatRequest {
+  string chat_id = 1;
+  string user_id = 2;
+  string new_name = 3;
+}
+
+message RenameAIChatResponse {
+  bool success = 1;
+  string error = 2;
+}
+
+// ======= Bot Commands =======
+
+message BotCommandRequest {
+  string user_id = 1;
+  string username = 2;
+  string chat_id = 3;
+  string command = 4; // "/status", "/deploy", "/help"
+  repeated string args = 5;
+}
+
+message BotCommandResponse {
+  bool success = 1;
+  string response_text = 2;
+  bool is_error = 3;
+  string error_message = 4;
+}
+
+message BotCommandInfo {
+  string command = 1; // "/status"
+  string description = 2;
+  string usage = 3;
+  string category = 4; // "server", "ai", "system"
+}
+
+message GetBotCommandsRequest {
+  string user_id = 1;
+}
+
+message GetBotCommandsResponse {
+  repeated BotCommandInfo commands = 1;
+}
+
+message OWLStatusRequest {
+  string user_id = 1;
+}
+
+message OWLStatusResponse {
+  bool available = 1;
+  string model = 2;
+  int32 queue_length = 3;
+  string status = 4; // "ready", "busy", "offline"
+}
+
+// ======= Server Notifications =======
+
+message ServerNotification {
+  string id = 1;
+  string type = 2; // "deploy", "error", "info", "warning"
+  string title = 3;
+  string message = 4;
+  string timestamp = 5;
+  map<string, string> metadata = 6;
+  bool is_read = 7;
+}
+
+message SubscribeNotificationsRequest {
+  string user_id = 1;
+  repeated string types = 2; // filter by types
+}
+
+message GetNotificationHistoryRequest {
+  string user_id = 1;
+  int32 limit = 2;
+}
+
+message GetNotificationHistoryResponse {
+  repeated ServerNotification notifications = 1;
+}
+
+message MarkNotificationReadRequest {
+  string user_id = 1;
+  repeated string notification_ids = 2;
+}
+
+message MarkNotificationReadResponse {
+  bool success = 1;
+}
+
+message GetUnreadCountRequest {
+  string user_id = 1;
+}
+
+message GetUnreadCountResponse {
+  int32 count = 1;
+}
+
+// ======= Hermes Chat Settings (per-chat API key + model) =======
+
+message GetHermesSettingsRequest {
+  string session_id = 1;
+  string user_id = 2;
+}
+
+message GetHermesSettingsResponse {
+  string api_key = 1;
+  string model = 2;
+  bool is_using_custom_key = 3;
+}
+
+message UpdateHermesSettingsRequest {
+  string session_id = 1;
+  string user_id = 2;
+  string api_key = 3;
+  string model = 4;
+}
+
+message UpdateHermesSettingsResponse {
+  bool success = 1;
+  string message = 2;
 }

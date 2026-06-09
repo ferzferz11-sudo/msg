@@ -27,6 +27,10 @@ type Hub struct {
 
 	// Conferences: roomID -> participants list
 	conferences map[string]*Conference
+
+	// Grace period for reconnect: username -> disconnect timestamp
+	gracePeriods map[string]time.Time
+	graceMu      sync.Mutex
 }
 
 type Conference struct {
@@ -47,6 +51,7 @@ func NewHub(onStatusChange func()) *Hub {
 		callStreams:    make(map[gen.ChatService_CallSessionServer]string),
 		conferences:    make(map[string]*Conference),
 		onStatusChange: onStatusChange,
+		gracePeriods:   make(map[string]time.Time),
 	}
 }
 
@@ -138,27 +143,87 @@ func (h *Hub) GetRoom(stream gen.ChatService_ChatServer) string {
 	return h.rooms[stream]
 }
 
-// Unregister removes a stream from the broadcast list
+const gracePeriodDuration = 30 * time.Second
+
+// StartGracePeriod starts a grace period for a user after connection loss.
+// During grace period the user is considered "reconnecting" not "offline".
+func (h *Hub) StartGracePeriod(username string) {
+	h.graceMu.Lock()
+	h.gracePeriods[username] = time.Now()
+	h.graceMu.Unlock()
+}
+
+// IsInGracePeriod checks if user is within reconnect grace period.
+func (h *Hub) IsInGracePeriod(username string) bool {
+	h.graceMu.Lock()
+	defer h.graceMu.Unlock()
+	if t, ok := h.gracePeriods[username]; ok {
+		if time.Since(t) < gracePeriodDuration {
+			return true
+		}
+		delete(h.gracePeriods, username)
+	}
+	return false
+}
+
+// ClearGracePeriod clears grace period (on successful reconnect or explicit disconnect).
+func (h *Hub) ClearGracePeriod(username string) {
+	h.graceMu.Lock()
+	delete(h.gracePeriods, username)
+	h.graceMu.Unlock()
+}
+
+// GetGracePeriodRemaining returns remaining grace period duration, or 0 if expired.
+func (h *Hub) GetGracePeriodRemaining(username string) time.Duration {
+	h.graceMu.Lock()
+	defer h.graceMu.Unlock()
+	if t, ok := h.gracePeriods[username]; ok {
+		remaining := gracePeriodDuration - time.Since(t)
+		if remaining > 0 {
+			return remaining
+		}
+		delete(h.gracePeriods, username)
+	}
+	return 0
+}
+// Unregister removes a stream from the broadcast list.
+// For graceful reconnect: does NOT immediately remove if user is in grace period.
+// Instead starts a grace period so brief disconnects don't kill the session.
 func (h *Hub) Unregister(stream gen.ChatService_ChatServer) {
 	h.mu.Lock()
+	username := h.clients[stream]
 	delete(h.clients, stream)
 	delete(h.authenticated, stream)
 	delete(h.rooms, stream)
 	h.mu.Unlock()
+
+	// If user was authenticated, start grace period for reconnect
+	// This allows the client to reconnect within 30s without losing session state
+	if username != "" && username != "Anonymous" {
+		h.StartGracePeriod(username)
+	}
+
 	if h.onStatusChange != nil {
 		h.onStatusChange()
 	}
 }
 
-// GetOnlineUsers returns a list of unique usernames currently connected
+// GetOnlineUsers returns a list of unique usernames currently connected.
+// Includes users in grace period (reconnecting) so they appear online during brief disconnects.
 func (h *Hub) GetOnlineUsers() []string {
 	h.mu.RLock()
-	defer h.mu.RUnlock()
-
 	userMap := make(map[string]struct{})
 	for _, name := range h.clients {
 		userMap[name] = struct{}{}
 	}
+	h.mu.RUnlock()
+
+	// Also include users in grace period (reconnecting)
+	h.graceMu.Lock()
+	for username := range h.gracePeriods {
+		userMap[username] = struct{}{}
+	}
+	h.graceMu.Unlock()
 
 	var users []string
 	for name := range userMap {
