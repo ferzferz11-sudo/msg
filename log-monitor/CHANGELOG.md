@@ -2,6 +2,16 @@
 
 Все значимые изменения в log-monitor.
 
+## [1.1.1] — 2026-06-09
+
+### Исправлено
+- **Prod:** JS `text.split('\\n')` — исправлено экранирование в Go raw string. Было `\\\\n` → в браузер приходил literal `\n`, split не работал, весь лог отображался одной строкой и был красным (class "error"). Стало `\\n` → в браузер приходит `\n` (newline character), split работает корректно.
+- **Обе версии:** Убран `--since "24 hours ago"` из команды journalctl. `journalctl -n 100 --since 24h` брал первые (самые старые) 100 строк из 24h диапазона, а не последние. Теперь `-n 100` возвращает последние 100 записей.
+
+### Изменено
+- Prod `log-monitor.go`: строка `--since "24 hours ago"` убрана, комментарий обновлён
+- Dev `log-monitor-dev.go`: строка `--since "24 hours ago"` убрана, комментарий обновлён
+
 ## [1.1.0] — 2026-06-07
 
 ### Добавлено (dev версия)
@@ -14,7 +24,7 @@
 
 ### Изменено
 - Dev версия слушает порт `8091` (prod: `8090`)
-- Dev версия исходит пути `/server-logs-dev/*` (prod: `/server-logs/*`)
+- Dev версия использует пути `/server-logs-dev/*` (prod: `/server-logs/*`)
 
 ## [1.0.0] — 2026-06-02
 
@@ -25,7 +35,7 @@
 - Текстовый фильтр
 - Автопрокрутка
 - Подсветка строк по типу
-- Endpoint `/raw` — последние 100 строк за 24h через `journalctl`
+- Endpoint `/raw` — последние 100 строк через `journalctl`
 - Endpoint `/clear` — `journalctl --rotate` + `--vacuum-time=1s`
 - Endpoint `/health` — health check
 - Fallback на файл логов если journalctl недоступен
