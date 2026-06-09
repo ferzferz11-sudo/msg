@@ -1,26 +1,36 @@
 # Lavender Messenger — Задачи
 
-**Версия:** v1.1.1.16
+**Версия:** v1.1.2.0
 **Обновлено:** 2026-06-09
-**Статус:** ✅ v1.1.1.16 — Багфикс + полировка
+**Статус:** ✅ v1.1.2.0 — Prod релиз
 
 ---
 
-## ✅ v1.1.1.16 — Багфикс + полировка
+## ✅ v1.1.2.0 — Prod Релиз
+
+### Сервер
+- Prod обновлён с v1.1.0.15 до v1.1.1.15
+- Бэкап: lavender-server-backup-20260609
+- Порт 50051, systemd сервис lavender-server
+
+### Клиент
+- APK v1.1.1.16 доступен для скачивания
+- compileDebugKotlin ✅
+
+---
+
+## ✅ v1.1.1.16 — Багфикс + полировка (клиент)
 
 ### Android
-- **SplashActivity**: логотип 🦞 → ic_notification_logo (как в шторке логина)
-- **SplashActivity**: надпись "Lavender" → "Лава" (ru) / "Lava" (en) по языку
-- **AIBottomSheet**: rebuildContent() + updateChats() для перестройки без закрытия
-- **AIBottomSheet**: popup menu delete/settings больше не закрывает шторку
-- **ChatListActivity**: shouldShowAiSheetOnResume флаг для возврата из AI активити
-- **ChatListActivity**: return из OwlChat/HermesChat/Settings/Notifications → AI шторка открывается снова
-- **ThemeApplier**: aiFab добавлен в список FAB для кастомных тем
-- **activity_owl_settings.xml**: Save button использует style="@style/PrimaryButton"
+- SplashActivity: логотип 🦞 → ic_notification_logo, надпись "Лава"/"Lava"
+- AI навигация: return из AI активити → AI шторка открывается снова
+- AIBottomSheet: после удаления чата шторка перестраивается
+- ThemeApplier: aiFab добавлен в список FAB для кастомных тем
+- Save button: style="@style/PrimaryButton"
 - compileDebugKotlin ✅
-- Тег v1.1.1.16
 
-Сервер: без изменений (v1.1.1.15)
+### Сервер
+- Без изменений (v1.1.1.15)
 
 ---
 
@@ -33,27 +43,13 @@
 - Dev deployed
 
 ### Android
-- Бесплатные модели с сервера (GetFreeModels RPC)
-- Своя модель — текстовый ввод ID (только с ключом)
+- Бесплатные модели с сервера
+- Своя модель — текстовый ввод ID
 - Favorites flickering fix
-- compileDebugKotlin ✅
-
----
-
-## ✅ v1.1.1.14 — Дизайн + полировка
-- Анимации сообщений (fade-in + slide), typing indicator (ValueAnimator)
-- Bottom sheets: MaterialCardView, hover-эффекты, per-command иконки
-- Splash screen анимация, statusBarColor = bgColor
-- compileDebugKotlin ✅, dev deployed ✅
 
 ---
 
 ## 📋 Актуальный бэклог
-
-### Высокий приоритет (v1.1.2.0 — деплой на prod)
-1. **Деплой клиента на prod** — собрать APK, залить на сервер для клиентов
-2. **Деплой сервера на prod** — после клиента
-3. **Тестирование на prod**
 
 ### Средний приоритет
 - Модульные тесты для OWL streaming
@@ -62,13 +58,6 @@
 - Auth токены для удалённых агентов (JWT)
 - Qdrant + CLIP (production RAG)
 - NewChatActivity → ChatWidget миграция
-
----
-
-## 🟡 Известные баги
-
-### Favorites — мерцание при обновлении списка чатов
-- **Статус:** исправлено в c873fbc (v1.1.1.15)
 
 ---
 
