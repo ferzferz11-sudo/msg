@@ -232,7 +232,7 @@ async function fetchLogs() {
     const text = await resp.text();
     if (text === lastData) return;
     lastData = text;
-    const lines = text.split('\\n').filter(l => l.trim());
+    const lines = text.split('\n').filter(l => l.trim());
     const content = document.getElementById('log-content');
     content.innerHTML = '';
     lines.forEach(line => {
