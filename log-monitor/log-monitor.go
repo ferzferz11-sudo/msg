@@ -6,30 +6,110 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 )
 
-func main() {
-	port := os.Getenv("LOG_PORT")
-	if port == "" {
-		port = "8090"
-	}
+// Configuration via environment variables
+var (
+	port        = getEnv("LOG_PORT", "8090")
+	serviceName = getEnv("LOG_SERVICE", "lavender-server")
+	title       = getEnv("LOG_TITLE", "Lava Server Logs")
+	pathPrefix  = getEnv("LOG_PATH_PREFIX", "/server-logs")
+	logFile     = getEnv("LOG_FILE", "/root/LavenderMessenger/run/server.log")
+	colorScheme = getEnv("LOG_COLOR_SCHEME", "blue") // "blue" for prod, "yellow" for dev
+)
 
-	logFile := os.Getenv("LOG_FILE")
-	if logFile == "" {
-		logFile = "/root/LavenderMessenger/run/server.log"
+func getEnv(key, def string) string {
+	v := os.Getenv(key)
+	if v == "" {
+		return def
+	}
+	return v
+}
+
+// Color scheme
+type colors struct {
+	primary   string
+	header    string
+	statusDot string
+	active    string
+}
+
+func getColors() colors {
+	if colorScheme == "yellow" {
+		return colors{
+			primary:   "#d29922",
+			header:    "#d29922",
+			statusDot: "#d29922",
+			active:    "#d29922",
+		}
+	}
+	return colors{
+		primary:   "#58a6ff",
+		header:    "#58a6ff",
+		statusDot: "#3fb950",
+		active:    "#1f6feb",
+	}
+}
+
+func main() {
+	c := getColors()
+
+	// Determine raw endpoint and clear/raw URLs
+	rawPath := pathPrefix + "/raw"
+	clearPath := pathPrefix + "/clear"
+	healthPath := pathPrefix + "/health"
+
+	// Choose icon based on scheme
+	icon := "🖥️"
+	if colorScheme == "yellow" {
+		icon = "🧪"
 	}
 
 	// Main page — auto-refreshing log viewer
-	http.HandleFunc("/server-logs", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc(pathPrefix, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.Header().Set("Cache-Control", "no-cache")
-		fmt.Fprintf(w, `<!DOCTYPE html>
+
+		// Build clear button HTML
+		clearBtn := `<button onclick="clearLog()">Clear</button>`
+		clearJS := `
+  if (!confirm('Clear all server logs?')) return;
+  fetch('` + clearPath + `', {method: 'POST'})
+    .then(() => {
+      document.getElementById('log-content').innerHTML = '';
+      lastData = '';
+    });`
+		clearConfirm := "Clear all server logs?"
+
+		if colorScheme == "yellow" {
+			clearBtn = `<button onclick="clearLog()" id="btn-clear" style="background:#da3633;border-color:#da3633;color:#fff;">🗑 Clear</button>`
+			clearConfirm = "Clear all dev server logs?"
+			clearJS = `
+  if (!confirm('` + clearConfirm + `')) return;
+  const btn = document.getElementById('btn-clear');
+  btn.textContent = '⏳ Clearing...';
+  btn.disabled = true;
+  fetch('` + clearPath + `', {method: 'POST'})
+    .then(() => {
+      document.getElementById('log-content').innerHTML = '<div class="log-line info">— Logs cleared —</div>';
+      lastData = '';
+      btn.textContent = '🗑 Clear';
+      btn.disabled = false;
+    })
+    .catch(() => {
+      btn.textContent = '🗑 Clear';
+      btn.disabled = false;
+    });`
+		}
+
+		html := fmt.Sprintf(`<!DOCTYPE html>
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Lava Server Logs</title>
+<title>%s</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -52,7 +132,7 @@ body {
 }
 .header h1 {
   font-size: 16px;
-  color: #58a6ff;
+  color: %s;
 }
 .header .status {
   display: flex;
@@ -62,8 +142,8 @@ body {
 .status-dot {
   width: 8px;
   height: 8px;
-  border-radius: 50%;
-  background: #3fb950;
+  border-radius: 50%%;
+  background: %s;
   animation: pulse 2s infinite;
 }
 @keyframes pulse {
@@ -88,7 +168,7 @@ body {
   font-size: 12px;
 }
 .toolbar button:hover { background: #30363d; }
-.toolbar button.active { background: #1f6feb; border-color: #1f6feb; }
+.toolbar button.active { background: %s; border-color: %s; %s }
 .log-container {
   background: #0d1117;
   border: 1px solid #30363d;
@@ -126,14 +206,14 @@ body {
   color: #8b949e;
   cursor: pointer;
 }
-.filter-bar input[type="checkbox"] { accent-color: #1f6feb; }
+.filter-bar input[type="checkbox"] { accent-color: %s; }
 #log-content { min-height: 200px; }
 .auto-scroll { margin-left: auto; }
 </style>
 </head>
 <body>
 <div class="header">
-  <h1>🖥️ Lava Server Logs</h1>
+  <h1>%s %s</h1>
   <div class="status">
     <span class="status-dot"></span>
     <span id="status-text">Live</span>
@@ -145,7 +225,7 @@ body {
   <button onclick="setRefresh(5000)" id="btn-5s">5s</button>
   <button onclick="setRefresh(10000)" id="btn-10s">10s</button>
   <button onclick="togglePause()" id="btn-pause">⏸ Pause</button>
-  <button onclick="clearLog()">Clear</button>
+  %s
   <button onclick="scrollToBottom()">⬇ Bottom</button>
   <label class="auto-scroll"><input type="checkbox" id="auto-scroll" checked> Auto-scroll</label>
 </div>
@@ -188,12 +268,7 @@ function restartTimer() {
 }
 
 function clearLog() {
-  if (!confirm('Clear all server logs?')) return;
-  fetch('/server-logs/clear', {method: 'POST'})
-    .then(() => {
-      document.getElementById('log-content').innerHTML = '';
-      lastData = '';
-    });
+  ` + clearJS + `
 }
 
 function scrollToBottom() {
@@ -228,7 +303,7 @@ function shouldShow(line) {
 async function fetchLogs() {
   if (paused) return;
   try {
-    const resp = await fetch('/server-logs/raw?t=' + Date.now());
+    const resp = await fetch('` + rawPath + `?t=' + Date.now());
     const text = await resp.text();
     if (text === lastData) return;
     lastData = text;
@@ -239,69 +314,78 @@ async function fetchLogs() {
       const div = document.createElement('div');
       div.className = 'log-line ' + classifyLine(line);
       div.textContent = line;
-      if (shouldShow(line)) {
-        content.appendChild(div);
-      }
+      if (shouldShow(line)) content.appendChild(div);
     });
-    if (document.getElementById('auto-scroll').checked) {
-      scrollToBottom();
-    }
-  } catch(e) {
-    console.error('fetch error:', e);
-  }
+    if (document.getElementById('auto-scroll').checked) scrollToBottom();
+  } catch(e) { console.error('fetch error:', e); }
 }
 
-// Initial fetch
 fetchLogs();
 restartTimer();
 </script>
 </body>
-</html>`)
+</html>`,
+			title, c.header, c.statusDot, c.active, c.active,
+			func() string {
+				if colorScheme == "yellow" {
+					return "color: #000;"
+				}
+				return ""
+			}(),
+			c.active, icon, title, clearBtn)
+		w.Write([]byte(html))
 	})
 
-	// Clear logs endpoint
-	http.HandleFunc("/server-logs/clear", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "POST" {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-		cmd := exec.Command("journalctl", "--rotate")
-		cmd.Run()
-		cmd = exec.Command("journalctl", "--vacuum-time=1s")
-		cmd.Run()
-		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprintf(w, `{"status":"ok"}`)
-	})
-
-	// Raw log endpoint — last 100 lines (newest first, then reversed for display)
-	http.HandleFunc("/server-logs/raw", func(w http.ResponseWriter, r *http.Request) {
+	// Raw log endpoint
+	http.HandleFunc(rawPath, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.Header().Set("Cache-Control", "no-cache")
 
-		cmd := exec.Command("journalctl", "-u", "lavender-server", "--no-pager", "-n", "100", "--output=short-iso")
+		cmd := exec.Command("journalctl", "-u", serviceName, "--no-pager", "-n", "100", "--output=short-iso")
 		out, err := cmd.Output()
 		if err != nil || len(out) == 0 {
-			logFile := os.Getenv("LOG_FILE")
-			if logFile == "" {
-				logFile = "/root/LavenderMessenger/run/server.log"
+			// Fallback: try log file (prod only)
+			if logFile != "" {
+				data, err := os.ReadFile(logFile)
+				if err == nil && len(data) > 0 {
+					w.Write(data)
+					return
+				}
 			}
-			data, err := os.ReadFile(logFile)
-			if err != nil {
-				fmt.Fprintf(w, "No logs available. Log file: %s (err: %v)\n", logFile, err)
-				return
-			}
-			w.Write(data)
+			fmt.Fprintf(w, "No logs for service: %s\n", serviceName)
 			return
 		}
 		w.Write(out)
 	})
 
-	// Health check
-	http.HandleFunc("/server-logs/health", func(w http.ResponseWriter, r *http.Request) {
+	// Clear logs endpoint
+	http.HandleFunc(clearPath, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		if colorScheme == "yellow" {
+			// Dev: also signal the service
+			exec.Command("systemctl", "kill", "-s", "USR1", serviceName).Run()
+			exec.Command("journalctl", "--vacuum-size=1M").Run()
+		}
+		exec.Command("journalctl", "--rotate").Run()
+		exec.Command("journalctl", "--vacuum-time=1s").Run()
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprintf(w, `{"status":"ok","time":"%s"}`, time.Now().Format(time.RFC3339))
+		fmt.Fprintf(w, `{"status":"ok"}`)
 	})
 
-	log.Printf("Log monitor starting on port %s", port)
+	// Health check
+	http.HandleFunc(healthPath, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintf(w, `{"status":"ok","service":"%s","time":"%s"}`, serviceName, time.Now().Format(time.RFC3339))
+	})
+
+	log.Printf("Log monitor starting on port %s (service: %s, path: %s, color: %s)", port, serviceName, pathPrefix, colorScheme)
 	log.Fatal(http.ListenAndServe(":"+port, nil))
+}
+
+// Helper to check if a string contains a substring (for template)
+func contains(s, substr string) bool {
+	return strings.Contains(s, substr)
 }
