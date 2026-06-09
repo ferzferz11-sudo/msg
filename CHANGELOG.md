@@ -1,5 +1,18 @@
 # Lavender Messenger — Server Changelog
 
+## [1.1.1.14] - 2026-06-09
+- Версия обновлена до 1.1.1.14
+- **Дизайн + полировка UI** (Android):
+  - Анимации появления сообщений (fade-in + slide) в ChatMessageAdapter
+  - Улучшенный typing indicator — анимированные точки вместо статичных
+  - Полировка AIBottomSheet — иконки команд (OWL/Hermes), hover-эффекты, единый стиль
+  - Полировка CommandBottomSheet — иконки команд, hover-эффекты, скругления
+  - StandardBottomSheet — обёрнут в MaterialCardView (тени, скругления 28dp)
+  - Splash screen — анимация загрузки (fade-in логотипа + названия)
+  - Статус бар — цвет под тему для AI экранов
+  - Тёмная тема — проверены и обновлены все AI-экраны
+- Серверные изменения отсутствуют, все фичи v1.1.1.13 работают
+
 ## [1.1.1.13] - 2026-07-18
 - Версия обновлена до 1.1.1.13
 - Полное тестирование всех фич v1.1.1.x: AI чаты (OWL + Hermes), бот-команды, rate limiting, per-chat settings, reconnect, notifications

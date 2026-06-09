@@ -32,6 +32,32 @@ ANDROID:
 
 ---
 
+## Статус: v1.1.1.14 ЗАВЕРШЕНА
+
+### Сервер v1.1.1.14 (`/root/msg`)
+
+| Компонент | Статус | Файл |
+|-----------|--------|------|
+| ServerVersion 1.1.1.14 | ✅ | `server.go:33` |
+| Серверных изменений нет | — | все фичи v1.1.1.13 работают |
+| Dev deployed | ✅ | работает |
+
+### Android v1.1.1.14 (`/root/msg.client.android`)
+
+| Компонент | Статус | Файл |
+|-----------|--------|------|
+| version.txt 1.1.1.14 | ✅ | `version.txt` |
+| changelog.txt обновлён | ✅ | `changelog.txt` |
+| Анимации сообщений (fade-in + slide) | ✅ | `ChatMessageAdapter.kt` |
+| Анимированный typing indicator | ✅ | `ChatMessageAdapter.kt` TypingHolder |
+| Bottom sheet полировка (тени, скругления, hover) | ✅ | `WidgetSystem.kt`, `AIBottomSheet.kt`, `CommandBottomSheet.kt` |
+| Splash screen анимация | ✅ | `SplashActivity.kt` + `themes_splash.xml` |
+| Статус бар под тему | ✅ | `ThemeApplier.kt` |
+| Тёмная тема AI экранов | ✅ | `colors.xml` |
+| compileDebugKotlin | ✅ | passes |
+
+---
+
 ## Статус: v1.1.1.13 ЗАВЕРШЕНА
 
 ### Сервер v1.1.1.13 (`/root/msg`)
@@ -259,7 +285,8 @@ ANDROID:
 
 | Версия | Сервер | Android |
 |--------|--------|---------|
-| v1.1.0.13 | ✅ | ✅ |
+| v1.1.1.14 | ✅ | ✅ |
+| v1.1.1.13 | ✅ | ✅ |
 | v1.1.0.14 | ✅ | ✅ |
 | v1.1.0.15 | ✅ | ✅ |
 | v1.1.0.16 | ✅ | ✅ |
@@ -293,7 +320,8 @@ ANDROID:
 2. ~~**Bug fix: messages disappearing**~~ ✅ v1.1.1.12
 3. ~~**Bug fix: unread counter**~~ ✅ v1.1.1.12
 4. ~~**Полное тестирование + v1.1.1.13**~~ ✅ — все фичи проверены, dev deployed
-5. **Деплой на prod → v1.1.2.0** — после подтверждения стабильности
+5. ~~**Дизайн + полировка v1.1.1.14**~~ ✅ — анимации, typing indicator, bottom sheets, splash, status bar
+6. **Деплой на prod → v1.1.2.0** — после подтверждения стабильности
 
 ### Средний приоритет
 - ~~NotificationActivity badge~~ ✅ v1.1.1.7
@@ -302,6 +330,7 @@ ANDROID:
 - ~~Hermes per-chat settings~~ ✅ v1.1.1.10
 - ~~Rate limiting (free tier 20/hr)~~ ✅ v1.1.1.10
 - ~~Показ ключа/модели в шапке чата~~ ✅ v1.1.1.11
+- ~~Дизайн + полировка UI~~ ✅ v1.1.1.14
 - Модульные тесты для OWL streaming
 
 ### Низкий приоритет
@@ -366,11 +395,11 @@ cd /root/msg.client.android
 
 ---
 
-## Промпт для следующей сессии (v1.1.1.14 — Дизайн + тестирование фишек)
+## Промпт для следующей сессии (v1.1.1.15 — Тестирование + багфикс перед релизом)
 
 ```
-Продолжаем работу над Lavender Messenger. v1.1.1.13 завершена:
-- Полное тестирование всех фич v1.1.1.x (AI чаты, бот-команды, rate limits, reconnect, notifications)
+Продолжаем работу над Lavender Messenger. v1.1.1.14 завершена:
+- Дизайн + полировка UI: анимации сообщений, typing indicator, bottom sheets, splash screen
 - Dev сервер обновлён и работает
 - compileDebugKotlin проходит
 
@@ -378,25 +407,14 @@ cd /root/msg.client.android
 - Сервер: /root/msg, dev порт 50052, prod порт 50051
 - Android: /root/msg.client.android
 - Оба репозитория на ветке feat/1.1.1.x
-- v1.1.1.13 тег на обоих репозиториях
+- v1.1.1.14 тег на обоих репозиториях
 - Dev сервер обновлён и работает
 
-Текущая версия: v1.1.1.13
+Текущая версия: v1.1.1.14
 
-Что нужно сделать (v1.1.1.14):
+Что нужно сделать (v1.1.1.15):
 
-1. ДИЗАЙНЕРСКИЕ ВЕЩИ (Android UI/UX):
-   - Улучшить визуал AI чатов (OWL + Hermes) — сделать красиво для заивки
-   - Анимации появления сообщений (fade-in, slide)
-   - Улучшить typing indicator (анимированные точки)
-   - Полировка AIBottomSheet — тени, скругления, отступы
-   - Полировка CommandBottomSheet — иконки команд, hover-эффекты
-   - Единый стиль всех bottom sheet
-   - Тёмная тема — проверить/исправить все AI-экраны
-   - Splash screen — анимация загрузки
-   - Статус бар — цвет под тему
-
-2. ТЕСТИРОВАНИЕ ФИШЕК (end-to-end):
+1. ТЕСТИРОВАНИЕ ФИШЕК (end-to-end на dev сервере):
    - OWL AI: отправить сообщение → получить стриминг ответ
    - Hermes Orchestrator: отправить сообщение → проверить маршрутизацию к агенту
    - Бот-команды: /status, /help, /version, /ai — все должны работать
@@ -407,8 +425,11 @@ cd /root/msg.client.android
    - Множественные чаты: создать 3 OWL + 3 Hermes → проверить нумерацию
    - Long-press на чат → PopupMenu (Настройки / Удалить)
    - Key/model banner в шапке AI чатов
+   - Проверить анимации сообщений и typing indicator
 
-3. ИСПРАВЛЕНИЕ НАЙДЕННЫХ БАГОВ
+2. ИСПРАВЛЕНИЕ НАЙДЕННЫХ БАГОВ
+
+3. Если багов нет → деплой на prod → v1.1.2.0
 
 Архитектура (важно!):
 - OwlGrpc.kt — отдельный файл для OWL
