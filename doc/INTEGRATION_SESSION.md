@@ -32,6 +32,31 @@ ANDROID:
 
 ---
 
+## Статус: v1.1.1.12 ЗАВЕРШЕНА
+
+### Сервер v1.1.1.12 (`/root/msg`)
+
+| Компонент | Статус | Файл |
+|-----------|--------|------|
+| ServerVersion 1.1.1.12 | ✅ | `server.go:33` |
+| Нет серверных изменений | — | все фичи v1.1.1.11 работают |
+| Dev deployed | ✅ | работает |
+
+### Android v1.1.1.12 (`/root/msg.client.android`)
+
+| Компонент | Статус | Файл |
+|-----------|--------|------|
+| User messages не пропадают из OWL чата | ✅ | `OwlChatViewModel.kt` addUserMessage/addBotMessage |
+| User messages не пропадают из Hermes чата | ✅ | `HermesChatActivity.kt` — убран дубль в adapter |
+| refreshUnreadCount() в onResume() | ✅ | `ChatListActivity.kt` |
+| CommandBottomSheet — единая шторка команд | ✅ | `ui/widget/CommandBottomSheet.kt` |
+| Notifications + badge в AIBottomSheet | ✅ | `AIBottomSheet.kt` |
+| version.txt 1.1.1.12 | ✅ | `version.txt` |
+| changelog.txt обновлён | ✅ | `changelog.txt` |
+| compileDebugKotlin | ✅ | passes |
+
+---
+
 ## Статус: v1.1.1.11 ЗАВЕРШЕНА
 
 ### Сервер v1.1.1.11 (`/root/msg`)
@@ -228,14 +253,15 @@ ANDROID:
 | v1.1.1.8 | ✅ | ✅ |
 | v1.1.1.9 | ✅ | ✅ |
 | v1.1.1.10 | ✅ | ✅ |
-| v1.1.1.11 | ✅ | ✅ |
+|| v1.1.1.10 | ✅ | ✅ |
+|| v1.1.1.11 | ✅ | ✅ |
+|| v1.1.1.12 | ✅ | ✅ |
 
 ---
 
 ## Известные проблемы
 
 - Server migration warnings: `role "lavender" does not exist` (не критично)
-- ~~Невалидный JSON в participants при создании OWL/Hermes чатов~~ ✅ Исправлено
 
 ---
 
@@ -243,7 +269,9 @@ ANDROID:
 
 ### Перед деплоем на prod (обязательно)
 1. ~~**Сессия: Тестирование (v1.1.1.11)**~~ ✅ — key/model banner + robot icon done
-2. **Деплой на prod → v1.1.2.0** — после полного тестирования
+2. ~~**Bug fix: messages disappearing**~~ ✅ v1.1.1.12
+3. ~~**Bug fix: unread counter**~~ ✅ v1.1.1.12
+4. **Деплой на prod → v1.1.2.0** — после полного тестирования
 
 ### Средний приоритет
 - ~~NotificationActivity badge~~ ✅ v1.1.1.7
@@ -319,22 +347,24 @@ cd /root/msg.client.android
 ## Промпт для следующей сессии (v1.1.2.0 — деплой на prod)
 
 ```
-Продолжаем работу над Lavender Messenger. v1.1.1.11 завершена:
-- ic_ai.xml заменён на robot vector drawable
-- Показ ключа/модели в шапке AI чатов (toolbarInfo в ChatWidget)
-- OwlChatActivity и HermesChatActivity загружают настройки и показывают баннер
+Продолжаем работу над Lavender Messenger. v1.1.1.12 завершена:
+- Исправлено: сообщения пользователя не пропадают из AI чатов (OWL + Hermes)
+- Исправлено: счётчик непрочитанных обновляется в onResume()
+- Новое: CommandBottomSheet — единая шторка команд с описанием и тапом
+- Новое: секция «Уведомления» с бейджем в AIBottomSheet
+- Per-chat API key + model для OWL и Hermes через OwlSettingsActivity
 
 Контекст:
 - Сервер: /root/msg, dev порт 50052, prod порт 50051
 - Android: /root/msg.client.android
 - Оба репозитория на ветке feat/1.1.1.x
-- v1.1.1.11 тег на обоих репозиториях
+- v1.1.1.12 тег на обоих репозиториях
 - Dev сервер обновлён и работает
 
-Текущая версия: v1.1.1.11
+Текущая версия: v1.1.1.12
 
 Что нужно сделать:
-1. Полное тестирование всех фич
+1. Полное тестирование всех фич (AI чаты, команды, настройки, rate limits)
 2. Исправление найденных багов
 3. Деплой на prod → v1.1.2.0
 

@@ -1,5 +1,15 @@
 # Lavender Messenger — Server Changelog
 
+## [1.1.1.12] - 2026-06-09
+- Версия обновлена до 1.1.1.12
+- **Нет серверных изменений** — все фичи предыдущих версий работают
+- Dev сервер обновлён и работает
+
+## [1.1.1.11] - 2026-06-08
+- Версия обновлена до 1.1.1.11
+- **Key/model info banner:** показ источника ключа и модели в шапке AI-чатов (toolbarInfo в ChatWidget)
+- **Robot icon:** ic_ai.xml заменён на robot vector drawable
+
 ## [1.1.1.10] - 2026-06-08
 - Версия обновлена до 1.1.1.10
 - **Hermes per-chat settings:** таблица `hermes_chat_settings`, RPCs `GetHermesSettings`/`UpdateHermesSettings` — per-session API key + model

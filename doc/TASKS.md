@@ -1,8 +1,25 @@
 # Lavender Messenger — Задачи
 
-**Версия:** v1.1.1.11
-**Обновлено:** 2026-06-08
-**Статус:** ✅ v1.1.1.11 — Key/model info banner + robot icon
+**Версия:** v1.1.1.12
+**Обновлено:** 2026-06-09
+**Статус:** ✅ v1.1.1.12 — Bug fixes + Command bottom sheet + Notification badge
+
+---
+
+## ✅ Сделано (v1.1.1.12 — Night session)
+
+### Android
+- **Bug fix: messages disappearing** — user messages now via ViewModel (addUserMessage/addBotMessage), not directly in adapter
+- **Bug fix: unread counter** — refreshUnreadCount() added to onResume()
+- **CommandBottomSheet** — unified command picker in AIBottomSheet style (OWL + Hermes)
+- **Notifications + badge in AIBottomSheet** — unread count shown at top of AI sheet
+- **version.txt** — bumped to 1.1.1.12
+- **changelog.txt** — updated with user-facing RU changelog
+- compileDebugKotlin ✅
+
+### Server
+- **ServerVersion 1.1.1.12** — version bump (no server-side changes, all v1.1.1.11 features work)
+- Dev deployed ✅
 
 ---
 
