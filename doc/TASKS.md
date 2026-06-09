@@ -1,8 +1,28 @@
 # Lavender Messenger — Задачи
 
-**Версия:** v1.1.1.14
+**Версия:** v1.1.1.15
 **Обновлено:** 2026-06-09
-**Статус:** ✅ v1.1.1.14 — Дизайн + полировка UI
+**Статус:** ✅ v1.1.1.15 — Бесплатные модели + своя модель
+
+---
+
+## ✅ v1.1.1.15 — Бесплатные модели + своя модель
+
+### Server
+- **free_openrouter_models table** — model_id, display_name, is_active, sort_order
+- **GetFreeModels RPC** — получение списка бесплатных моделей
+- **SetFreeModel / RemoveFreeModel RPC** — админ-управление
+- **GetOwlSettings** возвращает free_models в ответе
+- **Proto:** FreeModelInfo, GetFreeModelsRequest/Response, SetFreeModelRequest/Response
+- Dev deployed
+
+### Android
+- **version.txt** — bumped to 1.1.1.15
+- **changelog.txt** — обновлён
+- **Бесплатные модели с сервера** — GetFreeModels RPC вместо хардкода
+- **Своя модель** — текстовый ввод ID модели (только с ключом)
+- **Favorites flickering fix** — startSync() + updateAvatarCache() offset
+- compileDebugKotlin ✅
 
 ---
 

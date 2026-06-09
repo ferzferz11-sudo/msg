@@ -1,5 +1,15 @@
 # Lavender Messenger — Server Changelog
 
+## [1.1.1.15] - 2026-06-09
+- Версия обновлена до 1.1.1.15
+- **Free OpenRouter Models:** новая таблица `free_openrouter_models` — управляемый список бесплатных моделей
+- **RPC GetFreeModels:** получение списка бесплатных моделей (model_id, display_name, sort_order)
+- **RPC SetFreeModel / RemoveFreeModel:** админ-управление списком бесплатных моделей
+- **GetOwlSettings:** теперь возвращает `free_models` — список бесплатных моделей в ответе
+- **Proto:** добавлены `FreeModelInfo`, `GetFreeModelsRequest/Response`, `SetFreeModelRequest/Response`, `RemoveFreeModelRequest/Response`
+- **Favorites flickering fix:** startSync() теперь включает Favorites в setChats(), updateAvatarCache() корректно смещает позиции
+- Dev сервер обновлён и работает
+
 ## [1.1.1.14] - 2026-06-09
 - Версия обновлена до 1.1.1.14
 - **Дизайн + полировка UI** (Android):

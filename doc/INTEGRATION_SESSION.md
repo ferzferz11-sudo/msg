@@ -1,6 +1,6 @@
 # Lavender Messenger — Интеграционная сессия
 
-**Текущая версия:** v1.1.1.14
+**Текущая версия:** v1.1.1.15
 **Обновлено:** 2026-06-09
 
 ## Контекст
@@ -32,6 +32,27 @@ ANDROID:
 ```
 
 Принцип: полная изоляция OWL и Hermes — разные файлы, разные SharedFlows, разные rate limiters.
+
+---
+
+## Статус: v1.1.1.15 ЗАВЕРШЕНА
+
+### Сервер v1.1.1.15 (`/root/msg`)
+- ServerVersion 1.1.1.15
+- Таблица `free_openrouter_models` — управляемый список бесплатных моделей
+- RPC `GetFreeModels`, `SetFreeModel` (admin), `RemoveFreeModel` (admin)
+- `GetOwlSettings` возвращает `free_models` в ответе
+- Proto: FreeModelInfo, GetFreeModelsRequest/Response, SetFreeModelRequest/Response
+- Dev deployed и работает
+
+### Android v1.1.1.15 (`/root/msg.client.android`)
+- version.txt 1.1.1.15, changelog.txt обновлён
+- Бесплатные модели загружаются с сервера (GetFreeModels RPC)
+- Без ключа: только бесплатные модели, OWL Alpha первая
+- С ключом: бесплатные + «Своя модель» (текстовый ввод)
+- Поле «Своя модель» скрыто без ключа + подсказка
+- Favorites flickering fix: startSync() + updateAvatarCache() offset fix
+- compileDebugKotlin passes
 
 ---
 
@@ -149,7 +170,52 @@ cd /root/msg.client.android
 
 ---
 
-## Промпт для следующей сессии (v1.1.1.15 — Тестирование + багфикс перед релизом)
+## Промпт для следующей сессии (v1.1.1.16 — Тестирование + багфикс перед релизом)
+
+```
+Продолжаем работу над Lavender Messenger. v1.1.1.15 завершена:
+- Бесплатные модели загружаются с сервера (таблица free_openrouter_models)
+- Без ключа: только бесплатные модели, OWL Alpha первая
+- С ключом: бесплатные + «Своя модель» (текстовый ввод ID)
+- Favorites flickering fix
+- Dev сервер обновлён и работает
+- compileDebugKotlin проходит
+
+Контекст:
+- Сервер: /root/msg, dev порт 50052, prod порт 50051
+- Android: /root/msg.client.android
+- Оба репозитория на ветке feat/1.1.1.x
+- v1.1.1.15 тег на обоих репозиториях
+
+Текущая версия: v1.1.1.15
+
+Что нужно сделать (v1.1.1.16):
+1. ТЕСТИРОВАНИЕ ФИШЕК (end-to-end на dev сервере)
+2. ИСПРАВЛЕНИЕ НАЙДЕННЫХ БАГОВ
+3. Если багов нет → деплой на prod → v1.1.2.0
+
+Архитектура (важно!):
+- OwlGrpc.kt — отдельный файл для OWL
+- HermesGrpc.kt — отдельный файл для Hermes
+- НЕ смешивать OWL и Hermes код — полная изоляция
+- userId (UUID) — всегда как ключ, НЕ username
+- creator_id (UUID) — для проверки владельца
+- participants ВСЕГДА через json.Marshal, никогда вручную
+
+Правила:
+- Коммитить после каждого значимого изменения, пушить в feat/1.1.1.x
+- Деплоить на dev для тестирования (сервер)
+- Обновлять CHANGELOG.md (новая версия наверху)
+- Не ломать существующий функционал
+- assembleRelease НЕ запускать на сервере (OOM kill)
+- Версия сервера в server.go:33 — обновлять при релизе
+- Дизайн — минималистичный, чистый, без лишнего декора
+
+Документация:
+- Индекс: /root/msg/doc/INDEX.md (читать в начале сессии)
+- Сервер: /root/msg/doc/INTEGRATION_SESSION.md, /root/msg/doc/TASKS.md
+- Android: /root/msg.client.android/doc/TASKS.md
+```
 
 ```
 Продолжаем работу над Lavender Messenger. v1.1.1.14 завершена:
