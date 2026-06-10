@@ -27,6 +27,13 @@
 - Исправлено в c873fbc: `sendSync()` передавал list без favoritesItem, вызывая remove/insert каждые 5с
 - Паттерн: статический first item в RecyclerView должен быть ВКЛЮЧЁН во все background updates
 
+### ChangelogActivity — bundled changelog
+- **changelog.txt УДАЛЁН** из проекта и из деплоя на сервер (v1.1.2.6)
+- Вместо него: `app/src/main/assets/changelog_bundled.txt` — встроен в APK, показывается мгновенно
+- При каждом релизе: обновлять `assets/changelog_bundled.txt` вместе с `CHANGELOG.md`
+- Формат: тот же что был для changelog.txt (emoji-заголовки, буллеты)
+- Если bundled не обновлён — пользователь увидит устаревший ченджлог из APK
+
 ### HermesGrpc proto mapping
 - `CreateHermesSessionResponse`: field 1=success(bool), field 2=session_id(string) — НЕ наоборот!
 - `CreateAgentResponse`: field 1=success(bool), field 2=agent_id(string)

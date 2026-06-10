@@ -1,9 +1,26 @@
 # Lavender Messenger — Задачи
 
-**Версия:** v1.1.2.5
+**Версия:** v1.1.2.6
 **Ветка:** feat/1.1.2.x
 **Обновлено:** 2026-06-10
 **Статус:** ✅ Все известные проблемы решены
+
+---
+
+## ✅ v1.1.2.6 — ChangelogActivity: bundled changelog + ссылки на GitHub
+
+### Android v1.1.2.6
+- **Bundled changelog**: `app/src/main/assets/changelog_bundled.txt` — встроен в APK, показывается мгновенно
+- **Новая логика загрузки**: bundled → GitHub API → server fallback
+- **Ссылки на CHANGELOG.md**: кнопки «Ченджлог сервера» и «Ченджлог клиента» на GitHub
+- **changelog.txt удалён** из проекта и из деплоя на сервер
+- **scripts/deploy_android.sh обновлён**: убрана загрузка changelog.txt
+- **Старый deploy_android.sh удалён** (сервер 159.195.38.145 больше не поддерживается)
+- **Документация обновлена**: INDEX.md, PITFALLS.md, TASKS.md
+- compileDebugKotlin ✅
+
+### Сервер v1.1.2.6
+- Без изменений (v1.1.2.4)
 
 ---
 

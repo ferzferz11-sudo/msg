@@ -1,6 +1,6 @@
 # Lavender Messenger — Интеграционная сессия
 
-**Текущая версия:** v1.1.2.5
+**Текущая версия:** v1.1.2.6
 **Обновлено:** 2026-06-10
 
 ## Контекст
@@ -285,6 +285,23 @@ cd /root/msg.client.android
 
 ---
 
+## Статус: v1.1.2.6 — ЗАВЕРШЕНА
+
+### Сервер v1.1.2.6
+- Без изменений (v1.1.2.4)
+
+### Android v1.1.2.6
+- **Bundled changelog**: `app/src/main/assets/changelog_bundled.txt` — встроен в APK, показывается мгновенно без сети
+- **Новая логика загрузки**: bundled (мгновенно) → GitHub API → server fallback
+- **Ссылки на CHANGELOG.md**: кнопки «Ченджлог сервера (GitHub)» и «Ченджлог клиента (GitHub)»
+- **changelog.txt удалён** из проекта и из деплоя на сервер
+- **scripts/deploy_android.sh обновлён**: убрана загрузка changelog.txt
+- **Старый deploy_android.sh удалён** (сервер 159.195.38.145 больше не поддерживается)
+- **Документация обновлена**: INDEX.md, PITFALLS.md, TASKS.md
+- compileDebugKotlin passes
+
+---
+
 ## Статус: v1.1.2.2 — DeleteChat cascade fix
 
 ### Сервер v1.1.2.2
@@ -317,28 +334,29 @@ cd /root/msg.client.android
 
 ---
 
-## Промпт для следующей сессии (feat/1.1.2.x — v1.1.2.6)
+## Промпт для следующей сессии (feat/1.1.2.x — v1.1.2.7)
 
 ```
-ЗАДАЧА: Продолжить работу над Lavender Messenger. v1.1.2.5 завершена.
+ЗАДАЧА: Продолжить работу над Lavender Messenger. v1.1.2.6 завершена.
 
-Текущая версия: v1.1.2.5 (prod)
-Следующая версия: v1.1.2.6
+Текущая версия: v1.1.2.6 (prod)
+Следующая версия: v1.1.2.7
 
 Контекст:
 - Сервер: /root/msg, dev порт 50052, prod порт 50051
 - Android: /root/msg.client.android
 - Оба репозитория на ветке feat/1.1.2.x
-- v1.1.2.5 — prod версия (таг выпущен)
+- v1.1.2.6 — prod версия (таг выпущен)
 
-Что сделано в v1.1.2.5:
-- ChangelogActivity — ThemeApplier.apply синхронно (белый экран исправлен)
-- ChangelogActivity — splash-экран при загрузке (logo + «Лава»)
-- ChangelogActivity — fallback на changelog.txt если GitHub API не ответил
-- APK собран, загружен на сервер, GitHub релиз создан
+Что сделано в v1.1.2.6:
+- ChangelogActivity — bundled changelog (assets/changelog_bundled.txt) показывается мгновенно
+- ChangelogActivity — ссылки на CHANGELOG.md сервера и клиента на GitHub
+- changelog.txt УДАЛЁН из проекта и из деплоя
+- scripts/deploy_android.sh обновлён (убрана загрузка changelog.txt)
+- Старый deploy_android.sh удалён (сервер 159.195.38.145 не поддерживается)
+- Документация обновлена (INDEX.md, PITFALLS.md, TASKS.md)
 
-Бэклог (v1.1.2.6):
-- Содержание changelog.txt — обновить/исправить
+Бэклог (v1.1.2.7):
 - Модульные тесты для OWL streaming
 - Auth токены для удалённых агентов (JWT)
 - Qdrant + CLIP (production RAG)
@@ -349,6 +367,7 @@ cd /root/msg.client.android
 - Деплоить на dev для тестирования (сервер)
 - При каждом значимом изменении: обновлять INTEGRATION_SESSION.md + TASKS.md + соответствующие документы
 - При каждом релизе: обновлять CHANGELOG.md (сервер + Android), INTEGRATION_SESSION.md, TASKS.md
+- При каждом релизе: обновлять assets/changelog_bundled.txt (встроенный ченджлог в APK)
 - Не ломать существующий функционал
 - assembleRelease НЕ запускать на сервере (OOM kill)
 - Версия сервера в server.go:33 — обновлять при выпуске (деплой + git tag)
@@ -363,121 +382,15 @@ cd /root/msg.client.android
 - Changelog: /root/msg/doc/CHANGELOG.md
 - Memory pad: /root/.hermes/memory/pad.md
 ```
+
+### Важно (changelog)
+- **changelog.txt УДАЛЁН** из проекта и из деплоя (v1.1.2.6)
+- Вместо него: `app/src/main/assets/changelog_bundled.txt` — встроен в APK
+- При каждом релизе: обновлять `assets/changelog_bundled.txt` вместе с `CHANGELOG.md`
+- Формат: emoji-заголовки, буллеты `—`, секции по версиям
+
+### Важно (архитектура)
 - creator_id (UUID) — для проверки владельца
 - participants ВСЕГДА через json.Marshal, никогда вручную
 - Для кастомных тем: новые FAB кнопки добавлять в ThemeApplier.kt в список FABs
 - Proto поля: всегда сверять номера полей с messenger.proto!
-
-Правила:
-- Коммитить после каждого значимого изменения, пушить в feat/1.1.2.x
-- Деплоить на dev для тестирования (сервер)
-- При каждом значимом изменении: обновлять INTEGRATION_SESSION.md + TASKS.md + соответствующие документы
-- При каждом релизе: обновлять CHANGELOG.md (сервер + Android), INTEGRATION_SESSION.md, TASKS.md, LOG_MONITOR.md, PITFALLS.md, AI_SERVICES.md
-- Не ломать существующий функционал
-- assembleRelease НЕ запускать на сервере (OOM kill)
-- Версия сервера в server.go:33 — обновлять при выпуске (деплой + git tag)
-- Версия Android в version.txt — обновлять при выпуске
-- Выпускать по версии за сессию (v1.1.2.1, v1.1.2.2, ...)
-- Дизайн — минималистичный, чистый, без лишнего декора
-
-Документация (читать в начале каждой сессии):
-- Индекс: /root/msg/doc/INDEX.md
-- Сервер: /root/msg/doc/INTEGRATION_SESSION.md, /root/msg/doc/TASKS.md
-- Android: /root/msg.client.android/doc/TASKS.md
-- AI сервисы: /root/msg/doc/AI_SERVICES.md
-- Подводные камни: /root/msg/doc/PITFALLS.md
-- Log Monitor: /root/msg/doc/LOG_MONITOR.md
-```
-- assembleRelease НЕ запускать на сервере (OOM kill)
-- Версия сервера в server.go:33 — обновлять при выпуске (деплой + git tag)
-- Дизайн — минималистичный, чистый, без лишнего декора
-
-Документация (читать в начале каждой сессии):
-- Индекс: /root/msg/doc/INDEX.md
-- Сервер: /root/msg/doc/INTEGRATION_SESSION.md, /root/msg/doc/TASKS.md
-- Android: /root/msg.client.android/doc/TASKS.md
-- AI сервисы: /root/msg/doc/AI_SERVICES.md
-- Подводные камни: /root/msg/doc/PITFALLS.md
-- Changelog: /root/msg/doc/CHANGELOG.md
-- Memory pad: /root/.hermes/memory/pad.md
-```
-- creator_id (UUID) — для проверки владельца
-- participants ВСЕГДА через json.Marshal, никогда вручную
-- Для кастомных тем: новые FAB кнопки добавлять в ThemeApplier.kt в список FABs
-- Proto поля: всегда сверять номера полей с messenger.proto!
-
-Правила:
-- Коммитить после каждого значимого изменения, пушить в feat/1.1.2.x
-- Деплоить на dev для тестирования (сервер)
-- При каждом значимом изменении: обновлять INTEGRATION_SESSION.md + TASKS.md + соответствующие документы
-- При каждом релизе: обновлять CHANGELOG.md (сервер + Android), INTEGRATION_SESSION.md, TASKS.md, LOG_MONITOR.md, PITFALLS.md, AI_SERVICES.md
-- Не ломать существующий функционал
-- assembleRelease НЕ запускать на сервере (OOM kill)
-- Версия сервера в server.go:33 — обновлять при выпуске (деплой + git tag)
-- Версия Android в version.txt — обновлять при выпуске
-- Выпускать по версии за сессию (v1.1.2.1, v1.1.2.2, ...)
-- Дизайн — минималистичный, чистый, без лишнего декора
-
-Документация (читать в начале каждой сессии):
-- Индекс: /root/msg/doc/INDEX.md
-- Сервер: /root/msg/doc/INTEGRATION_SESSION.md, /root/msg/doc/TASKS.md
-- Android: /root/msg.client.android/doc/TASKS.md
-- AI сервисы: /root/msg/doc/AI_SERVICES.md
-- Подводные камни: /root/msg/doc/PITFALLS.md
-- Log Monitor: /root/msg/doc/LOG_MONITOR.md
-```
-
-Продолжаем работу над Lavender Messenger. v1.1.1.14 завершена:
-- Дизайн + полировка UI: анимации сообщений, typing indicator, bottom sheets, splash screen
-- Dev сервер обновлён и работает
-- compileDebugKotlin проходит
-
-Контекст:
-- Сервер: /root/msg, dev порт 50052, prod порт 50051
-- Android: /root/msg.client.android
-- Оба репозитория на ветке feat/1.1.1.x
-- v1.1.1.14 тег на обоих репозиториях
-
-Текущая версия: v1.1.1.14
-
-Что нужно сделать (v1.1.1.15):
-
-1. ТЕСТИРОВАНИЕ ФИШЕК (end-to-end на dev сервере):
-   - OWL AI: отправить сообщение → получить стриминг ответ
-   - Hermes Orchestrator: отправить сообщение → проверить маршрутизацию к агенту
-   - Бот-команды: /status, /help, /version, /ai — все должны работать
-   - Rate limiting: проверить что лимиты срабатывают
-   - Per-chat settings: задать свой ключ → проверить что используется
-   - Notifications: подписка → получение → mark as read → счётчик
-   - Graceful reconnect: убить сеть → восстановить → проверить переподключение
-   - Множественные чаты: создать 3 OWL + 3 Hermes → проверить нумерацию
-   - Long-press на чат → PopupMenu (Настройки / Удалить)
-   - Key/model banner в шапке AI чатов
-   - Проверить анимации сообщений и typing indicator
-
-2. ИСПРАВЛЕНИЕ НАЙДЕННЫХ БАГОВ
-
-3. Если багов нет → деплой на prod → v1.1.2.0
-
-Архитектура (важно!):
-- OwlGrpc.kt — отдельный файл для OWL
-- HermesGrpc.kt — отдельный файл для Hermes
-- НЕ смешивать OWL и Hermes код — полная изоляция
-- userId (UUID) — всегда как ключ, НЕ username
-- creator_id (UUID) — для проверки владельца
-- participants ВСЕГДА через json.Marshal, никогда вручную
-
-Правила:
-- Коммитить после каждого значимого изменения, пушить в feat/1.1.1.x
-- Деплоить на dev для тестирования (сервер)
-- Обновлять CHANGELOG.md (новая версия наверху)
-- Не ломать существующий функционал
-- assembleRelease НЕ запускать на сервере (OOM kill)
-- Версия сервера в server.go:33 — обновлять при выпуске (деплой + git tag)
-- Дизайн — минималистичный, чистый, без лишнего декора
-
-Документация:
-- Индекс: /root/msg/doc/INDEX.md (читать в начале сессии)
-- Сервер: /root/msg/doc/INTEGRATION_SESSION.md, /root/msg/doc/TASKS.md
-- Android: /root/msg.client.android/doc/TASKS.md
-```

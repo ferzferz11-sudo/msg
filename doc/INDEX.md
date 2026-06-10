@@ -52,6 +52,8 @@
 - После каждого значимого изменения: обновлять INTEGRATION_SESSION.md + TASKS.md + соответствующие документы
 - При каждом релизе: обновлять CHANGELOG.md (сервер + Android), INTEGRATION_SESSION.md, TASKS.md, LOG_MONITOR.md, PITFALLS.md, AI_SERVICES.md
 - Промпт для следующей сессии всегда внизу INTEGRATION_SESSION.md
-- CHANGELOG.md — серверные изменения в корне /root/msg/CHANGELOG.md, Android в /root/msg.client.android/changelog.txt
+- CHANGELOG.md — серверные изменения в корне /root/msg/CHANGELOG.md, Android в /root/msg.client.android/CHANGELOG.md
+- Android bundled changelog: /root/msg.client.android/app/src/main/assets/changelog_bundled.txt (встроен в APK, показывается мгновенно)
+- changelog.txt БОЛЬШЕ НЕ ИСПОЛЬЗУЕТСЯ — удалён из проекта и из деплоя
 - Версия сервера в server.go:33, версия Android в version.txt
 - Документация распределена по файлам и проиндексирована в INDEX.md
