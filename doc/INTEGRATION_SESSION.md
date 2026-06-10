@@ -299,66 +299,62 @@ cd /root/msg.client.android
 
 ---
 
-## Промпт для следующей сессии (feat/1.1.2.x — v1.1.2.4)
+## Промпт для следующей сессии (feat/1.1.2.x — v1.1.2.5)
 
 ```
-ЗАДАЧА: Исправить найденные проблемы v1.1.2.3. Это ПРИОРИТЕТ номер 1.
+ЗАДАЧА: Продолжить работу над Lavender Messenger. v1.1.2.4 завершена.
 
-Текущая версия: v1.1.2.3 (prod)
-Следующая версия: v1.1.2.4
+Текущая версия: v1.1.2.4 (prod)
+Следующая версия: v1.1.2.5
 
 Контекст:
 - Сервер: /root/msg, dev порт 50052, prod порт 50051
 - Android: /root/msg.client.android
 - Оба репозитория на ветке feat/1.1.2.x
-- v1.1.2.3 — prod версия (таг выпущен), но есть баги
+- v1.1.2.4 — prod версия (таг выпущен)
 
-Что делать (v1.1.2.4):
+Что сделано в v1.1.2.4:
+- Hermes history fix — ChatWithOrchestrator/GetOrchestratorHistory переведены на AIChatManager
+- Rate limiter refund — cancel(userID) добавлен во все failure paths
+- Avatar delete fix — UpdateAvatar не удаляет новый файл если хеш совпадает со старым
 
-1. ⭐ Hermes история не загружается:
-   - Проблема: HermesChatActivity вызывает chatWithOrchestrator (старый RPC),
-     который пишет в hermes_messages — но эта таблица дропнута в v1.1.2.3
-   - Решение: добавить в ChatWithOrchestrator handler сохранение в ai_chat_messages
-     (или мигрировать HermesChatActivity на ChatWithAI)
-   - Проверить: что GetOrchestratorHistory читает из ai_chat_messages, а не hermes_messages
+Что делать (v1.1.2.5):
 
-2. ⭐ Счётчик запросов показывает max 19 вместо 20:
-   - Проблема: off-by-one в rate limiter
-   - Проверить owl.go:rateLimiter.remaining() — должно быть limit - len(valid)
-   - Проверить что allow() вызывается ДО remaining() в одном и том же запросе
-   - Возможно remaining() вызывается после allow() который уже добавил timestamp
+1. Тестирование на dev и prod:
+   - OWL AI: отправить сообщение → получить стриминг ответ
+   - Hermes Orchestrator: отправить сообщение → проверить маршрутизацию
+   - Счётчик запросов: проверить что показывает 20/20 изначально
+   - Аватар: загрузить новый → проверить что полная версия отображается
 
-3. Деплой на dev → тестирование → деплой на prod
-4. Обновить версию в server.go:33, CHANGELOG.md, INTEGRATION_SESSION.md, TASKS.md
+2. Исправление найденных багов
+
+3. Если багов нет → деплой на prod → v1.1.2.5
+
+Бэклог (если багов нет):
+- Модульные тесты для OWL streaming
+- Auth токены для удалённых агентов (JWT)
+- Qdrant + CLIP (production RAG)
+- NewChatActivity → ChatWidget миграция
 
 Правила:
 - Коммитить после каждого значимого изменения, пушить в feat/1.1.2.x
 - Деплоить на dev для тестирования (сервер)
-- assembleRelease НЕ запускать на сервере (OOM kill)
-- compileDebugKotlin OK
+- При каждом значимом изменении: обновлять INTEGRATION_SESSION.md + TASKS.md + соответствующие документы
+- При каждом релизе: обновлять CHANGELOG.md (сервер + Android), INTEGRATION_SESSION.md, TASKS.md
 - Не ломать существующий функционал
+- assembleRelease НЕ запускать на сервере (OOM kill)
+- Версия сервера в server.go:33 — обновлять при релизе
+- Дизайн — минималистичный, чистый, без лишнего декора
 
 Документация (читать в начале каждой сессии):
 - Индекс: /root/msg/doc/INDEX.md
-- Задачи: /root/msg/doc/TASKS.md (там описаны проблемы)
-- Сервер: /root/msg/doc/INTEGRATION_SESSION.md
+- Сервер: /root/msg/doc/INTEGRATION_SESSION.md, /root/msg/doc/TASKS.md
 - Android: /root/msg.client.android/doc/TASKS.md
 - AI сервисы: /root/msg/doc/AI_SERVICES.md
 - Подводные камни: /root/msg/doc/PITFALLS.md
 - Changelog: /root/msg/doc/CHANGELOG.md
 - Memory pad: /root/.hermes/memory/pad.md
 ```
-
-Что делать (v1.1.2.1):
-1. Исправления и улучшения по AI чатам (OWL + Hermes)
-2. Тестирование на dev → деплой на prod
-3. Обновлять документацию при каждом изменении
-
-Архитектура (важно!):
-- OwlGrpc.kt — отдельный файл для OWL
-- HermesGrpc.kt — отдельный файл для Hermes
-- НЕ смешивать OWL и Hermes код — полная изоляция
-- userId (UUID) — всегда как ключ, НЕ username
 - creator_id (UUID) — для проверки владельца
 - participants ВСЕГДА через json.Marshal, никогда вручную
 - Для кастомных тем: новые FAB кнопки добавлять в ThemeApplier.kt в список FABs
