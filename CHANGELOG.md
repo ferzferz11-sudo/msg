@@ -1,5 +1,14 @@
 # Lavender Messenger — Server Changelog
 
+## [1.1.2.6] - 2026-06-10
+- **Android: ChangelogActivity — bundled changelog + GitHub links**
+- **Bundled changelog**: `app/src/main/assets/changelog_bundled.txt` — встроен в APK, показывается мгновенно
+- **Новая логика загрузки**: bundled → GitHub API → server fallback
+- **Ссылки на CHANGELOG.md**: кнопки «Ченджлог сервера» и «Ченджлог клиента» на GitHub
+- **changelog.txt удалён** из проекта и из деплоя на сервер
+- **deploy_android.sh обновлён**: убрана загрузка changelog.txt
+- Серверных изменений нет, v1.1.2.4
+
 ## [1.1.2.5] - 2026-06-10
 - **Android: ChangelogActivity — кастомные темы** — добавлен ThemeUi.bind для применения кастомных тем
 - Серверных изменений нет, v1.1.2.4
