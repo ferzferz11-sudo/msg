@@ -31,8 +31,15 @@
 - **changelog.txt УДАЛЁН** из проекта и из деплоя на сервер (v1.1.2.6)
 - Вместо него: `app/src/main/assets/changelog_bundled.txt` — встроен в APK, показывается мгновенно
 - При каждом релизе: обновлять `assets/changelog_bundled.txt` вместе с `CHANGELOG.md`
-- Формат: тот же что был для changelog.txt (emoji-заголовки, буллеты)
+- Формат: emoji-заголовки, буллеты `—`, секции по версиям
 - Если bundled не обновлён — пользователь увидит устаревший ченджлог из APK
+- **Цвета в fallback**: устанавливаются программно из `ThemeStore` (не через XML-атрибуты)
+
+### ChangelogAdapter — цвета на кастомных темах (известная проблема)
+- `ChangelogAdapter` использует `resolveColorAttr(context, android.R.attr.textColorPrimary)` для цветов текста
+- На кастомных тёмных темах этот атрибут может быть тёмным → текст нечитаем
+- **Не исправлено** — приоритет низкий, GitHub API работает и основной контент нормальный
+- Для fallback проблема решена (цвета из `ThemeStore`)
 
 ### HermesGrpc proto mapping
 - `CreateHermesSessionResponse`: field 1=success(bool), field 2=session_id(string) — НЕ наоборот!
