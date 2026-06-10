@@ -1,5 +1,18 @@
 # Lavender Messenger — Server Changelog
 
+## [1.1.2.3] - 2026-06-09
+- Версия обновлена до 1.1.2.3
+- **AI Chat Refactor:** единый менеджер ai_chat_manager.go (CreateSession, GetSession, DeleteSession, AddMessage, GetHistory, GetSettings, SaveSettings, UpdateSession, GetOwnerID)
+- **Новые таблицы:** ai_chat_sessions, ai_chat_messages, ai_chat_settings с FK CASCADE
+- **Дропнуты старые таблицы:** owl_messages, owl_chat_settings, hermes_messages, hermes_sessions, hermes_chat_settings
+- **Proto:** AIChatRequest, AIChatResponse, AIChatMessage, AIChatSettings
+- **Новые RPC:** ChatWithAI (streaming), GetAIChatHistory, GetAIChatSettings, UpdateAIChatSettings
+- **ChatWithAI handler:** маршрутизация owl→OpenRouter, hermes→Orchestrator, единый streaming
+- **Deprecated:** ChatWithOWL, ChatWithOrchestrator (пометлены в proto, пока работают)
+- **DB migrations:** добавлены ai_chat_* таблицы + GRANT в db_hermes.go
+- **Android:** AiChatGrpc.kt, AIChat*Proto классы, GrpcClient facade, compileDebugKotlin passes
+- **Известные проблемы:** Hermes история не загружается (старый RPC пишет в удалённую таблицу), счётчик запросов off-by-one (19 вместо 20)
+
 ## [1.1.2.2] - 2026-06-09
 - Версия обновлена до 1.1.2.2
 - **Bugfix: DeleteChat не удалял hermes_sessions** — добавлено каскадное удаление из hermes_sessions + hermes_messages для hermes-чатов, owl_messages + owl_chat_settings для owl-чатов
