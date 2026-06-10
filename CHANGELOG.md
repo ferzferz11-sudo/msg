@@ -1,5 +1,14 @@
 # Lavender Messenger — Server Changelog
 
+## [1.1.2.4] - 2026-06-10
+- **Bugfix: Hermes история не загружалась** — ChatWithOrchestrator и GetOrchestratorHistory
+  использовали hermesDB (hermes_messages таблица), но она была дропнута в v1.1.2.3
+- **Исправлено:** все вызовы переведены на AIChatManager (ai_chat_messages таблица)
+- ChatWithOrchestrator: save → manager.AddMessage()
+- GetOrchestratorHistory: load → manager.GetHistory() + проверка владельца
+- ServerVersion: 1.1.2.4
+- Dev и prod обновлены
+
 ## [1.1.2.3] - 2026-06-09
 - **AI Chat Refactor:** единый менеджер ai_chat_manager.go
 - **Новые таблицы:** ai_chat_sessions, ai_chat_messages, ai_chat_settings с FK CASCADE

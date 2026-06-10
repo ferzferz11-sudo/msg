@@ -1,7 +1,7 @@
 # Lavender Messenger — Интеграционная сессия
 
-**Текущая версия:** v1.1.2.3
-**Обновлено:** 2026-06-09
+**Текущая версия:** v1.1.2.4
+**Обновлено:** 2026-06-10
 
 ## Контекст
 
@@ -243,6 +243,23 @@ cd /root/msg.client.android
 - AiChatGrpc.kt: chatWithAI (streaming), getAIChatHistory, getAIChatSettings, updateAIChatSettings
 - GrpcClient.kt: facade methods для AI Chat
 - compileDebugKotlin passes
+
+---
+
+## Статус: v1.1.2.4 — Hermes History Fix (ЗАВЕРШЕНА)
+
+### Сервер v1.1.2.4
+- **Bugfix: Hermes история не загружалась** — ChatWithOrchestrator и GetOrchestratorHistory
+  использовали hermesDB (hermes_messages таблица), но она была дропнута в v1.1.2.3
+- **Исправлено:** все вызовы переведены на AIChatManager (ai_chat_messages таблица)
+- ChatWithOrchestrator: save → manager.AddMessage()
+- GetOrchestratorHistory: load → manager.GetHistory() + проверка владельца
+- /help handler: тот же fix
+- ServerVersion: 1.1.2.4
+- Dev и prod обновлены, тег v1.1.2.4
+
+### Android v1.1.2.4
+- Без изменений (исправление серверное)
 
 ---
 
