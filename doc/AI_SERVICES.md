@@ -292,7 +292,7 @@ cd /tmp && sudo -u postgres psql -d chat_db -c "ALTER TABLE hermes_sessions OWNE
 ### Prod vs Dev версии
 - Всегда проверяйте версии на обоих серверах
 - Dev DB: `chat_db_dev`, Prod DB: `chat_db`
-- Версия сервера в `server.go:33` — обновлять при каждом релизе
+- Версия сервера в `server.go:33` — обновлять при выпуске (деплой + git tag)
 
 ---
 
