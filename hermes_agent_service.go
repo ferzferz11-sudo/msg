@@ -5,16 +5,18 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"io"
 	"log"
 	"sync"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/proto"
 
+	"LavenderMessenger/auth"
 	hermesagent "LavenderMessenger/gen/hermes_agent"
 )
 
@@ -202,7 +204,171 @@ func (h *hermesAgentServer) unregisterStream(as *agentStream) {
 }
 
 func (h *hermesAgentServer) validateToken(agentID, token string) bool {
-	return token != ""
+	if token == "" {
+		log.Printf("[HermesAgentService] reject %s: empty token", agentID)
+		return false
+	}
+
+	// Парсим и валидируем JWT
+	claims, err := auth.ValidateAgentToken(token)
+	if err != nil {
+		log.Printf("[HermesAgentService] reject %s: invalid token: %v", agentID, err)
+		return false
+	}
+
+	// Проверяем что agent_id в токене совпадает с заявленным
+	if claims.AgentID != agentID {
+		log.Printf("[HermesAgentService] reject %s: token agent_id mismatch (token=%s)",
+			agentID, claims.AgentID)
+		return false
+	}
+
+	// Проверяем что токен не отозван в БД
+	if h.server.hermesDB != nil {
+		tokenHash := hashToken(token)
+		storedToken, err := h.server.hermesDB.GetAgentTokenByHash(tokenHash)
+		if err != nil {
+			log.Printf("[HermesAgentService] reject %s: token not found in DB: %v", agentID, err)
+			return false
+		}
+		if storedToken.Revoked {
+			log.Printf("[HermesAgentService] reject %s: token revoked", agentID)
+			return false
+		}
+	}
+
+	log.Printf("[HermesAgentService] token valid: %s (%s)", agentID, claims.AgentName)
+	return true
+}
+
+// hashToken вычисляет SHA-256 хеш токена для хранения в БД
+func hashToken(token string) string {
+	h := sha256.New()
+	h.Write([]byte(token))
+	return fmt.Sprintf("%x", h.Sum(nil))
+}
+
+// isAdmin проверяет является ли пользователь супер-админом
+func (h *hermesAgentServer) isAdmin(userID string) bool {
+	if h.server == nil || h.server.db == nil || userID == "" {
+		return false
+	}
+	return h.server.db.IsSuperAdmin(userID)
+}
+
+// GenerateAgentToken — генерация JWT токена для нового агента (admin only)
+func (h *hermesAgentServer) GenerateAgentToken(_ context.Context, req *hermesagent.GenerateAgentTokenRequest) (*hermesagent.GenerateAgentTokenResponse, error) {
+	if !h.isAdmin(req.AdminUserId) {
+		return &hermesagent.GenerateAgentTokenResponse{
+			Success: false, Error: "admin access required",
+		}, nil
+	}
+
+	if req.AgentId == "" || req.AgentName == "" {
+		return &hermesagent.GenerateAgentTokenResponse{
+			Success: false, Error: "agent_id and agent_name are required",
+		}, nil
+	}
+
+	ttl := time.Duration(req.TtlHours) * time.Hour
+
+	token, err := auth.GenerateAgentToken(req.AgentId, req.AgentName, req.Capabilities, ttl)
+	if err != nil {
+		return &hermesagent.GenerateAgentTokenResponse{
+			Success: false, Error: fmt.Sprintf("generate token: %v", err),
+		}, nil
+	}
+
+	// Сохраняем хеш токена в БД
+	tokenHash := hashToken(token)
+	var expiresAt time.Time
+	if req.TtlHours > 0 {
+		expiresAt = time.Now().Add(ttl)
+	} else {
+		expiresAt = time.Now().Add(24 * time.Hour)
+	}
+
+	if h.server.hermesDB != nil {
+		if err := h.server.hermesDB.SaveAgentToken(
+			req.AgentId, req.AgentName, tokenHash,
+			req.Capabilities, expiresAt, req.AdminUserId,
+		); err != nil {
+			log.Printf("[HermesAgentService] failed to save token: %v", err)
+		}
+	}
+
+	claims, _ := auth.ValidateAgentToken(token)
+
+	return &hermesagent.GenerateAgentTokenResponse{
+		Success:   true,
+		Token:     token,
+		ExpiresAt: claims.ExpiresAt,
+	}, nil
+}
+
+// RevokeAgentToken — отзыв токена агента (admin only)
+func (h *hermesAgentServer) RevokeAgentToken(_ context.Context, req *hermesagent.RevokeAgentTokenRequest) (*hermesagent.RevokeAgentTokenResponse, error) {
+	if !h.isAdmin(req.AdminUserId) {
+		return &hermesagent.RevokeAgentTokenResponse{
+			Success: false, Error: "admin access required",
+		}, nil
+	}
+
+	if req.AgentId == "" {
+		return &hermesagent.RevokeAgentTokenResponse{
+			Success: false, Error: "agent_id is required",
+		}, nil
+	}
+
+	if h.server.hermesDB != nil {
+		if err := h.server.hermesDB.RevokeAgentToken(req.AgentId); err != nil {
+			return &hermesagent.RevokeAgentTokenResponse{
+				Success: false, Error: fmt.Sprintf("revoke: %v", err),
+			}, nil
+		}
+	}
+
+	log.Printf("[HermesAgentService] token revoked: agent=%s by=%s", req.AgentId, req.AdminUserId)
+	return &hermesagent.RevokeAgentTokenResponse{Success: true}, nil
+}
+
+// ListAgentTokens — список всех токенов агентов (admin only)
+func (h *hermesAgentServer) ListAgentTokens(_ context.Context, req *hermesagent.ListAgentTokensRequest) (*hermesagent.ListAgentTokensResponse, error) {
+	if !h.isAdmin(req.AdminUserId) {
+		return &hermesagent.ListAgentTokensResponse{
+			Success: false, Error: "admin access required",
+		}, nil
+	}
+
+	if h.server.hermesDB == nil {
+		return &hermesagent.ListAgentTokensResponse{
+			Success: false, Error: "database not available",
+		}, nil
+	}
+
+	tokens, err := h.server.hermesDB.ListAgentTokens()
+	if err != nil {
+		return &hermesagent.ListAgentTokensResponse{
+			Success: false, Error: fmt.Sprintf("list: %v", err),
+		}, nil
+	}
+
+	var infos []*hermesagent.AgentTokenInfo
+	for _, t := range tokens {
+		infos = append(infos, &hermesagent.AgentTokenInfo{
+			Id:           t.ID,
+			AgentId:      t.AgentID,
+			AgentName:    t.AgentName,
+			TokenHash:    t.Token,
+			Capabilities: t.Capabilities,
+			CreatedAt:    t.CreatedAt.Format(time.RFC3339),
+			ExpiresAt:    t.ExpiresAt.Format(time.RFC3339),
+			Revoked:      t.Revoked,
+			CreatedBy:    t.CreatedBy,
+		})
+	}
+
+	return &hermesagent.ListAgentTokensResponse{Success: true, Tokens: infos}, nil
 }
 
 // SendTaskToAgent отправляет задачу агенту через stream и ждёт результат

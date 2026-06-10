@@ -5,9 +5,12 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
 	"log"
 	"strings"
 	"time"
+
+	"LavenderMessenger/auth"
 )
 
 // runHermesMigrations создаёт таблицы для Hermes Orchestrator
@@ -196,6 +199,23 @@ func runHermesMigrations(db *sql.DB) {
 		`GRANT ALL PRIVILEGES ON ai_chat_messages TO lavender`,
 		`GRANT ALL PRIVILEGES ON ai_chat_settings TO lavender`,
 		`GRANT ALL PRIVILEGES ON ai_chat_messages_id_seq TO lavender`,
+
+		// === Agent Auth Tokens (JWT) ===
+		`CREATE TABLE IF NOT EXISTS agent_tokens (
+			id              BIGSERIAL   PRIMARY KEY,
+			agent_id        VARCHAR(255) NOT NULL,
+			agent_name      VARCHAR(255) NOT NULL,
+			token_hash      VARCHAR(255) NOT NULL UNIQUE, -- SHA-256 hash of token (we don't store raw tokens)
+			capabilities    TEXT        DEFAULT '[]',     -- JSON array
+			created_at      TIMESTAMPTZ DEFAULT NOW(),
+			expires_at      TIMESTAMPTZ,
+			revoked         BOOLEAN     DEFAULT FALSE,
+			created_by      TEXT        DEFAULT ''        -- admin user_id
+		)`,
+		`CREATE INDEX IF NOT EXISTS idx_agent_tokens_agent ON agent_tokens(agent_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_agent_tokens_hash ON agent_tokens(token_hash)`,
+		`GRANT ALL PRIVILEGES ON agent_tokens TO lavender`,
+		`GRANT ALL PRIVILEGES ON agent_tokens_id_seq TO lavender`,
 	}
 
 	for _, q := range queries {
@@ -388,4 +408,67 @@ func (h *HermesDB) GetSessionID(sessionID string) string {
 func (h *HermesDB) DeleteSession(sessionID string) error {
 	_, err := h.db.Exec("DELETE FROM hermes_sessions WHERE id = $1", sessionID)
 	return err
+}
+
+// === Agent Token Methods ===
+
+// SaveAgentToken сохраняет хеш токена агента в БД
+func (h *HermesDB) SaveAgentToken(agentID, agentName, tokenHash string, capabilities []string, expiresAt time.Time, createdBy string) error {
+	capsJSON, _ := json.Marshal(capabilities)
+	_, err := h.db.Exec(
+		`INSERT INTO agent_tokens (agent_id, agent_name, token_hash, capabilities, expires_at, created_by)
+		 VALUES ($1, $2, $3, $4, $5, $6)
+		 ON CONFLICT (token_hash) DO UPDATE SET
+		 agent_name = $2, capabilities = $4, expires_at = $5, revoked = FALSE`,
+		agentID, agentName, tokenHash, string(capsJSON), expiresAt, createdBy,
+	)
+	return err
+}
+
+// GetAgentTokenByHash возвращает токен по хешу
+func (h *HermesDB) GetAgentTokenByHash(tokenHash string) (*auth.AgentToken, error) {
+	var t auth.AgentToken
+	var capsStr string
+	err := h.db.QueryRow(
+		`SELECT id, agent_id, agent_name, token_hash, capabilities, created_at, expires_at, revoked, created_by
+		 FROM agent_tokens WHERE token_hash = $1`,
+		tokenHash,
+	).Scan(&t.ID, &t.AgentID, &t.AgentName, &t.Token, &capsStr, &t.CreatedAt, &t.ExpiresAt, &t.Revoked, &t.CreatedBy)
+	if err != nil {
+		return nil, err
+	}
+	json.Unmarshal([]byte(capsStr), &t.Capabilities)
+	return &t, nil
+}
+
+// RevokeAgentToken отзывает токен агента
+func (h *HermesDB) RevokeAgentToken(agentID string) error {
+	_, err := h.db.Exec("UPDATE agent_tokens SET revoked = TRUE WHERE agent_id = $1", agentID)
+	return err
+}
+
+// ListAgentTokens возвращает все токены агентов
+func (h *HermesDB) ListAgentTokens() ([]auth.AgentToken, error) {
+	rows, err := h.db.Query(
+		`SELECT id, agent_id, agent_name, token_hash, capabilities, created_at, expires_at, revoked, created_by
+		 FROM agent_tokens ORDER BY created_at DESC`,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var tokens []auth.AgentToken
+	for rows.Next() {
+		var t auth.AgentToken
+		var capsStr string
+		var createdBy string
+		if err := rows.Scan(&t.ID, &t.AgentID, &t.AgentName, &t.Token, &capsStr, &t.CreatedAt, &t.ExpiresAt, &t.Revoked, &createdBy); err != nil {
+			continue
+		}
+		t.CreatedBy = createdBy
+		json.Unmarshal([]byte(capsStr), &t.Capabilities)
+		tokens = append(tokens, t)
+	}
+	return tokens, nil
 }

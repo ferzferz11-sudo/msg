@@ -1,5 +1,14 @@
 # Lavender Messenger — Server Changelog
 
+## [1.1.2.8] - 2026-06-11
+- **Auth токены для удалённых агентов (JWT)**
+- HS256 JWT с подписью, expiration, agent_id в claims
+- Таблица `agent_tokens` в БД (хранится только SHA-256 хеш, не сам токен)
+- 3 новых admin RPC: `GenerateAgentToken`, `RevokeAgentToken`, `ListAgentTokens`
+- `validateToken()` — полная проверка: подпись, expiration, agent_id match, revoked в БД
+- Секрет из `JWT_SECRET` env (32+ байта)
+- Dev и prod обновлены
+
 ## [1.1.2.7] - 2026-06-11
 - **Android: Splash улучшения, онбординг удалён, чекбокс чата**
 - Серверных изменений нет, v1.1.2.4

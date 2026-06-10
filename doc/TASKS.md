@@ -1,8 +1,25 @@
 # Lavender Messenger — Задачи
 
-**Версия:** v1.1.2.7
+**Версия:** v1.1.2.8
 **Ветка:** feat/1.1.2.x
 **Обновлено:** 2026-06-11
+
+---
+
+## ✅ v1.1.2.8 — Auth токены для удалённых агентов (JWT)
+
+### Сервер v1.1.2.8
+- **JWT аутентификация** для hermes-agent daemon при подключении к Orchestrator
+- `auth/jwt.go` — генерация и валидация HS256 JWT токенов
+- Claims: agent_id, agent_name, capabilities, iat, exp
+- Таблица `agent_tokens` в БД (SHA-256 хеш, не сам токен)
+- 3 новых admin RPC: `GenerateAgentToken`, `RevokeAgentToken`, `ListAgentTokens`
+- `validateToken()` — полная проверка: подпись, expiration, agent_id match, revoked в БД
+- Секрет из `JWT_SECRET` env (32+ байта)
+- Dev и prod обновлены
+
+### Android v1.1.2.8
+- Без изменений
 
 ---
 
@@ -188,8 +205,7 @@
 - [ ] Модульные тесты для OWL streaming
 
 ### Низкий приоритет
-- [ ] Auth токены для удалённых агентов (JWT)
-- [ ] Qdrant + CLIP (production RAG)
+- [ ] Qdrant + CLIP (production RAG) — ночная задача
 
 ---
 

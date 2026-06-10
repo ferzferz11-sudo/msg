@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"google.golang.org/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 
 	hermesagent "LavenderMessenger/gen/hermes_agent"
 )

@@ -352,37 +352,52 @@ cd /root/msg.client.android
 
 ---
 
-## Промпт для следующей сессии (feat/1.1.2.x — v1.1.2.8)
+## Статус: v1.1.2.8 — Auth токены для удалённых агентов (JWT) ЗАВЕРШЕНА
+
+### Сервер v1.1.2.8
+- **JWT аутентификация** для hermes-agent daemon при подключении к Orchestrator
+- `auth/jwt.go` — генерация и валидация HS256 JWT токенов
+- Claims: agent_id, agent_name, capabilities, iat, exp
+- Таблица `agent_tokens` в БД (SHA-256 хеш, не сам токен)
+- 3 новых admin RPC: `GenerateAgentToken`, `RevokeAgentToken`, `ListAgentTokens`
+- `validateToken()` — полная проверка: подпись, expiration, agent_id match, revoked в БД
+- Секрет из `JWT_SECRET` env (32+ байта)
+- Dev и prod обновлены
+
+### Android v1.1.2.8
+- Без изменений
+
+---
+
+## Промпт для следующей сессии (feat/1.1.2.x — v1.1.2.9)
 
 ```
-ЗАДАЧА: Продолжить работу над Lavender Messenger. v1.1.2.7 завершена.
+ЗАДАЧА: Продолжить работу над Lavender Messenger. v1.1.2.8 завершена.
 
-Текущая версия: v1.1.2.7 (prod)
-Следующая версия: v1.1.2.8
+Текущая версия: v1.1.2.8 (prod)
+Следующая версия: v1.1.2.9
 
 Контекст:
 - Сервер: /root/msg, dev порт 50052, prod порт 50051
-- Android: /root/msg.client.android
+- Android: /root/msg/client.android
 - Оба репозитория на ветке feat/1.1.2.x
-- v1.1.2.7 — prod версия (таг выпущен)
+- v1.1.2.8 — prod версия (JWT auth для удалённых агентов)
 
-Что сделано в v1.1.2.7:
-- SplashActivity: увеличено расстояние логотип→текст
-- SplashLoadingActivity: новый оверлей загрузки для авторизации
-- Онбординг полностью удалён (welcomeContainer, подсказки)
-- Чекбокс "Сразу создать личный чат" при добавлении контакта (включён по умолчанию)
-- Исправления: crash выбора чатов, getSelectedChats offset, loadingContainer удалён
-- APK на сервере: /var/www/lavender/lavender.apk
-- GitHub релиз: https://github.com/ferzferz11-sudo/msg.client.android/releases/tag/v1.1.2.7
+Что сделано в v1.1.2.8:
+- JWT аутентификация для hermes-agent daemon (HS256)
+- auth/jwt.go — GenerateAgentToken, ValidateAgentToken
+- Таблица agent_tokens в БД
+- 3 admin RPC: GenerateAgentToken, RevokeAgentToken, ListAgentTokens
+- validateToken() — полная проверка подписи + expiration + revoked
+- Dev и prod обновлены
 
 Известная проблема (не исправлено):
 - Favorites при пустом списке: не отображается при входе после очистки памяти если нет чатов
 
 Бэклог:
-- Исправить Favorites при пустом списке
-- Модульные тесты для OWL streaming
-- Auth токены для удалённых агентов (JWT)
-- Qdrant + CLIP (production RAG)
+- Исправить Favorites при пустом списке (высокий приоритет)
+- Модульные тесты для OWL streaming (средний)
+- Qdrant + CLIP (production RAG) — ночная задача
 
 Правила:
 - Коммитить после каждого значимого изменения, пушить в feat/1.1.2.x
@@ -393,7 +408,7 @@ cd /root/msg.client.android
 Документация (читать в начале каждой сессии):
 - Индекс: /root/msg/doc/INDEX.md
 - Сервер: /root/msg/doc/INTEGRATION_SESSION.md, /root/msg/doc/TASKS.md
-- Android: /root/msg.client.android/doc/TASKS.md
+- Android: /root/msg/client.android/doc/TASKS.md
 - AI сервисы: /root/msg/doc/AI_SERVICES.md
 - Подводные камни: /root/msg/doc/PITFALLS.md
 - Changelog: /root/msg/doc/CHANGELOG.md
@@ -411,3 +426,6 @@ cd /root/msg.client.android
 - participants ВСЕГДА через json.Marshal, никогда вручную
 - Для кастомных тем: новые FAB кнопки добавлять в ThemeApplier.kt в список FABs
 - Proto поля: всегда сверять номера полей с messenger.proto!
+- JWT секрет: `JWT_SECRET` в .env, минимум 32 байта, НЕ коммитить
+- Agent tokens: в БД хранится SHA-256 хеш, не сам токен
+- Admin RPC: `GenerateAgentToken`, `RevokeAgentToken`, `ListAgentTokens` — требуют IsSuperAdmin()
