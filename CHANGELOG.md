@@ -1,5 +1,9 @@
 # Lavender Messenger — Server Changelog
 
+## [1.1.2.5] - 2026-06-10
+- **Android: ChangelogActivity — кастомные темы** — добавлен ThemeUi.bind для применения кастомных тем
+- Серверных изменений нет, v1.1.2.4
+
 ## [1.1.2.4] - 2026-06-10
 - **Bugfix: Hermes история не загружалась** — ChatWithOrchestrator и GetOrchestratorHistory
   использовали hermesDB (hermes_messages таблица), но она была дропнута в v1.1.2.3
