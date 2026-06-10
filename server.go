@@ -16,6 +16,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -1301,15 +1302,18 @@ func (s *server) UpdateAvatar(_ context.Context, req *gen.UpdateAvatarRequest) (
 	// 1. Get old avatar URLs for deletion
 	oldThumb, oldFull, err := s.db.GetUserAvatarWithFull(username)
 	if err == nil {
-		// Run deletion in background
-		go func(t, f string) {
-			if t != "" {
+		// Extract filenames from new URLs to avoid deleting newly uploaded files
+		// (when the same image is re-uploaded, the hash/filename stays the same)
+		newThumb := filepath.Base(req.AvatarUrl)
+		newFull := filepath.Base(req.FullAvatarUrl)
+		go func(t, f, nt, nf string) {
+			if t != "" && filepath.Base(t) != nt {
 				_ = DeleteImageFile(t)
 			}
-			if f != "" && f != t {
+			if f != "" && f != t && filepath.Base(f) != nf {
 				_ = DeleteImageFile(f)
 			}
-		}(oldThumb, oldFull)
+		}(oldThumb, oldFull, newThumb, newFull)
 	}
 
 	// 2. Save both thumbnail and full avatar URLs
