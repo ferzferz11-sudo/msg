@@ -63,6 +63,12 @@
 - НЕ использовать `session.Messages` (in-memory) — пропадает после рестарта сервера
 - `getOrCreateSession` создаёт пустую сессию без загрузки истории из БД
 
+### Rate limiter — refund on failure
+- `allow()` добавляет timestamp ДО выполнения запроса
+- При ошибке (OpenRouter, orchestrator) timestamp остаётся — слот потерян
+- **Правило:** всегда вызывать `cancel(userID)` в failure path после успешного `allow()`
+- `remaining()` возвращает `limit - len(valid)` — корректно отражает оставшиеся запросы
+
 ### /dev/null сломан после OOM
 - Если `/dev/null` стал файлом вместо device node: `rm /dev/null && mknod /dev/null c 1 3 && chmod 666 /dev/null`
 - Без этого `go build` падает с "open /dev/null: no such file or directory"
