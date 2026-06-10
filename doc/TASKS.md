@@ -11,41 +11,31 @@
 
 ### 1. Hermes история не загружается ⭐ ВЫСОКИЙ ПРИОРИТЕТ
 - **Симптом**: пользователь не видит историю чата с оркестратором
-- **Возможная причина**: AiChatGrpc использует новый ChatWithAI RPC, но HermesChatActivity всё ещё вызывает старый chatWithOrchestrator. Новая активити не интегрирована, старая не работает с новыми таблицами
-- **Что делать**: проверить какой RPC вызывает HermesChatActivity, либо мигрировать на ChatWithAI, либо убедиться что старый ChatWithOrchestrator сохраняет в ai_chat_messages (сейчас сохраняет в hermes_messages которой больше нет)
+- **Причина**: HermesChatActivity вызывает старый chatWithOrchestrator RPC, который сохраняет в hermes_messages — но эта таблица дропнута в v1.1.2.3. Новый ChatWithAI не используется HermesChatActivity.
+- **Что делать**: мигрировать HermesChatActivity на ChatWithAI RPC, либо добавить в ChatWithOrchestrator handler сохранение в ai_chat_messages
 - **Статус**: не исправлено
 
-### 2. Счётчик запросов показывает максимум 19 ⭐ ВЫСОКИЙ ПРИОРИТЕТ
-- **Симптом**: в чате с агентом счётчик идёт только до 19, а лимит 20
-- **Возможная причина**: ошибка на 1 в rate limiter — условие `>= limit` вместо `> limit`, или remaining вычисляется как `limit - used` но used считается включая текущий запрос до того как он добавлен
-- **Что делать**: проверить owlSessionManager (10/мин) vs freeTierRateLimiter (20/час) — какой используется для агента. Проверить логику remaining() — должно быть `limit - len(valid)`, возможно off-by-one
+### 2. Счётчик запросов в чате с агентом показывает максимум 19 ⭐ ВЫСОКИЙ ПРИОРИТЕТ
+- **Симптом**: в чате с агентом (Hermes) счётчик идёт только до 19, а лимит 20
+- **Причина**: off-by-one в rate limiter — remaining() вызывается после allow() который уже добавил timestamp, или условие >= вместо >
+- **Что делать**: проверить owl.go:rateLimiter — allow() добавляет timestamp, remaining() считает len(valid). Если allow() вызван первым, то remaining уже на 1 меньше. Нужно либо remaining() вызывать до allow(), либо в remaining() не учитывать текущий запрос.
 - **Статус**: не исправлено
 
 ---
 
-## ✅ v1.1.2.3 — AI Chat Refactor
+## ✅ v1.1.2.3 — Подтверждённые работающие фичи
 
-### 1. Единый менеджер AI чатов ✅
-- ai_chat_manager.go: CreateSession, GetSession, DeleteSession, AddMessage, GetHistory, GetSettings, SaveSettings
-- ai_chat_sessions, ai_chat_messages, ai_chat_settings таблицы
-- FK CASCADE на все AI-таблицы
-- Dev и prod обновлены
+### OWL чат ✅
+- История чата загружается корректно
+- Счётчик запросов в тулбаре показывает правильно (20/20)
+- Стриминг ответов работает
 
-### 2. Новые proto сообщения и RPC ✅
-- AIChatRequest, AIChatResponse, AIChatMessage, AIChatSettings
-- ChatWithAI, GetAIChatHistory, GetAIChatSettings, UpdateAIChatSettings
-- Старые RPC пометены deprecated
-
-### 3. AI Chat handlers на сервере ✅
-- ChatWithAI: маршрутизация owl→OpenRouter, hermes→Orchestrator
-- GetAIChatHistory, GetAIChatSettings, UpdateAIChatSettings
-- server.go + main.go обновлены
-
-### 4. Android AiChatGrpc.kt ✅
-- AIChatRequestProto, AIChatResponseProto, AIChatMessageProto, AIChatSettingsProto
-- chatWithAI streaming + unary RPCs
-- GrpcClient.kt facade обновлён
+### Архитектура AI Chat Refactor ✅
+- ai_chat_manager.go, ai_chat_sessions/messages/settings таблицы
+- ChatWithAI RPC, GetAIChatHistory, GetAIChatSettings, UpdateAIChatSettings
+- AiChatGrpc.kt + GrpcClient facade
 - compileDebugKotlin passes
+- Dev и prod обновлены
 
 ---
 
