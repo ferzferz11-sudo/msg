@@ -1,6 +1,6 @@
 # Lavender Messenger — Интеграционная сессия
 
-**Текущая версия:** v1.1.2.2
+**Текущая версия:** v1.1.2.3
 **Обновлено:** 2026-06-09
 
 ## Контекст
@@ -137,6 +137,7 @@ ANDROID:
 6. ~~Бесплатные модели v1.1.1.15~~ ✅
 7. ~~Багфикс + полировка v1.1.1.16~~ ✅
 8. ~~Деплой на prod → v1.1.2.0~~ ✅
+9. ~~AI Chat Refactor v1.1.2.3~~ ✅
 
 ### Средний приоритет
 - Модульные тесты для OWL streaming
@@ -219,6 +220,32 @@ cd /root/msg.client.android
 
 ---
 
+## Статус: v1.1.2.3 — AI Chat Refactor (ЗАВЕРШЕНА)
+
+### Архитектура
+- Создан ai_chat_manager.go — единый менеджер для всех AI чатов
+- Единые таблицы: ai_chat_sessions, ai_chat_messages, ai_chat_settings
+- ChatWithAI RPC — единый стриминг для OWL и Hermes
+- Старые RPC (ChatWithOWL, ChatWithOrchestrator) оставлены deprecated
+- Proto: AIChatRequest, AIChatResponse, AIChatMessage, AIChatSettings
+- FK CASCADE на все AI-таблицы
+
+### Сервер v1.1.2.3
+- ai_chat_manager.go: CreateSession, GetSession, GetSessionsByUser, DeleteSession, AddMessage, GetHistory, GetSettings, SaveSettings, UpdateSession, GetOwnerID
+- server.go: ChatWithAI, GetAIChatHistory, GetAIChatSettings, UpdateAIChatSettings handlers
+- db_hermes.go: миграции для ai_chat_sessions, ai_chat_messages, ai_chat_settings
+- Дропнуты старые таблицы: owl_messages, owl_chat_settings, hermes_messages, hermes_sessions, hermes_chat_settings
+- Dev и prod обновлены, серверы работают
+
+### Android v1.1.2.3
+- version.txt 1.1.2.3, changelog.txt обновлён
+- MessengerProto.kt: AIChatRequestProto, AIChatResponseProto, AIChatMessageProto, AIChatSettingsProto + request/response classes
+- AiChatGrpc.kt: chatWithAI (streaming), getAIChatHistory, getAIChatSettings, updateAIChatSettings
+- GrpcClient.kt: facade methods для AI Chat
+- compileDebugKotlin passes
+
+---
+
 ## Статус: v1.1.2.2 — DeleteChat cascade fix
 
 ### Сервер v1.1.2.2
@@ -251,55 +278,53 @@ cd /root/msg.client.android
 
 ---
 
-## Промпт для следующей сессии (feat/1.1.2.x — v1.1.2.3)
+## Промпт для следующей сессии (feat/1.1.2.x — v1.1.2.4)
 
 ```
-ЗАДАЧА: Реализовать AI Chat Refactor проект. Это ПРИОРИТЕТ номер 1.
+ЗАДАЧА: Исправить найденные проблемы v1.1.2.3. Это ПРИОРИТЕТ номер 1.
 
-Детальный план в /root/msg/doc/AI_CHAT_REFACTOR.md
-Промпт для автономной работы в /root/msg/doc/AI_CHAT_REFACTOR_PROMPT.md
-
-Текущая версия: v1.1.2.2 (prod)
-Следующая версия: v1.1.2.3
+Текущая версия: v1.1.2.3 (prod)
+Следующая версия: v1.1.2.4
 
 Контекст:
 - Сервер: /root/msg, dev порт 50052, prod порт 50051
 - Android: /root/msg.client.android
 - Оба репозитория на ветке feat/1.1.2.x
-- v1.1.2.2 — стабильная prod версия (таг выпущен)
+- v1.1.2.3 — prod версия (таг выпущен), но есть баги
 
-Что делать (v1.1.2.3):
-1. Прочитать /root/msg/doc/AI_CHAT_REFACTOR.md и AI_CHAT_REFACTOR_PROMPT.md
-2. Реализовать проект полностью — SQL, proto, Go, Android
+Что делать (v1.1.2.4):
+
+1. ⭐ Hermes история не загружается:
+   - Проблема: HermesChatActivity вызывает chatWithOrchestrator (старый RPC),
+     который пишет в hermes_messages — но эта таблица дропнута в v1.1.2.3
+   - Решение: добавить в ChatWithOrchestrator handler сохранение в ai_chat_messages
+     (или мигрировать HermesChatActivity на ChatWithAI)
+   - Проверить: что GetOrchestratorHistory читает из ai_chat_messages, а не hermes_messages
+
+2. ⭐ Счётчик запросов показывает max 19 вместо 20:
+   - Проблема: off-by-one в rate limiter
+   - Проверить owl.go:rateLimiter.remaining() — должно быть limit - len(valid)
+   - Проверить что allow() вызывается ДО remaining() в одном и том же запросе
+   - Возможно remaining() вызывается после allow() который уже добавил timestamp
+
 3. Деплой на dev → тестирование → деплой на prod
-4. Обновить версию в server.go:33, CHANGELOG.md, INTEGRATION_SESSION.md
-
-Архитектура (важно!):
-- Создать ai_chat_manager.go — единый менеджер для всех AI чатов
-- Единые таблицы: ai_chat_sessions, ai_chat_messages, ai_chat_settings
-- ChatWithAI RPC вместо отдельных ChatWithOWL/ChatWithOrchestrator
-- AiChatGrpc.kt — единый файл на клиенте
-- userId (UUID) — всегда как ключ, НЕ username
-- creator_id (UUID) — для проверки владельца
-- Старый код (OwlGrpc, HermesGrpc, ChatWithOWL, ChatWithOrchestrator) оставить deprecated
+4. Обновить версию в server.go:33, CHANGELOG.md, INTEGRATION_SESSION.md, TASKS.md
 
 Правила:
-- Читать AI_CHAT_REFACTOR_PROMPT.md в первую очередь — там пошаговый план
 - Коммитить после каждого значимого изменения, пушить в feat/1.1.2.x
 - Деплоить на dev для тестирования (сервер)
 - assembleRelease НЕ запускать на сервере (OOM kill)
 - compileDebugKotlin OK
 - Не ломать существующий функционал
-- Документация распределена по файлам и проиндексирована в INDEX.md
 
 Документация (читать в начале каждой сессии):
 - Индекс: /root/msg/doc/INDEX.md
-- Проект: /root/msg/doc/AI_CHAT_REFACTOR.md
-- Промпт: /root/msg/doc/AI_CHAT_REFACTOR_PROMPT.md
-- Сервер: /root/msg/doc/INTEGRATION_SESSION.md, /root/msg/doc/TASKS.md
+- Задачи: /root/msg/doc/TASKS.md (там описаны проблемы)
+- Сервер: /root/msg/doc/INTEGRATION_SESSION.md
 - Android: /root/msg.client.android/doc/TASKS.md
 - AI сервисы: /root/msg/doc/AI_SERVICES.md
 - Подводные камни: /root/msg/doc/PITFALLS.md
+- Changelog: /root/msg/doc/CHANGELOG.md
 - Memory pad: /root/.hermes/memory/pad.md
 ```
 

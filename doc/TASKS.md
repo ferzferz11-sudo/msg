@@ -1,9 +1,51 @@
 # Lavender Messenger — Задачи
 
-**Версия:** v1.1.2.1
+**Версия:** v1.1.2.3
 **Ветка:** feat/1.1.2.x
 **Обновлено:** 2026-06-09
-**Статус:** ✅ Prod Релиз
+**Статус:** ⚠️ Есть нерешённые проблемы
+
+---
+
+## ⚠️ v1.1.2.3 — Найденные проблемы (требуют исправления)
+
+### 1. Hermes история не загружается ⭐ ВЫСОКИЙ ПРИОРИТЕТ
+- **Симптом**: пользователь не видит историю чата с оркестратором
+- **Возможная причина**: AiChatGrpc использует новый ChatWithAI RPC, но HermesChatActivity всё ещё вызывает старый chatWithOrchestrator. Новая активити не интегрирована, старая не работает с новыми таблицами
+- **Что делать**: проверить какой RPC вызывает HermesChatActivity, либо мигрировать на ChatWithAI, либо убедиться что старый ChatWithOrchestrator сохраняет в ai_chat_messages (сейчас сохраняет в hermes_messages которой больше нет)
+- **Статус**: не исправлено
+
+### 2. Счётчик запросов показывает максимум 19 ⭐ ВЫСОКИЙ ПРИОРИТЕТ
+- **Симптом**: в чате с агентом счётчик идёт только до 19, а лимит 20
+- **Возможная причина**: ошибка на 1 в rate limiter — условие `>= limit` вместо `> limit`, или remaining вычисляется как `limit - used` но used считается включая текущий запрос до того как он добавлен
+- **Что делать**: проверить owlSessionManager (10/мин) vs freeTierRateLimiter (20/час) — какой используется для агента. Проверить логику remaining() — должно быть `limit - len(valid)`, возможно off-by-one
+- **Статус**: не исправлено
+
+---
+
+## ✅ v1.1.2.3 — AI Chat Refactor
+
+### 1. Единый менеджер AI чатов ✅
+- ai_chat_manager.go: CreateSession, GetSession, DeleteSession, AddMessage, GetHistory, GetSettings, SaveSettings
+- ai_chat_sessions, ai_chat_messages, ai_chat_settings таблицы
+- FK CASCADE на все AI-таблицы
+- Dev и prod обновлены
+
+### 2. Новые proto сообщения и RPC ✅
+- AIChatRequest, AIChatResponse, AIChatMessage, AIChatSettings
+- ChatWithAI, GetAIChatHistory, GetAIChatSettings, UpdateAIChatSettings
+- Старые RPC пометены deprecated
+
+### 3. AI Chat handlers на сервере ✅
+- ChatWithAI: маршрутизация owl→OpenRouter, hermes→Orchestrator
+- GetAIChatHistory, GetAIChatSettings, UpdateAIChatSettings
+- server.go + main.go обновлены
+
+### 4. Android AiChatGrpc.kt ✅
+- AIChatRequestProto, AIChatResponseProto, AIChatMessageProto, AIChatSettingsProto
+- chatWithAI streaming + unary RPCs
+- GrpcClient.kt facade обновлён
+- compileDebugKotlin passes
 
 ---
 
