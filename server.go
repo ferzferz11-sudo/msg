@@ -3599,11 +3599,10 @@ func (s *server) ChatWithOrchestrator(req *gen.OrchestratorRequest, stream gen.C
 			log.Printf("[Lava] /help send error: %v", err)
 			return err
 		}
-		// Save to DB
-		if s.hermesDB != nil {
-			s.hermesDB.SaveOrchestratorMessage(chatID, userID, "user", "", req.Message)
-			s.hermesDB.SaveOrchestratorMessage(chatID, userID, "assistant", "", welcomeMsg)
-		}
+		// Save to DB via AIChatManager
+		manager := s.getAIChatManager()
+		manager.AddMessage(chatID, "user", req.Message, "")
+		manager.AddMessage(chatID, "assistant", welcomeMsg, "")
 		return nil
 	}
 
@@ -3631,18 +3630,17 @@ func (s *server) ChatWithOrchestrator(req *gen.OrchestratorRequest, stream gen.C
 		return nil
 	}
 
-	// Save user message to DB
-	if s.hermesDB != nil {
-		s.hermesDB.SaveOrchestratorMessage(chatID, userID, "user", "", req.Message)
-	}
+	// Save user message to DB via AIChatManager
+	manager := s.getAIChatManager()
+	manager.AddMessage(chatID, "user", req.Message, "")
 
 	// Save assistant response to DB (strip agent prefix like "[Support] ")
 	assistantResponse := fullResponse.String()
 	if idx := strings.Index(assistantResponse, "] "); idx >= 0 && idx < 30 {
 		assistantResponse = assistantResponse[idx+2:]
 	}
-	if assistantResponse != "" && s.hermesDB != nil {
-		s.hermesDB.SaveOrchestratorMessage(chatID, userID, "assistant", "", assistantResponse)
+	if assistantResponse != "" {
+		manager.AddMessage(chatID, "assistant", assistantResponse, "")
 	}
 
 	// Update chat last message
@@ -3725,26 +3723,36 @@ func (s *server) buildWelcomeMessage() string {
 	return sb.String()
 }
 
-// GetOrchestratorHistory — история сообщений с оркестратором (из БД)
+// GetOrchestratorHistory — история сообщений с оркестратором (из ai_chat_messages)
 func (s *server) GetOrchestratorHistory(_ context.Context, req *gen.GetOrchestratorHistoryRequest) (*gen.GetOrchestratorHistoryResponse, error) {
 	userID := req.UserId
 	if userID == "" {
 		return nil, status.Error(codes.InvalidArgument, "user_id is required")
 	}
 
-	if s.hermesDB == nil {
+	manager := s.getAIChatManager()
+
+	// Verify ownership
+	session, err := manager.GetSession(req.SessionId)
+	if err != nil {
+		return &gen.GetOrchestratorHistoryResponse{}, nil
+	}
+	if session.UserID != userID {
 		return &gen.GetOrchestratorHistoryResponse{}, nil
 	}
 
-	// Load from DB via HermesDB
-	dbMessages := s.hermesDB.GetOrchestratorHistory(req.SessionId, 50)
+	// Load from DB via AIChatManager
+	dbMessages, err := manager.GetHistory(req.SessionId, 50)
+	if err != nil {
+		return &gen.GetOrchestratorHistoryResponse{}, nil
+	}
 
 	messages := make([]*gen.HermesChatMessage, 0, len(dbMessages))
 	for _, msg := range dbMessages {
 		messages = append(messages, &gen.HermesChatMessage{
 			Role:      msg.Role,
 			Content:   msg.Content,
-			CreatedAt: time.Now().Format(time.RFC3339),
+			CreatedAt: msg.CreatedAt.Format(time.RFC3339),
 		})
 	}
 
