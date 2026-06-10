@@ -8,14 +8,14 @@
 - **Git:** `ferzferz11-sudo/msg`
 - **Dev сервер:** `13.140.25.249`, путь `/root/msg`
 - **Production:** `159.195.38.145`, путь `/root/LavenderMessenger/run`
-- **Ветка:** `main`
+- **Ветка:** `feat/1.1.2.x`
 - **PostgreSQL:** user `lavender`, database `chat_db` (prod), `chat_db_dev` (dev)
 - **systemd:** `lavender-server.service` (prod), `lavender-server-dev.service` (dev)
 
 ### Клиент (Android)
 - **Git:** `ferzferz11-sudo/msg.client.android`
 - **Dev сервер:** `/root/msg.client.android` на `13.140.25.249`
-- **Ветка:** `master`
+- **Ветка:** `feat/1.1.2.x`
 
 ## Сервер — ключевые файлы
 

@@ -1,14 +1,14 @@
 # Lavender Messenger — Server
 
-**Author:** Pavel Davydov (ferz)  
-**Version:** 1.0.7.1  
-**Language:** Go 1.26  
+**Author:** Pavel Davydov (ferz)
+**Version:** 1.1.2.4
+**Language:** Go 1.26
 
-gRPC server with AES-256 encryption, PostgreSQL storage, Firebase push notifications.
+gRPC server with AES-256 encryption, PostgreSQL storage, Firebase push notifications, Hermes AI Orchestrator, and OWL AI assistant.
 
 ## Repository
 
-This is the **server** repository.  
+This is the **server** repository.
 Android client lives in a separate repo: `ferzferz11-sudo/msg.client.android`
 
 ## Running
@@ -33,10 +33,18 @@ msg/                              # Server repo root
 ├── secret_chat.go                # E2EE handlers (ECDH + AES-256-GCM)
 ├── server_management.go          # Server management RPC methods
 ├── db.go                         # PostgreSQL: connection, migrations, queries
+├── db_hermes.go                  # Hermes-specific DB migrations
 ├── hub.go                        # Client connection hub (broadcast, register)
 ├── http_server.go                # HTTP servers (port 8081 APK, 8082 uploads)
 ├── crypto.go                     # AES-256-GCM + bcrypt
 ├── email.go                      # Email notification support
+├── owl.go                        # OWL AI: ChatWithOWL streaming, sessions, history
+├── bot_commands.go               # Bot Commands: /status, /deploy, /logs, /restart, /ai, /help, /version
+├── hermes_orchestrator.go        # Hermes: orchestrator, LLM routing, RAG pipeline
+├── hermes_agent_service.go       # Hermes: agent management
+├── hermes_agents.go              # Hermes: agent registry
+├── hermes_remote_manager.go      # Hermes: remote agent management
+├── hermes_remote.proto            # Hermes remote agent protocol
 ├── messenger.proto               # gRPC protocol definition
 ├── server.proto                  # Server management protocol
 ├── gen/                          # Generated protobuf Go code
@@ -44,6 +52,11 @@ msg/                              # Server repo root
 │   ├── messenger_grpc.pb.go
 │   ├── server.pb.go
 │   └── server_grpc.pb.go
+├── core/                         # Ports & Adapters
+│   ├── llm/                      # LLM Router + providers (OpenRouter, Hermes local)
+│   ├── pipeline/                 # RAG → LLM → Tool Calling loop
+│   ├── rag/                      # RAG interfaces + in-memory implementation
+│   └── tools/                    # Tool Executor (search, web, chat info)
 ├── config.yaml                   # gRPC config (address, TLS)
 ├── .env                          # Runtime config (DB, secret key) — NOT committed
 ├── .env.example                  # Config template
@@ -51,13 +64,10 @@ msg/                              # Server repo root
 ├── deploy.sh                     # Deploy to remote server
 ├── start.sh                      # Local startup
 ├── monitor.sh                    # Health check cron script
-├── db_maintenance.sh             # DB cleanup utilities
-├── check_message.sh              # Message debugging
-├── get_last_messages.sh          # Fetch recent messages
+├── scripts/                      # Build, maintenance, dev scripts
 ├── CHANGELOG.md                  # Version history
 ├── README.md                     # This file
-├── SKILLS_AND_COMMANDS.md        # Dev commands reference
-├── PROJECT_MEMORY.md             # Project architecture notes
+├── doc/                          # Documentation (INDEX.md, AI_SERVICES.md, etc.)
 └── uploads/                      # File upload storage
     ├── audio/
     ├── avatars/
@@ -74,6 +84,7 @@ msg/                              # Server repo root
 - **Push:** Firebase Cloud Messaging
 - **HTTP Servers:** Port 8081 (APK distribution), 8082 (file uploads)
 - **Keepalive:** 15s interval, 10s timeout
+- **AI:** Hermes Orchestrator (multi-agent, RAG pipeline, tool calling) + OWL AI assistant
 
 ## Proto Regeneration
 
@@ -97,16 +108,16 @@ protoc --go_out=gen --go_opt=paths=source_relative \
 
 ## Deployment
 
-User deploys manually via `./deploy.sh`.  
+User deploys manually via `./deploy.sh`.
 Servers:
 
 | Server | IP | Role |
 |--------|-----|------|
 | Development | 13.140.25.249:50051 | Dev/testing |
-| Production | 159.195.38.145:50051 | Production (old) |
+| Production | 159.195.38.145:50051 | Production |
 | Local | 192.168.1.135:50051 | Dev laptop |
 
 ## Branches
 
-- `main` — production (159.195.38.145)
-- `feat/remove-username-compat` — new server (13.140.25.249)
+- `main` — production
+- `feat/1.1.2.x` — current development
