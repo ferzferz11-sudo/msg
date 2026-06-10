@@ -276,8 +276,12 @@ cd /root/msg.client.android
 
 ### Android v1.1.2.5
 - version.txt 1.1.2.5, changelog.txt обновлён
-- **Bugfix: ChangelogActivity — белый экран при кастомных темах** — добавлен ThemeUi.bind для применения кастомных тем к Activity
+- **Bugfix: ChangelogActivity — белый экран при кастомных темах** — ThemeApplier.apply вызывается синхронно до setContentView
+- **Новое: Splash-экран при загрузке** — logo + «Лава» с анимацией пока данные грузятся с GitHub
+- **Новое: Fallback на changelog.txt** — если GitHub API не ответил, загружает changelog.txt с сервера
 - compileDebugKotlin passes
+- APK собран и загружен на сервер (/var/www/lavender/lavender.apk)
+- GitHub релиз v1.1.2.5 создан с APK в assets
 
 ---
 
@@ -328,9 +332,13 @@ cd /root/msg.client.android
 - v1.1.2.5 — prod версия (таг выпущен)
 
 Что сделано в v1.1.2.5:
-- ChangelogActivity — добавлен ThemeUi.bind для применения кастомных тем (белый экран исправлен)
+- ChangelogActivity — ThemeApplier.apply синхронно (белый экран исправлен)
+- ChangelogActivity — splash-экран при загрузке (logo + «Лава»)
+- ChangelogActivity — fallback на changelog.txt если GitHub API не ответил
+- APK собран, загружен на сервер, GitHub релиз создан
 
 Бэклог (v1.1.2.6):
+- Содержание changelog.txt — обновить/исправить
 - Модульные тесты для OWL streaming
 - Auth токены для удалённых агентов (JWT)
 - Qdrant + CLIP (production RAG)
