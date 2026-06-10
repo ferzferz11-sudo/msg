@@ -6,6 +6,10 @@
 - **Исправлено:** все вызовы переведены на AIChatManager (ai_chat_messages таблица)
 - ChatWithOrchestrator: save → manager.AddMessage()
 - GetOrchestratorHistory: load → manager.GetHistory() + проверка владельца
+- **Bugfix: Rate limiter — failed requests refund** — если allow() прошёл но запрос упал
+  (OpenRouter error, orchestrator error), слот теперь возвращается через cancel(userID)
+- Добавлен rateLimiter.cancel(userID) в failure paths: ChatWithOWL, ChatWithOrchestrator,
+  ChatWithAI (Hermes + OWL), ChatWithPipeline, /ai bot command
 - ServerVersion: 1.1.2.4
 - Dev и prod обновлены
 

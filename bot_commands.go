@@ -370,6 +370,8 @@ func handleBotAI(s *server, req *gen.BotCommandRequest) *gen.BotCommandResponse 
 	response, err := callOpenRouterContext(context.Background(), s.owlApiKey, s.owlModel, systemPrompt, messages)
 	if err != nil {
 		log.Printf("[BotCommand] /ai error for %s: %v", req.Username, err)
+		// Refund rate limit slot on failure
+		owlRateLimiter.cancel(req.UserId)
 		return &gen.BotCommandResponse{
 			Success:      false,
 			IsError:      true,

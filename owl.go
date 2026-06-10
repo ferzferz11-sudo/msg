@@ -323,6 +323,15 @@ func (rl *rateLimiter) allow(userID string) bool {
 	return true
 }
 
+// cancel removes the last added timestamp for a user (refund on failure)
+func (rl *rateLimiter) cancel(userID string) {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+	if len(rl.requests[userID]) > 0 {
+		rl.requests[userID] = rl.requests[userID][:len(rl.requests[userID])-1]
+	}
+}
+
 // remaining returns how many requests the user has left in the current window
 func (rl *rateLimiter) remaining(userID string) int {
 	rl.mu.Lock()

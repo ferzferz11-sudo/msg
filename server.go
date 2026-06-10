@@ -2980,6 +2980,12 @@ func (s *server) ChatWithOWL(req *gen.OWLRequest, stream gen.ChatService_ChatWit
 	response, err := callOpenRouterContext(context.Background(), apiKey, model, systemPrompt, history)
 	if err != nil {
 		log.Printf("OWL: OpenRouter error for chat %s: %v", chatID, err)
+		// Refund rate limit slot on failure
+		if hasCustomKey {
+			owlRateLimiter.cancel(userID)
+		} else {
+			freeTierRateLimiter.cancel(userID)
+		}
 		return fmt.Errorf("AI service error: %w", err)
 	}
 	log.Printf("OWL: OpenRouter response for chat %s: %q (len=%d)", chatID, response, len(response))
@@ -3321,6 +3327,12 @@ func (s *server) ChatWithAI(req *gen.AIChatRequest, stream gen.ChatService_ChatW
 			})
 		if err != nil {
 			log.Printf("[ChatWithAI] orchestrator error: %v", err)
+			// Refund rate limit slot on failure
+			if hasCustomKey {
+				owlRateLimiter.cancel(userID)
+			} else {
+				freeTierRateLimiter.cancel(userID)
+			}
 			stream.Send(&gen.AIChatResponse{Finished: true, Error: err.Error()})
 		}
 
@@ -3373,6 +3385,12 @@ func (s *server) ChatWithAI(req *gen.AIChatRequest, stream gen.ChatService_ChatW
 			})
 		if err != nil {
 			log.Printf("[ChatWithAI] OpenRouter error: %v", err)
+			// Refund rate limit slot on failure
+			if hasCustomKey {
+				owlRateLimiter.cancel(userID)
+			} else {
+				freeTierRateLimiter.cancel(userID)
+			}
 			stream.Send(&gen.AIChatResponse{Finished: true, Error: err.Error()})
 		}
 
@@ -3622,6 +3640,12 @@ func (s *server) ChatWithOrchestrator(req *gen.OrchestratorRequest, stream gen.C
 
 	if err != nil {
 		log.Printf("[Lava] orchestrator error for user %s: %v", userID, err)
+		// Refund rate limit slot on failure
+		if hasCustomHermesKey {
+			owlRateLimiter.cancel(userID)
+		} else {
+			freeTierRateLimiter.cancel(userID)
+		}
 		if err := stream.Send(&gen.OrchestratorResponse{
 			Token:    "",
 			Finished: true,
@@ -3686,6 +3710,8 @@ func (s *server) ChatWithPipeline(req *gen.PipelineRequest, stream gen.ChatServi
 
 	if err != nil {
 		log.Printf("[Pipeline] error for user %s: %v", userID, err)
+		// Refund rate limit slot on failure
+		owlRateLimiter.cancel(userID)
 		if err := stream.Send(&gen.PipelineResponse{
 			Finished: true,
 			Error:    err.Error(),
