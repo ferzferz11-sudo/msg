@@ -1,7 +1,7 @@
 # Lavender Messenger — Интеграционная сессия
 
-**Текущая версия:** v1.1.2.6
-**Обновлено:** 2026-06-10
+**Текущая версия:** v1.1.2.7
+**Обновлено:** 2026-06-11
 
 ## Контекст
 
@@ -285,6 +285,24 @@ cd /root/msg.client.android
 
 ---
 
+## Статус: v1.1.2.7 — ЗАВЕРШЕНА
+
+### Сервер v1.1.2.7
+- Без изменений (v1.1.2.4)
+
+### Android v1.1.2.7
+- **SplashActivity**: увеличено расстояние логотип→текст (60px → 90dp)
+- **SplashLoadingActivity**: новый оверлей загрузки для логина/регистрации
+- **Login/Register**: показывается SplashLoadingActivity во время авторизации
+- **Онбординг удалён**: welcomeContainer, onboardingProfileBubble, onboardingFabBubble
+- **Чекбокс "Создать чат"**: в шторке добавления контакта, включён по умолчанию
+- **Исправления**: crash при выборе чатов, getSelectedChats offset, loadingContainer удалён, statusBarColor deprecation
+- compileDebugKotlin passes
+- APK собран и загружен на сервер (/var/www/lavender/lavender.apk)
+- GitHub релиз v1.1.2.7 создан с APK
+
+---
+
 ## Статус: v1.1.2.6 — ЗАВЕРШЕНА
 
 ### Сервер v1.1.2.6
@@ -334,44 +352,43 @@ cd /root/msg.client.android
 
 ---
 
-## Промпт для следующей сессии (feat/1.1.2.x — v1.1.2.7)
+## Промпт для следующей сессии (feat/1.1.2.x — v1.1.2.8)
 
 ```
-ЗАДАЧА: Продолжить работу над Lavender Messenger. v1.1.2.6 завершена.
+ЗАДАЧА: Продолжить работу над Lavender Messenger. v1.1.2.7 завершена.
 
-Текущая версия: v1.1.2.6 (prod)
-Следующая версия: v1.1.2.7
+Текущая версия: v1.1.2.7 (prod)
+Следующая версия: v1.1.2.8
 
 Контекст:
 - Сервер: /root/msg, dev порт 50052, prod порт 50051
 - Android: /root/msg.client.android
 - Оба репозитория на ветке feat/1.1.2.x
-- v1.1.2.6 — prod версия (таг выпущен)
+- v1.1.2.7 — prod версия (таг выпущен)
 
-Что сделано в v1.1.2.6:
-- ChangelogActivity — bundled changelog (assets/changelog_bundled.txt) показывается мгновенно
-- ChangelogActivity — ссылки на CHANGELOG.md сервера и клиента на GitHub
-- changelog.txt УДАЛЁН из проекта и из деплоя
-- scripts/deploy_android.sh обновлён (убрана загрузка changelog.txt)
-- Старый deploy_android.sh удалён (сервер 159.195.38.145 не поддерживается)
-- Документация обновлена (INDEX.md, PITFALLS.md, TASKS.md)
+Что сделано в v1.1.2.7:
+- SplashActivity: увеличено расстояние логотип→текст
+- SplashLoadingActivity: новый оверлей загрузки для авторизации
+- Онбординг полностью удалён (welcomeContainer, подсказки)
+- Чекбокс "Сразу создать личный чат" при добавлении контакта (включён по умолчанию)
+- Исправления: crash выбора чатов, getSelectedChats offset, loadingContainer удалён
+- APK на сервере: /var/www/lavender/lavender.apk
+- GitHub релиз: https://github.com/ferzferz11-sudo/msg.client.android/releases/tag/v1.1.2.7
 
-Бэклог (v1.1.2.7):
+Известная проблема (не исправлено):
+- Favorites при пустом списке: не отображается при входе после очистки памяти если нет чатов
+
+Бэклог:
+- Исправить Favorites при пустом списке
 - Модульные тесты для OWL streaming
 - Auth токены для удалённых агентов (JWT)
 - Qdrant + CLIP (production RAG)
-- NewChatActivity → ChatWidget миграция
 
 Правила:
 - Коммитить после каждого значимого изменения, пушить в feat/1.1.2.x
-- Деплоить на dev для тестирования (сервер)
-- При каждом значимом изменении: обновлять INTEGRATION_SESSION.md + TASKS.md + соответствующие документы
-- При каждом релизе: обновлять CHANGELOG.md (сервер + Android), INTEGRATION_SESSION.md, TASKS.md
-- При каждом релизе: обновлять assets/changelog_bundled.txt (встроенный ченджлог в APK)
-- Не ломать существующий функционал
+- При каждом релизе: git tag, CHANGELOG.md, bundled, version.txt
 - assembleRelease НЕ запускать на сервере (OOM kill)
-- Версия сервера в server.go:33 — обновлять при выпуске (деплой + git tag)
-- Дизайн — минималистичный, чистый, без лишнего декора
+- Дизайн — минималистичный, чистый
 
 Документация (читать в начале каждой сессии):
 - Индекс: /root/msg/doc/INDEX.md

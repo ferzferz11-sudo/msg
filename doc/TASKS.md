@@ -1,9 +1,26 @@
 # Lavender Messenger — Задачи
 
-**Версия:** v1.1.2.6
+**Версия:** v1.1.2.7
 **Ветка:** feat/1.1.2.x
-**Обновлено:** 2026-06-10
-**Статус:** ✅ Все известные проблемы решены
+**Обновлено:** 2026-06-11
+
+---
+
+## ✅ v1.1.2.7 — Splash улучшения, онбординг удалён, чекбокс чата
+
+### Android v1.1.2.7
+- **SplashActivity**: увеличено расстояние логотип→текст (60px → 90dp)
+- **SplashLoadingActivity**: новый оверлей загрузки для логина/регистрации
+- **Login/Register**: показывается SplashLoadingActivity во время авторизации
+- **Онбординг удалён**: welcomeContainer, onboardingProfileBubble, onboardingFabBubble
+- **Чекбокс "Создать чат"**: в шторке добавления контакта, включён по умолчанию
+- **Исправления**: crash при выборе чатов, getSelectedChats offset, loadingContainer удалён, statusBarColor deprecation
+- compileDebugKotlin ✅
+- APK: /var/www/lavender/lavender.apk
+- GitHub релиз: https://github.com/ferzferz11-sudo/msg.client.android/releases/tag/v1.1.2.7
+
+### Сервер v1.1.2.7
+- Без изменений (v1.1.2.4)
 
 ---
 
@@ -162,27 +179,27 @@
 
 ---
 
-## 📋 Бэклог (v1.1.2.1 — исправления и улучшения AI чатов)
+## 📋 Бэклог
 
-### В работе
-- Тестирование OWL/Hermes чатов на dev и prod
-- Исправление найденных багов
-- Улучшения UX AI чатов
+### Высокий приоритет
+- [ ] Favorites при пустом списке — не отображается при входе после очистки памяти (Android)
 
 ### Средний приоритет
-- Модульные тесты для OWL streaming
-- ~~⭐ AboutActivity (ChangelogActivity) — не адаптирована к темам~~ ✅ v1.1.2.5
+- [ ] Модульные тесты для OWL streaming
 
 ### Низкий приоритет
-- Auth токены для удалённых агентов (JWT)
-- Qdrant + CLIP (production RAG)
+- [ ] Auth токены для удалённых агентов (JWT)
+- [ ] Qdrant + CLIP (production RAG)
 
 ---
 
 ## 🟡 Известные проблемы
 
-### ChangelogAdapter — цвета на кастомных темах
-- **Симптом**: на кастомных тёмных темах текст релизов в RecyclerView может быть нечитаемым (тёмный на тёмном)
-- **Причина**: `ChangelogAdapter` использует `resolveColorAttr(context, android.R.attr.textColorPrimary)` — на кастомных темах этот атрибут может быть тёмным
-- **Статус**: не исправлено. Fallback (bundled) работает корректно — цвета берутся из `ThemeStore`
-- **Приоритет**: низкий — GitHub API работает, основной контент отображается нормально
+### Favorites — отображение при пустом списке чатов (Android)
+- **Статус:** не исправлено, v1.1.2.7
+- **Симптом:** при входе после очистки памяти Favorites не отображается если нет созданных чатов
+- **Приоритет:** высокий
+
+### ChangelogAdapter — цвета на кастомных темах (Android)
+- **Статус:** не исправлено, приоритет низкий
+- Fallback (bundled) работает корректно

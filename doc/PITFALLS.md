@@ -23,6 +23,24 @@
 ### ValueAnimator
 - Всегда вызывайте `cancel()` перед запуском нового (TypingHolder leak)
 
+### Favorites — отображение при пустом списке чатов (известная проблема)
+
+**Статус:** не исправлено, v1.1.2.7
+
+**Симптом:** при входе после очистки памяти (или первого входе) Favorites не отображается если у пользователя нет созданных чатов. Появляется только после создания первого чата.
+
+**Причина:** `chatAdapter.setChats()` вызывается с списком `[Favorites]`, но `displayedChats` остаётся пустым (Favorites извлекается в отдельный `favoritesItem`). `notifyDataSetChanged()` внутри `setChats` может не дойти до RecyclerView из-за тайминга.
+
+**Попытки исправления:**
+- `selectedPositions.clear()` в `setChats` — не помогло
+- `post { notifyDataSetChanged() }` — не помогло
+- Убран `loadChatsFromCache` при пустом ответе сервера — не помогло
+
+**Нужно:** разобраться почему `getItemCount()` возвращает 1 но RecyclerView не отображает элемент. Возможные причины:
+- `notifyDataSetChanged()` вызывается до `setAdapter()`
+- SwipeRefreshLayout перехватывает обновление
+- `displayedChats` пуст и DiffUtil не считает изменение значимым
+
 ### Favorites flickering
 - Исправлено в c873fbc: `sendSync()` передавал list без favoritesItem, вызывая remove/insert каждые 5с
 - Паттерн: статический first item в RecyclerView должен быть ВКЛЮЧЁН во все background updates

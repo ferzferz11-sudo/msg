@@ -1,5 +1,9 @@
 # Lavender Messenger — Server Changelog
 
+## [1.1.2.7] - 2026-06-11
+- **Android: Splash улучшения, онбординг удалён, чекбокс чата**
+- Серверных изменений нет, v1.1.2.4
+
 ## [1.1.2.6] - 2026-06-10
 - **Android: ChangelogActivity — bundled changelog + GitHub links**
 - **Bundled changelog**: `app/src/main/assets/changelog_bundled.txt` — встроен в APK, показывается мгновенно
