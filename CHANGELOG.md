@@ -1,25 +1,20 @@
 # Lavender Messenger — Server Changelog
 
 ## [1.1.2.3] - 2026-06-09
-- Версия обновлена до 1.1.2.3
-- **AI Chat Refactor:** единый менеджер ai_chat_manager.go (CreateSession, GetSession, DeleteSession, AddMessage, GetHistory, GetSettings, SaveSettings, UpdateSession, GetOwnerID)
+- **AI Chat Refactor:** единый менеджер ai_chat_manager.go
 - **Новые таблицы:** ai_chat_sessions, ai_chat_messages, ai_chat_settings с FK CASCADE
-- **Дропнуты старые таблицы:** owl_messages, owl_chat_settings, hermes_messages, hermes_sessions, hermes_chat_settings
+- **Дропнуты:** owl_messages, owl_chat_settings, hermes_messages, hermes_sessions, hermes_chat_settings
 - **Proto:** AIChatRequest, AIChatResponse, AIChatMessage, AIChatSettings
 - **Новые RPC:** ChatWithAI (streaming), GetAIChatHistory, GetAIChatSettings, UpdateAIChatSettings
-- **ChatWithAI handler:** маршрутизация owl→OpenRouter, hermes→Orchestrator, единый streaming
-- **Deprecated:** ChatWithOWL, ChatWithOrchestrator (пометлены в proto, пока работают)
-- **DB migrations:** добавлены ai_chat_* таблицы + GRANT в db_hermes.go
-- **Android:** AiChatGrpc.kt, AIChat*Proto классы, GrpcClient facade, compileDebugKotlin passes
-- **Известные проблемы:** Hermes история не загружается (старый RPC пишет в удалённую таблицу), счётчик запросов off-by-one (19 вместо 20)
+- **ChatWithAI:** маршрутизация owl→OpenRouter, hermes→Orchestrator
+- **Deprecated:** ChatWithOWL, ChatWithOrchestrator
+- **Android:** AiChatGrpc.kt, AIChat*Proto классы, GrpcClient facade
 
 ## [1.1.2.2] - 2026-06-09
-- Версия обновлена до 1.1.2.2
 - **Bugfix: DeleteChat не удалял hermes_sessions** — добавлено каскадное удаление из hermes_sessions + hermes_messages для hermes-чатов, owl_messages + owl_chat_settings для owl-чатов
 - **Cleanup:** полная очистка всех AI-чатов на dev и prod (orphaned записи)
 
 ## [1.1.2.1] - 2026-06-09
-- Версия обновлена до 1.1.2.1
 - **Bugfix: Hermes история из БД** — `GetOrchestratorHistory` теперь загружает из `hermes_messages` через `HermesDB.GetOrchestratorHistory()` вместо in-memory `session.Messages`. История сохраняется после рестарта сервера.
 - **Security: проверка владельца в GetOwlHistory** — добавлена проверка `creator_id` по `req.UserId`
 - **Rate limiter: remaining count** — добавлен метод `remaining(userID)` в `rateLimiter`, возвращает количество оставшихся запросов в текущем окне
@@ -27,7 +22,6 @@
 - **Proto:** добавлены поля `remaining`, `limit`, `window_seconds` в `GetOwlSettingsResponse` и `GetHermesSettingsResponse`
 
 ## [1.1.2.0] - 2026-06-09
-- Версия обновлена до 1.1.2.0
 - **Prod релиз:** все фичи v1.1.1.x задеплоены на prod
 - **Bugfix: Hermes permission denied** — `ALTER TABLE hermes_sessions OWNER TO lavender` на prod DB
 - **Bugfix: HermesGrpc proto mapping** — исправлены номера полей в CreateHermesSessionResponse, CreateAgentResponse, AgentInfo
@@ -39,7 +33,6 @@
 - **Docs:** добавлена документация LOG_MONITOR.md, обновлён INDEX.md
 
 ## [1.1.1.15] - 2026-06-09
-- Версия обновлена до 1.1.1.15
 - **Free OpenRouter Models:** новая таблица `free_openrouter_models` — управляемый список бесплатных моделей
 - **RPC GetFreeModels:** получение списка бесплатных моделей (model_id, display_name, sort_order)
 - **RPC SetFreeModel / RemoveFreeModel:** админ-управление списком бесплатных моделей
@@ -49,7 +42,6 @@
 - Dev сервер обновлён и работает
 
 ## [1.1.1.14] - 2026-06-09
-- Версия обновлена до 1.1.1.14
 - **Дизайн + полировка UI** (Android):
   - Анимации появления сообщений (fade-in + slide) в ChatMessageAdapter
   - Улучшенный typing indicator — анимированные точки вместо статичных
@@ -62,23 +54,19 @@
 - Серверные изменения отсутствуют, все фичи v1.1.1.13 работают
 
 ## [1.1.1.13] - 2026-07-18
-- Версия обновлена до 1.1.1.13
 - Полное тестирование всех фич v1.1.1.x: AI чаты (OWL + Hermes), бот-команды, rate limiting, per-chat settings, reconnect, notifications
 - Документация: обновлены INTEGRATION_SESSION.md, TASKS.md
 - Подготовка к деплою на prod → v1.1.2.0
 
 ## [1.1.1.12] - 2026-06-09
-- Версия обновлена до 1.1.1.12
 - **Нет серверных изменений** — все фичи предыдущих версий работают
 - Dev сервер обновлён и работает
 
 ## [1.1.1.11] - 2026-06-08
-- Версия обновлена до 1.1.1.11
 - **Key/model info banner:** показ источника ключа и модели в шапке AI-чатов (toolbarInfo в ChatWidget)
 - **Robot icon:** ic_ai.xml заменён на robot vector drawable
 
 ## [1.1.1.10] - 2026-06-08
-- Версия обновлена до 1.1.1.10
 - **Hermes per-chat settings:** таблица `hermes_chat_settings`, RPCs `GetHermesSettings`/`UpdateHermesSettings` — per-session API key + model
 - **Rate limiting:** свой ключ = 10 req/min, бесплатный тариф = 20 req/hour (`freeTierRateLimiter`)
 - **GetOwlSettings:** добавлено поле `is_using_custom_key`
@@ -86,7 +74,6 @@
 - **Proto:** новые сообщения `GetHermesSettingsRequest/Response`, `UpdateHermesSettingsRequest/Response`, поля добавлены к `AIChatInfo` и `GetOwlSettingsResponse`
 
 ## [1.1.1.9] - 2026-06-08
-- Версия обновлена до 1.1.1.9
 - **Graceful reconnect (сервер):** добавлен grace period (30s) в hub — при разрыве соединения пользователь не сразу считается offline, а переходит в состояние "reconnecting"
 - **Grace period API:** `StartGracePeriod()`, `IsInGracePeriod()`, `ClearGracePeriod()`, `GetGracePeriodRemaining()` методы в hub
 - **GetOnlineUsers:** пользователи в grace period по-прежнему отображаются как online
@@ -94,7 +81,6 @@
 - **Keepalive:** серверные параметры без изменений (MinTime=5s, Time=20s, Timeout=20s)
 
 ## [1.1.1.8] - 2026-06-08
-- Версия обновлена до 1.1.1.8
 - **Исправлен невалидный JSON в participants:** заменена конкатенация на `json.Marshal([]string{userId})`. Теперь хранится UUID вместо username — не зависит от символов в имени.
 - **GetUserChats исключает AI-чаты:** `WHERE c.type NOT IN ('owl', 'hermes')` — убран jsonb-каст для AI-типов
 - **GetAllChats не включает AI-чаты:** OWL/Hermes полностью убраны из основного списка, отдельный RPC GetAIChats
@@ -104,7 +90,6 @@
 - **Proto:** добавлены GetAIChatsRequest/Response, RenameAIChatRequest/Response, AIChatInfo
 
 ## [1.1.1.7] - 2026-07-18
-- Версия обновлена до 1.1.1.7
 - **Notification badge (серверная часть):** добавлен per-user read tracking для серверных уведомлений
 - **notificationService:** добавлено поле `readStates` — map[userID]map[notificationID]bool для отслеживания прочитанных
 - **MarkNotificationsRead:** теперь реально отмечает уведомления как прочитанные для конкретного пользователя
@@ -114,7 +99,6 @@
 - **Proto:** добавлены `GetUnreadCountRequest` и `GetUnreadCountResponse` сообщения
 
 ## [1.1.1.6] - 2026-07-18
-- Версия обновлена до 1.1.1.6
 - **Multiple OWL/Hermes chats with numbering:** каждый новый чат уникален с порядковым номером
 - **CreateOwlChat:** генерирует UUID-based chatID + имя с номером (#1, #2, ...), добавлен `name` в ответ
 - **CreateHermesSession:** генерирует UUID-based sessionID + имя с номером (#1, #2, ...), добавлен `name` в ответ
@@ -124,7 +108,6 @@
 - **Proto:** добавлены `CreateOwlChatRequest` и `CreateOwlChatResponse` сообщения
 
 ## [1.1.1.5] - 2026-07-18
-- Версия обновлена до 1.1.1.5
 - **HermesSession → chats:** при создании HermesSession добавляется запись в таблицу `chats` (type="hermes") для корректного удаления и отображения в списке чатов
 - **DeleteChat для Hermes:** добавлен fallback — если чат не найден в `chats`, проверяется `hermes_sessions` и удаляется оттуда (исправляет `sql: no rows in result set`)
 - **GetOwlSettings RPC:** добавлен новый RPC для получения per-chat настроек (api_key, model) из `owl_chat_settings`
@@ -138,22 +121,18 @@
 - **Multiple chats naming (подготовка):** chatID остаётся UUID-based, name будет генерироваться с номером (#1, #2...) — реализация в v1.1.1.6
 
 ## [1.1.1.4] - 2026-07-17
-- Версия обновлена до 1.1.1.4
 - **OWL FK fix:** авто-создание OWL чата в таблице `chats` при первом сообщении (исправляет `violates foreign key constraint "owl_messages_chat_id_fkey"`)
 - **HermesSession username→UUID:** добавлен резолвинг username в UUID в `CreateHermesSession` для совместимости со старыми клиентами
 
 ## [1.1.1.3] - 2026-07-17
-- Версия обновлена до 1.1.1.3
 - **Bot Commands:** исправлен fmt.Sprintf в /logs handler
 - **Unit Tests:** добавлены модульные тесты для bot_commands.go (rate limiter, command handlers, dispatcher, notification service, utility functions)
 
 ## [1.1.1.2] - 2026-07-17
-- Версия обновлена до 1.1.1.2
 - **SendServerNotification:** добавлены уведомления в `/deploy` и `/restart` handlers (start, success, error)
 - **/ai команда:** улучшен системный промпт с именем пользователя
 
 ## [1.1.1.1] - 2026-07-17
-- Версия обновлена до 1.1.1.1
 - **Bot Commands:** добавлен Bot Command Processor (`bot_commands.go`) с командами: `/status`, `/deploy`, `/logs`, `/restart`, `/ai`, `/help`, `/version`
 - **Bot Commands:** rate limiting 30 cmd/min per user, AI rate limit 10 req/min
 - **Bot Commands:** интеграция в Chat stream — сообщения начинающиеся с `/` автоматически обрабатываются сервером
