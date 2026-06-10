@@ -246,7 +246,7 @@ cd /root/msg.client.android
 
 ---
 
-## Статус: v1.1.2.4 — Hermes History Fix + Rate Limiter Refund (ЗАВЕРШЕНА)
+## Статус: v1.1.2.4 — ЗАВЕРШЕНА
 
 ### Сервер v1.1.2.4
 - **Bugfix: Hermes история не загружалась** — ChatWithOrchestrator и GetOrchestratorHistory
@@ -255,10 +255,10 @@ cd /root/msg.client.android
 - ChatWithOrchestrator: save → manager.AddMessage()
 - GetOrchestratorHistory: load → manager.GetHistory() + проверка владельца
 - /help handler: тот же fix
-- **Bugfix: Rate limiter — failed requests потребляли слоты** — если allow() прошёл но запрос упал
-  (OpenRouter error, orchestrator error), слот не возвращался
-- **Исправлено:** добавлен rateLimiter.cancel(userID) во все failure paths:
-  ChatWithOWL, ChatWithOrchestrator, ChatWithAI (Hermes + OWL), ChatWithPipeline, /ai bot command
+- **Bugfix: Rate limiter — failed requests потребляли слоты** — cancel(userID) добавлен
+  во все failure paths: ChatWithOWL, ChatWithOrchestrator, ChatWithAI, ChatWithPipeline, /ai
+- **Bugfix: Avatar delete — новый файл удалялся если хеш совпадал со старым** — UpdateAvatar
+  теперь сравнивает имена файлов и не удаляет новый если хеш совпадает
 - ServerVersion: 1.1.2.4
 - Dev и prod обновлены, тег v1.1.2.4
 
