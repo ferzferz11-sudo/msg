@@ -1,8 +1,8 @@
 # Lava Messenger — Интеграционная сессия
 
-**Текущая версия:** v1.1.2.6
+**Текущая версия:** v1.1.2.9
 **Обновлено:** 2026-06-11
-**Тег:** v1.1.2.6 (выпущен)
+**Тег:** v1.1.2.9 (выпущен)
 
 ## Контекст
 
@@ -21,6 +21,7 @@
 ├── bot_commands.go     — Bot Commands: /status, /deploy, /logs, /restart, /ai, /help, /version
 ├── hermes_orchestrator.go — Hermes: оркестратор, маршрутизация агентов
 ├── hermes_agent_service.go — Hermes: управление агентами
+├── auth_service.go     — AuthService: SignIn, SignUp
 └── server.go           — gRPC handlers, маршрутизация запросов
 
 ANDROID:
@@ -362,6 +363,24 @@ cd /root/msg.client.android
 
 ---
 
+## Статус: v1.1.2.9 — AuthService (ЗАВЕРШЕНА)
+
+### Сервер v1.1.2.9
+- **AuthService** — отдельный gRPC сервис для аутентификации
+- `auth_service.go` — реализация `AuthServiceServer` с методами `SignIn` и `SignUp`
+- `SignIn` — проверка username/password через bcrypt, возврат UUID-токена и User
+- `SignUp` — регистрация с проверкой уникальности username/email, bcrypt хеширование
+- Proto: новые сообщения `User`, `SignInRequest`, `SignUpRequest`, `AuthResponse`
+- Proto: новый сервис `AuthService` с RPC `SignIn` и `SignUp`
+- `db.go` — добавлен метод `SaveUserWithEmail`
+- `main.go` — регистрация `gen.RegisterAuthServiceServer(s, authServer)`
+- Dev сервер обновлён и работает
+
+### Android v1.1.2.9
+- Без изменений (v1.1.2.8)
+
+---
+
 ## Статус: v1.1.2.8 — AI чат улучшения (ЗАВЕРШЕНА)
 
 ### Android v1.1.2.8
@@ -381,27 +400,25 @@ cd /root/msg.client.android
 
 ---
 
-## Промпт для следующей сессии (feat/1.1.2.x — v1.1.2.9)
+## Промпт для следующей сессии (feat/1.1.2.x — v1.1.2.10)
 
 ```
-ЗАДАЧА: Продолжить работу над Lava Messenger. v1.1.2.8 завершена и выпущена.
+ЗАДАЧА: Продолжить работу над Lava Messenger. v1.1.2.9 завершена и выпущена.
 
-Текущая версия: v1.1.2.8 (prod, тег выпущен)
-Следующая версия: v1.1.2.9
+Текущая версия: v1.1.2.9 (prod, тег выпущен)
+Следующая версия: v1.1.2.10
 
 Контекст:
 - Сервер: /root/msg, dev порт 50052, prod порт 50051
 - Android: /root/msg.client.android
 - Оба репозитория на ветке feat/1.1.2.x
-- GitHub релиз v1.1.2.8: https://github.com/ferzferz11-sudo/msg.client.android/releases/tag/v1.1.2.8
 
-Что сделано в v1.1.2.8:
-- Favorites отображается сразу при входе (offline-first, fallback при ошибке)
-- Убран прелоадер во время ожидания ответа агента
-- Таймаут стрима 120 сек с сбросом на каждое сообщение
-- Шторка AI реорганизована — чаты разделены по типам (Hermes / OWL)
-- ChangelogAdapter цвета из ThemeStore, GitHub API загружается первым
-- Убран deprecated overridePendingTransition в SplashActivity
+Что сделано в v1.1.2.9:
+- AuthService — отдельный gRPC сервис для аутентификации
+- SignIn/SignUp методы с bcrypt хешированием паролей
+- Proto: User, SignInRequest, SignUpRequest, AuthResponse сообщения
+- auth_service.go: authServer с полной логикой аутентификации
+- Dev сервер обновлён и работает
 
 Известные проблемы (не исправлено):
 - Сообщения пользователя видны только после ответа агента (нужна отладка на устройстве)

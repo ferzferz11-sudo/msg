@@ -1,32 +1,32 @@
 # Лава — Задачи
 
-**Версия:** v1.1.2.6
+**Версия:** v1.1.2.9
 **Ветка:** feat/1.1.2.x
 **Обновлено:** 2026-06-11
-**Тег:** v1.1.2.6 (выпущен)
+**Тег:** v1.1.2.9 (выпущен)
 
 ---
 
-## ✅ v1.1.2.6 — Auth токены для удалённых агентов (JWT)
+## ✅ v1.1.2.9 — AuthService (SignIn/SignUp gRPC)
 
-### Сервер v1.1.2.6
-- **JWT аутентификация** для hermes-agent daemon при подключении к Orchestrator
-- `auth/jwt.go` — генерация и валидация HS256 JWT токенов
-- Claims: agent_id, agent_name, capabilities, iat, exp
-- Таблица `agent_tokens` в БД (SHA-256 хеш, не сам токен)
-- 3 новых admin RPC: `GenerateAgentToken`, `RevokeAgentToken`, `ListAgentTokens`
-- `validateToken()` — полная проверка: подпись, expiration, agent_id match, revoked в БД
-- Секрет из `JWT_SECRET` env (32+ байта)
-- Dev и prod обновлены
+### Сервер v1.1.2.9
+- **AuthService** — отдельный gRPC сервис для аутентификации
+- `auth_service.go` — реализация `AuthServiceServer` с методами `SignIn` и `SignUp`
+- `SignIn` — проверка username/password через bcrypt, возврат UUID-токена и User
+- `SignUp` — регистрация с проверкой уникальности username/email
+- Proto: `User`, `SignInRequest`, `SignUpRequest`, `AuthResponse`, `AuthService`
+- `db.go` — `SaveUserWithEmail` метод
+- `main.go` — `gen.RegisterAuthServiceServer(s, authServer)`
+- Dev сервер обновлён и работает
+
+### Android v1.1.2.9
+- Без изменений (v1.1.2.8)
+
+---
+
+## ✅ v1.1.2.8 — AI чат улучшения
 
 ### Android v1.1.2.8
-- Без изменений
-
----
-
-## ✅ v1.1.2.7 — Splash улучшения, онбординг удалён, чекбокс чата
-
-### Android v1.1.2.7
 - **SplashActivity**: увеличено расстояние логотип→текст (60px → 90dp)
 - **SplashLoadingActivity**: новый оверлей загрузки для логина/регистрации
 - **Login/Register**: показывается SplashLoadingActivity во время авторизации
