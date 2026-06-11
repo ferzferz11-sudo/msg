@@ -1,6 +1,17 @@
 # Лава — Server Changelog
 
-## [1.1.2.6] - 2026-06-11
+## [1.1.3.0] - 2026-06-11
+- **AuthService — отдельный gRPC сервис для аутентификации**
+- Новый proto-сервис `AuthService` с методами `SignIn` и `SignUp`
+- `SignIn` — проверка username/password, возврат JWT-токена (UUID) и User
+- `SignUp` — регистрация нового пользователя с проверкой уникальности username/email
+- Новые proto-сообщения: `User`, `SignInRequest`, `SignUpRequest`, `AuthResponse`
+- Реализация: `auth_service.go` — `authServer` с методами `SignIn`, `SignUp`
+- Регистрация в `main.go`: `gen.RegisterAuthServiceServer(s, authServer)`
+- Метод `SaveUserWithEmail` в `db.go` для создания пользователя с email
+- Dev сервер обновлён и работает
+
+## [1.1.2.8] - 2026-06-11
 - **Auth токены для удалённых агентов (JWT)**
 - HS256 JWT с подписью, expiration, agent_id в claims
 - Таблица `agent_tokens` в БД (хранится только SHA-256 хеш, не сам токен)
