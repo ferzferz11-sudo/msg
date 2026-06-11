@@ -39,6 +39,7 @@
 | Файл | Назначение | Когда читать |
 |------|-----------|-------------|
 | `LOG_MONITOR.md` | Log Monitor: сборка, деплой, API, web UI, известные проблемы | **При проблемах с логами** |
+| `TESTING.md` | Модульные тесты: запуск, покрытие, написание новых тестов | **При работе с тестами** |
 
 ### Отчёты
 
@@ -61,6 +62,7 @@
 ## Правила
 
 - При старте новой сессии: читать цепочку INDEX.md → AI_SERVICES.md → INTEGRATION_SESSION.md → TASKS.md → PITFALLS.md → LOG_MONITOR.md
+- При работе над тестами: читать doc/TESTING.md
 - При работе над веб-клиентом: читать /root/msg.client/web/doc/INDEX.md → ARCHITECTURE.md → TASKS.md → PITFALLS.md
 - После каждого значимого изменения: обновлять INTEGRATION_SESSION.md + TASKS.md + соответствующие документы
 - При каждом релизе: обновлять CHANGELOG.md (сервер + Android), INTEGRATION_SESSION.md, TASKS.md, LOG_MONITOR.md, PITFALLS.md, AI_SERVICES.md
