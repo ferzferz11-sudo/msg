@@ -12,7 +12,7 @@
 ## Контекст
 
 - Сервер: /root/msg, dev порт 50052, prod порт 50051
-- Android: /root/msg/client.android
+- Android: /root/msg/client.android (отдельный репозиторий!)
 - Оба репозитория на ветке feat/1.1.2.x
 - v1.1.2.7 — prod версия (таг выпущен)
 
