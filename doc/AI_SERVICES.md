@@ -1,4 +1,4 @@
-# Lavender Messenger — AI Services
+# Лава — AI Services
 
 Документация по AI-сервисам: OWL AI и Hermes Orchestrator.
 

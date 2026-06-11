@@ -1,4 +1,4 @@
-# Lavender Messenger — Промпт для Android-сессий
+# Лава — Промпт для Android-сессий
 
 ## Текущий статус
 

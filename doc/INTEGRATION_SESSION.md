@@ -1,4 +1,4 @@
-# Lavender Messenger — Интеграционная сессия
+# Lava Messenger — Интеграционная сессия
 
 **Текущая версия:** v1.1.2.6
 **Обновлено:** 2026-06-11
@@ -6,7 +6,7 @@
 
 ## Контекст
 
-Интеграция AI-чатов в Lavender Messenger: OWL AI и Hermes Orchestrator.
+Интеграция AI-чатов в Lava Messenger: OWL AI и Hermes Orchestrator.
 
 **Текущая ветка:** `feat/1.1.2.x` (оба репозитория)
 **Сервер:** dev на порту 50052, prod на 50051
@@ -304,21 +304,6 @@ cd /root/msg.client.android
 
 ---
 
-## Статус: v1.1.2.6 — ЗАВЕРШЕНА
-
-### Сервер v1.1.2.6
-- Без изменений (v1.1.2.4)
-
-### Android v1.1.2.6
-- **Bundled changelog**: `app/src/main/assets/changelog_bundled.txt` — встроен в APK, показывается мгновенно без сети
-- **Новая логика загрузки**: bundled (мгновенно) → GitHub API → server fallback
-- **Ссылки на CHANGELOG.md**: кнопки «Ченджлог сервера (GitHub)» и «Ченджлог клиента (GitHub)»
-- **changelog.txt удалён** из проекта и из деплоя на сервер
-- **scripts/deploy_android.sh обновлён**: убрана загрузка changelog.txt
-- **Старый deploy_android.sh удалён** (сервер 159.195.38.145 больше не поддерживается)
-- **Документация обновлена**: INDEX.md, PITFALLS.md, TASKS.md
-- compileDebugKotlin passes
-
 ---
 
 ## Статус: v1.1.2.2 — DeleteChat cascade fix
@@ -365,15 +350,22 @@ cd /root/msg.client.android
 - Секрет из `JWT_SECRET` env (32+ байта)
 - Dev и prod обновлены
 
-### Android v1.1.2.8
-- Без изменений
+### Android v1.1.2.6
+- **Bundled changelog**: `app/src/main/assets/changelog_bundled.txt` — встроен в APK, показывается мгновенно без сети
+- **Новая логика загрузки**: bundled (мгновенно) → GitHub API → server fallback
+- **Ссылки на CHANGELOG.md**: кнопки «Ченджлог сервера (GitHub)» и «Ченджлог клиента (GitHub)»
+- **changelog.txt удалён** из проекта и из деплоя на сервер
+- **scripts/deploy_android.sh обновлён**: убрана загрузка changelog.txt
+- **Старый deploy_android.sh удалён** (сервер 159.195.38.145 больше не поддерживается)
+- **Документация обновлена**: INDEX.md, PITFALLS.md, TASKS.md
+- compileDebugKotlin passes
 
 ---
 
 ## Промпт для следующей сессии (feat/1.1.2.x — v1.1.2.7)
 
 ```
-ЗАДАЧА: Продолжить работу над Lavender Messenger. v1.1.2.6 завершена.
+ЗАДАЧА: Продолжить работу над Lava Messenger. v1.1.2.6 завершена.
 
 Текущая версия: v1.1.2.6 (prod, тег выпущен)
 Следующая версия: v1.1.2.7

@@ -1,4 +1,4 @@
-# Lavender Messenger — Project Memory
+# Лава — Project Memory
 # Created: 2026-05-28
 # Updated: 2026-06-04 — Hermes Orchestrator v1.1.0.12 (Unified Chat Widget)
 

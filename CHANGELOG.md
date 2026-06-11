@@ -1,4 +1,4 @@
-# Lavender Messenger — Server Changelog
+# Лава — Server Changelog
 
 ## [1.1.2.6] - 2026-06-11
 - **Auth токены для удалённых агентов (JWT)**
