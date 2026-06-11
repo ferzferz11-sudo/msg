@@ -1,9 +1,9 @@
 # Лава — Server Changelog
 
-## [1.1.3.0] - 2026-06-11
+## [1.1.2.9] - 2026-06-11
 - **AuthService — отдельный gRPC сервис для аутентификации**
 - Новый proto-сервис `AuthService` с методами `SignIn` и `SignUp`
-- `SignIn` — проверка username/password, возврат JWT-токена (UUID) и User
+- `SignIn` — проверка username/password, возврат токена (UUID) и User
 - `SignUp` — регистрация нового пользователя с проверкой уникальности username/email
 - Новые proto-сообщения: `User`, `SignInRequest`, `SignUpRequest`, `AuthResponse`
 - Реализация: `auth_service.go` — `authServer` с методами `SignIn`, `SignUp`
