@@ -19,9 +19,6 @@
 - `main.go` — `gen.RegisterAuthServiceServer(s, authServer)`
 - Dev сервер обновлён и работает
 
-### Android v1.1.2.9
-- Без изменений (v1.1.2.8)
-
 ---
 
 ## ✅ v1.1.2.8 — AI чат улучшения

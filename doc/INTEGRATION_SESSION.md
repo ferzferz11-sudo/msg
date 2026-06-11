@@ -369,15 +369,11 @@ cd /root/msg.client.android
 - **AuthService** — отдельный gRPC сервис для аутентификации
 - `auth_service.go` — реализация `AuthServiceServer` с методами `SignIn` и `SignUp`
 - `SignIn` — проверка username/password через bcrypt, возврат UUID-токена и User
-- `SignUp` — регистрация с проверкой уникальности username/email, bcrypt хеширование
-- Proto: новые сообщения `User`, `SignInRequest`, `SignUpRequest`, `AuthResponse`
-- Proto: новый сервис `AuthService` с RPC `SignIn` и `SignUp`
-- `db.go` — добавлен метод `SaveUserWithEmail`
-- `main.go` — регистрация `gen.RegisterAuthServiceServer(s, authServer)`
+- `SignUp` — регистрация с проверкой уникальности username/email
+- Proto: `User`, `SignInRequest`, `SignUpRequest`, `AuthResponse`, `AuthService`
+- `db.go` — `SaveUserWithEmail` метод
+- `main.go` — `gen.RegisterAuthServiceServer(s, authServer)`
 - Dev сервер обновлён и работает
-
-### Android v1.1.2.9
-- Без изменений (v1.1.2.8)
 
 ---
 
