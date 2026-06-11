@@ -1,6 +1,6 @@
 # Lavender Messenger — Server Changelog
 
-## [1.1.2.8] - 2026-06-11
+## [1.1.2.6] - 2026-06-11
 - **Auth токены для удалённых агентов (JWT)**
 - HS256 JWT с подписью, expiration, agent_id в claims
 - Таблица `agent_tokens` в БД (хранится только SHA-256 хеш, не сам токен)
