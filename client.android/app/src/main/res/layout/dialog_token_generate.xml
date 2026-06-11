@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  dialog_token_generate.xml — диалог генерации токена агента.
+  Поля: Agent Name, Capabilities (мультивыбор), TTL.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingHorizontal="24dp"
+    android:paddingVertical="20dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Сгенерировать токен агента"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="16dp" />
+
+    <!-- Agent Name -->
+    <com.google.android.material.textfield.TextInputLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="12dp"
+        style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/editAgentName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Имя агента"
+            android:inputType="text"
+            android:maxLines="1" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <!-- Capabilities label -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Возможности"
+        android:textSize="14sp"
+        android:layout_marginBottom="4dp" />
+
+    <!-- Capabilities checkboxes -->
+    <LinearLayout
+        android:id="@+id/capabilitiesContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginBottom="12dp">
+
+        <CheckBox
+            android:id="@+id/capShell"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="shell — выполнение команд"
+            android:checked="true" />
+
+        <CheckBox
+            android:id="@+id/capFile"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="file — чтение/запись файлов"
+            android:checked="true" />
+
+        <CheckBox
+            android:id="@+id/capGit"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="git — git операции" />
+
+        <CheckBox
+            android:id="@+id/capBuild"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="build — сборка проектов" />
+
+        <CheckBox
+            android:id="@+id/capDeploy"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="deploy — деплой" />
+
+        <CheckBox
+            android:id="@+id/capDocker"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="docker — docker контейнеры" />
+
+        <CheckBox
+            android:id="@+id/capAI"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="ai — AI задачи" />
+
+        <CheckBox
+            android:id="@+id/capCustom"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="custom — пользовательские скрипты" />
+    </LinearLayout>
+
+    <!-- TTL -->
+    <com.google.android.material.textfield.TextInputLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"
+        style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/editTtl"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="TTL (часы)"
+            android:inputType="number"
+            android:text="24"
+            android:maxLines="1" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <!-- Info -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Токен показывается только один раз. Сохраните его!"
+        android:textSize="12sp"
+        android:textColor="#FF9800"
+        android:layout_marginTop="4dp" />
+
+</LinearLayout>

@@ -1,8 +1,10 @@
 package main
 
 import (
+	"LavenderMessenger/auth"
 	"LavenderMessenger/gen"
 	"context"
+	"crypto/sha256"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -1148,11 +1150,12 @@ func (s *server) DeployAgentTask(_ context.Context, req *gen.DeployAgentTaskRequ
 
 	taskID := uuid.New().String()[:12]
 	task := &RemoteTask{
-		ID:          taskID,
-		Type:        req.TaskType,
-		Params:      req.Params,
-		WorkingDir:  req.WorkingDir,
-		TimeoutSec:  int(req.TimeoutSec),
+		ID:           taskID,
+		AgentID:      req.AgentId,
+		Type:         req.TaskType,
+		Params:       req.Params,
+		WorkingDir:   req.WorkingDir,
+		TimeoutSec:   int(req.TimeoutSec),
 		StreamOutput: true,
 	}
 
@@ -1180,6 +1183,97 @@ func (s *server) GetRemoteAgentStatus(_ context.Context, req *gen.GetRemoteAgent
 		Status:        agent.Status,
 		ActiveTasks:   int32(agent.ActiveTasks),
 		LastHeartbeat: agent.LastHeartbeat.Format(time.RFC3339),
+	}, nil
+}
+
+// GenerateAgentToken — генерация JWT токена для нового агента (admin only)
+func (s *server) GenerateAgentToken(_ context.Context, req *gen.GenerateAgentTokenRequest) (*gen.GenerateAgentTokenResponse, error) {
+	if s.hermesDB == nil {
+		return &gen.GenerateAgentTokenResponse{Success: false, Error: "hermes DB not available"}, nil
+	}
+
+	// Generate JWT token
+	token, err := auth.GenerateAgentToken(req.AgentId, req.AgentName, req.Capabilities, time.Duration(req.TtlHours)*time.Hour)
+	if err != nil {
+		return &gen.GenerateAgentTokenResponse{Success: false, Error: err.Error()}, nil
+	}
+
+	// Compute expiry
+	ttlHours := int(req.TtlHours)
+	if ttlHours == 0 {
+		ttlHours = 24
+	}
+	expiresAt := time.Now().Add(time.Duration(ttlHours) * time.Hour)
+
+	// Save token hash to DB
+	tokenHash := hashTokenForStorage(token)
+	if err := s.hermesDB.SaveAgentToken(
+		req.AgentId, req.AgentName, tokenHash,
+		req.Capabilities, expiresAt, req.AdminUserId,
+	); err != nil {
+		return &gen.GenerateAgentTokenResponse{Success: false, Error: "failed to save token: " + err.Error()}, nil
+	}
+
+	log.Printf("[GenerateAgentToken] token generated for agent %s (%s), expires %s",
+		req.AgentId, req.AgentName, expiresAt.Format(time.RFC3339))
+
+	return &gen.GenerateAgentTokenResponse{
+		Success:   true,
+		Token:     token,
+		ExpiresAt: expiresAt.Unix(),
+	}, nil
+}
+
+// hashTokenForStorage вычисляет SHA-256 хеш токена
+func hashTokenForStorage(token string) string {
+	h := sha256.New()
+	h.Write([]byte(token))
+	return fmt.Sprintf("%x", h.Sum(nil))
+}
+
+// RevokeAgentToken — отзыв токена агента (admin only)
+func (s *server) RevokeAgentToken(_ context.Context, req *gen.RevokeAgentTokenRequest) (*gen.RevokeAgentTokenResponse, error) {
+	if s.hermesDB == nil {
+		return &gen.RevokeAgentTokenResponse{Success: false, Error: "hermes DB not available"}, nil
+	}
+
+	if err := s.hermesDB.RevokeAgentToken(req.AgentId); err != nil {
+		return &gen.RevokeAgentTokenResponse{Success: false, Error: err.Error()}, nil
+	}
+
+	log.Printf("[RevokeAgentToken] token revoked for agent %s", req.AgentId)
+	return &gen.RevokeAgentTokenResponse{Success: true}, nil
+}
+
+// ListAgentTokens — список всех токенов агентов (admin only)
+func (s *server) ListAgentTokens(_ context.Context, _ *gen.ListAgentTokensRequest) (*gen.ListAgentTokensResponse, error) {
+	if s.hermesDB == nil {
+		return &gen.ListAgentTokensResponse{Success: false, Error: "hermes DB not available"}, nil
+	}
+
+	tokens, err := s.hermesDB.ListAgentTokens()
+	if err != nil {
+		return &gen.ListAgentTokensResponse{Success: false, Error: err.Error()}, nil
+	}
+
+	var pbTokens []*gen.AgentTokenInfo
+	for _, t := range tokens {
+		pbTokens = append(pbTokens, &gen.AgentTokenInfo{
+			Id:           t.ID,
+			AgentId:      t.AgentID,
+			AgentName:    t.AgentName,
+			TokenHash:    t.Token, // Token field stores the hash from DB
+			Capabilities: t.Capabilities,
+			CreatedAt:    t.CreatedAt.Format(time.RFC3339),
+			ExpiresAt:    t.ExpiresAt.Format(time.RFC3339),
+			Revoked:      t.Revoked,
+			CreatedBy:    t.CreatedBy,
+		})
+	}
+
+	return &gen.ListAgentTokensResponse{
+		Success: true,
+		Tokens:  pbTokens,
 	}, nil
 }
 

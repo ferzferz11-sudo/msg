@@ -60,7 +60,7 @@ message RegistrationInfo {
   string host = 4;           // hostname сервера
   string ip_address = 5;
   string os = 6;             // linux, darwin, etc.
-  repeated string capabilities = 7; // shell, git, build, deploy, file, docker
+  repeated string capabilities = 7; // shell, git, build, deploy, file, docker, ai
   string auth_token = 8;     // токен аутентификации
 }
 
@@ -84,6 +84,7 @@ enum TaskType {
   TASK_DEPLOY = 6;      // деплой
   TASK_DOCKER = 7;      // docker операции
   TASK_CUSTOM = 8;      // пользовательский скрипт
+  TASK_AI = 9;          // AI-ответ (агент сам решает как ответить)
 }
 
 // TaskResult — результат выполнения (payload для AGENT_TASK_RESULT)
