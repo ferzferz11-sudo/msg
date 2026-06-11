@@ -1,7 +1,8 @@
 # Лава — Server Changelog
 
 ## [1.1.3.0] - 2026-06-11
-- **Lavender Platform Adapter для Hermes Agent** (hermes-agent/adapter.py):
+- **Agent Token RPCs без IsSuperAdmin** — GenerateAgentToken, RevokeAgentToken, ListAgentTokens теперь доступны любому пользователю
+- **Platform Adapter fix** — все token RPC маршрутизированы на hermes_agent.HermesAgentService
   - Bidirectional gRPC streaming через ChatService.Chat
   - Автоматическое переподключение с exponential backoff (3s → 60s)
   - handle_inbound_message() / send_message() API
