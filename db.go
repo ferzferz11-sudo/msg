@@ -900,6 +900,16 @@ func (db *DB) UpdateLastSeen(user string) error {
 	_, err := db.Exec(`UPDATE users SET last_seen_at=NOW() WHERE username=$1`, user)
 	return err
 }
+
+// queryUserProfile fetches extended profile fields for auth service
+func (db *DB) queryUserProfile(username string) (email, bio, status string, createdAt, lastSeenAt time.Time, err error) {
+	row := db.QueryRow(
+		"SELECT COALESCE(email, ''), COALESCE(bio, ''), COALESCE(status, ''), created_at, last_seen_at FROM users WHERE username=$1",
+		username,
+	)
+	err = row.Scan(&email, &bio, &status, &createdAt, &lastSeenAt)
+	return
+}
 func (db *DB) GetUserPushStatus(user string) bool {
 	var e bool
 	db.QueryRow(`SELECT push_enabled FROM user_tokens WHERE username=$1`, user).Scan(&e)

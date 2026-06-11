@@ -11,10 +11,25 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+// authDB defines the database methods used by authServer.
+// *DB implements this interface.
+type authDB interface {
+	UserExists(user string) (bool, error)
+	EmailExists(email string) (bool, error)
+	GetUserPasswordHash(user string) (string, error)
+	SaveUserWithEmail(user, hash, email string) error
+	GetUserIdByUsername(user string) (string, error)
+	GetUserAvatar(user string) (string, error)
+	UpdateLastSeen(user string) error
+	// queryUserProfile fetches extended profile fields for a user.
+	// Returns email, bio, status, createdAt, lastSeenAt.
+	queryUserProfile(username string) (email, bio, status string, createdAt, lastSeenAt time.Time, err error)
+}
+
 // authServer implements gen.AuthServiceServer
 type authServer struct {
 	gen.UnimplementedAuthServiceServer
-	db *DB
+	db authDB
 }
 
 func newAuthServer(db *DB) *authServer {
@@ -76,11 +91,7 @@ func (a *authServer) SignIn(ctx context.Context, req *gen.SignInRequest) (*gen.A
 	var lastSeenAt time.Time
 
 	// Fetch extended profile
-	row := a.db.QueryRow(
-		"SELECT COALESCE(email, ''), COALESCE(bio, ''), COALESCE(status, ''), created_at, last_seen_at FROM users WHERE username=$1",
-		username,
-	)
-	_ = row.Scan(&email, &bio, &status, &createdAt, &lastSeenAt)
+	email, bio, status, createdAt, lastSeenAt, _ = a.db.queryUserProfile(username)
 
 	// Generate session token (UUID-based)
 	token := uuid.New().String()
