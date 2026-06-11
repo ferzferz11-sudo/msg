@@ -1,13 +1,29 @@
 # Лава — Задачи
 
-**Версия:** v1.1.2.10
-**Ветка:** feat/1.1.2.x
+**Версия:** v1.1.3.0
+**Ветка:** feat/1.1.3.x
 **Обновлено:** 2026-06-11
-**Тег:** v1.1.2.10 (выпущен)
+**Тег:** v1.1.3.0 (выпущен)
 
 ---
 
-## ✅ v1.1.2.10 — Рефакторинг server.go
+## ✅ v1.1.3.0 — Platform Adapter + Android fixes
+
+### Сервер v1.1.3.0
+- **Lavender Platform Adapter** (hermes-agent/adapter.py) — bidirectional gRPC streaming
+- **Hermes Agent plugin** (__init__.py) — create_adapter(), register(), get_plugin()
+- **ListRemoteAgents fix** — AgentID передаётся в RemoteTask
+- Dev сервер скомпилирован и запущен на порту 50052
+- Prod сервер работает на порту 50051
+
+### Android v1.1.3.0
+- **listRemoteAgents** — заглушка заменена на реальный gRPC вызов
+- **getRemoteAgentStatus** — парсер исправлен (3 поля: status, active_tasks, last_heartbeat)
+- feat/1.1.3.x ветка создана
+
+---
+
+## ✅ v1.1.2.11 — Тесты для AuthService + OWL
 
 ### Сервер v1.1.2.10
 - **Рефакторинг server.go** — разбит на 12 файлов по доменам (server_*.go)

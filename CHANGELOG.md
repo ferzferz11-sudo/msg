@@ -1,5 +1,20 @@
 # Лава — Server Changelog
 
+## [1.1.3.0] - 2026-06-11
+- **Lavender Platform Adapter для Hermes Agent** (hermes-agent/adapter.py):
+  - Bidirectional gRPC streaming через ChatService.Chat
+  - Автоматическое переподключение с exponential backoff (3s → 60s)
+  - handle_inbound_message() / send_message() API
+  - Graceful shutdown по SIGINT/SIGTERM
+- **Hermes Agent plugin system** (__init__.py):
+  - create_adapter() фабрика из env/config
+  - register() хуки: platform.start/stop/send
+  - get_plugin() entry point
+- **Исправление ListRemoteAgents** — AgentID теперь передаётся в RemoteTask
+- **listRemoteAgents** — заглушка заменена на реальный gRPC вызов (Android)
+- **getRemoteAgentStatus** — парсер исправлен под формат сервера (3 поля)
+- Версия сервера: v1.1.3.0
+
 ## [1.1.2.11] - 2026-06-11
 - **Модульные тесты для AuthService** (auth_service_test.go):
   - 5 тестов SignIn: success, wrong password, user not found, empty username, empty password
