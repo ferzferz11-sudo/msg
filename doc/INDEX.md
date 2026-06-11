@@ -48,9 +48,20 @@
 
 ---
 
+### Web Client
+
+| Файл | Назначение | Когда читать |
+|------|-----------|-------------|
+| `/root/msg.client.web/doc/INDEX.md` | Индекс документации веб-клиента | При работе над web |
+| `/root/msg.client.web/doc/ARCHITECTURE.md` | Архитектура веб-клиента | При работе над web |
+| `/root/msg.client.web/doc/TASKS.md` | Таск-трекер веб-клиента | При работе над web |
+
+---
+
 ## Правила
 
 - При старте новой сессии: читать цепочку INDEX.md → AI_SERVICES.md → INTEGRATION_SESSION.md → TASKS.md → PITFALLS.md → LOG_MONITOR.md
+- При работе над веб-клиентом: читать /root/msg.client/web/doc/INDEX.md → ARCHITECTURE.md → TASKS.md → PITFALLS.md
 - После каждого значимого изменения: обновлять INTEGRATION_SESSION.md + TASKS.md + соответствующие документы
 - При каждом релизе: обновлять CHANGELOG.md (сервер + Android), INTEGRATION_SESSION.md, TASKS.md, LOG_MONITOR.md, PITFALLS.md, AI_SERVICES.md
 - Промпт для следующей сессии всегда внизу INTEGRATION_SESSION.md

@@ -421,9 +421,13 @@ cd /root/msg.client.android
 
 Бэклог:
 - Модульные тесты для OWL streaming (средний)
-- Qdrant + CLIP (production RAG) — ночная задача
+- Модульные тесты для AuthService (средний)
 - Рефакторинг server.go → пакеты (низкий)
 - Structured logging на сервере (низкий)
+- Graceful shutdown для gRPC сервера (низкий)
+- Health check endpoint (низкий)
+- Prometheus метрики (низкий)
+- Qdrant + CLIP (production RAG) — ночная задача
 
 Правила:
 - Коммитить после каждого значимого изменения, пушить в feat/1.1.2.x
