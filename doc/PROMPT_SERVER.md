@@ -11,7 +11,7 @@
 ## Контекст
 
 - Сервер: /root/msg, dev порт 50052, prod порт 50051
-- Android: /root/msg/client.android
+- Android: /root/msg.client.android
 - Оба репозитория на ветке feat/1.1.2.x
 - v1.1.2.6 — prod версия (JWT auth для удалённых агентов)
 
@@ -93,7 +93,7 @@ cd /root/msg && mkdir -p gen/hermes_agent && protoc --go_out=gen/hermes_agent \
   --go-grpc_opt=paths=source_relative hermes_remote.proto
 
 # Android
-cd /root/msg/client.android
+cd /root/msg.client.android
 ./gradlew compileDebugKotlin
 ```
 
@@ -103,7 +103,7 @@ cd /root/msg/client.android
 
 - Индекс: /root/msg/doc/INDEX.md
 - Сервер: /root/msg/doc/INTEGRATION_SESSION.md, /root/msg/doc/TASKS.md
-- Android: /root/msg/client.android/doc/TASKS.md
+- Android: /root/msg.client.android/doc/TASKS.md
 - AI сервисы: /root/msg/doc/AI_SERVICES.md
 - Подводные камни: /root/msg/doc/PITFALLS.md
 - Changelog: /root/msg/doc/CHANGELOG.md
