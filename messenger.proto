@@ -719,6 +719,11 @@ service ChatService {
   rpc DeployAgentTask(DeployAgentTaskRequest) returns (DeployAgentTaskResponse);
   rpc GetRemoteAgentStatus(GetRemoteAgentStatusRequest) returns (GetRemoteAgentStatusResponse);
 
+  // Agent Token Management (admin only)
+  rpc GenerateAgentToken(GenerateAgentTokenRequest) returns (GenerateAgentTokenResponse);
+  rpc RevokeAgentToken(RevokeAgentTokenRequest) returns (RevokeAgentTokenResponse);
+  rpc ListAgentTokens(ListAgentTokensRequest) returns (ListAgentTokensResponse);
+
   // AI Chat (unified for OWL + Hermes)
   rpc ChatWithAI(AIChatRequest) returns (stream AIChatResponse);
   rpc GetAIChatHistory(GetAIChatHistoryRequest) returns (GetAIChatHistoryResponse);
@@ -1297,4 +1302,89 @@ message UpdateHermesSettingsRequest {
 message UpdateHermesSettingsResponse {
   bool success = 1;
   string message = 2;
+}
+
+// ======= Auth Service =======
+
+message User {
+  string id = 1;
+  string username = 2;
+  string email = 3;
+  string avatar_url = 4;
+  string bio = 5;
+  string status = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp last_seen_at = 8;
+}
+
+message SignInRequest {
+  string username = 1;
+  string password = 2;
+}
+
+message SignUpRequest {
+  string username = 1;
+  string password = 2;
+  string email = 3;
+}
+
+message AuthResponse {
+  bool success = 1;
+  string token = 2;
+  string message = 3;
+  User user = 4;
+}
+
+service AuthService {
+  rpc SignIn(SignInRequest) returns (AuthResponse);
+  rpc SignUp(SignUpRequest) returns (AuthResponse);
+}
+
+// ======= Agent Token Management messages =======
+
+message GenerateAgentTokenRequest {
+  string agent_id = 1;
+  string agent_name = 2;
+  repeated string capabilities = 3;
+  int32 ttl_hours = 4;
+  string admin_user_id = 5;
+}
+
+message GenerateAgentTokenResponse {
+  bool success = 1;
+  string token = 2;
+  string error = 3;
+  int64 expires_at = 4;
+}
+
+message RevokeAgentTokenRequest {
+  string agent_id = 1;
+  string admin_user_id = 2;
+}
+
+message RevokeAgentTokenResponse {
+  bool success = 1;
+  string error = 2;
+}
+
+message ListAgentTokensRequest {
+  string admin_user_id = 1;
+}
+
+message AgentTokenInfo {
+  int64 id = 1;
+  string agent_id = 2;
+  string agent_name = 3;
+  string token_hash = 4;
+  repeated string capabilities = 5;
+  string created_at = 6;
+  string expires_at = 7;
+  bool revoked = 8;
+  string created_by = 9;
+}
+
+message ListAgentTokensResponse {
+  bool success = 1;
+  repeated AgentTokenInfo tokens = 2;
+  string error = 3;
 }

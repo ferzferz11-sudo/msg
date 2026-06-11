@@ -1,4 +1,4 @@
-# Lavender Messenger — AI Chat Refactor Project
+# Лава — AI Chat Refactor Project
 
 Документ проекта по рефакторингу структуры таблиц AI-чатов (OWL + Hermes).
 Цель: единообразная, расширяемая архитектура для обоих типов чатов.

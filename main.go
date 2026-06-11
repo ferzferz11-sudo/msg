@@ -157,6 +157,10 @@ func main() {
 	// Register our chat service with the gRPC server
 	gen.RegisterChatServiceServer(s, srv)
 
+	// Register Auth Service
+	authServer := newAuthServer(db)
+	gen.RegisterAuthServiceServer(s, authServer)
+
 	// Register Hermes Agent Service (for hermes-agent daemon connections)
 	hermesAgentServer := newHermesAgentServer(srv, orchestrator)
 	hermesagent.RegisterHermesAgentServiceServer(s, hermesAgentServer)

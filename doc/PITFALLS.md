@@ -1,4 +1,4 @@
-# Lavender Messenger — Pitfalls
+# Лава — Pitfalls
 
 Подводные камни и известные проблемы. Читать перед началом работы!
 
@@ -23,23 +23,11 @@
 ### ValueAnimator
 - Всегда вызывайте `cancel()` перед запуском нового (TypingHolder leak)
 
-### Favorites — отображение при пустом списке чатов (известная проблема)
-
-**Статус:** не исправлено, v1.1.2.7
-
-**Симптом:** при входе после очистки памяти (или первого входе) Favorites не отображается если у пользователя нет созданных чатов. Появляется только после создания первого чата.
-
-**Причина:** `chatAdapter.setChats()` вызывается с списком `[Favorites]`, но `displayedChats` остаётся пустым (Favorites извлекается в отдельный `favoritesItem`). `notifyDataSetChanged()` внутри `setChats` может не дойти до RecyclerView из-за тайминга.
-
-**Попытки исправления:**
-- `selectedPositions.clear()` в `setChats` — не помогло
-- `post { notifyDataSetChanged() }` — не помогло
-- Убран `loadChatsFromCache` при пустом ответе сервера — не помогло
-
-**Нужно:** разобраться почему `getItemCount()` возвращает 1 но RecyclerView не отображает элемент. Возможные причины:
-- `notifyDataSetChanged()` вызывается до `setAdapter()`
-- SwipeRefreshLayout перехватывает обновление
-- `displayedChats` пуст и DiffUtil не считает изменение значимым
+### Favorites — отображение при пустом списке чатов
+- **Статус:** исправлено в v1.1.2.8
+- Favorites показывается сразу в onCreate(), до сетевых запросов
+- Fallback при ошибке загрузки чатов — Favorites всё равно отображается
+- Паттерн: статический first item должен быть добавлен ДО загрузки данных с сервера
 
 ### Favorites flickering
 - Исправлено в c873fbc: `sendSync()` передавал list без favoritesItem, вызывая remove/insert каждые 5с
@@ -53,11 +41,9 @@
 - Если bundled не обновлён — пользователь увидит устаревший ченджлог из APK
 - **Цвета в fallback**: устанавливаются программно из `ThemeStore` (не через XML-атрибуты)
 
-### ChangelogAdapter — цвета на кастомных темах (известная проблема)
-- `ChangelogAdapter` использует `resolveColorAttr(context, android.R.attr.textColorPrimary)` для цветов текста
-- На кастомных тёмных темах этот атрибут может быть тёмным → текст нечитаем
-- **Не исправлено** — приоритет низкий, GitHub API работает и основной контент нормальный
-- Для fallback проблема решена (цвета из `ThemeStore`)
+### ChangelogAdapter — цвета на кастомных темах
+- **Статус:** исправлено в v1.1.2.8
+- Использует `ThemeStore` цвета вместо `resolveColorAttr`
 
 ### HermesGrpc proto mapping
 - `CreateHermesSessionResponse`: field 1=success(bool), field 2=session_id(string) — НЕ наоборот!
@@ -67,6 +53,12 @@
 ---
 
 ## Server
+
+### Структура файлов (v1.1.2.10+)
+- server.go — структура server, общие методы (logErrorOnce, logFCM, resolveUserId, resolveUsername)
+- server_*.go — методы по доменам (chat, users, chats, messages, profile, push, contacts, themes, drafts, muted, favorites, ai)
+- При добавлении новых методов — класть в соответствующий server_*.go файл
+- Не добавлять методы напрямую в server.go (только структура и общие утилиты)
 
 ### hermes_sessions owner
 - Таблица должна принадлежать `lavender`, не `postgres`
@@ -104,6 +96,38 @@
 ### /dev/null сломан после OOM
 - Если `/dev/null` стал файлом вместо device node: `rm /dev/null && mknod /dev/null c 1 3 && chmod 666 /dev/null`
 - Без этого `go build` падает с "open /dev/null: no such file or directory"
+
+---
+
+## Пути к репозиториям
+
+### Android — отдельный репозиторий
+- **Верный путь:** `/root/msg.client.android/` (отдельный git-репозиторий)
+- **НЕВЕРНО:** `/root/msg/client.android/` — такой папки нет, не использовать!
+- Android-репозиторий клонирован отдельно от серверного, не является подмодулем
+
+---
+
+## JWT Agent Auth
+
+### Секретный ключ
+- `JWT_SECRET` — минимум 32 байта, хранится в `.env` / `.env.dev`
+- Никогда не коммитить в git!
+- При компрометации — немедленно перегенерировать все токены
+
+### Валидация токена
+- `validateToken()` проверяет: HMAC подпись, expiration, agent_id match, revoked в БД
+- Пустой токен = отклонение (нет backward compat с неавторизованными агентами)
+- Для тестирования без токена — нужно явно создать токен через `GenerateAgentToken`
+
+### Хранение
+- В БД хранится только SHA-256 хеш токена, не сам токен
+- Токен показывается клиенту только один раз при генерации
+- `RevokeAgentToken` — помечает `revoked = TRUE`, существующие подключения продолжают работать до реконнекта
+
+### Admin-only
+- `GenerateAgentToken`, `RevokeAgentToken`, `ListAgentTokens` — требуют `IsSuperAdmin()`
+- `admin_user_id` в запросе должен совпадать с супер-админом в БД
 
 ---
 

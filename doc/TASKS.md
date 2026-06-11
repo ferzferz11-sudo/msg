@@ -1,14 +1,41 @@
-# Lavender Messenger — Задачи
+# Лава — Задачи
 
-**Версия:** v1.1.2.7
+**Версия:** v1.1.2.10
 **Ветка:** feat/1.1.2.x
 **Обновлено:** 2026-06-11
+**Тег:** v1.1.2.10 (выпущен)
 
 ---
 
-## ✅ v1.1.2.7 — Splash улучшения, онбординг удалён, чекбокс чата
+## ✅ v1.1.2.10 — Рефакторинг server.go
 
-### Android v1.1.2.7
+### Сервер v1.1.2.10
+- **Рефакторинг server.go** — разбит на 12 файлов по доменам (server_*.go)
+- server_chat.go, server_users.go, server_chats.go, server_messages.go
+- server_profile.go, server_push.go, server_contacts.go, server_themes.go
+- server_drafts.go, server_muted.go, server_favorites.go, server_ai.go
+- server_management.go — ServerServiceServer восстановлен
+- Dev сервер обновлён и работает
+
+---
+
+## ✅ v1.1.2.9 — AuthService (SignIn/SignUp gRPC)
+
+### Сервер v1.1.2.9
+- **AuthService** — отдельный gRPC сервис для аутентификации
+- `auth_service.go` — реализация `AuthServiceServer` с методами `SignIn` и `SignUp`
+- `SignIn` — проверка username/password через bcrypt, возврат UUID-токена и User
+- `SignUp` — регистрация с проверкой уникальности username/email
+- Proto: `User`, `SignInRequest`, `SignUpRequest`, `AuthResponse`, `AuthService`
+- `db.go` — `SaveUserWithEmail` метод
+- `main.go` — `gen.RegisterAuthServiceServer(s, authServer)`
+- Dev сервер обновлён и работает
+
+---
+
+## ✅ v1.1.2.8 — AI чат улучшения
+
+### Android v1.1.2.8
 - **SplashActivity**: увеличено расстояние логотип→текст (60px → 90dp)
 - **SplashLoadingActivity**: новый оверлей загрузки для логина/регистрации
 - **Login/Register**: показывается SplashLoadingActivity во время авторизации
@@ -181,25 +208,27 @@
 
 ## 📋 Бэклог
 
-### Высокий приоритет
-- [ ] Favorites при пустом списке — не отображается при входе после очистки памяти (Android)
-
 ### Средний приоритет
 - [ ] Модульные тесты для OWL streaming
+- [ ] Модульные тесты для AuthService (SignIn/SignUp)
+- [ ] Рефакторинг server.go → пакеты (server/, auth/, chat/, ai/)
 
 ### Низкий приоритет
-- [ ] Auth токены для удалённых агентов (JWT)
-- [ ] Qdrant + CLIP (production RAG)
+- [ ] Qdrant + CLIP (production RAG) — ночная задача
+- [ ] Structured logging на сервере (zap/logrus)
+- [ ] Graceful shutdown для gRPC сервера
+- [ ] Health check endpoint (readiness/liveness)
+- [ ] Prometheus метрики (request count, latency, active connections)
 
 ---
 
 ## 🟡 Известные проблемы
 
-### Favorites — отображение при пустом списке чатов (Android)
-- **Статус:** не исправлено, v1.1.2.7
-- **Симптом:** при входе после очистки памяти Favorites не отображается если нет созданных чатов
-- **Приоритет:** высокий
+### Сообщения пользователя видны только после ответа агента
+- **Статус:** не исправлено
+- **Симптом:** пользователь отправляет сообщение, но видит его только после ответа агента
+- **Приоритет:** нужна отладка на устройстве
 
-### ChangelogAdapter — цвета на кастомных темах (Android)
-- **Статус:** не исправлено, приоритет низкий
-- Fallback (bundled) работает корректно
+### Server migration warnings
+- **Статус:** не критично
+- **Симптом:** `role "lavender" does not exist` при миграциях

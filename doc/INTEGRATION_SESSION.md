@@ -1,11 +1,12 @@
-# Lavender Messenger — Интеграционная сессия
+# Lava Messenger — Интеграционная сессия
 
-**Текущая версия:** v1.1.2.7
+**Текущая версия:** v1.1.2.10
 **Обновлено:** 2026-06-11
+**Тег:** v1.1.2.10 (выпущен)
 
 ## Контекст
 
-Интеграция AI-чатов в Lavender Messenger: OWL AI и Hermes Orchestrator.
+Интеграция AI-чатов в Lava Messenger: OWL AI и Hermes Orchestrator.
 
 **Текущая ветка:** `feat/1.1.2.x` (оба репозитория)
 **Сервер:** dev на порту 50052, prod на 50051
@@ -16,12 +17,27 @@
 
 ```
 СЕРВЕР:
+├── server.go           — структура server, общие методы
+├── server_chat.go      — Chat, Typing, CallSession, GetClients
+├── server_users.go     — GetAllUsers, UpdateProfile, GetUserProfile, GetUserAvatar
+├── server_chats.go     — GetAllChats, GetChats, CreateDirectChat, CreateGroupChat, DeleteChat, etc.
+├── server_messages.go  — GetHistory, SetReaction, DeleteMessages, EditMessage
+├── server_profile.go   — UpdateUsername, UpdatePassword, AdminUpdatePassword, MarkRead, UpdateAvatar, DeleteProfile
+├── server_push.go      — RegisterToken, sendPushNotification, broadcastOnlineUsers, etc.
+├── server_contacts.go  — AddContact, RemoveContact, GetContacts, GetChatListVersion
+├── server_themes.go    — GetThemes, SaveTheme, SetCurrentTheme, DeleteTheme
+├── server_drafts.go    — GetFCMLogs, SaveDraft, GetDraft, DeleteDraft
+├── server_muted.go     — GetMutedChats, SetMutedChat
+├── server_favorites.go — GetUserId, AddFavorite, RemoveFavorite, GetFavorites, etc.
+├── server_ai.go        — ChatWithOWL, ChatWithAI, ChatWithOrchestrator, Hermes sessions, etc.
+├── server_management.go — ServerServiceServer
+├── auth_service.go     — AuthService: SignIn, SignUp
 ├── owl.go              — OWL AI: ChatWithOWL streaming, сессии, история
 ├── bot_commands.go     — Bot Commands: /status, /deploy, /logs, /restart, /ai, /help, /version
 ├── hermes_orchestrator.go — Hermes: оркестратор, маршрутизация агентов
 ├── hermes_agent_service.go — Hermes: управление агентами
-└── server.go           — gRPC handlers, маршрутизация запросов
-
+└── db.go               — Database layer
+```
 ANDROID:
 ├── OwlGrpc.kt          — OWL: chatWithOwl, processBotCommand, getBotCommands, getOWLStatus
 ├── HermesGrpc.kt       — Hermes: chatWithOrchestrator, agent management
@@ -303,21 +319,6 @@ cd /root/msg.client.android
 
 ---
 
-## Статус: v1.1.2.6 — ЗАВЕРШЕНА
-
-### Сервер v1.1.2.6
-- Без изменений (v1.1.2.4)
-
-### Android v1.1.2.6
-- **Bundled changelog**: `app/src/main/assets/changelog_bundled.txt` — встроен в APK, показывается мгновенно без сети
-- **Новая логика загрузки**: bundled (мгновенно) → GitHub API → server fallback
-- **Ссылки на CHANGELOG.md**: кнопки «Ченджлог сервера (GitHub)» и «Ченджлог клиента (GitHub)»
-- **changelog.txt удалён** из проекта и из деплоя на сервер
-- **scripts/deploy_android.sh обновлён**: убрана загрузка changelog.txt
-- **Старый deploy_android.sh удалён** (сервер 159.195.38.145 больше не поддерживается)
-- **Документация обновлена**: INDEX.md, PITFALLS.md, TASKS.md
-- compileDebugKotlin passes
-
 ---
 
 ## Статус: v1.1.2.2 — DeleteChat cascade fix
@@ -352,43 +353,160 @@ cd /root/msg.client.android
 
 ---
 
-## Промпт для следующей сессии (feat/1.1.2.x — v1.1.2.8)
+## Статус: v1.1.2.6 — Auth токены для удалённых агентов (JWT) ЗАВЕРШЕНА
+
+### Сервер v1.1.2.6
+- **JWT аутентификация** для hermes-agent daemon при подключении к Orchestrator
+- `auth/jwt.go` — генерация и валидация HS256 JWT токенов
+- Claims: agent_id, agent_name, capabilities, iat, exp
+- Таблица `agent_tokens` в БД (SHA-256 хеш, не сам токен)
+- 3 новых admin RPC: `GenerateAgentToken`, `RevokeAgentToken`, `ListAgentTokens`
+- `validateToken()` — полная проверка: подпись, expiration, agent_id match, revoked в БД
+- Секрет из `JWT_SECRET` env (32+ байта)
+- Dev и prod обновлены
+
+### Android v1.1.2.6
+- **Bundled changelog**: `app/src/main/assets/changelog_bundled.txt` — встроен в APK, показывается мгновенно без сети
+- **Новая логика загрузки**: bundled (мгновенно) → GitHub API → server fallback
+- **Ссылки на CHANGELOG.md**: кнопки «Ченджлог сервера (GitHub)» и «Ченджлог клиента (GitHub)»
+- **changelog.txt удалён** из проекта и из деплоя на сервер
+- **scripts/deploy_android.sh обновлён**: убрана загрузка changelog.txt
+- **Старый deploy_android.sh удалён** (сервер 159.195.38.145 больше не поддерживается)
+- **Документация обновлена**: INDEX.md, PITFALLS.md, TASKS.md
+- compileDebugKotlin passes
+
+---
+
+## Статус: v1.1.2.10 — Рефакторинг server.go (ЗАВЕРШЕНА)
+
+### Сервер v1.1.2.10
+- **Рефакторинг server.go** — разбит на 12 файлов по доменам (server_*.go)
+- Каждый файл ~300-600 строк вместо одного файла 4268 строк
+- server_management.go — ServerServiceServer восстановлен
+- Dev сервер обновлён и работает, старые клиенты не сломались
+
+---
+
+## Статус: v1.1.2.9 — AuthService (ЗАВЕРШЕНА)
+
+### Сервер v1.1.2.9
+- **AuthService** — отдельный gRPC сервис для аутентификации
+- `auth_service.go` — реализация `AuthServiceServer` с методами `SignIn` и `SignUp`
+- `SignIn` — проверка username/password через bcrypt, возврат UUID-токена и User
+- `SignUp` — регистрация с проверкой уникальности username/email
+- Proto: `User`, `SignInRequest`, `SignUpRequest`, `AuthResponse`, `AuthService`
+- `db.go` — `SaveUserWithEmail` метод
+- `main.go` — `gen.RegisterAuthServiceServer(s, authServer)`
+- Dev сервер обновлён и работает
+
+---
+
+## Статус: v1.1.2.8 — AI чат улучшения (ЗАВЕРШЕНА)
+
+### Android v1.1.2.8
+- **Убран прелоадер** во время ожидания ответа агента (HermesChatActivity, OwlChatActivity)
+- **Таймаут стрима 120 сек** с сбросом при каждом сообщении (OwlGrpc, HermesGrpc)
+- **Шторка AI реорганизована**: чаты разделены по типам (Hermes / OWL)
+- **Favorites исправлен**: показывается сразу в onCreate(), fallback при ошибке загрузки
+- **ChangelogAdapter**: цвета из ThemeStore, GitHub API загружается первым
+- **Контакты**: убран deprecated overridePendingTransition
+- compileDebugKotlin passes
+- APK: /var/www/lavender/lavender.apk
+- GitHub релиз: https://github.com/ferzferz11-sudo/msg.client.android/releases/tag/v1.1.2.8
+- Тег v1.1.2.8 создан и запушен
+
+### Сервер v1.1.2.8
+- Без изменений (v1.1.2.6)
+
+---
+
+## Промпт для следующей сессии (feat/1.1.2.x — v1.1.2.11)
 
 ```
-ЗАДАЧА: Продолжить работу над Lavender Messenger. v1.1.2.7 завершена.
+ЗАДАЧА: Продолжить работу над Lava Messenger. v1.1.2.10 завершена и выпущена.
 
-Текущая версия: v1.1.2.7 (prod)
-Следующая версия: v1.1.2.8
+Текущая версия: v1.1.2.10 (prod, тег выпущен)
+Следующая версия: v1.1.2.11
 
 Контекст:
 - Сервер: /root/msg, dev порт 50052, prod порт 50051
-- Android: /root/msg.client.android
 - Оба репозитория на ветке feat/1.1.2.x
-- v1.1.2.7 — prod версия (таг выпущен)
+- GitHub релиз v1.1.2.10: https://github.com/ferzferz11-sudo/msg/releases/tag/v1.1.2.10
 
-Что сделано в v1.1.2.7:
-- SplashActivity: увеличено расстояние логотип→текст
-- SplashLoadingActivity: новый оверлей загрузки для авторизации
-- Онбординг полностью удалён (welcomeContainer, подсказки)
-- Чекбокс "Сразу создать личный чат" при добавлении контакта (включён по умолчанию)
-- Исправления: crash выбора чатов, getSelectedChats offset, loadingContainer удалён
-- APK на сервере: /var/www/lavender/lavender.apk
-- GitHub релиз: https://github.com/ferzferz11-sudo/msg.client.android/releases/tag/v1.1.2.7
+Что сделано в v1.1.2.10:
+- Рефакторинг server.go — разбит на 12 файлов по доменам (server_*.go)
+- server_management.go — ServerServiceServer восстановлен
+- Dev и prod обновлены, работают
 
-Известная проблема (не исправлено):
-- Favorites при пустом списке: не отображается при входе после очистки памяти если нет чатов
+ЗАДАЧИ НА ЭТУ ССЕССИЮ (v1.1.2.11):
 
-Бэклог:
-- Исправить Favorites при пустом списке
-- Модульные тесты для OWL streaming
-- Auth токены для удалённых агентов (JWT)
-- Qdrant + CLIP (production RAG)
+## 1. Модульные тесты для AuthService (SignIn/SignUp)
+
+Файл: auth_service_test.go
+
+Тесты для SignIn:
+- TestSignIn_Success — правильный username+password → success=true, token не пустой, user заполнен
+- TestSignIn_WrongPassword — неправильный пароль → success=false, сообщение об ошибке
+- TestSignIn_UserNotFound — несуществующий пользователь → success=false
+- TestSignIn_EmptyUsername — пустой username → success=false
+- TestSignIn_EmptyPassword — пустой password → success=false
+
+Тесты для SignUp:
+- TestSignUp_Success — новый пользователь → success=true, token не пустой
+- TestSignUp_DuplicateUsername — существующий username → success=false
+- TestSignUp_DuplicateEmail — существующий email → success=false
+- TestSignUp_EmptyUsername — пустой username → success=false
+- TestSignUp_EmptyPassword — пустой password → success=false
+- TestSignUp_WithEmail — регистрация с email → email сохранён в БД
+
+Требования:
+- Использовать тестовую БД (отдельную от dev/prod)
+- Очищать тестовые данные после каждого теста (t.Cleanup)
+- Тесты должны быть изолированными (не зависеть от порядка выполнения)
+- Покрытие > 80% для auth_service.go
+
+## 2. Модульные тесты для OWL streaming
+
+Файл: owl_test.go
+
+Тесты:
+- TestChatWithOWL_Success — отправка сообщения → получение ответа через stream
+- TestChatWithOWL_RateLimit — превышение лимита → ошибка rate limit
+- TestChatWithOWL_EmptyMessage — пустое сообщение → ошибка валидации
+- TestGetOwlHistory_ReturnsMessages — история чата возвращает сообщения из БД
+- TestGetOwlHistory_Unauthorized — неавторизованный доступ → ошибка
+
+Требования:
+- Мокать OpenRouter API (не делать реальные запросы)
+- Использовать httptest.Server для мока API
+- Тесты должны быть быстрыми (< 5 сек на тест)
+- Покрытие > 70% для owl.go
+
+ОБЩИЕ ТРЕБОВАНИЯ:
+- go test ./... должен проходить без ошибок
+- Тесты не должны зависеть от внешних сервисов (OpenRouter, Firebase)
+- Использовать t.Parallel() где возможно
+- Добавить бенчмарки для критичных функций (SignIn, SignUp)
+
+Известные проблемы (не исправлено):
+- Сообщения пользователя видны только после ответа агента (нужна отладка на устройстве)
+
+Бэклог (после тестов):
+- Structured logging на сервере (низкий)
+- Graceful shutdown для gRPC сервера (низкий)
+- Health check endpoint (низкий)
+- Prometheus метрики (низкий)
+- Qdrant + CLIP (production RAG) — ночная задача
 
 Правила:
 - Коммитить после каждого значимого изменения, пушить в feat/1.1.2.x
 - При каждом релизе: git tag, CHANGELOG.md, bundled, version.txt
 - assembleRelease НЕ запускать на сервере (OOM kill)
 - Дизайн — минималистичный, чистый
+- userId (UUID) — всегда как ключ, НЕ username
+- Для кастомных тем: новые FAB добавлять в ThemeApplier
+- Статический first item (Favorites) добавлять ДО загрузки данных с сервера
+- Новые методы сервера класть в соответствующий server_*.go файл (не в server.go)
 
 Документация (читать в начале каждой сессии):
 - Индекс: /root/msg/doc/INDEX.md
@@ -396,7 +514,7 @@ cd /root/msg.client.android
 - Android: /root/msg.client.android/doc/TASKS.md
 - AI сервисы: /root/msg/doc/AI_SERVICES.md
 - Подводные камни: /root/msg/doc/PITFALLS.md
-- Changelog: /root/msg/doc/CHANGELOG.md
+- Changelog: /root/msg/CHANGELOG.md
 - Memory pad: /root/.hermes/memory/pad.md
 ```
 
@@ -411,3 +529,6 @@ cd /root/msg.client.android
 - participants ВСЕГДА через json.Marshal, никогда вручную
 - Для кастомных тем: новые FAB кнопки добавлять в ThemeApplier.kt в список FABs
 - Proto поля: всегда сверять номера полей с messenger.proto!
+- JWT секрет: `JWT_SECRET` в .env, минимум 32 байта, НЕ коммитить
+- Agent tokens: в БД хранится SHA-256 хеш, не сам токен
+- Admin RPC: `GenerateAgentToken`, `RevokeAgentToken`, `ListAgentTokens` — требуют IsSuperAdmin()

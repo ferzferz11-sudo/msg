@@ -1,6 +1,6 @@
 syntax = "proto3";
 package hermes_agent;
-option go_package = "./gen/hermes_agent";
+option go_package = "LavenderMessenger/gen/hermes_agent";
 
 // HermesAgentService — протокол связи между Remote Agent и Orchestrator
 // Агент подключается к Orchestrator и держит bidirectional stream
@@ -9,6 +9,12 @@ service HermesAgentService {
   rpc Connect(stream AgentMessage) returns (stream OrchestratorMessage);
   // HealthCheck — проверка связи (одноразовый вызов)
   rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+  // GenerateAgentToken — генерация JWT токена для нового агента (admin only)
+  rpc GenerateAgentToken(GenerateAgentTokenRequest) returns (GenerateAgentTokenResponse);
+  // RevokeAgentToken — отзыв токена агента (admin only)
+  rpc RevokeAgentToken(RevokeAgentTokenRequest) returns (RevokeAgentTokenResponse);
+  // ListAgentTokens — список всех токенов агентов (admin only)
+  rpc ListAgentTokens(ListAgentTokensRequest) returns (ListAgentTokensResponse);
 }
 
 // AgentMessage → от агента к оркестратору
@@ -54,7 +60,7 @@ message RegistrationInfo {
   string host = 4;           // hostname сервера
   string ip_address = 5;
   string os = 6;             // linux, darwin, etc.
-  repeated string capabilities = 7; // shell, git, build, deploy, file, docker
+  repeated string capabilities = 7; // shell, git, build, deploy, file, docker, ai
   string auth_token = 8;     // токен аутентификации
 }
 
@@ -78,6 +84,7 @@ enum TaskType {
   TASK_DEPLOY = 6;      // деплой
   TASK_DOCKER = 7;      // docker операции
   TASK_CUSTOM = 8;      // пользовательский скрипт
+  TASK_AI = 9;          // AI-ответ (агент сам решает как ответить)
 }
 
 // TaskResult — результат выполнения (payload для AGENT_TASK_RESULT)
@@ -141,4 +148,53 @@ message HealthCheckResponse {
   int32 active_tasks = 4;
   float cpu_percent = 5;
   float memory_percent = 6;
+}
+
+// === Agent Token Management (admin RPCs) ===
+
+message GenerateAgentTokenRequest {
+  string agent_id = 1;
+  string agent_name = 2;
+  repeated string capabilities = 3; // shell, git, build, deploy, file, docker
+  int32 ttl_hours = 4;             // время жизни токена в часах (0 = 24ч по умолчанию)
+  string admin_user_id = 5;        // ID админа для проверки прав
+}
+
+message GenerateAgentTokenResponse {
+  bool success = 1;
+  string token = 2;       // JWT токен (показывается только один раз!)
+  string error = 3;
+  int64 expires_at = 4;   // unix timestamp
+}
+
+message RevokeAgentTokenRequest {
+  string agent_id = 1;
+  string admin_user_id = 2;
+}
+
+message RevokeAgentTokenResponse {
+  bool success = 1;
+  string error = 2;
+}
+
+message ListAgentTokensRequest {
+  string admin_user_id = 1;
+}
+
+message AgentTokenInfo {
+  int64 id = 1;
+  string agent_id = 2;
+  string agent_name = 3;
+  string token_hash = 4; // только хеш, не сам токен
+  repeated string capabilities = 5;
+  string created_at = 6;
+  string expires_at = 7;
+  bool revoked = 8;
+  string created_by = 9;
+}
+
+message ListAgentTokensResponse {
+  bool success = 1;
+  repeated AgentTokenInfo tokens = 2;
+  string error = 3;
 }

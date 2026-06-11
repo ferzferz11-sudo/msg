@@ -1,4 +1,61 @@
-# Lavender Messenger — Server Changelog
+# Лава — Server Changelog
+
+## [1.1.2.11] - 2026-06-11
+- **Модульные тесты для AuthService** (auth_service_test.go):
+  - 5 тестов SignIn: success, wrong password, user not found, empty username, empty password
+  - 6 тестов SignUp: success, with email, duplicate username, duplicate email, empty username, empty password, empty email
+  - Mock DB с in-memory хранилищем, thread-safe
+  - Бенчмарки: BenchmarkSignIn, BenchmarkSignUp, BenchmarkHashPassword
+  - Покрытие: SignIn 85.7%, SignUp 74.2%
+- **Модульные тесты для OWL streaming** (owl_test.go):
+  - Тесты rate limiter: allow, cancel, remaining, window reset, concurrent access
+  - Тесты мок OpenRouter API: success, streaming, error (429)
+  - Тесты полного флоу: success path, rate limit exceeded
+  - Тест context cancellation
+  - Бенчмарки: BenchmarkOwlRateLimiter, BenchmarkOwlRateLimiter_Remaining
+  - Покрытие: rateLimiter allow/cancel 100%, remaining 92.3%
+- **Рефакторинг auth_service.go**:
+  - Добавлен интерфейс `authDB` для тестируемости
+  - Метод `queryUserProfile` — инкапсуляция запроса расширенного профиля
+- **db.go**: добавлен метод `queryUserProfile` к *DB
+- Версия сервера: v1.1.2.11
+
+## [1.1.2.10] - 2026-06-11
+- **Рефакторинг server.go** — разбит на 12 файлов по доменам (server_*.go)
+- server_chat.go — Chat, Typing, CallSession, GetClients
+- server_users.go — GetAllUsers, UpdateProfile, GetUserProfile, GetUserAvatar
+- server_chats.go — GetAllChats, GetChats, CreateDirectChat, CreateGroupChat, DeleteChat, etc.
+- server_messages.go — GetHistory, SetReaction, DeleteMessages, EditMessage
+- server_profile.go — UpdateUsername, UpdatePassword, AdminUpdatePassword, MarkRead, UpdateAvatar, DeleteProfile
+- server_push.go — RegisterToken, sendPushNotification, broadcastOnlineUsers, etc.
+- server_contacts.go — AddContact, RemoveContact, GetContacts, GetChatListVersion
+- server_themes.go — GetThemes, SaveTheme, SetCurrentTheme, DeleteTheme
+- server_drafts.go — GetFCMLogs, SaveDraft, GetDraft, DeleteDraft
+- server_muted.go — GetMutedChats, SetMutedChat
+- server_favorites.go — GetUserId, AddFavorite, RemoveFavorite, GetFavorites, etc.
+- server_ai.go — ChatWithOWL, ChatWithAI, ChatWithOrchestrator, Hermes sessions, etc.
+- server_management.go — ServerServiceServer (восстановлен)
+- Dev сервер обновлён и работает
+
+## [1.1.2.9] - 2026-06-11
+- **AuthService — отдельный gRPC сервис для аутентификации**
+- Новый proto-сервис `AuthService` с методами `SignIn` и `SignUp`
+- `SignIn` — проверка username/password, возврат токена (UUID) и User
+- `SignUp` — регистрация нового пользователя с проверкой уникальности username/email
+- Новые proto-сообщения: `User`, `SignInRequest`, `SignUpRequest`, `AuthResponse`
+- Реализация: `auth_service.go` — `authServer` с методами `SignIn`, `SignUp`
+- Регистрация в `main.go`: `gen.RegisterAuthServiceServer(s, authServer)`
+- Метод `SaveUserWithEmail` в `db.go` для создания пользователя с email
+- Dev сервер обновлён и работает
+
+## [1.1.2.8] - 2026-06-11
+- **Auth токены для удалённых агентов (JWT)**
+- HS256 JWT с подписью, expiration, agent_id в claims
+- Таблица `agent_tokens` в БД (хранится только SHA-256 хеш, не сам токен)
+- 3 новых admin RPC: `GenerateAgentToken`, `RevokeAgentToken`, `ListAgentTokens`
+- `validateToken()` — полная проверка: подпись, expiration, agent_id match, revoked в БД
+- Секрет из `JWT_SECRET` env (32+ байта)
+- Dev и prod обновлены
 
 ## [1.1.2.7] - 2026-06-11
 - **Android: Splash улучшения, онбординг удалён, чекбокс чата**

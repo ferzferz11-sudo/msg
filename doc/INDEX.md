@@ -1,4 +1,4 @@
-# Lavender Messenger — Документация
+# Лава — Документация
 
 Индекс всех документов проекта. Читать при каждом старте новой сессии.
 
@@ -32,12 +32,14 @@
 | `HERMES_ORCHESTRATOR_PROMPT.md` | Промпт для сессий с Hermes Orchestrator | При деве Hermes |
 | `LAVENDER_CHAT_PROJECT.md` | Проект Lavender Chat — полноценная замена Telegram | При работе над ChatWidget |
 | `PROJECT_MEMORY.md` | Проектная память: ключевые решения, архитектурные принципы | Для общего контекста |
+| `PROMPT_SERVER.md` | Промпт для серверных сессий | **При старте новой серверной сессии** |
 
 ### DevOps и инфраструктура
 
 | Файл | Назначение | Когда читать |
 |------|-----------|-------------|
 | `LOG_MONITOR.md` | Log Monitor: сборка, деплой, API, web UI, известные проблемы | **При проблемах с логами** |
+| `TESTING.md` | Модульные тесты: запуск, покрытие, написание новых тестов | **При работе с тестами** |
 
 ### Отчёты
 
@@ -47,12 +49,26 @@
 
 ---
 
+### Web Client
+
+| Файл | Назначение | Когда читать |
+|------|-----------|-------------|
+| `/root/msg.client.web/doc/INDEX.md` | Индекс документации веб-клиента | При работе над web |
+| `/root/msg.client.web/doc/ARCHITECTURE.md` | Архитектура веб-клиента | При работе над web |
+| `/root/msg.client.web/doc/TASKS.md` | Таск-трекер веб-клиента | При работе над web |
+
+---
+
 ## Правила
 
 - При старте новой сессии: читать цепочку INDEX.md → AI_SERVICES.md → INTEGRATION_SESSION.md → TASKS.md → PITFALLS.md → LOG_MONITOR.md
+- При работе над тестами: читать doc/TESTING.md
+- При работе над веб-клиентом: читать /root/msg.client/web/doc/INDEX.md → ARCHITECTURE.md → TASKS.md → PITFALLS.md
 - После каждого значимого изменения: обновлять INTEGRATION_SESSION.md + TASKS.md + соответствующие документы
 - При каждом релизе: обновлять CHANGELOG.md (сервер + Android), INTEGRATION_SESSION.md, TASKS.md, LOG_MONITOR.md, PITFALLS.md, AI_SERVICES.md
 - Промпт для следующей сессии всегда внизу INTEGRATION_SESSION.md
+- Промпт для Android-сессий: /root/msg.client.android/doc/PROMPT_ANDROID.md
+- Промпт для серверных сессий: /root/msg/doc/PROMPT_SERVER.md
 - CHANGELOG.md — серверные изменения в корне /root/msg/CHANGELOG.md, Android в /root/msg.client.android/CHANGELOG.md
 - Android bundled changelog: /root/msg.client.android/app/src/main/assets/changelog_bundled.txt (встроен в APK, показывается мгновенно)
 - changelog.txt БОЛЬШЕ НЕ ИСПОЛЬЗУЕТСЯ — удалён из проекта и из деплоя
