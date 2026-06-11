@@ -420,30 +420,78 @@ cd /root/msg.client.android
 
 ---
 
-## Промпт для следующей сессии (feat/1.1.2.x — v1.1.2.10)
+## Промпт для следующей сессии (feat/1.1.2.x — v1.1.2.11)
 
 ```
-ЗАДАЧА: Продолжить работу над Lava Messenger. v1.1.2.9 завершена и выпущена.
+ЗАДАЧА: Продолжить работу над Lava Messenger. v1.1.2.10 завершена и выпущена.
 
-Текущая версия: v1.1.2.9 (prod, тег выпущен)
-Следующая версия: v1.1.2.10
+Текущая версия: v1.1.2.10 (prod, тег выпущен)
+Следующая версия: v1.1.2.11
 
 Контекст:
 - Сервер: /root/msg, dev порт 50052, prod порт 50051
-- Android: /root/msg.client.android
 - Оба репозитория на ветке feat/1.1.2.x
+- GitHub релиз v1.1.2.10: https://github.com/ferzferz11-sudo/msg/releases/tag/v1.1.2.10
 
 Что сделано в v1.1.2.10:
 - Рефакторинг server.go — разбит на 12 файлов по доменам (server_*.go)
 - server_management.go — ServerServiceServer восстановлен
-- Dev сервер обновлён и работает
+- Dev и prod обновлены, работают
+
+ЗАДАЧИ НА ЭТУ ССЕССИЮ (v1.1.2.11):
+
+## 1. Модульные тесты для AuthService (SignIn/SignUp)
+
+Файл: auth_service_test.go
+
+Тесты для SignIn:
+- TestSignIn_Success — правильный username+password → success=true, token не пустой, user заполнен
+- TestSignIn_WrongPassword — неправильный пароль → success=false, сообщение об ошибке
+- TestSignIn_UserNotFound — несуществующий пользователь → success=false
+- TestSignIn_EmptyUsername — пустой username → success=false
+- TestSignIn_EmptyPassword — пустой password → success=false
+
+Тесты для SignUp:
+- TestSignUp_Success — новый пользователь → success=true, token не пустой
+- TestSignUp_DuplicateUsername — существующий username → success=false
+- TestSignUp_DuplicateEmail — существующий email → success=false
+- TestSignUp_EmptyUsername — пустой username → success=false
+- TestSignUp_EmptyPassword — пустой password → success=false
+- TestSignUp_WithEmail — регистрация с email → email сохранён в БД
+
+Требования:
+- Использовать тестовую БД (отдельную от dev/prod)
+- Очищать тестовые данные после каждого теста (t.Cleanup)
+- Тесты должны быть изолированными (не зависеть от порядка выполнения)
+- Покрытие > 80% для auth_service.go
+
+## 2. Модульные тесты для OWL streaming
+
+Файл: owl_test.go
+
+Тесты:
+- TestChatWithOWL_Success — отправка сообщения → получение ответа через stream
+- TestChatWithOWL_RateLimit — превышение лимита → ошибка rate limit
+- TestChatWithOWL_EmptyMessage — пустое сообщение → ошибка валидации
+- TestGetOwlHistory_ReturnsMessages — история чата возвращает сообщения из БД
+- TestGetOwlHistory_Unauthorized — неавторизованный доступ → ошибка
+
+Требования:
+- Мокать OpenRouter API (не делать реальные запросы)
+- Использовать httptest.Server для мока API
+- Тесты должны быть быстрыми (< 5 сек на тест)
+- Покрытие > 70% для owl.go
+
+ОБЩИЕ ТРЕБОВАНИЯ:
+- go test ./... должен проходить без ошибок
+- Тесты не должны зависеть от внешних сервисов (OpenRouter, Firebase)
+- Использовать t.Parallel() где возможно
+- Добавить бенчмарки для критичных функций (SignIn, SignUp)
 
 Известные проблемы (не исправлено):
 - Сообщения пользователя видны только после ответа агента (нужна отладка на устройстве)
 
-Бэклог:
-- Модульные тесты для AuthService (SignIn/SignUp) — средний
-- Модульные тесты для OWL streaming — средний
+Бэклог (после тестов):
 - Structured logging на сервере (низкий)
 - Graceful shutdown для gRPC сервера (низкий)
 - Health check endpoint (низкий)
@@ -458,6 +506,7 @@ cd /root/msg.client.android
 - userId (UUID) — всегда как ключ, НЕ username
 - Для кастомных тем: новые FAB добавлять в ThemeApplier
 - Статический first item (Favorites) добавлять ДО загрузки данных с сервера
+- Новые методы сервера класть в соответствующий server_*.go файл (не в server.go)
 
 Документация (читать в начале каждой сессии):
 - Индекс: /root/msg/doc/INDEX.md
@@ -465,7 +514,7 @@ cd /root/msg.client.android
 - Android: /root/msg.client.android/doc/TASKS.md
 - AI сервисы: /root/msg/doc/AI_SERVICES.md
 - Подводные камни: /root/msg/doc/PITFALLS.md
-- Changelog: /root/msg/doc/CHANGELOG.md
+- Changelog: /root/msg/CHANGELOG.md
 - Memory pad: /root/.hermes/memory/pad.md
 ```
 
