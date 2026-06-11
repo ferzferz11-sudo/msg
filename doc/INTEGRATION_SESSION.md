@@ -374,73 +374,52 @@ cd /root/msg.client.android
 - compileDebugKotlin passes
 - APK: /var/www/lavender/lavender.apk
 - GitHub релиз: https://github.com/ferzferz11-sudo/msg.client.android/releases/tag/v1.1.2.8
+- Тег v1.1.2.8 создан и запушен
 
 ### Сервер v1.1.2.8
 - Без изменений (v1.1.2.6)
 
 ---
 
-## Промпт для следующей сессии (feat/1.1.2.x — v1.1.2.8)
+## Промпт для следующей сессии (feat/1.1.2.x — v1.1.2.9)
 
 ```
-ЗАДАЧА: Продолжить работу над Lava Messenger. v1.1.2.8 завершена.
+ЗАДАЧА: Продолжить работу над Lava Messenger. v1.1.2.8 завершена и выпущена.
 
-Текущая версия: v1.1.2.8 (prod)
+Текущая версия: v1.1.2.8 (prod, тег выпущен)
 Следующая версия: v1.1.2.9
 
 Контекст:
 - Сервер: /root/msg, dev порт 50052, prod порт 50051
 - Android: /root/msg.client.android
 - Оба репозитория на ветке feat/1.1.2.x
+- GitHub релиз v1.1.2.8: https://github.com/ferzferz11-sudo/msg.client.android/releases/tag/v1.1.2.8
 
-Известная проблема (не исправлено):
-- Сообщения пользователя видны только после ответа агента (нужна отладка)
+Что сделано в v1.1.2.8:
+- Favorites отображается сразу при входе (offline-first, fallback при ошибке)
+- Убран прелоадер во время ожидания ответа агента
+- Таймаут стрима 120 сек с сбросом на каждое сообщение
+- Шторка AI реорганизована — чаты разделены по типам (Hermes / OWL)
+- ChangelogAdapter цвета из ThemeStore, GitHub API загружается первым
+- Убран deprecated overridePendingTransition в SplashActivity
+
+Известные проблемы (не исправлено):
+- Сообщения пользователя видны только после ответа агента (нужна отладка на устройстве)
 
 Бэклог:
 - Модульные тесты для OWL streaming (средний)
 - Qdrant + CLIP (production RAG) — ночная задача
+- Рефакторинг server.go → пакеты (низкий)
+- Structured logging на сервере (низкий)
 
 Правила:
 - Коммитить после каждого значимого изменения, пушить в feat/1.1.2.x
 - При каждом релизе: git tag, CHANGELOG.md, bundled, version.txt
 - assembleRelease НЕ запускать на сервере (OOM kill)
 - Дизайн — минималистичный, чистый
-
-Документация (читать в начале каждой сессии):
-- Индекс: /root/msg/doc/INDEX.md
-- Сервер: /root/msg/doc/INTEGRATION_SESSION.md, /root/msg/doc/TASKS.md
-- Android: /root/msg.client.android/doc/TASKS.md
-- AI сервисы: /root/msg/doc/AI_SERVICES.md
-- Подводные камни: /root/msg/doc/PITFALLS.md
-- Changelog: /root/msg/doc/CHANGELOG.md
-- Memory pad: /root/.hermes/memory/pad.md
-```
-- Android: /root/msg.client.android
-- Оба репозитория на ветке feat/1.1.2.x
-- v1.1.2.8 — prod версия (JWT auth для удалённых агентов)
-
-Что сделано в v1.1.2.6:
-- JWT аутентификация для hermes-agent daemon (HS256)
-- auth/jwt.go — GenerateAgentToken, ValidateAgentToken
-- Таблица agent_tokens в БД
-- 3 admin RPC: GenerateAgentToken, RevokeAgentToken, ListAgentTokens
-- validateToken() — полная проверка подписи + expiration + revoked
-- Dev и prod обновлены
-- Тег v1.1.2.6 выпущен на GitHub
-
-Известная проблема (не исправлено):
-- Favorites при пустом списке: не отображается при входе после очистки памяти если нет чатов
-
-Бэклог:
-- Исправить Favorites при пустом списке (высокий приоритет)
-- Модульные тесты для OWL streaming (средний)
-- Qdrant + CLIP (production RAG) — ночная задача
-
-Правила:
-- Коммитить после каждого значимого изменения, пушить в feat/1.1.2.x
-- При каждом релизе: git tag, CHANGELOG.md, bundled, version.txt
-- assembleRelease НЕ запускать на сервере (OOM kill)
-- Дизайн — минималистичный, чистый
+- userId (UUID) — всегда как ключ, НЕ username
+- Для кастомных тем: новые FAB добавлять в ThemeApplier
+- Статический first item (Favorites) добавлять ДО загрузки данных с сервера
 
 Документация (читать в начале каждой сессии):
 - Индекс: /root/msg/doc/INDEX.md
