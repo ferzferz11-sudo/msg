@@ -1,5 +1,25 @@
 # Лава — Server Changelog
 
+## [1.1.2.11] - 2026-06-11
+- **Модульные тесты для AuthService** (auth_service_test.go):
+  - 5 тестов SignIn: success, wrong password, user not found, empty username, empty password
+  - 6 тестов SignUp: success, with email, duplicate username, duplicate email, empty username, empty password, empty email
+  - Mock DB с in-memory хранилищем, thread-safe
+  - Бенчмарки: BenchmarkSignIn, BenchmarkSignUp, BenchmarkHashPassword
+  - Покрытие: SignIn 85.7%, SignUp 74.2%
+- **Модульные тесты для OWL streaming** (owl_test.go):
+  - Тесты rate limiter: allow, cancel, remaining, window reset, concurrent access
+  - Тесты мок OpenRouter API: success, streaming, error (429)
+  - Тесты полного флоу: success path, rate limit exceeded
+  - Тест context cancellation
+  - Бенчмарки: BenchmarkOwlRateLimiter, BenchmarkOwlRateLimiter_Remaining
+  - Покрытие: rateLimiter allow/cancel 100%, remaining 92.3%
+- **Рефакторинг auth_service.go**:
+  - Добавлен интерфейс `authDB` для тестируемости
+  - Метод `queryUserProfile` — инкапсуляция запроса расширенного профиля
+- **db.go**: добавлен метод `queryUserProfile` к *DB
+- Версия сервера: v1.1.2.11
+
 ## [1.1.2.10] - 2026-06-11
 - **Рефакторинг server.go** — разбит на 12 файлов по доменам (server_*.go)
 - server_chat.go — Chat, Typing, CallSession, GetClients
