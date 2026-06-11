@@ -54,6 +54,12 @@
 
 ## Server
 
+### Структура файлов (v1.1.2.10+)
+- server.go — структура server, общие методы (logErrorOnce, logFCM, resolveUserId, resolveUsername)
+- server_*.go — методы по доменам (chat, users, chats, messages, profile, push, contacts, themes, drafts, muted, favorites, ai)
+- При добавлении новых методов — класть в соответствующий server_*.go файл
+- Не добавлять методы напрямую в server.go (только структура и общие утилиты)
+
 ### hermes_sessions owner
 - Таблица должна принадлежать `lavender`, не `postgres`
 - Исправление: `cd /tmp && sudo -u postgres psql -d chat_db -c "ALTER TABLE hermes_sessions OWNER TO lavender;"`
