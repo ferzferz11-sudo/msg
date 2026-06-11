@@ -302,6 +302,11 @@ func (db *DB) SaveUser(user, hash string) error {
 	return err
 }
 
+func (db *DB) SaveUserWithEmail(user, hash, email string) error {
+	_, err := db.Exec(`INSERT INTO users (username, password_hash, email) VALUES ($1, $2, $3)`, user, hash, email)
+	return err
+}
+
 func (db *DB) IsSuperAdmin(user string) bool {
 	var a bool
 	// Сначала пробуем найти по UUID (user_id)

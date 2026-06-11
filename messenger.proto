@@ -1298,3 +1298,39 @@ message UpdateHermesSettingsResponse {
   bool success = 1;
   string message = 2;
 }
+
+// ======= Auth Service =======
+
+message User {
+  string id = 1;
+  string username = 2;
+  string email = 3;
+  string avatar_url = 4;
+  string bio = 5;
+  string status = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp last_seen_at = 8;
+}
+
+message SignInRequest {
+  string username = 1;
+  string password = 2;
+}
+
+message SignUpRequest {
+  string username = 1;
+  string password = 2;
+  string email = 3;
+}
+
+message AuthResponse {
+  bool success = 1;
+  string token = 2;
+  string message = 3;
+  User user = 4;
+}
+
+service AuthService {
+  rpc SignIn(SignInRequest) returns (AuthResponse);
+  rpc SignUp(SignUpRequest) returns (AuthResponse);
+}
