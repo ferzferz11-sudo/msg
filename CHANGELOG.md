@@ -1,5 +1,22 @@
 # Лава — Server Changelog
 
+## [1.1.2.10] - 2026-06-11
+- **Рефакторинг server.go** — разбит на 12 файлов по доменам (server_*.go)
+- server_chat.go — Chat, Typing, CallSession, GetClients
+- server_users.go — GetAllUsers, UpdateProfile, GetUserProfile, GetUserAvatar
+- server_chats.go — GetAllChats, GetChats, CreateDirectChat, CreateGroupChat, DeleteChat, etc.
+- server_messages.go — GetHistory, SetReaction, DeleteMessages, EditMessage
+- server_profile.go — UpdateUsername, UpdatePassword, AdminUpdatePassword, MarkRead, UpdateAvatar, DeleteProfile
+- server_push.go — RegisterToken, sendPushNotification, broadcastOnlineUsers, etc.
+- server_contacts.go — AddContact, RemoveContact, GetContacts, GetChatListVersion
+- server_themes.go — GetThemes, SaveTheme, SetCurrentTheme, DeleteTheme
+- server_drafts.go — GetFCMLogs, SaveDraft, GetDraft, DeleteDraft
+- server_muted.go — GetMutedChats, SetMutedChat
+- server_favorites.go — GetUserId, AddFavorite, RemoveFavorite, GetFavorites, etc.
+- server_ai.go — ChatWithOWL, ChatWithAI, ChatWithOrchestrator, Hermes sessions, etc.
+- server_management.go — ServerServiceServer (восстановлен)
+- Dev сервер обновлён и работает
+
 ## [1.1.2.9] - 2026-06-11
 - **AuthService — отдельный gRPC сервис для аутентификации**
 - Новый proto-сервис `AuthService` с методами `SignIn` и `SignUp`

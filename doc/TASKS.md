@@ -1,9 +1,21 @@
 # Лава — Задачи
 
-**Версия:** v1.1.2.9
+**Версия:** v1.1.2.10
 **Ветка:** feat/1.1.2.x
 **Обновлено:** 2026-06-11
-**Тег:** v1.1.2.9 (выпущен)
+**Тег:** v1.1.2.10 (выпущен)
+
+---
+
+## ✅ v1.1.2.10 — Рефакторинг server.go
+
+### Сервер v1.1.2.10
+- **Рефакторинг server.go** — разбит на 12 файлов по доменам (server_*.go)
+- server_chat.go, server_users.go, server_chats.go, server_messages.go
+- server_profile.go, server_push.go, server_contacts.go, server_themes.go
+- server_drafts.go, server_muted.go, server_favorites.go, server_ai.go
+- server_management.go — ServerServiceServer восстановлен
+- Dev сервер обновлён и работает
 
 ---
 

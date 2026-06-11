@@ -1,8 +1,8 @@
 # Lava Messenger — Интеграционная сессия
 
-**Текущая версия:** v1.1.2.9
+**Текущая версия:** v1.1.2.10
 **Обновлено:** 2026-06-11
-**Тег:** v1.1.2.9 (выпущен)
+**Тег:** v1.1.2.10 (выпущен)
 
 ## Контекст
 
@@ -17,13 +17,27 @@
 
 ```
 СЕРВЕР:
+├── server.go           — структура server, общие методы
+├── server_chat.go      — Chat, Typing, CallSession, GetClients
+├── server_users.go     — GetAllUsers, UpdateProfile, GetUserProfile, GetUserAvatar
+├── server_chats.go     — GetAllChats, GetChats, CreateDirectChat, CreateGroupChat, DeleteChat, etc.
+├── server_messages.go  — GetHistory, SetReaction, DeleteMessages, EditMessage
+├── server_profile.go   — UpdateUsername, UpdatePassword, AdminUpdatePassword, MarkRead, UpdateAvatar, DeleteProfile
+├── server_push.go      — RegisterToken, sendPushNotification, broadcastOnlineUsers, etc.
+├── server_contacts.go  — AddContact, RemoveContact, GetContacts, GetChatListVersion
+├── server_themes.go    — GetThemes, SaveTheme, SetCurrentTheme, DeleteTheme
+├── server_drafts.go    — GetFCMLogs, SaveDraft, GetDraft, DeleteDraft
+├── server_muted.go     — GetMutedChats, SetMutedChat
+├── server_favorites.go — GetUserId, AddFavorite, RemoveFavorite, GetFavorites, etc.
+├── server_ai.go        — ChatWithOWL, ChatWithAI, ChatWithOrchestrator, Hermes sessions, etc.
+├── server_management.go — ServerServiceServer
+├── auth_service.go     — AuthService: SignIn, SignUp
 ├── owl.go              — OWL AI: ChatWithOWL streaming, сессии, история
 ├── bot_commands.go     — Bot Commands: /status, /deploy, /logs, /restart, /ai, /help, /version
 ├── hermes_orchestrator.go — Hermes: оркестратор, маршрутизация агентов
 ├── hermes_agent_service.go — Hermes: управление агентами
-├── auth_service.go     — AuthService: SignIn, SignUp
-└── server.go           — gRPC handlers, маршрутизация запросов
-
+└── db.go               — Database layer
+```
 ANDROID:
 ├── OwlGrpc.kt          — OWL: chatWithOwl, processBotCommand, getBotCommands, getOWLStatus
 ├── HermesGrpc.kt       — Hermes: chatWithOrchestrator, agent management
@@ -363,6 +377,16 @@ cd /root/msg.client.android
 
 ---
 
+## Статус: v1.1.2.10 — Рефакторинг server.go (ЗАВЕРШЕНА)
+
+### Сервер v1.1.2.10
+- **Рефакторинг server.go** — разбит на 12 файлов по доменам (server_*.go)
+- Каждый файл ~300-600 строк вместо одного файла 4268 строк
+- server_management.go — ServerServiceServer восстановлен
+- Dev сервер обновлён и работает, старые клиенты не сломались
+
+---
+
 ## Статус: v1.1.2.9 — AuthService (ЗАВЕРШЕНА)
 
 ### Сервер v1.1.2.9
@@ -409,20 +433,17 @@ cd /root/msg.client.android
 - Android: /root/msg.client.android
 - Оба репозитория на ветке feat/1.1.2.x
 
-Что сделано в v1.1.2.9:
-- AuthService — отдельный gRPC сервис для аутентификации
-- SignIn/SignUp методы с bcrypt хешированием паролей
-- Proto: User, SignInRequest, SignUpRequest, AuthResponse сообщения
-- auth_service.go: authServer с полной логикой аутентификации
+Что сделано в v1.1.2.10:
+- Рефакторинг server.go — разбит на 12 файлов по доменам (server_*.go)
+- server_management.go — ServerServiceServer восстановлен
 - Dev сервер обновлён и работает
 
 Известные проблемы (не исправлено):
 - Сообщения пользователя видны только после ответа агента (нужна отладка на устройстве)
 
 Бэклог:
-- Модульные тесты для OWL streaming (средний)
-- Модульные тесты для AuthService (средний)
-- Рефакторинг server.go → пакеты (низкий)
+- Модульные тесты для AuthService (SignIn/SignUp) — средний
+- Модульные тесты для OWL streaming — средний
 - Structured logging на сервере (низкий)
 - Graceful shutdown для gRPC сервера (низкий)
 - Health check endpoint (низкий)
