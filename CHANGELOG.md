@@ -1,6 +1,6 @@
 # Лава — Server Changelog
 
-## [1.1.3.2] - 2026-06-14
+## [1.1.3.2] - 2026-06-12
 - **P3: Health check endpoint** — `/health` на HTTP сервере (порт 8082), 返回 `{"status":"ok","version":"1.1.3.2","time":"..."}`
 - **P3: Graceful shutdown** — SIGINT/SIGTERM → `grpc.Server.GracefulStop()` вместо мгновенного убийства
 - **P3: Agent Process Management RPC** — `StartAgent`, `StopAgent`, `GetAgentProcessStatus` в `HermesAgentService`
