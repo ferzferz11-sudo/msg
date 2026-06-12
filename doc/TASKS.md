@@ -10,235 +10,40 @@
 
 ### Сервер
 - Debug логи в hermes_agent_service.go обёрнуты в `os.Getenv("DEBUG")`
-- **P1 fix**: GenerateAgentToken возвращает ошибку клиенту при неудачном сохранении в БД (ранее молча пропускал)
+- **P1 fix**: GenerateAgentToken возвращает ошибку клиенту при неудачном сохранении в БД
 - **P1 fix**: hermesDB == nil check — возврат "database not available" вместо nil pointer
 - **P2**: Убран дубликат token RPC из messenger.proto (ChatService) — оставлен только в hermes_agent.HermesAgentService
-- **P2**: Удалена дублирующая реализация GenerateAgentToken/RevokeAgentToken/ListAgentTokens из server_ai.go
 - **P2**: Rate limiting на GenerateAgentToken (5 секунд между запросами на пользователя)
-- generate_token.py исправлен: HermesAgentServiceStub вместо ChatServiceStub
-- Убраны stale proto-файлы (LavenderMessenger/gen/, root hermes_remote.pb.go)
+- **P3**: Health check endpoint (`/health`) на HTTP сервере (порт 8082)
+- **P3**: Graceful shutdown для gRPC сервера (SIGINT/SIGTERM → GracefulStop)
+- **P3**: Agent Process Management RPC — StartAgent/StopAgent/GetAgentProcessStatus
+  - Сервер запускает hermes_remote_agent.py как subprocess
+  - Отслеживание PID, автоочистка при выходе
+  - systemd шаблон: `scripts/hermes-agent@.service`
+  - Скрипт управления: `scripts/deploy_agent.sh`
 
-### Android (выпущен)
+### Android
 - Убран Toast "Вход выполнен"
 - Авто-прокрутка вниз при отправке сообщения
 - Версия на SplashActivity
+- Версия на SplashLoadingActivity (экран логина)
 - Debug логи обёрнуты в BuildConfig.DEBUG
-- Шторка настроек: очистка кэша и журнал ошибок перемещены
+- **Fix**: добавлена NotificationActivity в AndroidManifest (была не зарегистрирована → краш)
+- **P2**: SplashActivity + SplashLoadingActivity — версия показывается на обоих экранах
+- **P2**: RemoteAgentActivity — авто-рефреш статуса агента каждые 30 сек (repeatOnLifecycle)
+- **P2**: RemoteAgentSettingsActivity — кнопка "Скопировать команду" в диалоге токена
+- **P2**: RemoteAgentSettingsActivity — кнопки "Запустить/Остановить агента" (запуск на сервере через gRPC)
+- **P2**: AgentListActivity — вкладка "Remote" для перехода к RemoteAgentActivity
+- **P2**: RemoteAgentSettingsActivity — сохранение выбранного агента в SharedPreferences
+- **P2**: Индикатор "агент не подключён" в RemoteAgentActivity (уже был)
 
 ---
 
-## ✅ v1.1.3.0 — Remote Agent + Token Management
+## ✅ Известные проблемы
 
-### Сервер v1.1.3.0
-- **Lavender Platform Adapter** (hermes-agent/adapter.py) — bidirectional gRPC streaming
-- **Hermes Agent plugin** (__init__.py) — create_adapter(), register(), get_plugin()
-- **ListRemoteAgents fix** — AgentID передаётся в RemoteTask
-- Dev сервер скомпилирован и запущен на порту 50052
-- Prod сервер работает на порту 50051
-
-### Android v1.1.3.0
-- **listRemoteAgents** — заглушка заменена на реальный gRPC вызов
-- **getRemoteAgentStatus** — парсер исправлен (3 поля: status, active_tasks, last_heartbeat)
-- feat/1.1.3.x ветка создана
-
----
-
-## ✅ v1.1.2.11 — Тесты для AuthService + OWL
-
-### Сервер v1.1.2.10
-- **Рефакторинг server.go** — разбит на 12 файлов по доменам (server_*.go)
-- server_chat.go, server_users.go, server_chats.go, server_messages.go
-- server_profile.go, server_push.go, server_contacts.go, server_themes.go
-- server_drafts.go, server_muted.go, server_favorites.go, server_ai.go
-- server_management.go — ServerServiceServer восстановлен
-- Dev сервер обновлён и работает
-
----
-
-## ✅ v1.1.2.9 — AuthService (SignIn/SignUp gRPC)
-
-### Сервер v1.1.2.9
-- **AuthService** — отдельный gRPC сервис для аутентификации
-- `auth_service.go` — реализация `AuthServiceServer` с методами `SignIn` и `SignUp`
-- `SignIn` — проверка username/password через bcrypt, возврат UUID-токена и User
-- `SignUp` — регистрация с проверкой уникальности username/email
-- Proto: `User`, `SignInRequest`, `SignUpRequest`, `AuthResponse`, `AuthService`
-- `db.go` — `SaveUserWithEmail` метод
-- `main.go` — `gen.RegisterAuthServiceServer(s, authServer)`
-- Dev сервер обновлён и работает
-
----
-
-## ✅ v1.1.2.8 — AI чат улучшения
-
-### Android v1.1.2.8
-- **SplashActivity**: увеличено расстояние логотип→текст (60px → 90dp)
-- **SplashLoadingActivity**: новый оверлей загрузки для логина/регистрации
-- **Login/Register**: показывается SplashLoadingActivity во время авторизации
-- **Онбординг удалён**: welcomeContainer, onboardingProfileBubble, onboardingFabBubble
-- **Чекбокс "Создать чат"**: в шторке добавления контакта, включён по умолчанию
-- **Исправления**: crash при выборе чатов, getSelectedChats offset, loadingContainer удалён, statusBarColor deprecation
-- compileDebugKotlin ✅
-- APK: /var/www/lavender/lavender.apk
-- GitHub релиз: https://github.com/ferzferz11-sudo/msg.client.android/releases/tag/v1.1.2.7
-
-### Сервер v1.1.2.7
-- Без изменений (v1.1.2.4)
-
----
-
-## ✅ v1.1.2.6 — ChangelogActivity: bundled changelog + ссылки на GitHub
-
-### Android v1.1.2.6
-- **Bundled changelog**: `app/src/main/assets/changelog_bundled.txt` — встроен в APK, показывается мгновенно
-- **Новая логика загрузки**: bundled → GitHub API → server fallback
-- **Ссылки на CHANGELOG.md**: кнопки «Ченджлог сервера» и «Ченджлог клиента» на GitHub
-- **changelog.txt удалён** из проекта и из деплоя на сервер
-- **scripts/deploy_android.sh обновлён**: убрана загрузка changelog.txt
-- **Старый deploy_android.sh удалён** (сервер 159.195.38.145 больше не поддерживается)
-- **Документация обновлена**: INDEX.md, PITFALLS.md, TASKS.md
-- compileDebugKotlin ✅
-
-### Сервер v1.1.2.6
-- Без изменений (v1.1.2.4)
-
----
-
-## ✅ v1.1.2.5 — ChangelogActivity тема
-
-### 1. ChangelogActivity — белый экран при кастомных темах ✅ ИСПРАВЛЕНО
-- **Симптом**: при тёмной/кастомной теме ChangelogActivity показывала белый экран
-- **Причина**: ChangelogActivity не вызывал ThemeUi.bind для применения кастомной темы
-- **Исправлено**: добавлен ThemeUi.bind(this, "") в onCreate
-- **Статус**: исправлено, compileDebugKotlin OK
-
----
-
-## ✅ v1.1.2.4 — Все проблемы закрыты
-
-### 1. Hermes история не загружалась ✅ ИСПРАВЛЕНО
-- **Симптом**: пользователь не видит историю чата с оркестратором
-- **Причина**: HermesChatActivity вызывает старый chatWithOrchestrator RPC, который сохраняет в hermes_messages — но эта таблица дропнута в v1.1.2.3
-- **Исправлено**: все вызовы переведены на AIChatManager (ai_chat_messages таблица)
-- **Статус**: исправлено в v1.1.2.4
-
-### 2. Rate limiter — failed requests потребляли слоты ✅ ИСПРАВЛЕНО
-- **Симптом**: при ошибке OpenRouter/orchestrator слот rate limiter не возвращался, счётчик показывал меньше чем должно
-- **Причина**: allow() добавлял timestamp до выполнения запроса, при ошибке timestamp оставался
-- **Исправлено**: добавлен rateLimiter.cancel(userID) во всех failure paths (ChatWithOWL, ChatWithOrchestrator, ChatWithAI, ChatWithPipeline, /ai bot command)
-- **Статус**: исправлено в v1.1.2.4
-
-### 3. Avatar delete — новый файл удалялся при совпадении хеша ✅ ИСПРАВЛЕНО
-- **Симптом**: при смене аватара полная версия не отображалась (бесконечный индикатор загрузки)
-- **Причина**: UpdateAvatar удалял старый файл по имени, но если новый файл имел тот же MD5 хеш, он перезаписывал старый, и потом удалялся
-- **Исправлено**: UpdateAvatar теперь сравнивает имена старых и новых файлов, и не удаляет новый если хеш совпадает
-- **Статус**: исправлено в v1.1.2.4
-
----
-
-## ✅ v1.1.2.3 — Подтверждённые работающие фичи
-
-### OWL чат ✅
-- История чата загружается корректно
-- Счётчик запросов в тулбаре показывает правильно (20/20)
-- Стриминг ответов работает
-
-### Архитектура AI Chat Refactor ✅
-- ai_chat_manager.go, ai_chat_sessions/messages/settings таблицы
-- ChatWithAI RPC, GetAIChatHistory, GetAIChatSettings, UpdateAIChatSettings
-- AiChatGrpc.kt + GrpcClient facade
-- compileDebugKotlin passes
-- Dev и prod обновлены
-
----
-
-## ✅ v1.1.2.2 — DeleteChat cascade + очистка AI чатов
-
-### 1. DeleteChat не удалял hermes_sessions ✅
-- **Причина:** DeleteChat удалял только из chats, но не из hermes_sessions — оставались orphan-записи
-- **Исправлено:** добавлено каскадное удаление из hermes_sessions + hermes_messages для hermes, owl_messages + owl_chat_settings для owl
-- **Статус:** исправлено, деплоено на dev и prod
-
-### 2. Очистка всех AI чатов на dev и prod ✅
-- **Причина:** накопились orphan-записи в hermes_sessions/hermes_messages после удаления чатов
-- **Исправлено:** полная очистка chats, owl_messages, owl_chat_settings, hermes_sessions, hermes_messages, hermes_chat_settings на обоих серверах
-- **Статус:** выполнено — 0 AI-записей на dev и prod
-
----
-
-## ✅ v1.1.2.1 — История из БД + счётчик запросов
-
-### 1. Hermes история из БД ✅
-- **Причина:** GetOrchestratorHistory брал из in-memory session.Messages — после рестарта сервера история пропадала
-- **Исправлено:** GetOrchestratorHistory загружает из hermes_messages через HermesDB.GetOrchestratorHistory()
-- **Статус:** исправлено, деплоено на dev и prod
-
-### 2. Проверка владельца в GetOwlHistory ✅
-- **Причина:** любой мог запросить историю любого OWL чата
-- **Исправлено:** добавлена проверка creator_id == userId
-- **Статус:** исправлено, деплоено
-
-### 3. Счётчик оставшихся запросов ✅
-- **Причина:** в тулбаре показывалась только статичная строка "20 запросов/час"
-- **Исправлено:** rate limiter.remaining(), GetOwlSettings/GetHermesSettings возвращают remaining/limit/window_seconds
-- **Статус:** исправлено, деплоено
-
-### 4. HermesChatActivity — loadHistory при новом чате ✅
-- **Причина:** loadHistory вызывался только если chatId не пустой, но при новом чате chatId пуст до создания сессии
-- **Исправлено:** loadHistory вызывается всегда когда session.id не пуст
-- **Статус:** исправлено
-
----
-
-## ✅ v1.1.2.0 — Все баги закрыты
-
-### 1. Hermes оркестратор — ошибка создания сессии ✅
-- **Причина:** `permission denied` на `hermes_sessions` в prod DB
-- **Исправлено:** пермишены `ALTER TABLE hermes_sessions OWNER TO lavender`
-- **Статус:** исправлено
-
-### 2. HermesGrpc — неправильный маппинг proto полей ✅
-- **Причина:** в `CreateHermesSessionResponse` поля 1 и 2 перепутаны
-- **Исправлено:** HermesGrpc.kt — поля 1=success(bool), 2=session_id(string)
-- **Статус:** закоммичено, протестировано
-
-### 3. last_message_text пустой для Hermes чатов ✅
-- **Причина:** ChatWithOrchestrator не обновлял chats.last_message_text
-- **Исправлено:** добавлен UPDATE chats после ответа
-- **Статус:** закоммичено, протестировано
-
-### 4. Дубли чатов в UI ✅
-- **Причина:** GetAIChats брал Hermes из hermes_sessions, а OWL из chats
-- **Исправлено:** GetAIChats берёт оба типа из chats
-- **Статус:** закоммичено, протестировано
-
-### 5. getOrCreateSession создаёт дубли сессий ✅
-- **Причина:** создавал сессию с id = "hermes-" + userID каждый раз
-- **Исправлено:** ищет существующую сессию по user_id
-- **Статус:** закоммичено, протестировано
-
-### 6. OWL — сообщения не сохраняются в БД ✅
-- **Причина:** debug-логи показали что INSERT работает
-- **Статус:** подтверждено что работает — 5 записей в prod DB, 10 в dev DB
-
-### 7. Log-monitor — все логи красным ✅
-- **Причина:** неправильное экранирование `\n` в Go raw string literal
-- **Исправлено:** `\\n` вместо `\\\\n` в prod log-monitor
-- **Статус:** исправлено, деплоено
-
-### 8. Log-monitor — показывал старые логи ✅
-- **Причина:** `--since "24 hours ago"` + `-n 100` брал старые 100 записей
-- **Исправлено:** убран `--since`, `-n 100` берёт последние 100
-- **Статус:** исправлено, деплоено
-
----
-
-## ✅ Prod Релиз v1.1.2.0
-- Сервер prod обновлён (v1.1.1.15 → v1.1.2.0)
-- Пермишены на hermes_sessions исправлены
-- Log-monitor обновлён и работает
-- compileDebugKotlin проходит
-- Dev сервер обновлён и работает
+### Низкий приоритет
+- Сообщения пользователя видны только после ответа агента (нужна отладка на устройстве)
+- Server migration warnings: `role "lavender" does not exist` при миграциях (не критично)
 
 ---
 
@@ -252,19 +57,39 @@
 ### Низкий приоритет
 - [ ] Qdrant + CLIP (production RAG) — ночная задача
 - [ ] Structured logging на сервере (zap/logrus)
-- [ ] Graceful shutdown для gRPC сервера
-- [ ] Health check endpoint (readiness/liveness)
 - [ ] Prometheus метрики (request count, latency, active connections)
 
 ---
 
-## 🟡 Известные проблемы
+## 🗄️ Структура файлов
 
-### Сообщения пользователя видны только после ответа агента
-- **Статус:** не исправлено
-- **Симптом:** пользователь отправляет сообщение, но видит его только после ответа агента
-- **Приоритет:** нужна отладка на устройстве
+### Сервер (Go)
+```
+main.go                    —  Entry point, gRPC server, graceful shutdown
+hermes_agent_service.go    —  HermesAgentServiceServer (Connect, tokens, agent process mgmt)
+hermes_remote.proto        —  Proto для HermesAgentService
+db_hermes.go              —  HermesDB (CRUD для agent_tokens, hermes_sessions, etc.)
+server_ai.go              —  AI Chat + RemoteAgent RPC (ListRemoteAgents, DeployAgentTask, etc.)
+http_server.go            —  HTTP server (/health, /upload-*, /avatars/, etc.)
+hermes_orchestrator.go    —  Orchestrator + RemoteAgentManager
+hermes_remote_manager.go  —  RemoteAgent, RemoteTask, task execution
+gen/hermes_agent/          —  Сгенерированный Go код из hermes_remote.proto
+scripts/deploy_agent.sh    —  Управление агентом через systemd
+scripts/hermes-agent@.service —  systemd unit шаблон
+```
 
-### Server migration warnings
-- **Статус:** не критично
-- **Симптом:** `role "lavender" does not exist` при миграциях
+### Android (Kotlin)
+```
+data/grpc/HermesGrpc.kt                    —  gRPC клиент (все unary/streaming RPCs)
+data/grpc/GrpcClient.kt                    —  Facade над HermesGrpc + RealGrpcClient
+data/proto/MessengerProto.kt               —  Hand-written proto типы
+ui/remote/RemoteAgentActivity.kt           —  Чат с remote agent, авто-рефреш 30с
+ui/remote/RemoteAgentSettingsActivity.kt   —  Токены + запуск/остановка агента
+ui/remote/RemoteAgentViewModel.kt          —  ViewModel для RemoteAgentActivity
+ui/remote/TokenDialog.kt                   —  Диалог генерации токена
+ui/hermes/AgentListActivity.kt             —  Список AI-агентов + вкладка Remote
+ui/hermes/AgentSettingsActivity.kt         —  Настройки AI-агента
+SplashActivity.kt                          —  Стартовый splash (версия отображается)
+SplashLoadingActivity.kt                   —  Splash при логине (версия отображается)
+AndroidManifest.xml                        —  NotificationActivity зарегистрирована
+```

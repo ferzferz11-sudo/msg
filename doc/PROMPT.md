@@ -1,119 +1,70 @@
 # Промпт для новой сессии — v1.1.3.x
 
-**Дата:** 2026-06-14
-**Версия:** v1.1.3.1 (сервер + Android)
-**Ветка:** feat/1.1.3.x
+## Статус: Сервер v1.1.3.1 и Android v1.1.3.1 — в разработке. Ветка feat/1.1.3.x.
 
----
+## Что сделано
 
-## ЧТО СДЕЛАНО
+### Исправлено
+- SplashLoadingActivity — добавлена версия приложения
+- NotificationActivity — добавлена в AndroidManifest
+- RemoteAgentSettingsActivity — сохранение токена в SharedPreferences
 
-### Сервер v1.1.3.1 (выпущен)
-- ✅ GenerateAgentToken возвращает ошибку при неудачном сохранении в БД
-- ✅ hermesDB == nil check
-- ✅ Rate limiting на GenerateAgentToken (5s per user)
-- ✅ Token RPC дедуплицирован (убран из messenger.proto ChatService)
-- ✅ Debug логи обёрнуты в DEBUG env var
-- ✅ Dev + Prod обновлены, таг v1.1.3.1, GitHub Release
-
-### Android v1.1.3.1 (выпущен)
-- ✅ Убран Toast "Вход выполнен"
-- ✅ Авто-прокрутка, версия на SplashActivity
-- ✅ Debug логи обёрнуты в BuildConfig.DEBUG
-
----
-
-## ЗАДАЧИ ДЛЯ НОВОЙ СЕССИИ
-
-### P1 — Android баги (исправить первыми)
-- Проверить все remote agent activity на краши и NPE
-- Проверить token list refresh после генерации
-- Проверить revoke token flow
-- **Файлы:** `RemoteAgentSettingsActivity.kt`, `RemoteAgentActivity.kt`, `TokenDialog.kt`
-
-### P2 — Agent flow в Android
-- **Индикатор "агент не подключён"** в RemoteAgentActivity — показывать подсказку если агент offline
-- **Кнопка "Скопировать команду"** в TokenDialog: `python3 hermes_remote_agent.py --server host:port --token <jwt>`
-- **Авто-рефреш** списка агентов каждые 30 сек
-- **Объединить** AgentListActivity + RemoteAgentActivity (убрать дублирование)
-- **AgentSettingsActivity** — полноценные настройки агента (server URL, token, capabilities)
-
-### P3 — Сервер
-- Health check endpoint (readiness/liveness)
+### Добавлено
+- Agent Process Management: StartAgent/StopAgent/GetAgentProcessStatus RPC
+- Сервер запускает hermes_remote_agent.py как subprocess
+- systemd сервис для агента (scripts/hermes-agent@.service, scripts/deploy_agent.sh)
+- Health check endpoint (/health)
 - Graceful shutdown для gRPC сервера
-- Structured logging (zap/logrus)
+- Авто-рефреш remote agent статуса (30 сек)
+- Кнопка "Скопировать команду" в диалоге токена
+- Вкладка "Remote" в AgentListActivity
 
----
+## Текущие задачи (приоритет)
 
-## КРИТИЧЕСКИЕ ФАЙЛЫ
+### 1. Remote Agent — деплой и подключение
+- Проверить что hermes_remote_agent.py корректно запускается с сервера
+- Проверить что StartAgent RPC работает (запуск агента из приложения)
+- Проверить что агент подключается к серверу через Connect stream
+- Проверить что задачи (shell, git, build) выполняются агентом
 
-### Сервер (`/root/msg`)
-- `server.go:34` — ServerVersion
-- `hermes_agent_service.go` — token RPC + Connect
-- `hermes_remote_manager.go` — remote agent manager
-- `db_hermes.go` — SaveAgentToken, ListAgentTokens
-- `auth/jwt.go` — GenerateAgentToken, ValidateAgentToken
+### 2. P2 — Agent flow в Android
+- Индикатор "агент не подключён" в RemoteAgentActivity — проверить работу
+- Кнопка "Скопировать команду" — проверить формат команды
+- Авто-рефреш списка агентов (30 сек) — проверить
+- Объединение AgentListActivity + RemoteAgentActivity — проверить навигацию
 
-### Android (`/root/msg.client.android`)
-- `data/grpc/HermesGrpc.kt` — все gRPC методы
-- `ui/remote/RemoteAgentSettingsActivity.kt` — управление токенами
-- `ui/remote/RemoteAgentActivity.kt` — чат с агентом
-- `ui/remote/RemoteAgentViewModel.kt` — состояние
-- `ui/remote/TokenDialog.kt` — диалог генерации токена
-- `data/proto/MessengerProto.kt` — proto классы
+### 3. P3 — Сервер
+- Health check endpoint — проверить ответ
+- Graceful shutdown — проверить что сервер корректно останавливается
+- Structured loading — добавить прогресс-бар загрузки
 
-### Агент (`/root/msg/hermes-agent`)
-- `hermes_remote_agent.py` — remote agent daemon
-- `adapter.py` — Platform Adapter
+## Критические файлы
 
----
+### Сервер
+- hermes_agent_service.go — Agent Process Management RPC
+- hermes_remote.proto — обновлённый proto
+- main.go — graceful shutdown
+- http_server.go — /health endpoint
+- scripts/deploy_agent.sh — управление агентом
+- scripts/hermes-agent@.service — systemd unit
 
-## АРХИТЕКТУРА
+### Android
+- HermesGrpc.kt — новые RPC методы
+- GrpcClient.kt — facade для новых методов
+- RemoteAgentSettingsActivity.kt — UI управления агентом
+- RemoteAgentActivity.kt — чат с агентом
+- MessengerProto.kt — новые proto типы
 
-```
-┌─────────────┐  gRPC          ┌──────────────┐  gRPC           ┌─────────────┐
-│  Android    │ ──────────────→ │   Server     │ ←────────────── │   Remote    │
-│  Client     │  GenerateToken  │   (Go)       │  Connect        │   Agent     │
-│             │  ListTokens     │              │  (streaming)    │   (Python)  │
-│             │  DeployTask     │              │                 │             │
-└─────────────┘                 └──────────────┘                 └─────────────┘
-```
+## Правила
+- НЕ assembleRelease на сервере (OOM)
+- НЕ compileDebugKotlin без крайней необходимости
+- Proto gen: --go_out=gen (НЕ .)
+- Коммитить/пушить после каждого изменения
+- Версию не менять без явного указания пользователя
 
-**gRPC сервисы:**
-- `messenger.ChatService` — Chat, ListRemoteAgents, DeployAgentTask, GetRemoteAgentStatus
-- `hermes_agent.HermesAgentService` — Connect, GenerateAgentToken, RevokeAgentToken, ListAgentTokens
-- `messenger.AuthService` — SignIn, SignUp
+## Документация
+- doc/INDEX.md → doc/TASKS.md → doc/PROMPT.md
 
-**Порты:**
-- 50051 — prod
-- 50052 — dev
-
----
-
-## ПРАВИЛА
-
-- **НЕ** запускать assembleRelease на сервере (OOM, нужно 2GB+)
-- **НЕ** запускать compileDebugKotlin без крайней необходимости
-- Перед любым gradle задачами: `free -h`, если < 2GB free → НЕ запускать
-- Коммитить и пушить после каждого значимого изменения
-- Токены показываются ОДИН РАЗ — логировать при генерации
-- Proto gen: `protoc --go_out=gen --go_opt=paths=source_relative --go-grpc_out=gen --go-grpc_opt=paths=source_relative messenger.proto` (НЕ `--go_out=.`!)
-
----
-
-## ДОКУМЕНТАЦИЯ
-
-- `/root/msg/doc/INDEX.md` — индекс документации
-- `/root/msg/doc/TASKS.md` — таск-трекер
-- `/root/msg/doc/PROMPT_SERVER.md` — промпт для серверных сессий
-- `/root/msg.client.android/doc/PROMPT_ANDROID.md` — промпт для Android-сессий
-- `/root/msg/CHANGELOG.md` — история версий сервера
-
----
-
-## СКИЛЛЫ
-
-Загрузить в начале сессии:
-- `lavender-messenger` — корневой скилл (выберет правильный подскилл)
-- `lavender-messenger:lavender-server` для серверной работы
-- `lavender-messenger:lavender-android` для Android-работы
+## Скиллы
+- lavender-messenger (корневой)
+- lavender-messenger:lavender-android для Android-работы
