@@ -338,27 +338,27 @@ func (h *hermesAgentServer) GenerateAgentToken(_ context.Context, req *hermesage
 	}
 
 	if h.server.hermesDB == nil {
-   if os.Getenv("DEBUG") != "" {
+		if os.Getenv("DEBUG") != "" {
 			log.Printf("[HermesAgentService] hermesDB is nil, token not persisted!")
-   }
-			return &hermesagent.GenerateAgentTokenResponse{
-				Success: false, Error: "database not available",
-			}, nil
 		}
-		if err := h.server.hermesDB.SaveAgentToken(
-			req.AgentId, req.AgentName, tokenHash,
-			req.Capabilities, expiresAt, req.AdminUserId,
-		); err != nil {
-   if os.Getenv("DEBUG") != "" {
+		return &hermesagent.GenerateAgentTokenResponse{
+			Success: false, Error: "database not available",
+		}, nil
+	}
+	if err := h.server.hermesDB.SaveAgentToken(
+		req.AgentId, req.AgentName, tokenHash,
+		req.Capabilities, expiresAt, req.AdminUserId,
+	); err != nil {
+		if os.Getenv("DEBUG") != "" {
 			log.Printf("[HermesAgentService] failed to save token: %v", err)
-   }
-			return &hermesagent.GenerateAgentTokenResponse{
-				Success: false, Error: fmt.Sprintf("save token: %v", err),
-			}, nil
 		}
-  if os.Getenv("DEBUG") != "" {
+		return &hermesagent.GenerateAgentTokenResponse{
+			Success: false, Error: fmt.Sprintf("save token: %v", err),
+		}, nil
+	}
+	if os.Getenv("DEBUG") != "" {
 		log.Printf("[HermesAgentService] token saved: agentId=%s hash=%s", req.AgentId, tokenHash[:16])
-  }
+	}
 
 	claims, _ := auth.ValidateAgentToken(token)
 
