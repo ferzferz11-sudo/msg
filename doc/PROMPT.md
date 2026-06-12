@@ -71,7 +71,21 @@
 
 ## Документация
 - doc/INDEX.md → doc/TASKS.md → doc/PROMPT.md
+- doc/RELEASE.md — выпуск релизов сервера
 
 ## Скиллы
 - lavender-messenger (корневой)
 - lavender-messenger:lavender-android для Android-работы
+
+## Выпуск релиса
+
+doc/RELEASE.md — полная документация по процессу.
+
+Быстрый старт:
+```bash
+# С серверa (где OWL):
+./scripts/release.sh 1.1.3.3 --deploy
+
+# С Mac (удалённо):
+./scripts/release.sh 1.1.3.3 --deploy --remote
+```
