@@ -56,8 +56,8 @@ SSH туннель и gRPC подключение были привязаны к
 ## 📋 Бэклог
 
 ### Средний приоритет
+- [x] Модульные тесты для AuthService (SignIn/SignUp) ✅ v1.1.3.5 (commit c9b3b14)
 - [ ] Модульные тесты для OWL streaming
-- [ ] Модульные тесты для AuthService (SignIn/SignUp)
 
 ### Низкий приоритет
 - [ ] Qdrant + CLIP (production RAG)
