@@ -1,8 +1,8 @@
 # Lava Messenger — Интеграционная сессия
 
-**Текущая версия:** v1.1.3.0
-**Обновлено:** 2026-06-11
-**Тег:** v1.1.3.0 (выпущен)
+**Текущая версия:** v1.1.3.2
+**Обновлено:** 2026-06-12
+**Тег:** v1.1.3.2 (выпущен)
 
 ## Контекст
 
@@ -537,33 +537,35 @@ cd /root/msg.client.android
 
 ---
 
-## Промпт для следующей сессии (v1.1.3.0)
+## Промпт для следующей сессии (v1.1.3.x — Remote Agent improvements)
 
-**Версия:** v1.1.3.0 | **Ветка:** feat/1.1.3.x
+**Версия:** v1.1.3.2 | **Ветка:** feat/1.1.3.x
 
 ### Что сделано
-- ✅ Lavender Platform Adapter (adapter.py) — bidirectional gRPC streaming ChatService.Chat
-- ✅ Hermes Agent plugin (__init__.py) — create_adapter(), register(), get_plugin()
-- ✅ AgentID fix в DeployAgentTask
-- ✅ listRemoteAgents — заглушка → реальный gRPC (Android)
-- ✅ getRemoteAgentStatus — парсер исправлен (3 поля)
-- ✅ Dev сервер скомпилирован, порты 50051 (prod) + 50052 (dev)
-- ✅ Ветки: main ← feat/1.1.2.x merged, feat/1.1.3.x создана
+- ✅ JWT токены — генерация, список, отзыв, копирование
+- ✅ Запуск/остановка агента через StartAgent/StopAgent RPC
+- ✅ UI статуса подключения (зелёный/белый)
+- ✅ Персистентность выбранного агента
+- ✅ HermesGrpc — все методы реализованы
+- ✅ Debug логи обёрнуты в BuildConfig.DEBUG
 
-### Что осталось
-- Протестировать Platform Adapter с реальным Hermes Agent
-- Интеграция Remote Agent с реальным бэкендом (Android → Server → Agent)
-- Тесты: shell, git, build, docker task types
+### Известные проблемы (P1)
+- **Агент завершается сразу после запуска** — `hermes_remote_agent.py` падает в `connect()` при отправке `AgentMessage` через gRPC stream. Root cause: protobuf marshaling. Нужно исправить Python скрипт.
+- **Токены не фильтруются по пользователю** — `ListAgentTokens` возвращает все токены. Нужно фильтровать по `created_by` на сервере.
+
+### Задачи на следующую сессию
+1. **Исправить hermes_remote_agent.py** — агент должен оставаться подключённым и выполнять задачи
+2. **Фильтрация токенов** — `ListAgentTokens` должен возвращать только токены текущего пользователя
+3. **Streaming результатов задач** — отправка результатов выполнения задач агентом обратно клиенту
 
 ### Критические файлы
-- `server.go:34` — ServerVersion
-- `hermes-agent/adapter.py` — Platform Adapter
-- `hermes-agent/__init__.py` — plugin registration
-- `doc/TASKS.md` — таск-трекер
-- `CHANGELOG.md` — история версий
+- `app/src/main/java/lavender/client/android/data/grpc/HermesGrpc.kt` — все gRPC методы
+- `app/src/main/java/lavender/client/android/ui/remote/RemoteAgentSettingsActivity.kt` — UI настроек
+- `app/src/main/java/lavender/client/android/ui/remote/RemoteAgentActivity.kt` — UI чата с агентом
+- `hermes-agent/hermes_remote_agent.py` — Python агент (сервер)
 
 ### Правила
-- НЕ запускать assembleRelease на сервере (OOM)
+- НЕ запускать assembleRelease на сервере (OOM kill)
 - НЕ запускать compileDebugKotlin без крайней необходимости
 - version.txt обновлять ДО release.sh
 - Коммитить и пушить после каждого значимого изменения

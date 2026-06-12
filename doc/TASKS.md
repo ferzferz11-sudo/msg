@@ -1,49 +1,34 @@
 # Лава — Задачи
 
-**Версия:** v1.1.3.1
+**Версия:** v1.1.3.2
 **Ветка:** feat/1.1.3.x
-**Обновлено:** 2026-06-14
+**Обновлено:** 2026-06-12
 
 ---
 
-## 🔄 v1.1.3.1 — Текущая ветка
-
-### Сервер
-- Debug логи в hermes_agent_service.go обёрнуты в `os.Getenv("DEBUG")`
-- **P1 fix**: GenerateAgentToken возвращает ошибку клиенту при неудачном сохранении в БД
-- **P1 fix**: hermesDB == nil check — возврат "database not available" вместо nil pointer
-- **P2**: Убран дубликат token RPC из messenger.proto (ChatService) — оставлен только в hermes_agent.HermesAgentService
-- **P2**: Rate limiting на GenerateAgentToken (5 секунд между запросами на пользователя)
-- **P3**: Health check endpoint (`/health`) на HTTP сервере (порт 8082)
-- **P3**: Graceful shutdown для gRPC сервера (SIGINT/SIGTERM → GracefulStop)
-- **P3**: Agent Process Management RPC — StartAgent/StopAgent/GetAgentProcessStatus
-  - Сервер запускает hermes_remote_agent.py как subprocess
-  - Отслеживание PID, автоочистка при выходе
-  - systemd шаблон: `scripts/hermes-agent@.service`
-  - Скрипт управления: `scripts/deploy_agent.sh`
+## ✅ v1.1.3.2 — Remote Agent Token Management
 
 ### Android
-- Убран Toast "Вход выполнен"
-- Авто-прокрутка вниз при отправке сообщения
-- Версия на SplashActivity
-- Версия на SplashLoadingActivity (экран логина)
-- Debug логи обёрнуты в BuildConfig.DEBUG
-- **Fix**: добавлена NotificationActivity в AndroidManifest (была не зарегистрирована → краш)
-- **P2**: SplashActivity + SplashLoadingActivity — версия показывается на обоих экранах
-- **P2**: RemoteAgentActivity — авто-рефреш статуса агента каждые 30 сек (repeatOnLifecycle)
-- **P2**: RemoteAgentSettingsActivity — кнопка "Скопировать команду" в диалоге токена
-- **P2**: RemoteAgentSettingsActivity — кнопки "Запустить/Остановить агента" (запуск на сервере через gRPC)
-- **P2**: AgentListActivity — вкладка "Remote" для перехода к RemoteAgentActivity
-- **P2**: RemoteAgentSettingsActivity — сохранение выбранного агента в SharedPreferences
-- **P2**: Индикатор "агент не подключён" в RemoteAgentActivity (уже был)
+- **Генерация JWT токенов** — работает через `hermes_agent.HermesAgentService/GenerateAgentToken`
+- **Список токенов** — отображается сразу после генерации (локальный кэш)
+- **Копирование токена/команды** — кнопки в каждом элементе списка
+- **Отзыв токена** — кнопка "Отозвать" с подтверждением
+- **Запуск/остановка агента** — StartAgent/StopAgent RPC
+- **UI статуса** — зелёный индикатор при запущенном агенте
+- **Персистентность** — выбранный агент сохраняется в SharedPreferences
+- **Исправлено**: диалог токена не закрывается при копировании
+- **Исправлено**: ошибки сервера переведены на русский
+
+### Сервер
+- Prod сервер обновлён до v1.1.3.2
 
 ---
 
-## ✅ Известные проблемы
+## 🔄 v1.1.3.x — Текущая ветка
 
-### Низкий приоритет
-- Сообщения пользователя видны только после ответа агента (нужна отладка на устройстве)
-- Server migration warnings: `role "lavender" does not exist` при миграциях (не критично)
+### Известные проблемы (P1)
+- **Агент завершается сразу после запуска** — `hermes_remote_agent.py` падает в `connect()` при отправке `AgentMessage`. Root cause: protobuf marshaling в Python. Нужно исправить скрипт.
+- **Токены не фильтруются по пользователю** — `ListAgentTokens` возвращает все токены из БД. Нужно добавить фильтр по `created_by`.
 
 ---
 
