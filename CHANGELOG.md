@@ -1,5 +1,17 @@
 # Лава — Server Changelog
 
+## [1.1.3.2] - 2026-06-14
+- **P3: Health check endpoint** — `/health` на HTTP сервере (порт 8082), 返回 `{"status":"ok","version":"1.1.3.2","time":"..."}`
+- **P3: Graceful shutdown** — SIGINT/SIGTERM → `grpc.Server.GracefulStop()` вместо мгновенного убийства
+- **P3: Agent Process Management RPC** — `StartAgent`, `StopAgent`, `GetAgentProcessStatus` в `HermesAgentService`
+  - Сервер запускает `hermes_remote_agent.py` как subprocess
+  - Отслеживание PID, автоочистка при выходе процесса
+  - Проверка isProcessAlive через `syscall.Kill(pid, 0)`
+- **systemd сервис** — `scripts/hermes-agent@.service` шаблон + `scripts/deploy_agent.sh`
+- **Исправлены return значения** в `GenerateAgentToken` error paths (добавлен `nil`)
+- Dev + Prod обновлены
+- Тег: v1.1.3.2
+
 ## [1.1.3.1] - 2026-06-12
 - **Bugfix: Token не появлялся в списке после генерации** — GenerateAgentToken теперь возвращает ошибку клиенту при неудачном сохранении в БД (ранее молча возвращал success=true)
 - **Bugfix: hermesDB == nil** — добавлена проверка с возвратом "database not available" вместо nil pointer dereference
