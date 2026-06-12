@@ -422,56 +422,56 @@ cd /root/msg.client.android
 
 ---
 
-## Промпт для следующей сессии (feat/1.1.2.x — v1.1.2.11)
+## Промпт для следующей сессии (feat/1.1.3.x — v1.1.3.5)
 
 ```
-ЗАДАЧА: Продолжить работу над Lava Messenger. v1.1.2.10 завершена и выпущена.
+ЗАДАЧА: Продолжить работу над Lava Messenger. v1.1.3.5 в разработке.
 
-Текущая версия: v1.1.2.10 (prod, тег выпущен)
-Следующая версия: v1.1.2.11
+Текущая версия: Сервер v1.1.3.4, Android v1.1.3.5
+Ветка: feat/1.1.3.x
 
 Контекст:
 - Сервер: /root/msg, dev порт 50052, prod порт 50051
-- Оба репозитория на ветке feat/1.1.2.x
-- GitHub релиз v1.1.2.10: https://github.com/ferzferz11-sudo/msg/releases/tag/v1.1.2.10
+- Android: /root/msg.client.android
+- Оба репозитория на ветке feat/1.1.3.x
 
-Что сделано в v1.1.2.10:
-- Рефакторинг server.go — разбит на 12 файлов по доменам (server_*.go)
-- server_management.go — ServerServiceServer восстановлен
-- Dev и prod обновлены, работают
+Что сделано в последних коммитах:
+- Remote Agent chat UI fix (send button, command menu, auto-scroll) — commit ee5e115
+- AuthService unit tests (10 tests + benchmarks) — commit c9b3b14
+- Фильтрация токенов по пользователю — уже реализовано
+- Dev сервер запущен и работает
 
-ЗАДАЧИ НА ЭТУ ССЕССИЮ (v1.1.2.11):
+ЗАДАЧИ НА ЭТУ ССЕССИЮ:
 
-## 1. Модульные тесты для AuthService (SignIn/SignUp)
-
-Файл: auth_service_test.go
-
-Тесты для SignIn:
-- TestSignIn_Success — правильный username+password → success=true, token не пустой, user заполнен
-- TestSignIn_WrongPassword — неправильный пароль → success=false, сообщение об ошибке
-- TestSignIn_UserNotFound — несуществующий пользователь → success=false
-- TestSignIn_EmptyUsername — пустой username → success=false
-- TestSignIn_EmptyPassword — пустой password → success=false
-
-Тесты для SignUp:
-- TestSignUp_Success — новый пользователь → success=true, token не пустой
-- TestSignUp_DuplicateUsername — существующий username → success=false
-- TestSignUp_DuplicateEmail — существующий email → success=false
-- TestSignUp_EmptyUsername — пустой username → success=false
-- TestSignUp_EmptyPassword — пустой password → success=false
-- TestSignUp_WithEmail — регистрация с email → email сохранён в БД
-
-Требования:
-- Использовать тестовую БД (отдельную от dev/prod)
-- Очищать тестовые данные после каждого теста (t.Cleanup)
-- Тесты должны быть изолированными (не зависеть от порядка выполнения)
-- Покрытие > 80% для auth_service.go
-
-## 2. Модульные тесты для OWL streaming
+## 1. Модульные тесты для OWL streaming
 
 Файл: owl_test.go
 
 Тесты:
+- TestChatWithOWL_Success — отправка сообщения → получение ответа через stream
+- TestChatWithOWL_RateLimit — превышение лимита → ошибка rate limit
+- TestChatWithOWL_EmptyMessage — пустое сообщение → ошибка валидации
+- TestGetOwlHistory_ReturnsMessages — история чата возвращает сообщения из БД
+- TestGetOwlHistory_Unauthorized — неавторизованный доступ → ошибка
+
+Требования:
+- Мокать OpenRouter API (не делать реальные запросы)
+- Использовать httptest.Server для мока API
+- Тесты должны быть быстрыми (< 5 сек на тест)
+- Покрытие > 70% для owl.go
+
+## 2. Streaming результатов задач агентом обратно клиенту
+
+Добавить server-side streaming RPC для DeployAgentTask:
+- Новый proto RPC: DeployAgentTaskStream(DeployAgentTaskRequest) returns (stream DeployAgentTaskResponse)
+- Сервер отправляет промежуточные результаты по мере выполнения
+- Android клиент подписывается на поток результатов
+
+ОБЩИЕ ТРЕБОВАНИЯ:
+- go test ./... должен проходить без ошибок
+- Тесты не должны зависеть от внешних сервисов
+- Использовать t.Parallel() где возможно
+```
 - TestChatWithOWL_Success — отправка сообщения → получение ответа через stream
 - TestChatWithOWL_RateLimit — превышение лимита → ошибка rate limit
 - TestChatWithOWL_EmptyMessage — пустое сообщение → ошибка валидации
