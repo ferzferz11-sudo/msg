@@ -279,7 +279,34 @@ func (m *RemoteAgentManager) SendTask(task *RemoteTask) error {
 	return nil
 }
 
-// WaitForResult ждёт результат выполнения задачи
+// WaitForTaskResult ждёт результат задачи и возвращает его через callback
+func (m *RemoteAgentManager) WaitForTaskResult(taskID string, timeout time.Duration, callback func(result *RemoteTaskResult)) {
+	go func() {
+		m.pendingMu.Lock()
+		task, ok := m.pendingTasks[taskID]
+		m.pendingMu.Unlock()
+
+		if !ok {
+			callback(&RemoteTaskResult{TaskID: taskID, Status: "error", Error: "task not found"})
+			return
+		}
+
+		select {
+		case <-task.Done:
+			callback(task.Result)
+		case <-time.After(timeout):
+			m.pendingMu.Lock()
+			delete(m.pendingTasks, taskID)
+			m.pendingMu.Unlock()
+			callback(&RemoteTaskResult{TaskID: taskID, Status: "timeout", Error: "wait timeout"})
+		}
+	}()
+}
+
+// SubscribeTaskResults — server-side streaming: подписывается на результаты задач для агента
+// Используется клиентом для получения результатов в реальном времени
+
+// WaitForResult ждёт результат выполнения задачи (blocking, для оркестратора)
 func (m *RemoteAgentManager) WaitForResult(taskID string, timeout time.Duration) *RemoteTaskResult {
 	m.pendingMu.Lock()
 	task, ok := m.pendingTasks[taskID]
@@ -305,7 +332,6 @@ func (m *RemoteAgentManager) processTaskQueue() {
 	for task := range m.taskQueue {
 		agent := m.GetAgent(task.AgentID)
 		if agent == nil {
-			// Ищем любого доступного агента с нужными capabilities
 			capability := taskToCapability(task.Type)
 			available := m.GetCapabilities(capability)
 			if len(available) > 0 {
@@ -313,7 +339,6 @@ func (m *RemoteAgentManager) processTaskQueue() {
 				agent = available[0]
 			}
 		}
-
 		if agent != nil {
 			if err := m.SendTask(task); err != nil {
 				log.Printf("[RemoteAgent] task queue error: %v", err)

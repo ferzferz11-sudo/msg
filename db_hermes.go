@@ -449,10 +449,27 @@ func (h *HermesDB) RevokeAgentToken(agentID string) error {
 
 // ListAgentTokens возвращает все токены агентов
 func (h *HermesDB) ListAgentTokens() ([]auth.AgentToken, error) {
-	rows, err := h.db.Query(
-		`SELECT id, agent_id, agent_name, token_hash, capabilities, created_at, expires_at, revoked, created_by
-		 FROM agent_tokens ORDER BY created_at DESC`,
-	)
+	return h.ListAgentTokensFiltered("")
+}
+
+// ListAgentTokensFiltered возвращает токены агентов, отфильтрованные по created_by
+// Если createdBy пусто — возвращает все токены (для супер-админов)
+func (h *HermesDB) ListAgentTokensFiltered(createdBy string) ([]auth.AgentToken, error) {
+	var rows *sql.Rows
+	var err error
+
+	if createdBy != "" {
+		rows, err = h.db.Query(
+			`SELECT id, agent_id, agent_name, token_hash, capabilities, created_at, expires_at, revoked, created_by
+			 FROM agent_tokens WHERE created_by = $1 ORDER BY created_at DESC`,
+			createdBy,
+		)
+	} else {
+		rows, err = h.db.Query(
+			`SELECT id, agent_id, agent_name, token_hash, capabilities, created_at, expires_at, revoked, created_by
+			 FROM agent_tokens ORDER BY created_at DESC`,
+		)
+	}
 	if err != nil {
 		return nil, err
 	}

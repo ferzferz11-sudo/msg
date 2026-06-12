@@ -1161,9 +1161,26 @@ func (s *server) DeployAgentTask(_ context.Context, req *gen.DeployAgentTaskRequ
 		return &gen.DeployAgentTaskResponse{Success: false, Error: err.Error()}, nil
 	}
 
+	// Ждём результат (blocking, с таймаутом)
+	timeout := time.Duration(task.TimeoutSec) * time.Second
+	if timeout <= 0 {
+		timeout = 2 * time.Minute
+	}
+	result := s.hermesOrchestrator.remoteManager.WaitForResult(taskID, timeout)
+	if result == nil {
+		return &gen.DeployAgentTaskResponse{
+			Success: true, TaskId: taskID,
+			Error: "task sent but no result yet (timeout)",
+		}, nil
+	}
+
 	return &gen.DeployAgentTaskResponse{
-		Success: true,
-		TaskId:  taskID,
+		Success:  result.Status == "success",
+		TaskId:   taskID,
+		Error:    result.Error,
+		Stdout:   result.Stdout,
+		Stderr:   result.Stderr,
+		ExitCode: int32(result.ExitCode),
 	}, nil
 }
 

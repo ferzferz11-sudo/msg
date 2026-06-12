@@ -20,6 +20,7 @@ import socket
 import subprocess
 import sys
 import time
+import traceback
 from pathlib import Path
 
 # ── proto path ──
@@ -92,6 +93,12 @@ if pb is None:
         sys.exit(1)
 
 
+# ── retry config ──
+CONNECT_RETRY_DELAY = 5       # seconds between connect retries
+CONNECT_RETRY_MAX = 60        # max delay between retries
+CONNECT_RETRY_FOREVER = True  # keep retrying forever
+
+
 def get_local_ip():
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -125,62 +132,136 @@ class RemoteAgent:
         self.running = True
 
     async def connect(self):
-        print(f"[Agent] Connecting to {self.server_addr} as '{self.agent_name}' (id={self.agent_id})")
+        """Connect to the server with retry. Returns after successful registration."""
+        retry_delay = CONNECT_RETRY_DELAY
 
-        self.channel = grpc.aio.insecure_channel(self.server_addr)
-        stub = pb_grpc.HermesAgentServiceStub(self.channel)
+        while self.running:
+            try:
+                print(f"[Agent] Connecting to {self.server_addr} as '{self.agent_name}' (id={self.agent_id})")
 
-        # Bidirectional stream with auth metadata
-        metadata = (("authorization", f"Bearer {self.auth_token}"),)
-        self.stream = stub.Connect(metadata=metadata)
+                self.channel = grpc.aio.insecure_channel(self.server_addr)
+                stub = pb_grpc.HermesAgentServiceStub(self.channel)
 
-        # Register
-        reg = pb.RegistrationInfo(
-            agent_id=self.agent_id,
-            agent_name=self.agent_name,
-            version="1.0.0",
-            host=platform.node(),
-            ip_address=get_local_ip(),
-            os=platform.system().lower(),
-            capabilities=self.caps,
-            auth_token=self.auth_token,
-        )
-        await self.stream.write(pb.AgentMessage(
-            agent_id=self.agent_id,
-            type=pb.AGENT_REGISTER,
-            payload=reg.SerializeToString(),
-            timestamp_ms=int(time.time() * 1000),
-        ))
-        print(f"[Agent] Connected and registered. Caps: {', '.join(self.caps)}")
+                # Bidirectional stream with auth metadata
+                metadata = (("authorization", f"Bearer {self.auth_token}"),)
+                self.stream = stub.Connect(metadata=metadata)
+
+                # Wait a moment to see if server rejects the token immediately
+                # The server validates on first message, so we check channel state
+                await asyncio.sleep(0.5)
+                state = self.channel.get_state(try_to_connect=False)
+                if state in (grpc.ChannelConnectivity.TRANSIENT_FAILURE, grpc.ChannelConnectivity.SHUTDOWN):
+                    print(f"[Agent] Channel not ready (state={state}), retrying in {retry_delay}s...")
+                    await self._cleanup_channel()
+                    await asyncio.sleep(retry_delay)
+                    retry_delay = min(retry_delay * 2, CONNECT_RETRY_MAX)
+                    continue
+
+                # Send registration
+                reg = pb.RegistrationInfo(
+                    agent_id=self.agent_id,
+                    agent_name=self.agent_name,
+                    version="1.0.0",
+                    host=platform.node(),
+                    ip_address=get_local_ip(),
+                    os=platform.system().lower(),
+                    capabilities=self.caps,
+                    auth_token=self.auth_token,
+                )
+                reg_msg = pb.AgentMessage(
+                    agent_id=self.agent_id,
+                    type=pb.AGENT_REGISTER,
+                    payload=reg.SerializeToString(),
+                    timestamp_ms=int(time.time() * 1000),
+                )
+                await self.stream.write(reg_msg)
+                print(f"[Agent] Connected and registered. Caps: {', '.join(self.caps)}")
+                return  # success
+
+            except grpc.aio.AioRpcError as e:
+                code = e.code()
+                details = e.details() or "unknown"
+                if code == grpc.StatusCode.UNAUTHENTICATED:
+                    print(f"[Agent] AUTH FAILED: {details}")
+                    print("[Agent] Token is invalid or expired. Generate a new token in the app.")
+                    # Don retry on auth failure — it won't fix itself
+                    self.running = False
+                    await self._cleanup_channel()
+                    return
+                elif code == grpc.StatusCode.UNAVAILABLE:
+                    print(f"[Agent] Server unavailable: {details}. Retrying in {retry_delay}s...")
+                else:
+                    print(f"[Agent] RPC error: {code}: {details}. Retrying in {retry_delay}s...")
+                await self._cleanup_channel()
+                await asyncio.sleep(retry_delay)
+                retry_delay = min(retry_delay * 2, CONNECT_RETRY_MAX)
+
+            except Exception as e:
+                print(f"[Agent] Connect error: {e}. Retrying in {retry_delay}s...")
+                await self._cleanup_channel()
+                await asyncio.sleep(retry_delay)
+                retry_delay = min(retry_delay * 2, CONNECT_RETRY_MAX)
+
+    async def _cleanup_channel(self):
+        if self.channel:
+            try:
+                await self.channel.close()
+            except Exception:
+                pass
+            self.channel = None
+        self.stream = None
 
     async def run(self):
-        # Heartbeat
-        heartbeat_task = asyncio.create_task(self._heartbeat())
-
-        try:
-            async for msg in self.stream:
-                if not self.running:
+        """Main loop: receive and process messages. Auto-reconnect on failure."""
+        while self.running:
+            if self.stream is None:
+                await self.connect()
+                if self.stream is None:
+                    # Connect failed permanently
                     break
 
-                if msg.type == pb.ORCHESTRATOR_TASK:
-                    task = pb.Task()
-                    task.ParseFromString(msg.payload)
-                    asyncio.create_task(self._handle_task(task))
+            # Heartbeat
+            heartbeat_task = asyncio.create_task(self._heartbeat())
 
-                elif msg.type == pb.ORCHESTRATOR_PING:
+            try:
+                async for msg in self.stream:
+                    if not self.running:
+                        break
+
+                    if msg.type == pb.ORCHESTRATOR_TASK:
+                        task = pb.Task()
+                        task.ParseFromString(msg.payload)
+                        asyncio.create_task(self._handle_task(task))
+
+                    elif msg.type == pb.ORCHESTRATOR_PING:
+                        pass
+
+                    elif msg.type == pb.ORCHESTRATOR_DISCONNECT:
+                        print("[Agent] Disconnect requested by server")
+                        self.running = False
+                        break
+
+            except grpc.aio.AioRpcError as e:
+                print(f"[Agent] Stream RPC error: {e.code()}: {e.details()}")
+                if e.code() == grpc.StatusCode.UNAUTHENTICATED:
+                    print("[Agent] Token rejected. Stopping.")
+                    self.running = False
+                    break
+            except Exception as e:
+                print(f"[Agent] Stream error: {e}")
+            finally:
+                heartbeat_task.cancel()
+                try:
+                    await heartbeat_task
+                except (asyncio.CancelledError, Exception):
                     pass
 
-                elif msg.type == pb.ORCHESTRATOR_DISCONNECT:
-                    print("[Agent] Disconnect requested by server")
-                    break
+            if not self.running:
+                break
 
-        except grpc.aio.AioRpcError as e:
-            print(f"[Agent] RPC error: {e.code()}: {e.details()}")
-        except Exception as e:
-            print(f"[Agent] Error: {e}")
-        finally:
-            self.running = False
-            heartbeat_task.cancel()
+            print(f"[Agent] Lost connection. Reconnecting in {CONNECT_RETRY_DELAY}s...")
+            self.stream = None
+            await asyncio.sleep(CONNECT_RETRY_DELAY)
 
     async def _handle_task(self, task):
         print(f"[Agent] Task {task.task_id}: type={pb.TaskType.Name(task.task_type)}, params={dict(task.params)}")
