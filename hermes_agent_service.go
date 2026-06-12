@@ -327,6 +327,7 @@ func (h *hermesAgentServer) RevokeAgentToken(_ context.Context, req *hermesagent
 
 // ListAgentTokens — список всех токенов агентов
 func (h *hermesAgentServer) ListAgentTokens(_ context.Context, req *hermesagent.ListAgentTokensRequest) (*hermesagent.ListAgentTokensResponse, error) {
+	log.Printf("[HermesAgentService] ListAgentTokens: adminUser=%s", req.AdminUserId)
 	if h.server.hermesDB == nil {
 		return &hermesagent.ListAgentTokensResponse{
 			Success: false, Error: "database not available",
