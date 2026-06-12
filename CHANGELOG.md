@@ -1,5 +1,18 @@
 # Лава — Server Changelog
 
+## [1.1.3.4] - 2026-06-12
+- **Hermes Gateway** — туннельный режим для Remote Agent через SSH
+  - `messenger.proto`: добавлен `TunnelMode` enum (NONE/SSH) + 8 полей туннеля в `DeployAgentTaskRequest`
+  - `server_ai.go`: логирование `tunnel_mode` при деплое задачи
+- **Android**: `HermesGatewayManager` — управление SSH туннелем через JSch
+  - UI секция "Подключение через шлюз" в `RemoteAgentSettingsActivity`
+  - Поля: SSH host/port/user/password, server host/port, local port
+  - Индикатор состояния туннеля, кнопки "Создать/Разорвать"
+  - Сохранение настроек в SharedPreferences
+- **Android**: `tunnel_mode` передаётся при отправке задачи через `DeployAgentTask`
+- **Тесты**: 40 unit tests для `hermes_remote_agent.py` (shell, git, file, docker, proto, config)
+- **Багфикс**: `TaskType.Name()` для неизвестных enum значений (ValueError → "UNKNOWN")
+
 ## [1.1.3.3] - 2026-06-12
 - **P1: Remote Agent reconnect** — `hermes_remote_agent.py` с retry + auto-reconnect
   - UNAUTHENTICATED → мгновенная остановка (без retry)
