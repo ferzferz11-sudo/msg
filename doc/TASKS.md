@@ -6,7 +6,13 @@
 
 ---
 
-## ✅ v1.1.3.5 — Remote Agent: фоновое подключение (persistent connection)
+## ✅ v1.1.3.5 — Remote Agent: фоновое подключение (persistent connection) + UI fix
+
+### UI исправления (commit ee5e115)
+- ✅ TextWatcher для send button — показывается только при наличии текста
+- ✅ CommandButton с CommandBottomSheet — 12 команд агента
+- ✅ Авто-прокрутка чата при новых сообщениях
+- ✅ Dev сервер запущен и работает
 
 ### Проблема
 При входе/выходе из RemoteAgentSettingsActivity подключение к агенту теряется.
