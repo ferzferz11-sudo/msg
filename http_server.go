@@ -58,6 +58,12 @@ func StartHTTPServer(port string) {
 	// TURN credentials endpoint
 	http.HandleFunc("/turn-credentials", turnCredentialsHandler)
 
+	// Health check endpoint
+	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintf(w, `{"status":"ok","version":"%s","time":"%s"}`, ServerVersion, time.Now().Format(time.RFC3339))
+	})
+
 	http.HandleFunc("/avatars/", func(w http.ResponseWriter, r *http.Request) {
 		serveFileHandler(w, r, "/avatars/", avatarsPath)
 	})

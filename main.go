@@ -12,7 +12,9 @@ import (
 	"log"     // Standard logging package
 	"net"     // Network functionality for TCP listener
 	"os"      // Operating system interface for environment variables
+	"os/signal"
 	"strings" // String manipulation functions
+	"syscall"
 
 	"LavenderMessenger/gen" // Generated gRPC code package
 	hermesagent "LavenderMessenger/gen/hermes_agent"
@@ -186,6 +188,15 @@ func main() {
 		httpPort = "8082"
 	}
 	go StartHTTPServer(httpPort)
+
+	// Graceful shutdown on SIGINT/SIGTERM
+	go func() {
+		sigCh := make(chan os.Signal, 1)
+		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+		sig := <-sigCh
+		log.Printf("Received signal %v, shutting down gracefully...", sig)
+		s.GracefulStop()
+	}()
 
 	// Start the gRPC server and begin serving client requests
 	// This is a blocking call that runs until the application is terminated
