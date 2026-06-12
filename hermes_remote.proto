@@ -15,6 +15,12 @@ service HermesAgentService {
   rpc RevokeAgentToken(RevokeAgentTokenRequest) returns (RevokeAgentTokenResponse);
   // ListAgentTokens — список всех токенов агентов (admin only)
   rpc ListAgentTokens(ListAgentTokensRequest) returns (ListAgentTokensResponse);
+  // StartAgent — запуск удалённого агента на сервере (admin only)
+  rpc StartAgent(StartAgentRequest) returns (StartAgentResponse);
+  // StopAgent — остановка удалённого агента на сервере (admin only)
+  rpc StopAgent(StopAgentRequest) returns (StopAgentResponse);
+  // GetAgentProcessStatus — статус процесса агента на сервере (admin only)
+  rpc GetAgentProcessStatus(GetAgentProcessStatusRequest) returns (GetAgentProcessStatusResponse);
 }
 
 // AgentMessage → от агента к оркестратору
@@ -197,4 +203,44 @@ message ListAgentTokensResponse {
   bool success = 1;
   repeated AgentTokenInfo tokens = 2;
   string error = 3;
+}
+
+// === Agent Process Management (server-side) ===
+
+message StartAgentRequest {
+  string agent_id = 1;
+  string agent_name = 2;
+  string token = 3;           // JWT токен агента
+  string server_address = 4;  // адрес gRPC сервера (host:port)
+  repeated string capabilities = 5;
+  string admin_user_id = 6;
+}
+
+message StartAgentResponse {
+  bool success = 1;
+  string error = 2;
+  int32 pid = 3;              // PID запущенного процесса
+}
+
+message StopAgentRequest {
+  string agent_id = 1;
+  string admin_user_id = 2;
+}
+
+message StopAgentResponse {
+  bool success = 1;
+  string error = 2;
+}
+
+message GetAgentProcessStatusRequest {
+  string agent_id = 1;
+  string admin_user_id = 2;
+}
+
+message GetAgentProcessStatusResponse {
+  bool running = 1;
+  int32 pid = 2;
+  string agent_id = 3;
+  string started_at = 4;
+  string error = 5;
 }

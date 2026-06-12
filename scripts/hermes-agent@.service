@@ -1,0 +1,24 @@
+[Unit]
+Description=Hermes Remote Agent for Lavender Messenger
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/msg/hermes-agent
+ExecStart=/root/msg/hermes-agent/venv/bin/python3 /root/msg/hermes-agent/hermes_remote_agent.py --server localhost:50052 --agent-id %i --agent-name %i --token %TOKEN% --caps shell,git,build,file,docker,ai
+ExecStop=/bin/kill -SIGTERM $MAINPID
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=hermes-agent-%i
+
+# Security hardening
+NoNewPrivileges=false
+ProtectSystem=false
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

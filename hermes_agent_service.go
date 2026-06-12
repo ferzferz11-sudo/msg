@@ -10,7 +10,10 @@ import (
 	"io"
 	"log"
 	"os"
+	"os/exec"
+	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -487,4 +490,199 @@ func taskStatusFromProto(s hermesagent.TaskStatus) string {
 	default:
 		return "unknown"
 	}
+}
+
+// ===== Agent Process Management (server-side launch) =====
+
+// agentProcess tracks a running agent subprocess on the server
+type agentProcess struct {
+	agentID   string
+	pid       int
+	startedAt time.Time
+	cmd       *exec.Cmd
+}
+
+var (
+	serverAgentProcesses = make(map[string]*agentProcess)
+	serverAgentMu        sync.Mutex
+)
+
+// agentScriptPath returns the path to hermes_remote_agent.py
+func agentScriptPath() string {
+	if p := os.Getenv("AGENT_SCRIPT_PATH"); p != "" {
+		return p
+	}
+	return "/root/msg/hermes-agent/hermes_remote_agent.py"
+}
+
+// agentVenvPython returns the Python binary from the venv
+func agentVenvPython() string {
+	if p := os.Getenv("AGENT_VENV_PYTHON"); p != "" {
+		return p
+	}
+	// Try common venv locations
+	candidates := []string{
+		"/root/msg/hermes-agent/venv/bin/python3",
+		"/usr/bin/python3",
+	}
+	for _, c := range candidates {
+		if _, err := os.Stat(c); err == nil {
+			return c
+		}
+	}
+	return "python3"
+}
+
+func (h *hermesAgentServer) StartAgent(_ context.Context, req *hermesagent.StartAgentRequest) (*hermesagent.StartAgentResponse, error) {
+	if req.AgentId == "" || req.Token == "" {
+		return &hermesagent.StartAgentResponse{Success: false, Error: "agent_id and token are required"}, nil
+	}
+
+	serverAgentMu.Lock()
+	defer serverAgentMu.Unlock()
+
+	// Check if already running
+	if existing, ok := serverAgentProcesses[req.AgentId]; ok {
+		if isProcessAlive(existing.pid) {
+			return &hermesagent.StartAgentResponse{
+				Success: false,
+				Error:   "agent already running (pid " + fmt.Sprintf("%d", existing.pid) + ")",
+			}, nil
+		}
+		// Stale entry, remove it
+		delete(serverAgentProcesses, req.AgentId)
+	}
+
+	serverAddr := req.ServerAddress
+	if serverAddr == "" {
+		serverAddr = "localhost:50052"
+	}
+
+	agentName := req.AgentName
+	if agentName == "" {
+		agentName = req.AgentId
+	}
+
+	caps := req.Capabilities
+	if len(caps) == 0 {
+		caps = []string{"shell", "git", "build", "file", "docker", "ai"}
+	}
+	capsStr := strings.Join(caps, ",")
+
+	python := agentVenvPython()
+	script := agentScriptPath()
+
+	if _, err := os.Stat(script); os.IsNotExist(err) {
+		return &hermesagent.StartAgentResponse{
+			Success: false,
+			Error:   "agent script not found: " + script,
+		}, nil
+	}
+
+	cmd := exec.Command(python, script,
+		"--server", serverAddr,
+		"--agent-id", req.AgentId,
+		"--agent-name", agentName,
+		"--token", req.Token,
+		"--caps", capsStr,
+	)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Start(); err != nil {
+		return &hermesagent.StartAgentResponse{
+			Success: false,
+			Error:   "failed to start agent: " + err.Error(),
+		}, nil
+	}
+
+	ap := &agentProcess{
+		agentID:   req.AgentId,
+		pid:       cmd.Process.Pid,
+		startedAt: time.Now(),
+		cmd:       cmd,
+	}
+	serverAgentProcesses[req.AgentId] = ap
+
+	log.Printf("[AgentManager] Started agent %s (pid=%d, script=%s)", req.AgentId, cmd.Process.Pid, script)
+
+	// Wait for process in background to clean up
+	go func() {
+		cmd.Wait()
+		serverAgentMu.Lock()
+		delete(serverAgentProcesses, req.AgentId)
+		serverAgentMu.Unlock()
+		log.Printf("[AgentManager] Agent %s (pid=%d) exited", req.AgentId, ap.pid)
+	}()
+
+	return &hermesagent.StartAgentResponse{
+		Success: true,
+		Pid:     int32(cmd.Process.Pid),
+	}, nil
+}
+
+func (h *hermesAgentServer) StopAgent(_ context.Context, req *hermesagent.StopAgentRequest) (*hermesagent.StopAgentResponse, error) {
+	if req.AgentId == "" {
+		return &hermesagent.StopAgentResponse{Success: false, Error: "agent_id is required"}, nil
+	}
+
+	serverAgentMu.Lock()
+	defer serverAgentMu.Unlock()
+
+	ap, ok := serverAgentProcesses[req.AgentId]
+	if !ok {
+		return &hermesagent.StopAgentResponse{Success: false, Error: "agent not found"}, nil
+	}
+
+	if !isProcessAlive(ap.pid) {
+		delete(serverAgentProcesses, req.AgentId)
+		return &hermesagent.StopAgentResponse{Success: false, Error: "agent already stopped"}, nil
+	}
+
+	// Graceful: send SIGTERM first
+	if err := syscall.Kill(ap.pid, syscall.SIGTERM); err != nil {
+		// Force kill if SIGTERM fails
+		syscall.Kill(ap.pid, syscall.SIGKILL)
+	}
+
+	delete(serverAgentProcesses, req.AgentId)
+	log.Printf("[AgentManager] Stopped agent %s (pid=%d)", req.AgentId, ap.pid)
+
+	return &hermesagent.StopAgentResponse{Success: true}, nil
+}
+
+func (h *hermesAgentServer) GetAgentProcessStatus(_ context.Context, req *hermesagent.GetAgentProcessStatusRequest) (*hermesagent.GetAgentProcessStatusResponse, error) {
+	if req.AgentId == "" {
+		return &hermesagent.GetAgentProcessStatusResponse{Error: "agent_id is required"}, nil
+	}
+
+	serverAgentMu.Lock()
+	defer serverAgentMu.Unlock()
+
+	ap, ok := serverAgentProcesses[req.AgentId]
+	if !ok {
+		return &hermesagent.GetAgentProcessStatusResponse{Running: false}, nil
+	}
+
+	alive := isProcessAlive(ap.pid)
+	if !alive {
+		delete(serverAgentProcesses, req.AgentId)
+		return &hermesagent.GetAgentProcessStatusResponse{Running: false}, nil
+	}
+
+	return &hermesagent.GetAgentProcessStatusResponse{
+		Running:   true,
+		Pid:       int32(ap.pid),
+		AgentId:   ap.agentID,
+		StartedAt: ap.startedAt.Format(time.RFC3339),
+	}, nil
+}
+
+// isProcessAlive checks if a process with the given PID is still running
+func isProcessAlive(pid int) bool {
+	if pid <= 0 {
+		return false
+	}
+	err := syscall.Kill(pid, 0)
+	return err == nil
 }
