@@ -1,13 +1,27 @@
 # Лава — Задачи
 
-**Версия:** v1.1.3.0
+**Версия:** v1.1.3.1
 **Ветка:** feat/1.1.3.x
-**Обновлено:** 2026-06-11
-**Тег:** v1.1.3.0 (выпущен)
+**Обновлено:** 2026-06-14
 
 ---
 
-## ✅ v1.1.3.0 — Platform Adapter + Android fixes
+## 🔄 v1.1.3.1 — Текущая ветка
+
+### Сервер
+- Debug логи в hermes_agent_service.go обёрнуты в `os.Getenv("DEBUG")`
+- Добавлен импорт `"os"`
+
+### Android (выпущен)
+- Убран Toast "Вход выполнен"
+- Авто-прокрутка вниз при отправке сообщения
+- Версия на SplashActivity
+- Debug логи обёрнуты в BuildConfig.DEBUG
+- Шторка настроек: очистка кэша и журнал ошибок перемещены
+
+---
+
+## ✅ v1.1.3.0 — Remote Agent + Token Management
 
 ### Сервер v1.1.3.0
 - **Lavender Platform Adapter** (hermes-agent/adapter.py) — bidirectional gRPC streaming

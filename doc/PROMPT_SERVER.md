@@ -2,109 +2,161 @@
 
 ## Текущий статус
 
-**Версия:** v1.1.2.6 (prod)
-**Ветка:** feat/1.1.2.x
-**Тег:** v1.1.2.6 (выпущен)
+**Версия:** v1.1.3.0 (prod) / v1.1.3.1 (Android выпущен, сервер в процессе)
+**Ветка:** feat/1.1.3.x
+**Тег:** v1.1.3.0
 
 ---
 
 ## Контекст
 
-- Сервер: /root/msg, dev порт 50052, prod порт 50051
-- Android: /root/msg.client.android
-- Оба репозитория на ветке feat/1.1.2.x
-- v1.1.2.6 — prod версия (JWT auth для удалённых агентов)
+- Сервер: `/root/msg`, dev порт 50052, prod порт 50051
+- Android: `/root/msg.client.android`
+- Оба репозитория на ветке `feat/1.1.3.x`
+- Android v1.1.3.1 — выпущен 2026-06-14
+- Сервер v1.1.3.1 — после исправления token flow и P2 задач
 
 ---
 
-## Что сделано в v1.1.2.6
+## Что сделано в v1.1.3.0
 
+### Сервер
 - JWT аутентификация для hermes-agent daemon (HS256)
 - auth/jwt.go — GenerateAgentToken, ValidateAgentToken
 - Таблица agent_tokens в БД (SHA-256 хеш, не сам токен)
-- 3 admin RPC: GenerateAgentToken, RevokeAgentToken, ListAgentTokens
+- 3 RPC: GenerateAgentToken, RevokeAgentToken, ListAgentTokens
+- Token RPC доступен любому пользователю (не только админ)
 - validateToken() — полная проверка подписи + expiration + revoked
 - Секрет из JWT_SECRET env (32+ байта)
+- HermesAgentService.Connect — bidirectional streaming для remote agents
+- Remote agent manager (hermes_remote_manager.go)
 - Dev и prod обновлены
+
+### Android
+- RemoteAgentActivity — чат с агентом, отправка задач
+- RemoteAgentSettingsActivity — управление токенами
+- TokenDialog — генерация токена
+- AIBottomSheet секция "🖥 Агенты"
+- listRemoteAgents — реальный gRPC вызов
+- Token RPC routing на hermes_agent.HermesAgentService
+- CancellationException handling
+
+---
+
+## Что сделано в v1.1.3.1 (Android, 2026-06-14)
+
+### Android
+- Убран Toast "Вход выполнен" после авторизации
+- Авто-прокрутка вниз при отправке сообщения
+- Версия приложения на SplashActivity
+- Debug логи обёрнуты в BuildConfig.DEBUG
+- Шторка настроек: очистка кэша и журнал ошибок перемещены выше "Удалить профиль"
+- "Logs" → "Журнал ошибок"
+
+### Сервер
+- Debug логи в hermes_agent_service.go обёрнуты в `os.Getenv("DEBUG")`
+
+---
+
+## Известные проблемы
+
+### P1: Токен не появляется в списке после генерации
+**Статус:** Требует отладки
+**Симптом:** Пользователь генерирует токен, но список остаётся пустым
+**Возможные причины:**
+1. JobCancellationException — исправлено в Android, требует проверки
+2. ListAgentTokens возвращает пустой список
+3. hermesDB == nil на сервере (SaveAgentToken молча пропускается)
+4. Ошибка в SaveAgentToken (ON CONFLICT по token_hash)
+
+**Критические файлы для отладки:**
+- `hermes_agent_service.go:259` — GenerateAgentToken()
+- `hermes_agent_service.go:329` — ListAgentTokens()
+- `db_hermes.go:416` — SaveAgentToken()
+- `server.go` — проверить инициализацию hermesDB
+
+---
+
+## Задачи для новой сессии
+
+### P1 — Критические
+1. **Исправить token flow** — найти root cause почему токен не появляется в списке
+   - Проверить инициализацию hermesDB в server.go
+   - Добавить возврат ошибки если hermesDB == nil в GenerateAgentToken
+   - Протестировать после исправления
+
+### P2 — Важные
+2. **Рефакторинг hermes-agent/**
+   - Убрать generate_token.py или исправить сервис
+   - Обновить adapter.py
+   - Добавить TASK_AI обработчик
+
+3. **Убрать token RPC из messenger.proto**
+   - Дублирование с hermes_remote.proto
+   - Перегенировать Go и Kotlin proto файлы
+
+4. **Rate limiting на GenerateAgentToken**
+   - Ограничить количество токенов в минуту на пользователя
+
+### P3 — Средние
+5. Индикатор "агент не подключён" в Android
+6. Кнопка "Скопировать команду" в Android
+7. Авто-рефреш списка агентов
+
+### P4 — Низкие
+8. Обновить документацию (REMOTE_AGENT.md, AI_SERVICES.md)
+9. Создать ARCHITECTURE.md
 
 ---
 
 ## Архитектура
 
 ```
-СЕРВЕР:
-├── server.go           — gRPC handlers, маршрутизация, rate limiting
-├── owl.go              — OWL AI: ChatWithOWL streaming, сессии, история
-├── bot_commands.go     — Bot Commands: /status, /deploy, /logs, /restart, /ai, /help, /version
-├── hermes_orchestrator.go — Hermes: оркестратор, маршрутизация агентов
-├── hermes_agent_service.go — Hermes: управление агентами (gRPC для hermes-agent daemon)
-├── hermes_remote_manager.go — менеджер удалённых агентов
-├── ai_chat_manager.go  — единый менеджер AI чатов (OWL + Hermes)
-├── auth/jwt.go         — JWT генерация и валидация для удалённых агентов
-└── db_hermes.go        — миграции и CRUD для Hermes + agent_tokens
+┌─────────────┐  gRPC          ┌──────────────┐  gRPC           ┌─────────────┐
+│  Android    │ ──────────────→ │   Server     │ ←────────────── │   Remote    │
+│  Client     │  GenerateToken  │   (Go)       │  Connect        │   Agent     │
+│             │  ListTokens     │              │  (streaming)    │   (Python)  │
+│             │  DeployTask     │              │                 │             │
+└─────────────┘                 └──────────────┘                 └─────────────┘
 ```
+
+**gRPC сервисы:**
+- `messenger.ChatService` — Chat, ListRemoteAgents, DeployAgentTask, GetRemoteAgentStatus
+- `hermes_agent.HermesAgentService` — Connect, GenerateAgentToken, RevokeAgentToken, ListAgentTokens
+- `messenger.AuthService` — SignIn, SignUp
+
+**Порты:**
+- 50051 — prod
+- 50052 — dev
 
 ---
 
-## Бэклог (приоритет)
+## Критические файлы
 
-1. **Favorites при пустом списке** (Android) — высокий
-2. **Модульные тесты для OWL streaming** — средний
-3. **Qdrant + CLIP (production RAG)** — низкий, ночная задача
+### Сервер
+- `server.go` — инициализация hermesDB, ServerVersion
+- `hermes_agent_service.go` — token RPC + Connect
+- `hermes_remote_manager.go` — remote agent manager
+- `db_hermes.go` — SaveAgentToken, ListAgentTokens, GetAgentTokenByHash
+- `auth/jwt.go` — GenerateAgentToken, ValidateAgentToken
+
+### Android
+- `data/grpc/HermesGrpc.kt` — все gRPC методы
+- `ui/remote/RemoteAgentSettingsActivity.kt` — управление токенами
+- `ui/remote/RemoteAgentActivity.kt` — чат с агентом
+- `ui/remote/RemoteAgentViewModel.kt` — состояние
+
+### Агент
+- `hermes_remote_agent.py` — remote agent daemon
+- `adapter.py` — Platform Adapter
 
 ---
 
 ## Правила
 
-- Коммитить после каждого значимого изменения, пушить в feat/1.1.2.x
-- При каждом релизе: git tag, CHANGELOG.md, version.txt
-- assembleRelease НЕ запускать на сервере (OOM kill)
-- userId (UUID) — всегда как ключ, НЕ username
-- creator_id (UUID) — для проверки владельца
-- participants ВСЕГДА через json.Marshal, никогда вручную
-- Proto поля: всегда сверять номера полей с messenger.proto!
-- JWT секрет: JWT_SECRET в .env, минимум 32 байта, НЕ коммитить
-- Agent tokens: в БД хранится SHA-256 хеш, не сам токен
-
----
-
-## Команды
-
-```bash
-# Сборка и деплой на dev
-cd /root/msg
-export PATH=$PATH:/usr/local/go/bin:~/go/bin
-go build -o /tmp/lavender-server-dev .
-systemctl stop lavender-server-dev
-cp /tmp/lavender-server-dev /root/LavenderMessenger/run/lavender-server-dev
-systemctl start lavender-server-dev
-
-# Сборка и деплой на prod
-go build -o /tmp/lavender-server .
-systemctl stop lavender-server
-cp /tmp/lavender-server /root/LavenderMessenger/run/lavender-server
-systemctl start lavender-server
-
-# Proto gen
-cd /root/msg && protoc --go_out=./gen --go_opt=paths=source_relative \
-  --go-grpc_out=./gen --go-grpc_opt=paths=source_relative messenger.proto
-cd /root/msg && mkdir -p gen/hermes_agent && protoc --go_out=gen/hermes_agent \
-  --go_opt=paths=source_relative --go-grpc_out=gen/hermes_agent \
-  --go-grpc_opt=paths=source_relative hermes_remote.proto
-
-# Android
-cd /root/msg.client.android
-./gradlew compileDebugKotlin
-```
-
----
-
-## Документация (читать в начале каждой сессии)
-
-- Индекс: /root/msg/doc/INDEX.md
-- Сервер: /root/msg/doc/INTEGRATION_SESSION.md, /root/msg/doc/TASKS.md
-- Android: /root/msg.client.android/doc/TASKS.md
-- AI сервисы: /root/msg/doc/AI_SERVICES.md
-- Подводные камни: /root/msg/doc/PITFALLS.md
-- Changelog: /root/msg/doc/CHANGELOG.md
-- Memory pad: /root/.hermes/memory/pad.md
+- **НЕ** запускать assembleRelease на сервере (OOM, нужно 2GB+)
+- **НЕ** запускать compileDebugKotlin без крайней необходимости
+- Перед любым gradle задачами: `free -h`, если < 2GB free → НЕ запускать
+- version.txt обновлять ДО release.sh
+- Коммитить и пушить после каждого значимого изменения
+- Токены показываются ОДИН РАЗ — логировать при генерации
