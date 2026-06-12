@@ -1,7 +1,7 @@
 # Промпт для новой сессии — v1.1.3.x
 
-**Дата:** 2026-06-13
-**Версия:** v1.1.3.0 (release)
+**Дата:** 2026-06-14
+**Версия:** v1.1.3.1 (Android release, server pending)
 **Ветка:** feat/1.1.3.x
 **Memory:** 91% full — перед началом очистить устаревшие записи
 
@@ -56,31 +56,39 @@
 
 ---
 
-## ИЗВЕСТНЫЕ ПРОБЛЕМЫ (P1 — критические)
+## ЧТО СДЕЛАНО (v1.1.3.1 — Android)
 
-### 1. Токен не появляется в списке после генерации
+- ✅ Убран Toast "Вход выполнен" после авторизации
+- ✅ Авто-прокрутка вниз при отправке сообщения (текст + изображения)
+- ✅ Версия приложения на SplashActivity (между логотипом и названием)
+- ✅ Debug логи обёрнуты в BuildConfig.DEBUG / DEBUG env var
+- ✅ Шторка "Дополнительные настройки": Очистка кэша и Журнал ошибок перемещены выше "Удалить профиль"
+- ✅ "Logs" → "Журнал ошибок" (строковый ресурс)
+
+---
+
+## ИЗВЕСТНЫЕ ПРОБЛЕМЫ
+
+### P1: Токен не появляется в списке после генерации
+**Статус:** Требует тестирования на реальном устройстве
 **Симптом:** Пользователь генерирует токен, но список остаётся пустым
-**Логи Android:** `loadTokens: userId=ea577733-3f2c-4752-ac0e-1b2a88a6836b`, `generateToken error JobCancellationException`
+**Логи:** `loadTokens: userId=ea577733-3f2c-4752-ac0e-1b2a88a6836b`, `generateToken error JobCancellationException`
 **Возможные причины:**
 1. JobCancellationException — исправлено, требует проверки
 2. ListAgentTokens возвращает пустой список
-3. hermesDB.SaveAgentToken() возвращает ошибка
+3. hermesDB.SaveAgentToken() возвращает ошибка (или hermesDB == nil)
 **Отладка:**
 ```
 Android: adb logcat -s "RemoteAgentSettings" "HermesGrpc"
 Server: journalctl -u lavender-server-dev -f | grep "HermesAgentService"
 ```
 **Файлы:**
-- `RemoteAgentSettingsActivity.kt:169` — generateToken()
-- `HermesGrpc.kt:1144` — listAgentTokens()
+- `RemoteAgentSettingsActivity.kt:173` — generateToken()
+- `HermesGrpc.kt:1266` — listAgentTokens()
 - `hermes_agent_service.go:259` — GenerateAgentToken()
 
-### 2. Debug логи остались в production коде
-**Где:**
-- `HermesGrpc.kt` — Log.d/Log.e в listRemoteAgents, generateAgentToken
-- `hermes_agent_service.go` — log.Printf в GenerateAgentToken, SaveAgentToken, ListAgentTokens
-- `RemoteAgentSettingsActivity.kt` — Log.d/Log.e в generateToken, loadTokens, revokeToken
-**Решение:** Убрать или обернуть в `if (BuildConfig.DEBUG)` / `if os.Getenv("DEBUG") != ""`
+### P1.2 (решено): Debug логи в production коде
+✅ Исправлено в v1.1.3.1 — все логи обёрнуты в BuildConfig.DEBUG / DEBUG env var
 
 ---
 
@@ -207,4 +215,6 @@ Server: journalctl -u lavender-server-dev -f | grep "HermesAgentService"
 
 ## СЛЕДУЮЩИЙ РЕЛИЗ
 
-Подготовить v1.1.3.1 когда все P1 и P2 задачи будут исправлены.
+v1.1.3.1 Android — выпущен 2026-06-14.
+
+Серверная часть v1.1.3.1 — после исправления token flow и P2 задач.
