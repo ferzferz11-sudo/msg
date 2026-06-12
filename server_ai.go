@@ -1147,6 +1147,13 @@ func (s *server) DeployAgentTask(_ context.Context, req *gen.DeployAgentTaskRequ
 	}
 
 	taskID := uuid.New().String()[:12]
+
+	// Log tunnel mode if used
+	if req.TunnelMode != gen.TunnelMode_TUNNEL_NONE {
+		log.Printf("[DeployAgentTask] Task %s: tunnel_mode=%v, tunnel_host=%s, tunnel_local_port=%d",
+			taskID, req.TunnelMode, req.TunnelHost, req.TunnelLocalPort)
+	}
+
 	task := &RemoteTask{
 		ID:           taskID,
 		AgentID:      req.AgentId,

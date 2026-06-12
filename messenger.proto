@@ -1072,12 +1072,25 @@ message ListRemoteAgentsResponse {
   repeated RemoteAgentInfo agents = 1;
 }
 
+enum TunnelMode {
+  TUNNEL_NONE = 0;       // прямое подключение (без туннеля)
+  TUNNEL_SSH = 1;        // SSH туннель: агент подключается к localhost:<port>
+}
+
 message DeployAgentTaskRequest {
   string agent_id = 1;
   string task_type = 2;
   map<string, string> params = 3;
   string working_dir = 4;
   int32 timeout_sec = 5;
+  TunnelMode tunnel_mode = 6;      // режим туннеля (по умолчанию NONE)
+  string tunnel_host = 7;          // SSH хост туннеля (напр. 13.140.25.249)
+  int32 tunnel_port = 8;           // SSH порт (по умолчанию 22)
+  string tunnel_user = 9;          // SSH пользователь
+  string tunnel_password = 10;     // SSH пароль
+  string tunnel_server_host = 11;  // хост сервера за туннелем (по умолчанию localhost)
+  int32 tunnel_server_port = 12;   // порт сервера за туннелем
+  int32 tunnel_local_port = 13;    // локальный порт для проброса
 }
 
 message DeployAgentTaskResponse {

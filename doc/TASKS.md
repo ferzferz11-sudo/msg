@@ -33,7 +33,10 @@
 - [x] Предупреждение про SSH aliases vs IP адреса
 
 ### LOW — Мелкие улучшения
-- [ ] Добавить `tunnel_mode` в `DeployAgentTaskRequest` proto
+- [x] Добавить `TunnelMode` enum и поля туннеля в `DeployAgentTaskRequest` proto
+- [x] Сервер: логирование tunnel_mode в DeployAgentTask
+- [x] Android: сериализация tunnel_mode в HermesGrpc.kt
+- [x] Android: передача tunnel_mode из ViewModel при отправке задачи
 
 ---
 
