@@ -2,9 +2,9 @@
 
 ## Текущий статус
 
-**Версия:** v1.1.3.0 (prod) / v1.1.3.1 (Android выпущен, сервер в процессе)
+**Версия:** v1.1.3.1 (prod + dev)
 **Ветка:** feat/1.1.3.x
-**Тег:** v1.1.3.0
+**Тег:** v1.1.3.1
 
 ---
 
@@ -14,97 +14,23 @@
 - Android: `/root/msg.client.android`
 - Оба репозитория на ветке `feat/1.1.3.x`
 - Android v1.1.3.1 — выпущен 2026-06-14
-- Сервер v1.1.3.1 — после исправления token flow и P2 задач
+- Сервер v1.1.3.1 — выпущен 2026-06-14
 
 ---
 
-## Что сделано в v1.1.3.0
+## Что сделано в v1.1.3.1
 
 ### Сервер
-- JWT аутентификация для hermes-agent daemon (HS256)
-- auth/jwt.go — GenerateAgentToken, ValidateAgentToken
-- Таблица agent_tokens в БД (SHA-256 хеш, не сам токен)
-- 3 RPC: GenerateAgentToken, RevokeAgentToken, ListAgentTokens
-- Token RPC доступен любому пользователю (не только админ)
-- validateToken() — полная проверка подписи + expiration + revoked
-- Секрет из JWT_SECRET env (32+ байта)
-- HermesAgentService.Connect — bidirectional streaming для remote agents
-- Remote agent manager (hermes_remote_manager.go)
-- Dev и prod обновлены
+- ✅ GenerateAgentToken возвращает ошибку при неудачном сохранении в БД
+- ✅ hermesDB == nil check
+- ✅ Rate limiting на GenerateAgentToken (5s per user)
+- ✅ Token RPC дедуплицирован (убран из messenger.proto)
+- ✅ Debug логи обёрнуты в DEBUG env var
 
 ### Android
-- RemoteAgentActivity — чат с агентом, отправка задач
-- RemoteAgentSettingsActivity — управление токенами
-- TokenDialog — генерация токена
-- AIBottomSheet секция "🖥 Агенты"
-- listRemoteAgents — реальный gRPC вызов
-- Token RPC routing на hermes_agent.HermesAgentService
-- CancellationException handling
-
----
-
-## Что сделано в v1.1.3.1 (Android, 2026-06-14)
-
-### Android
-- Убран Toast "Вход выполнен" после авторизации
-- Авто-прокрутка вниз при отправке сообщения
-- Версия приложения на SplashActivity
-- Debug логи обёрнуты в BuildConfig.DEBUG
-- Шторка настроек: очистка кэша и журнал ошибок перемещены выше "Удалить профиль"
-- "Logs" → "Журнал ошибок"
-
-### Сервер
-- Debug логи в hermes_agent_service.go обёрнуты в `os.Getenv("DEBUG")`
-
----
-
-## Известные проблемы
-
-### P1: Токен не появляется в списке после генерации
-**Статус:** Требует отладки
-**Симптом:** Пользователь генерирует токен, но список остаётся пустым
-**Возможные причины:**
-1. JobCancellationException — исправлено в Android, требует проверки
-2. ListAgentTokens возвращает пустой список
-3. hermesDB == nil на сервере (SaveAgentToken молча пропускается)
-4. Ошибка в SaveAgentToken (ON CONFLICT по token_hash)
-
-**Критические файлы для отладки:**
-- `hermes_agent_service.go:259` — GenerateAgentToken()
-- `hermes_agent_service.go:329` — ListAgentTokens()
-- `db_hermes.go:416` — SaveAgentToken()
-- `server.go` — проверить инициализацию hermesDB
-
----
-
-## Задачи для новой сессии
-
-### P1 — Критические
-1. **Исправить token flow** — найти root cause почему токен не появляется в списке
-   - Проверить инициализацию hermesDB в server.go
-   - Добавить возврат ошибки если hermesDB == nil в GenerateAgentToken
-   - Протестировать после исправления
-
-### P2 — Важные
-2. **✅ Рефакторинг hermes-agent/**
-   - ✅ generate_token.py — HermesAgentServiceStub вместо ChatServiceStub
-
-3. **✅ Убрать token RPC из messenger.proto**
-   - ✅ Убраны RPC из ChatService, оставлены только в HermesAgentService
-   - ✅ Убраны message types из messenger.proto
-   - ✅ Удалена дублирующая реализация из server_ai.go
-
-4. **✅ Rate limiting на GenerateAgentToken**
-   - ✅ 5 секунд между запросами на пользователя
-
-### P3 — Средние
-5. Индикатор "агент не подключён" в Android
-6. Кнопка "Скопировать команду" в Android
-7. Авто-рефреш списка агентов
-
-### P4 — Низкие
-8. Обновить документацию (REMOTE_AGENT.md, AI_SERVICES.md)
-9. Создать ARCHITECTURE.md
+- ✅ Убран Toast "Вход выполнен"
+- ✅ Авто-прокрутка, версия на SplashActivity
+- ✅ Debug логи обёрнуты в BuildConfig.DEBUG
 
 ---
 
@@ -159,3 +85,24 @@
 - version.txt обновлять ДО release.sh
 - Коммитить и пушить после каждого значимого изменения
 - Токены показываются ОДИН РАЗ — логировать при генерации
+
+---
+
+## Задачи для следующей версии (v1.1.3.2 или v1.1.4.0)
+
+### P1 — Android баги (исправить первыми)
+- Проверить все remote agent activity на краши и NPE
+- Проверить token list refresh после генерации
+- Проверить revoke token flow
+
+### P2 — Agent flow в Android
+- **Индикатор "агент не подключён"** в RemoteAgentActivity
+- **Кнопка "Скопировать команду"** в TokenDialog: `python3 hermes_remote_agent.py --server host:port --token <jwt>`
+- **Авто-рефреш** списка агентов каждые 30 сек
+- **Объединить** AgentListActivity + RemoteAgentActivity (убрать дублирование)
+- **AgentSettingsActivity** — полноценные настройки агента (server URL, token, capabilities)
+
+### P3 — Сервер
+- Health check endpoint (readiness/liveness)
+- Graceful shutdown для gRPC сервера
+- Structured logging (zap/logrus)
