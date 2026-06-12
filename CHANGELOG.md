@@ -1,5 +1,16 @@
 # Лава — Server Changelog
 
+## [1.1.3.1] - 2026-06-12
+- **Bugfix: Token не появлялся в списке после генерации** — GenerateAgentToken теперь возвращает ошибку клиенту при неудачном сохранении в БД (ранее молча возвращал success=true)
+- **Bugfix: hermesDB == nil** — добавлена проверка с возвратом "database not available" вместо nil pointer dereference
+- **Rate limiting на GenerateAgentToken** — 5 секунд между запросами на пользователя
+- **Proto дедупликация** — убраны дублирующие token RPC из messenger.proto (ChatService), оставлены только в hermes_remote.proto (HermesAgentService)
+- **Удалена дублирующая реализация** GenerateAgentToken/RevokeAgentToken/ListAgentTokens из server_ai.go
+- **generate_token.py** — исправлен на HermesAgentServiceStub (был ChatServiceStub)
+- **Debug логи** обёрнуты в `os.Getenv("DEBUG")`
+- Dev + Prod обновлены
+- Тег: v1.1.3.1
+
 ## [1.1.3.0] - 2026-06-12
 - **Agent Token RPCs без IsSuperAdmin** — GenerateAgentToken, RevokeAgentToken, ListAgentTokens теперь доступны любому пользователю
 - **Platform Adapter** (hermes-agent/adapter.py) — bidirectional gRPC streaming для Hermes Agent
