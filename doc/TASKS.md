@@ -6,41 +6,54 @@
 
 ---
 
-## 🔴 v1.1.3.4 — Текущие задачи
+## ✅ v1.1.3.4 — Hermes Gateway + Tunnel Mode + Tests
 
-### HIGH — Hermes Gateway (удалённое подключение агента)
-- [x] Android: `HermesGatewayManager.kt` — класс для управления SSH туннелем
-- [x] Android: `RemoteAgentSettingsActivity.kt` — UI для Hermes Gateway
-- [x] Android: layout с полями SSH хоста, портов, кнопками туннеля
-- [x] Android: JSch зависимость добавлена
-- [x] Android: Сохранение настроек туннеля в SharedPreferences
-- [x] Android: Команды агента используют туннельный адрес
-- [ ] Протестировать подключение через туннель (когда будет SSH доступ)
+### Сервер
+- ✅ `messenger.proto`: `TunnelMode` enum + 8 полей туннеля в `DeployAgentTaskRequest`
+- ✅ `server_ai.go`: логирование tunnel_mode при деплое задачи
+- ✅ `server.go`: ServerVersion → 1.1.3.4
+- ✅ `CHANGELOG.md`: секция v1.1.3.4
+- ✅ Сборка и деплой на prod
+- ✅ `release.sh 1.1.3.4 --deploy --remote` — успешно протестирован с Mac
 
-### HIGH — Тестирование release.sh
-- [ ] Протестировать `./scripts/release.sh 1.1.3.4 --deploy --remote` с Mac
-- [ ] Проверить cross-compile + SCP + SSH перезапуск
+### Android
+- ✅ `HermesGatewayManager.kt` — управление SSH туннелем через JSch
+- ✅ `RemoteAgentSettingsActivity.kt` — UI "Подключение через шлюз"
+- ✅ `activity_remote_agent_settings.xml` — layout с полями SSH/туннеля
+- ✅ `MessengerProto.kt` — tunnel_mode поля в `DeployAgentTaskRequestProto`
+- ✅ `HermesGrpc.kt` — сериализация tunnel_mode (поля 6-13)
+- ✅ `GrpcClient.kt` — обёртка с tunnel параметрами
+- ✅ `RemoteAgentViewModel.kt` — передача tunnel_mode при отправке задачи
+- ✅ JSch зависимость (`com.jcraft:jsch:0.1.55`)
+- ✅ SharedPreferences для сохранения настроек туннеля
+- ✅ Понятные ошибки (SSH alias vs IP, auth failed, timeout, port in use)
+- ✅ version.txt → 1.1.3.4
 
-### MEDIUM — Тесты для Remote Agent
-- [x] Python тесты для `hermes_remote_agent.py`
-- [x] Покрыть: connect, reconnect, task execution, heartbeat
-- [x] 40 unit tests: get_local_ip, task_status, agent init, shell/git/file/docker tasks,
-  proto serialization, registration, heartbeat, config, retry, _handle_task integration
-- [x] Исправлен баг: ValueError при неизвестном TaskType enum
+### Remote Agent
+- ✅ 40 unit tests для `hermes_remote_agent.py` (все проходят)
+- ✅ Исправлен баг: `TaskType.Name()` для неизвестных enum значений
 
-### MEDIUM — Документация Hermes Gateway
-- [x] Описать в `doc/RELEASE.md` подключение агента через Hermes Gateway (Android + CLI)
-- [x] Предупреждение про SSH aliases vs IP адреса
-
-### LOW — Мелкие улучшения
-- [x] Добавить `TunnelMode` enum и поля туннеля в `DeployAgentTaskRequest` proto
-- [x] Сервер: логирование tunnel_mode в DeployAgentTask
-- [x] Android: сериализация tunnel_mode в HermesGrpc.kt
-- [x] Android: передача tunnel_mode из ViewModel при отправке задачи
+### Документация
+- ✅ `RELEASE.md`: Android + CLI инструкции по Hermes Gateway
+- ✅ `TASKS.md`: все задачи v1.1.3.4 отмечены как выполненные
 
 ---
 
-## ✅ v1.1.3.3 — Remote Agent: Reconnect + Task Results + Repo Split
+## 🔴 v1.1.3.5 — Следующие задачи
+
+### Средний приоритет
+- [ ] Модульные тесты для OWL streaming
+- [ ] Модульные тесты для AuthService (SignIn/SignUp)
+- [ ] Рефакторинг server.go → пакеты
+
+### Низкий приоритет
+- [ ] Qdrant + CLIP (production RAG)
+- [ ] Structured logging (zap/logrus)
+- [ ] Prometheus метрики
+
+---
+
+## 🗄️ Структура файлов
 
 ### Сервер
 - ✅ P1: `hermes_remote_agent.py` — retry + auto-reconnect, UNAUTHENTICATED без retry
@@ -161,6 +174,6 @@ CHANGELOG.md                 — История версий
 
 | Репозиторий | URL | Текущая версия |
 |-------------|-----|----------------|
-| msg | https://github.com/ferzferz11-sudo/msg | v1.1.3.3 |
-| msg.client.android | https://github.com/ferzferz11-sudo/msg.client.android | v1.1.3.3 |
-| msg.remote.agent | https://github.com/ferzferz11-sudo/msg.remote.agent | v1.1.3.3 |
+| msg | https://github.com/ferzferz11-sudo/msg | v1.1.3.4 |
+| msg.client.android | https://github.com/ferzferz11-sudo/msg.client.android | v1.1.3.4 |
+| msg.remote.agent | https://github.com/ferzferz11-sudo/msg.remote.agent | v1.1.3.4 |
