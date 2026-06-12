@@ -131,6 +131,46 @@
 
 ---
 
+## Remote Agent (v1.1.3.0)
+
+### Token RPC маршрутизация
+
+- `GenerateAgentToken`, `RevokeAgentToken`, `ListAgentTokens` — методы `HermesAgentService` (hermes_remote.proto), НЕ `ChatService`
+- Полное имя: `hermes_agent.HermesAgentService/GenerateAgentToken`
+- В Android HermesGrpc.kt используйте правильный сервис
+
+### IsSuperAdmin убран (v1.1.3.0)
+
+- Начиная с v1.1.3.0, token RPC доступны любому авторизованному пользователю
+- Remote agents запускаются на сервере пользователя, не на нашем
+- Пользователь сам управляет своими токенами
+
+### Токен не появляется в списке
+
+**Симптом:** После генерации токена список остаётся пустым
+**Причины:**
+1. `JobCancellationException` — корутина отменяется до завершения gRPC вызова
+2. `ListAgentTokens` возвращает пустой список (токен не сохраняется в БД)
+3. `hermesDB.SaveAgentToken()` возвращает ошибка
+
+**Отладка:**
+- Android: `adb logcat -s "RemoteAgentSettings" "HermesGrpc"`
+- Сервер: `journalctl -u lavender-server-dev -f | grep "HermesAgentService"`
+
+### CancellationException в lifecycleScope
+
+- `lifecycleScope.launch` отменяется при уничтожении Activity
+- `CancellationException` НЕ должен ловиться как обычный `Exception`
+- Всегда используйте отдельный `catch (e: CancellationException)` с `throw e`
+
+### writeRawVarint32 deprecated
+
+- `CodedOutputStream.writeRawVarint32()` deprecated в protobuf 4.x
+- Замените на `writeUInt32NoTag()` для length-delimited полей
+- Для tag+value: `writeUInt32(fieldNumber, value)`
+
+---
+
 ## ThemeApplier
 
 ### FAB кнопки
