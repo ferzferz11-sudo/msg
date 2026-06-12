@@ -22,8 +22,18 @@
 - [ ] Проверить cross-compile + SCP + SSH перезапуск
 
 ### MEDIUM — Тесты для Remote Agent
-- [ ] Python тесты для `hermes_remote_agent.py`
-- [ ] Покрыть: connect, reconnect, task execution, heartbeat
+- [x] Python тесты для `hermes_remote_agent.py`
+- [x] Покрыть: connect, reconnect, task execution, heartbeat
+- [x] 40 unit tests: get_local_ip, task_status, agent init, shell/git/file/docker tasks,
+  proto serialization, registration, heartbeat, config, retry, _handle_task integration
+- [x] Исправлен баг: ValueError при неизвестном TaskType enum
+
+### MEDIUM — Документация Hermes Gateway
+- [x] Описать в `doc/RELEASE.md` подключение агента через Hermes Gateway (Android + CLI)
+- [x] Предупреждение про SSH aliases vs IP адреса
+
+### LOW — Мелкие улучшения
+- [ ] Добавить `tunnel_mode` в `DeployAgentTaskRequest` proto
 
 ---
 
