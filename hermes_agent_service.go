@@ -512,7 +512,17 @@ func agentScriptPath() string {
 	if p := os.Getenv("AGENT_SCRIPT_PATH"); p != "" {
 		return p
 	}
-	return "/root/msg/hermes-agent/hermes_remote_agent.py"
+	// Try new location first (separate repo), then legacy
+	candidates := []string{
+		"/root/msg.remote.agent/hermes_remote_agent.py",
+		"/root/msg/hermes-agent/hermes_remote_agent.py",
+	}
+	for _, c := range candidates {
+		if _, err := os.Stat(c); err == nil {
+			return c
+		}
+	}
+	return "/root/msg.remote.agent/hermes_remote_agent.py"
 }
 
 // agentVenvPython returns the Python binary from the venv
@@ -522,6 +532,7 @@ func agentVenvPython() string {
 	}
 	// Try common venv locations
 	candidates := []string{
+		"/root/msg.remote.agent/venv/bin/python3",
 		"/root/msg/hermes-agent/venv/bin/python3",
 		"/usr/bin/python3",
 	}
