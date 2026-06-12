@@ -1,91 +1,139 @@
 # Промпт для новой сессии — v1.1.3.x
 
-## Статус: Сервер v1.1.3.2 (прод обновлён). Ветка feat/1.1.3.x.
+## Статус: Сервер v1.1.3.3 (прод обновлён). Ветка feat/1.1.3.x.
 
-## Что сделано в предыдущих сессиях
+## SSH подключение
+
+```bash
+ssh lava
+```
+
+---
+
+## Что сделано в этой сессии (v1.1.3.3)
 
 ### Исправлено
-- SplashLoadingActivity — добавлена версия приложения
-- NotificationActivity — добавлена в AndroidManifest
-- RemoteAgentSettingsActivity — сохранение токена в SharedPreferences
-- RemoteAgentActivity — @Suppress("UNCHECKED_CAST") для spinner adapter
+- ✅ P1: `hermes_remote_agent.py` — retry + auto-reconnect, UNAUTHENTICATED без retry
+- ✅ P2: `ListAgentTokensFiltered(createdBy)` — фильтрация токенов по пользователю
+- ✅ P3: `DeployAgentTask` — блокирует до результата, возвращает stdout/stderr/exitCode/durationMs
+- ✅ `messenger.proto` — `DeployAgentTaskResponse` расширен полями stdout, stderr, exit_code, duration_ms
+- ✅ `agentScriptPath()` — ищет `/root/msg.remote.agent/` первым
+- ✅ `hermes-agent/` удалён из серверного репозитория
+- ✅ Android: `DeployAgentTaskResponseProto` + парсер обновлены
+- ✅ Android: `RemoteAgentViewModel` показывает вывод задачи в чате
+- ✅ Android: `PREF_AGENT_SCRIPT_PATH` — настраиваемый путь к скрипту
 
 ### Добавлено
-- Agent Process Management: StartAgent/StopAgent/GetAgentProcessStatus RPC
-- Сервер запускает hermes_remote_agent.py как subprocess (hermes_agent_service.go)
-- systemd сервис: scripts/hermes-agent@.service + scripts/deploy_agent.sh
-- Health check endpoint (/health) на HTTP сервере
-- Graceful shutdown (SIGINT/SIGTERM → GracefulStop)
-- Авто-рефреш remote agent статуса (30 сек, repeatOnLifecycle)
-- Кнопка "Скопировать команду" в диалоге токена
-- Вкладка "Remote" в AgentListActivity
-- Кнопки "Запустить/Остановить агента" в RemoteAgentSettingsActivity
+- ✅ `msg.remote.agent` — отдельный репозиторий агента
+- ✅ `scripts/release.sh` — выпуск релизов (локально/удалённо)
+- ✅ `doc/RELEASE.md`, `doc/TEST_CASES.md`, `doc/TESTING.md`
 
-## 🔴 Текущая задача (P1 — следующая сессия)
+---
 
-### Генерация токенов не работает
-**Симптом**: В настройках удалённого агента при нажатии "Сгенерировать токен" — ничего не происходит. Диалог закрывается, но токен не появляется. Кнопка "Запустить агента" требует генерации.
+## 🔴 Приоритетные задачи на следующую сессию
 
-**Возможные причины**:
-1. Сервер возвращает `success = false` (ошибка сохранения в БД)
-2. Корутина отменяется до сохранения `selectedToken`
-3. `response.token` пустой
-4. `userId` пустой (пользователь не залогинен)
+### 1. Hermes Gateway — удалённое подключение агента (HIGH)
 
-**Что проверить**:
-- Логирование добавлено в `generateToken()` — проверить logcat на наличие "generateToken CALLED", "generateToken response", "Token saved"
-- Проверить что `userId` не пустой при вызове `generateToken()`
-- Проверить что `response.success = true` и `response.token` не пустой
-- Проверить что `saveSelectedAgent()` вызывается ДО `showTokenResultDialog()`
+**Задача:** Реализовать возможность подключения Remote Agent к удалённому серверу
+через SSH туннель (Hermes Gateway). Это НЕ текущий Hermes Orchestrator, а новый
+функционал в настройках подключения.
 
-**Файлы для отладки**:
-- `RemoteAgentSettingsActivity.kt:216` — метод `generateToken()`
-- `RemoteAgentSettingsActivity.kt:378` — метод `startAgentOnServer()`
-- `HermesGrpc.kt:1160` — метод `generateAgentToken()` (gRPC вызов)
-- `hermes_agent_service.go:296` — серверный `GenerateAgentToken()`
+**Где:** `RemoteAgentSettingsActivity.kt` — добавить секцию "Подключение через шлюз"
+
+**Функционал:**
+- Поле ввода SSH хоста (например `lava` — alias из `~/.ssh/config` на Mac)
+- Поле ввода порта сервера (по умолчанию 50051)
+- Кнопка "Создать туннель" — создаёт SSH туннель `ssh -L <local_port>:<server_host>:<server_port> <ssh_host>`
+- После создания туннеля агент подключается к `localhost:<local_port>`
+- Индикатор состояния туннеля (активен/неактивен)
+- Кнопка "Разорвать туннель"
+
+**Серверная часть:**
+- На сервере (ssh lava) уже запущен gRPC на порту 50051
+- Туннель пробрасывает порт локально → на сервер
+- Никаких изменений на сервере не нужно — используем существующий gRPC
+
+**Пример использования (Mac):**
+```bash
+# Создать туннель
+ssh -L 50052:localhost:50051 lava -N -f
+
+# Локальный агент подключается к удалённому серверу
+python3 hermes_remote_agent.py --server localhost:50052 --token <jwt>
+```
+
+**Файлы для реализации:**
+- `RemoteAgentSettingsActivity.kt` — добавить UI туннеля
+- `HermesGatewayManager.kt` — новый класс для управления SSH туннелем
+  - `createTunnel(sshHost, serverHost, serverPort, localPort)`
+  - `isTunnelActive()`
+  - `closeTunnel()`
+  - Использовать `Runtime.exec()` или `ProcessBuilder` для запуска SSH
+
+**Важно:**
+- На Android нет встроенного SSH климента — нужно использовать стороннюю библиотеку
+  (напмер JSch — `com.jcraft:jsch`) или запускать SSH через Termux
+- Альтернатива: создать простой HTTP API на сервере, который будет проксировать
+  запросы к агенту (но это менее безопасно)
+
+### 2. Тестирование release.sh (HIGH)
+- Протестировать `./scripts/release.sh 1.1.3.4 --deploy --remote` с Mac
+- Проверить cross-compile + SCP + SSH перезапуск
+
+### 3. Покрытие тестами Remote Agent (MEDIUM)
+- Написать Python тесты для `hermes_remote_agent.py`
+- Покрыть: connect, reconnect, task execution, heartbeat
+
+### 4. Мелкие улучшения Remote Agent (LOW)
+- [ ] Добавить `tunnel_mode` в `DeployAgentTaskRequest` proto
+- [ ] Сохранять настройки туннеля в SharedPreferences
+
+---
 
 ## Критические файлы
 
 ### Сервер
-- hermes_agent_service.go — Agent Process Management + Token RPCs
-- hermes_remote.proto — обновлённый proto (StartAgent, StopAgent, GetAgentProcessStatus)
-- main.go — graceful shutdown
-- http_server.go — /health endpoint
-- auth/jwt.go — GenerateAgentToken, ValidateAgentToken
-- scripts/deploy_agent.sh — управление агентом через systemd
-- scripts/hermes-agent@.service — systemd unit
+- `hermes_agent_service.go` — Agent Process Management + Token RPCs
+- `hermes_remote_manager.go` — RemoteAgentManager
+- `server_ai.go` — DeployAgentTask (blocking)
+- `messenger.proto` — обновлённый proto
+- `scripts/release.sh` — выпуск релизов
 
 ### Android
-- HermesGrpc.kt — все unary RPC методы (generate, revoke, list, start, stop, status)
-- GrpcClient.kt — facade
-- RemoteAgentSettingsActivity.kt — UI управления агентом (токены + запуск)
-- RemoteAgentActivity.kt — чат с агентом
-- MessengerProto.kt — hand-written proto типы
+- `HermesGrpc.kt` — все unary RPC методы
+- `RemoteAgentSettingsActivity.kt` — UI управления агентом + **Hermes Gateway**
+- `RemoteAgentActivity.kt` — чат с агентом
+- `MessengerProto.kt` — hand-written proto типы
+- **Новый:** `HermesGatewayManager.kt` — управление SSH туннелем
+
+### Remote Agent (отдельный репо)
+- `/root/msg.remote.agent/hermes_remote_agent.py`
+- `/root/msg.remote.agent/hermes_remote_pb2.py`
+- `/root/msg.remote.agent/hermes_remote_pb2_grpc.py`
+
+---
 
 ## Правила
 - НЕ assembleRelease на сервере (OOM)
 - НЕ compileDebugKotlin без крайней необходимости
-- Proto gen: --go_out=gen (НЕ .) — иначе двойная вложенность LavenderMessenger/gen/hermes_agent/
+- Proto gen: `--go_out=gen --go_opt=paths=source_relative`
 - Коммитить/пушить после каждого изменения
 - Версию не менять без явного указания пользователя
 
 ## Документация
-- doc/INDEX.md → doc/TASKS.md → doc/PROMPT.md
-- doc/RELEASE.md — выпуск релизов сервера
+- `doc/INDEX.md` → `doc/TASKS.md` → `doc/PROMPT.md`
+- `doc/RELEASE.md` — выпуск релизов
 
 ## Скиллы
 - lavender-messenger (корневой)
 - lavender-messenger:lavender-android для Android-работы
 
-## Выпуск релиса
+## Выпуск релизов
 
-doc/RELEASE.md — полная документация по процессу.
-
-Быстрый старт:
 ```bash
-# С серверa (где OWL):
-./scripts/release.sh 1.1.3.3 --deploy
+# С сервера (ssh lava):
+./scripts/release.sh 1.1.3.4 --deploy
 
-# С Mac (удалённо):
-./scripts/release.sh 1.1.3.3 --deploy --remote
+# С Mac (удалённо, через ssh lava):
+./scripts/release.sh 1.1.3.4 --deploy --remote
 ```
