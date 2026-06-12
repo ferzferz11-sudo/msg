@@ -1,5 +1,21 @@
 # Лава — Server Changelog
 
+## [1.1.3.3] - 2026-06-12
+- **P1: Remote Agent reconnect** — `hermes_remote_agent.py` с retry + auto-reconnect
+  - UNAUTHENTICATED → мгновенная остановка (без retry)
+  - UNAVAILABLE → retry с exponential backoff (5s → 60s)
+  - Stream error → автоматический reconnect
+- **P2: Token filtering** — `ListAgentTokensFiltered(createdBy)` фильтрует по `created_by`
+  - Супер-админ (пустой createdBy) видит все токены
+- **P3: DeployAgentTask blocking** — сервер ждёт результат от агента
+  - Возвращает stdout, stderr, exit_code, duration_ms в ответе
+  - Таймаут = task.TimeoutSec (по умолчанию 2 минуты)
+- **messenger.proto** — `DeployAgentTaskResponse` расширен: +stdout, +stderr, +exit_code, +duration_ms
+- **Script path** — `agentScriptPath()` ищет сначала `/root/msg.remote.agent/`, потом legacy `/root/msg/hermes-agent/`
+  - Конфигурируемо через `AGENT_SCRIPT_PATH` env var
+- **hermes-agent/** удалён из репозитория (перенесён в `msg.remote.agent`)
+- Тег: v1.1.3.3
+
 ## [1.1.3.2] - 2026-06-12
 - **P3: Health check endpoint** — `/health` на HTTP сервере (порт 8082), 返回 `{"status":"ok","version":"1.1.3.2","time":"..."}`
 - **P3: Graceful shutdown** — SIGINT/SIGTERM → `grpc.Server.GracefulStop()` вместо мгновенного убийства
