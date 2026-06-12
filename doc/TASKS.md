@@ -9,15 +9,13 @@
 ## 🔴 v1.1.3.4 — Текущие задачи
 
 ### HIGH — Hermes Gateway (удалённое подключение агента)
-- [ ] `HermesGatewayManager.kt` — новый класс для управления SSH туннелем
-  - `createTunnel(sshHost, serverHost, serverPort, localPort)`
-  - `isTunnelActive()`, `closeTunnel()`
-  - Использовать JSch (`com.jcraft:jsch`) или `Runtime.exec()`
-- [ ] `RemoteAgentSettingsActivity.kt` — UI для Hermes Gateway
-  - Поля: SSH хост, порт сервера, локальный порт
-  - Кнопки: "Создать туннель", "Разорвать туннель"
-  - Индикатор состояния (активен/неактивен)
-- [ ] Сохранение настроек туннеля в SharedPreferences
+- [x] Android: `HermesGatewayManager.kt` — класс для управления SSH туннелем
+- [x] Android: `RemoteAgentSettingsActivity.kt` — UI для Hermes Gateway
+- [x] Android: layout с полями SSH хоста, портов, кнопками туннеля
+- [x] Android: JSch зависимость добавлена
+- [x] Android: Сохранение настроек туннеля в SharedPreferences
+- [x] Android: Команды агента используют туннельный адрес
+- [ ] Протестировать подключение через туннель (когда будет SSH доступ)
 
 ### HIGH — Тестирование release.sh
 - [ ] Протестировать `./scripts/release.sh 1.1.3.4 --deploy --remote` с Mac
