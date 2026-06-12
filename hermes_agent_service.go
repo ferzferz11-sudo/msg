@@ -47,7 +47,12 @@ type hermesAgentServer struct {
 	hermesOrchestrator *Orchestrator
 	streams            map[string]*agentStream // agentID → stream
 	mu                 sync.RWMutex
+
+	// Rate limiter for token generation: userID → last request time
+	tokenGenRequests sync.Map
 }
+
+const tokenGenRateLimit = 5 * time.Second // min interval between token generation per user
 
 // newHermesAgentServer создаёт сервер для HermesAgentService
 func newHermesAgentServer(s *server, o *Orchestrator) *hermesAgentServer {
@@ -296,6 +301,19 @@ func (h *hermesAgentServer) GenerateAgentToken(_ context.Context, req *hermesage
 		return &hermesagent.GenerateAgentTokenResponse{
 			Success: false, Error: "agent_id and agent_name are required",
 		}, nil
+	}
+
+	// Rate limit: max 1 token generation per tokenGenRateLimit per user
+	if req.AdminUserId != "" {
+		now := time.Now()
+		if last, ok := h.tokenGenRequests.Load(req.AdminUserId); ok {
+			if now.Sub(last.(time.Time)) < tokenGenRateLimit {
+				return &hermesagent.GenerateAgentTokenResponse{
+					Success: false, Error: "rate limit exceeded, please wait",
+				}, nil
+			}
+		}
+		h.tokenGenRequests.Store(req.AdminUserId, now)
 	}
 
 	ttl := time.Duration(req.TtlHours) * time.Hour
