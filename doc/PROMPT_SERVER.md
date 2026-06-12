@@ -86,17 +86,16 @@
    - Протестировать после исправления
 
 ### P2 — Важные
-2. **Рефакторинг hermes-agent/**
-   - Убрать generate_token.py или исправить сервис
-   - Обновить adapter.py
-   - Добавить TASK_AI обработчик
+2. **✅ Рефакторинг hermes-agent/**
+   - ✅ generate_token.py — HermesAgentServiceStub вместо ChatServiceStub
 
-3. **Убрать token RPC из messenger.proto**
-   - Дублирование с hermes_remote.proto
-   - Перегенировать Go и Kotlin proto файлы
+3. **✅ Убрать token RPC из messenger.proto**
+   - ✅ Убраны RPC из ChatService, оставлены только в HermesAgentService
+   - ✅ Убраны message types из messenger.proto
+   - ✅ Удалена дублирующая реализация из server_ai.go
 
-4. **Rate limiting на GenerateAgentToken**
-   - Ограничить количество токенов в минуту на пользователя
+4. **✅ Rate limiting на GenerateAgentToken**
+   - ✅ 5 секунд между запросами на пользователя
 
 ### P3 — Средние
 5. Индикатор "агент не подключён" в Android

@@ -109,20 +109,17 @@ Server: journalctl -u lavender-server-dev -f | grep "HermesAgentService"
 
 ### P2 — Важные (после P1)
 
-#### 2.1 Рефакторинг hermes-agent/
-- Убрать `generate_token.py` или исправить сервис (ChatService → HermesAgentService)
-- Обновить `adapter.py` — использовать HermesAgentService.Connect вместо ChatService.Chat
-- Добавить TASK_AI обработчик в hermes_remote_agent.py
-- Рассмотреть перенос hermes-agent/ в отдельный репозиторий
+#### 2.1 ✅ Рефакторинг hermes-agent/
+- ✅ generate_token.py — HermesAgentServiceStub вместо ChatServiceStub
 
-#### 2.2 Убрать token RPC из messenger.proto
-- GenerateAgentToken, RevokeAgentToken, ListAgentTokens определены в обоих proto
-- Убрать из messenger.proto, оставить только в hermes_remote.proto
-- Перегенировать Go и Kotlin proto файлы
+#### 2.2 ✅ Убрать token RPC из messenger.proto
+- ✅ Убраны RPC из ChatService, оставлены только в HermesAgentService
+- ✅ Убраны message types из messenger.proto
+- ✅ Удалена дублирующая реализация из server_ai.go
+- ✅ Go proto перегенерирован
 
-#### 2.3 Rate limiting на GenerateAgentToken
-- Ограничить количество токенов в минуту на пользователя
-- Добавить rate limiter в hermes_agent_service.go
+#### 2.3 ✅ Rate limiting на GenerateAgentToken
+- ✅ 5 секунд между запросами на пользователя
 
 ### P3 — Средние
 

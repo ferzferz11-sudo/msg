@@ -10,7 +10,13 @@
 
 ### Сервер
 - Debug логи в hermes_agent_service.go обёрнуты в `os.Getenv("DEBUG")`
-- Добавлен импорт `"os"`
+- **P1 fix**: GenerateAgentToken возвращает ошибку клиенту при неудачном сохранении в БД (ранее молча пропускал)
+- **P1 fix**: hermesDB == nil check — возврат "database not available" вместо nil pointer
+- **P2**: Убран дубликат token RPC из messenger.proto (ChatService) — оставлен только в hermes_agent.HermesAgentService
+- **P2**: Удалена дублирующая реализация GenerateAgentToken/RevokeAgentToken/ListAgentTokens из server_ai.go
+- **P2**: Rate limiting на GenerateAgentToken (5 секунд между запросами на пользователя)
+- generate_token.py исправлен: HermesAgentServiceStub вместо ChatServiceStub
+- Убраны stale proto-файлы (LavenderMessenger/gen/, root hermes_remote.pb.go)
 
 ### Android (выпущен)
 - Убран Toast "Вход выполнен"
