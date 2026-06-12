@@ -1175,12 +1175,13 @@ func (s *server) DeployAgentTask(_ context.Context, req *gen.DeployAgentTaskRequ
 	}
 
 	return &gen.DeployAgentTaskResponse{
-		Success:  result.Status == "success",
-		TaskId:   taskID,
-		Error:    result.Error,
-		Stdout:   result.Stdout,
-		Stderr:   result.Stderr,
-		ExitCode: int32(result.ExitCode),
+		Success:    result.Status == "success",
+		TaskId:     taskID,
+		Error:      result.Error,
+		Stdout:     result.Stdout,
+		Stderr:     result.Stderr,
+		ExitCode:   int32(result.ExitCode),
+		DurationMs: int64(result.Duration.Milliseconds()),
 	}, nil
 }
 
