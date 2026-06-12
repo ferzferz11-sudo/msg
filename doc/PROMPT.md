@@ -1,6 +1,6 @@
-# Промпт для новой сессии — v1.1.3.x
+# Промпт для новой сессии — v1.1.3.5
 
-## Статус: Сервер v1.1.3.4 (прод обновлён). Android v1.1.3.4. Ветка feat/1.1.3.x.
+## Статус: Сервер v1.1.3.4 (прод обновлён). Android v1.1.3.5 (в разработке). Ветка feat/1.1.3.x.
 
 ## SSH подключение
 
@@ -10,83 +10,40 @@ ssh lava
 
 ---
 
-## Что сделано в этой сессии (v1.1.3.3)
+## Что сделано в v1.1.3.5
 
-### Исправлено
-- ✅ P1: `hermes_remote_agent.py` — retry + auto-reconnect, UNAUTHENTICATED без retry
-- ✅ P2: `ListAgentTokensFiltered(createdBy)` — фильтрация токенов по пользователю
-- ✅ P3: `DeployAgentTask` — блокирует до результата, возвращает stdout/stderr/exitCode/durationMs
-- ✅ `messenger.proto` — `DeployAgentTaskResponse` расширен полями stdout, stderr, exit_code, duration_ms
-- ✅ `agentScriptPath()` — ищет `/root/msg.remote.agent/` первым
-- ✅ `hermes-agent/` удалён из серверного репозитория
-- ✅ Android: `DeployAgentTaskResponseProto` + парсер обновлены
-- ✅ Android: `RemoteAgentViewModel` показывает вывод задачи в чате
-- ✅ Android: `PREF_AGENT_SCRIPT_PATH` — настраиваемый путь к скрипту
+### Android
+- ✅ `RemoteAgentService.kt` — foreground service для фонового подключения
+- ✅ `RemoteAgentManager.kt` — singleton для привязки UI к сервису
+- ✅ `RemoteAgentSettingsActivity.kt` — bind/unbind к сервису
+- ✅ `RemoteAgentActivity.kt` — bind/unbind к сервису
+- ✅ `AndroidManifest.xml` — RemoteAgentService + FOREGROUND_SERVICE_CONNECTED_DEVICE
+- ✅ `RemoteAgentViewModel.kt` — tunnel check через RemoteAgentManager
+- ✅ Понятные ошибки (SSH alias vs IP, auth failed, timeout, port in use)
 
-### Добавлено
-- ✅ `msg.remote.agent` — отдельный репозиторий агента
-- ✅ `scripts/release.sh` — выпуск релизов (локально/удалённо)
-- ✅ `doc/RELEASE.md`, `doc/TEST_CASES.md`, `doc/TESTING.md`
+### Документация
+- ✅ `PROMPT_ANDROID.md`: обновлён с v1.1.3.5
 
 ---
 
-## 🔴 Приоритетные задачи на следующую сессию
+## Что сделано в v1.1.3.4
 
-### 1. Hermes Gateway — удалённое подключение агента (HIGH)
+### Сервер
+- ✅ `messenger.proto`: `TunnelMode` enum + 8 полей туннеля в `DeployAgentTaskRequest`
+- ✅ `server_ai.go`: логирование tunnel_mode в DeployAgentTask
+- ✅ `server.go`: ServerVersion → 1.1.3.4
+- ✅ Сборка и деплой на prod
 
-**Задача:** Реализовать возможность подключения Remote Agent к удалённому серверу
-через SSH туннель (Hermes Gateway). Это НЕ текущий Hermes Orchestrator, а новый
-функционал в настройках подключения.
+### Android
+- ✅ `HermesGatewayManager.kt` — управление SSH туннелем через JSch
+- ✅ `RemoteAgentSettingsActivity.kt` — UI "Подключение через шлюз"
+- ✅ `MessengerProto.kt` — tunnel_mode поля в `DeployAgentTaskRequestProto`
+- ✅ `HermesGrpc.kt` — сериализация tunnel_mode
+- ✅ JSch зависимость (`com.jcraft:jsch:0.1.55`)
 
-**Где:** `RemoteAgentSettingsActivity.kt` — добавить секцию "Подключение через шлюз"
-
-**Функционал:**
-- Поле ввода SSH хоста (например `lava` — alias из `~/.ssh/config` на Mac)
-- Поле ввода порта сервера (по умолчанию 50051)
-- Кнопка "Создать туннель" — создаёт SSH туннель `ssh -L <local_port>:<server_host>:<server_port> <ssh_host>`
-- После создания туннеля агент подключается к `localhost:<local_port>`
-- Индикатор состояния туннеля (активен/неактивен)
-- Кнопка "Разорвать туннель"
-
-**Серверная часть:**
-- На сервере (ssh lava) уже запущен gRPC на порту 50051
-- Туннель пробрасывает порт локально → на сервер
-- Никаких изменений на сервере не нужно — используем существующий gRPC
-
-**Пример использования (Mac):**
-```bash
-# Создать туннель
-ssh -L 50052:localhost:50051 lava -N -f
-
-# Локальный агент подключается к удалённому серверу
-python3 hermes_remote_agent.py --server localhost:50052 --token <jwt>
-```
-
-**Файлы для реализации:**
-- `RemoteAgentSettingsActivity.kt` — добавить UI туннеля
-- `HermesGatewayManager.kt` — новый класс для управления SSH туннелем
-  - `createTunnel(sshHost, serverHost, serverPort, localPort)`
-  - `isTunnelActive()`
-  - `closeTunnel()`
-  - Использовать `Runtime.exec()` или `ProcessBuilder` для запуска SSH
-
-**Важно:**
-- На Android нет встроенного SSH климента — нужно использовать стороннюю библиотеку
-  (напмер JSch — `com.jcraft:jsch`) или запускать SSH через Termux
-- Альтернатива: создать простой HTTP API на сервере, который будет проксировать
-  запросы к агенту (но это менее безопасно)
-
-### 2. Тестирование release.sh (HIGH)
-- Протестировать `./scripts/release.sh 1.1.3.4 --deploy --remote` с Mac
-- Проверить cross-compile + SCP + SSH перезапуск
-
-### 3. Покрытие тестами Remote Agent (MEDIUM)
-- Написать Python тесты для `hermes_remote_agent.py`
-- Покрыть: connect, reconnect, task execution, heartbeat
-
-### 4. Мелкие улучшения Remote Agent (LOW)
-- [ ] Добавить `tunnel_mode` в `DeployAgentTaskRequest` proto
-- [ ] Сохранять настройки туннеля в SharedPreferences
+### Remote Agent
+- ✅ 40 unit tests для `hermes_remote_agent.py` (все проходят)
+- ✅ Исправлен баг: `TaskType.Name()` для неизвестных enum значений
 
 ---
 
@@ -96,15 +53,18 @@ python3 hermes_remote_agent.py --server localhost:50052 --token <jwt>
 - `hermes_agent_service.go` — Agent Process Management + Token RPCs
 - `hermes_remote_manager.go` — RemoteAgentManager
 - `server_ai.go` — DeployAgentTask (blocking)
-- `messenger.proto` — обновлённый proto
+- `messenger.proto` — обновлённый proto с TunnelMode
 - `scripts/release.sh` — выпуск релизов
 
 ### Android
 - `HermesGrpc.kt` — все unary RPC методы
-- `RemoteAgentSettingsActivity.kt` — UI управления агентом + **Hermes Gateway**
+- `RemoteAgentSettingsActivity.kt` — UI управления агентом + Hermes Gateway
 - `RemoteAgentActivity.kt` — чат с агентом
+- `RemoteAgentViewModel.kt` — ViewModel
 - `MessengerProto.kt` — hand-written proto типы
-- **Новый:** `HermesGatewayManager.kt` — управление SSH туннелем
+- `HermesGatewayManager.kt` — управление SSH туннелем
+- `RemoteAgentService.kt` — foreground service
+- `RemoteAgentManager.kt` — singleton для привязки UI к сервису
 
 ### Remote Agent (отдельный репо)
 - `/root/msg.remote.agent/hermes_remote_agent.py`
@@ -121,8 +81,22 @@ python3 hermes_remote_agent.py --server localhost:50052 --token <jwt>
 - Версию не менять без явного указания пользователя
 
 ## Документация
-- `doc/INDEX.md` → `doc/TASKS.md` → `doc/PROMPT.md`
-- `doc/RELEASE.md` — выпуск релизов
+
+### Сервер (`/root/msg/doc/`)
+- `INDEX.md` → `TASKS.md` → `PROMPT.md`
+- `RELEASE.md` — выпуск релизов + Hermes Gateway
+- `AI_SERVICES.md` — архитектура AI сервисов (OWL + Hermes)
+- `PITFALLS.md` — подводные камни
+
+### Android (`/root/msg.client.android/doc/`)
+- `INDEX.md` → `TASKS.md` → `PROMPT_ANDROID.md`
+- `REMOTE_AGENT.md` — документация Remote Agent
+- `STRUCTURE.md` — справочник структуры кода
+
+### Remote Agent (`/root/msg.remote.agent/doc/`)
+- `INDEX.md` → `TASKS.md`
+- `TEST_CASES.md` — 31 тест-кейс
+- `TESTING.md` — гайд по тестированию
 
 ## Скиллы
 - lavender-messenger (корневой)
@@ -132,8 +106,8 @@ python3 hermes_remote_agent.py --server localhost:50052 --token <jwt>
 
 ```bash
 # С сервера (ssh lava):
-./scripts/release.sh 1.1.3.4 --deploy
+./scripts/release.sh 1.1.3.5 --deploy
 
 # С Mac (удалённо, через ssh lava):
-./scripts/release.sh 1.1.3.4 --deploy --remote
+./scripts/release.sh 1.1.3.5 --deploy --remote
 ```
