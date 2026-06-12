@@ -1,5 +1,15 @@
 # Лава — Server Changelog
 
+## [1.1.3.5] - 2026-06-13
+- **Android**: Remote Agent — persistent background connection
+  - `RemoteAgentService.kt` — foreground service с SSH туннелем + gRPC
+  - `RemoteAgentManager.kt` — singleton для привязки UI к сервису
+  - `RemoteAgentSettingsActivity.kt` / `RemoteAgentActivity.kt` — bind/unbind к сервису
+  - `AndroidManifest.xml` — RemoteAgentService + FOREGROUND_SERVICE_CONNECTED_DEVICE
+  - Notification со статусом подключения, START_STICKY
+- **Багфикс**: удалён невалидный `import HermesGrpc` из RemoteAgentService.kt
+- **Багфикс**: варнинг `stopForeground(true)` deprecated
+
 ## [1.1.3.4] - 2026-06-12
 - **Hermes Gateway** — туннельный режим для Remote Agent через SSH
   - `messenger.proto`: добавлен `TunnelMode` enum (NONE/SSH) + 8 полей туннеля в `DeployAgentTaskRequest`

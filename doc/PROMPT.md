@@ -12,17 +12,44 @@ ssh lava
 
 ## Что сделано в v1.1.3.5
 
-### Android
-- ✅ `RemoteAgentService.kt` — foreground service для фонового подключения
-- ✅ `RemoteAgentManager.kt` — singleton для привязки UI к сервису
-- ✅ `RemoteAgentSettingsActivity.kt` — bind/unbind к сервису
-- ✅ `RemoteAgentActivity.kt` — bind/unbind к сервису
+### Android — Remote Agent: фоновое подключение (persistent connection)
+- ✅ `RemoteAgentService.kt` — foreground service с SSH туннелем + gRPC
+- ✅ `RemoteAgentManager.kt` — singleton для bind/unbind UI к сервису
+- ✅ `RemoteAgentSettingsActivity.kt` — ServiceConnection + RemoteAgentStateListener
+- ✅ `RemoteAgentActivity.kt` — ServiceConnection + RemoteAgentStateListener
 - ✅ `AndroidManifest.xml` — RemoteAgentService + FOREGROUND_SERVICE_CONNECTED_DEVICE
 - ✅ `RemoteAgentViewModel.kt` — tunnel check через RemoteAgentManager
-- ✅ Понятные ошибки (SSH alias vs IP, auth failed, timeout, port in use)
+- ✅ Notification показывает статус подключения
+- ✅ START_STICKY — перезапускается системой
+- ✅ Исправлен баг: `import lavender.client.android.HermesGrpc` → удалён (commit f5832a4)
 
-### Документация
-- ✅ `PROMPT_ANDROID.md`: обновлён с v1.1.3.5
+### Архитектура persistent connection
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    RemoteAgentService                        │
+│                    (Foreground Service)                      │
+│                                                             │
+│  ┌─────────────────┐  ┌──────────────────┐                 │
+│  │ HermesGateway   │  │ GrpcClient       │                 │
+│  │ Manager         │  │ (persistent)     │                 │
+│  │ (SSH tunnel)    │  │                  │                 │
+│  └────────┬────────┘  └────────┬─────────┘                 │
+│           │                    │                            │
+│  ┌────────┴────────────────────┴─────────┐                 │
+│  │         RemoteAgentManager            │                 │
+│  │         (singleton, binds to App)      │                 │
+│  └───────────────────────────────────────┘                 │
+└─────────────────────────────────────────────────────────────┘
+           │                              │
+           │ ServiceConnection            │ ServiceConnection
+           ▼                              ▼
+┌──────────────────────┐    ┌──────────────────────────┐
+│ RemoteAgentSettings  │    │ RemoteAgentActivity      │
+│ Activity             │    │ (чат с агентом)          │
+│ (настройки туннеля)  │    │                          │
+└──────────────────────┘    └──────────────────────────┘
+```
 
 ---
 
@@ -37,7 +64,7 @@ ssh lava
 ### Android
 - ✅ `HermesGatewayManager.kt` — управление SSH туннелем через JSch
 - ✅ `RemoteAgentSettingsActivity.kt` — UI "Подключение через шлюз"
-- ✅ `MessengerProto.kt` — tunnel_mode поля в `DeployAgentTaskRequestProto`
+- ✅ `MessengerProto.kt` — tunnel_mode поля
 - ✅ `HermesGrpc.kt` — сериализация tunnel_mode
 - ✅ JSch зависимость (`com.jcraft:jsch:0.1.55`)
 
@@ -63,8 +90,8 @@ ssh lava
 - `RemoteAgentViewModel.kt` — ViewModel
 - `MessengerProto.kt` — hand-written proto типы
 - `HermesGatewayManager.kt` — управление SSH туннелем
-- `RemoteAgentService.kt` — foreground service
-- `RemoteAgentManager.kt` — singleton для привязки UI к сервису
+- `RemoteAgentService.kt` — foreground service (new in v1.1.3.5)
+- `RemoteAgentManager.kt` — singleton для привязки UI к сервису (new in v1.1.3.5)
 
 ### Remote Agent (отдельный репо)
 - `/root/msg.remote.agent/hermes_remote_agent.py`
