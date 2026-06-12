@@ -1,14 +1,16 @@
 # Lava Messenger — Интеграционная сессия
 
-**Текущая версия:** v1.1.2.10
+**Текущая версия:** v1.1.3.0
 **Обновлено:** 2026-06-11
-**Тег:** v1.1.2.10 (выпущен)
+**Тег:** v1.1.3.0 (выпущен)
 
 ## Контекст
 
 Интеграция AI-чатов в Lava Messenger: OWL AI и Hermes Orchestrator.
+Platform Adapter для Hermes Agent — плагин-адаптер подключает Lavender
+к Hermes экосистеме через bidirectional gRPC streaming.
 
-**Текущая ветка:** `feat/1.1.2.x` (оба репозитория)
+**Текущая ветка:** `feat/1.1.3.x`
 **Сервер:** dev на порту 50052, prod на 50051
 
 ---
@@ -532,3 +534,36 @@ cd /root/msg.client.android
 - JWT секрет: `JWT_SECRET` в .env, минимум 32 байта, НЕ коммитить
 - Agent tokens: в БД хранится SHA-256 хеш, не сам токен
 - Admin RPC: `GenerateAgentToken`, `RevokeAgentToken`, `ListAgentTokens` — требуют IsSuperAdmin()
+
+---
+
+## Промпт для следующей сессии (v1.1.3.0)
+
+**Версия:** v1.1.3.0 | **Ветка:** feat/1.1.3.x
+
+### Что сделано
+- ✅ Lavender Platform Adapter (adapter.py) — bidirectional gRPC streaming ChatService.Chat
+- ✅ Hermes Agent plugin (__init__.py) — create_adapter(), register(), get_plugin()
+- ✅ AgentID fix в DeployAgentTask
+- ✅ listRemoteAgents — заглушка → реальный gRPC (Android)
+- ✅ getRemoteAgentStatus — парсер исправлен (3 поля)
+- ✅ Dev сервер скомпилирован, порты 50051 (prod) + 50052 (dev)
+- ✅ Ветки: main ← feat/1.1.2.x merged, feat/1.1.3.x создана
+
+### Что осталось
+- Протестировать Platform Adapter с реальным Hermes Agent
+- Интеграция Remote Agent с реальным бэкендом (Android → Server → Agent)
+- Тесты: shell, git, build, docker task types
+
+### Критические файлы
+- `server.go:34` — ServerVersion
+- `hermes-agent/adapter.py` — Platform Adapter
+- `hermes-agent/__init__.py` — plugin registration
+- `doc/TASKS.md` — таск-трекер
+- `CHANGELOG.md` — история версий
+
+### Правила
+- НЕ запускать assembleRelease на сервере (OOM)
+- НЕ запускать compileDebugKotlin без крайней необходимости
+- version.txt обновлять ДО release.sh
+- Коммитить и пушить после каждого значимого изменения

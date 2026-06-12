@@ -46,3 +46,18 @@ lavender-server
 *-firebase-adminsdk-*.json
 *.env
 *.env.dev
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Uploads / avatars
+uploads/
+
+# hermes-agent — исходники трекаем, бинари и кэш нет
+hermes-agent/__pycache__/
+hermes-agent/*.pyc
+hermes-agent/gen_token.go
+hermes-agent/main.go
+hermes-agent/lavender-server-new

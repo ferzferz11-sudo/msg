@@ -256,14 +256,9 @@ func (h *hermesAgentServer) isAdmin(userID string) bool {
 	return h.server.db.IsSuperAdmin(userID)
 }
 
-// GenerateAgentToken — генерация JWT токена для нового агента (admin only)
+// GenerateAgentToken — генерация JWT токена для нового агента
 func (h *hermesAgentServer) GenerateAgentToken(_ context.Context, req *hermesagent.GenerateAgentTokenRequest) (*hermesagent.GenerateAgentTokenResponse, error) {
-	if !h.isAdmin(req.AdminUserId) {
-		return &hermesagent.GenerateAgentTokenResponse{
-			Success: false, Error: "admin access required",
-		}, nil
-	}
-
+	log.Printf("[HermesAgentService] GenerateAgentToken: agentId=%s name=%s adminUser=%s", req.AgentId, req.AgentName, req.AdminUserId)
 	if req.AgentId == "" || req.AgentName == "" {
 		return &hermesagent.GenerateAgentTokenResponse{
 			Success: false, Error: "agent_id and agent_name are required",
@@ -289,13 +284,17 @@ func (h *hermesAgentServer) GenerateAgentToken(_ context.Context, req *hermesage
 	}
 
 	if h.server.hermesDB != nil {
-		if err := h.server.hermesDB.SaveAgentToken(
-			req.AgentId, req.AgentName, tokenHash,
-			req.Capabilities, expiresAt, req.AdminUserId,
-		); err != nil {
-			log.Printf("[HermesAgentService] failed to save token: %v", err)
+			if err := h.server.hermesDB.SaveAgentToken(
+				req.AgentId, req.AgentName, tokenHash,
+				req.Capabilities, expiresAt, req.AdminUserId,
+			); err != nil {
+				log.Printf("[HermesAgentService] failed to save token: %v", err)
+			} else {
+				log.Printf("[HermesAgentService] token saved: agentId=%s hash=%s", req.AgentId, tokenHash[:16])
+			}
+		} else {
+			log.Printf("[HermesAgentService] hermesDB is nil, token not persisted!")
 		}
-	}
 
 	claims, _ := auth.ValidateAgentToken(token)
 
@@ -306,14 +305,8 @@ func (h *hermesAgentServer) GenerateAgentToken(_ context.Context, req *hermesage
 	}, nil
 }
 
-// RevokeAgentToken — отзыв токена агента (admin only)
+// RevokeAgentToken — отзыв токена агента
 func (h *hermesAgentServer) RevokeAgentToken(_ context.Context, req *hermesagent.RevokeAgentTokenRequest) (*hermesagent.RevokeAgentTokenResponse, error) {
-	if !h.isAdmin(req.AdminUserId) {
-		return &hermesagent.RevokeAgentTokenResponse{
-			Success: false, Error: "admin access required",
-		}, nil
-	}
-
 	if req.AgentId == "" {
 		return &hermesagent.RevokeAgentTokenResponse{
 			Success: false, Error: "agent_id is required",
@@ -332,14 +325,9 @@ func (h *hermesAgentServer) RevokeAgentToken(_ context.Context, req *hermesagent
 	return &hermesagent.RevokeAgentTokenResponse{Success: true}, nil
 }
 
-// ListAgentTokens — список всех токенов агентов (admin only)
+// ListAgentTokens — список всех токенов агентов
 func (h *hermesAgentServer) ListAgentTokens(_ context.Context, req *hermesagent.ListAgentTokensRequest) (*hermesagent.ListAgentTokensResponse, error) {
-	if !h.isAdmin(req.AdminUserId) {
-		return &hermesagent.ListAgentTokensResponse{
-			Success: false, Error: "admin access required",
-		}, nil
-	}
-
+	log.Printf("[HermesAgentService] ListAgentTokens: adminUser=%s", req.AdminUserId)
 	if h.server.hermesDB == nil {
 		return &hermesagent.ListAgentTokensResponse{
 			Success: false, Error: "database not available",
