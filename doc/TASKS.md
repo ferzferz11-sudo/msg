@@ -1,8 +1,30 @@
 # Лава — Задачи
 
-**Версия:** v1.1.3.7
+**Версия:** v1.1.3.8
 **Ветка:** feat/1.1.3.x
 **Обновлено:** 2026-06-13
+
+---
+
+## ✅ v1.1.3.8 — Server: Remote Agent refactoring + Android P0 fixes
+
+### Сервер
+- ✅ Все Remote Agent RPC вынесены в `server_remote.go` (ListRemoteAgents, DeployAgentTask, DeployAgentTaskStream, GetRemoteAgentStatus)
+- ✅ `server_ai.go` содержит только AI Chat + Hermes Orchestrator RPC
+- ✅ `ensureRemoteManager()` — единая проверка зависимостей для всех RPC
+- ✅ `ListRemoteAgents` — graceful degradation (пустой список вместо ошибки если менеджер недоступен)
+- ✅ `ListRemoteAgents` — автоматический stale detection (heartbeat > 120с)
+- ✅ `DeployAgentTask` / `DeployAgentTaskStream` — проверка существования агента перед отправкой
+- ✅ `generateTaskID()` — вынесена в server_remote.go
+- ✅ Dev сервер обновлён и работает
+
+### Android
+- ✅ `ensureAgentSelected()` — загрузка с сервера + fallback на дефолтного агента
+- ✅ `ensureAgentSelected()` — имя агента из настроек шлюза (sshHost)
+- ✅ Убрана рекурсия в `sendMessageStreaming()`
+- ✅ `loadAgents()` — не пишет в `_error` (только AppLog.info)
+- ✅ Убраны дублирующие `refreshAgentStatus()`
+- ✅ Status bar: ConstraintLayout + фиксированные кнопки + контрастный текст
 
 ---
 

@@ -29,7 +29,8 @@ owl.go                     — OWL AI: streaming через OpenRouter API
 hermes_orchestrator.go     — Hermes: оркестрация агентов, маршрутизация
 hermes_agent_service.go   — HermesAgentService: Connect, tokens, agent process mgmt
 hermes_remote_manager.go  — RemoteAgentManager: Register, SendTask, HandleTaskResult, HandleTaskStream
-server_ai.go               — AI Chat + RemoteAgent RPC (DeployAgentTask, DeployAgentTaskStream)
+server_ai.go               — AI Chat + Hermes Orchestrator RPC (OWL, AI, Hermes sessions, agents)
+server_remote.go           — Remote Agent RPC (ListRemoteAgents, DeployAgentTask, DeployAgentTaskStream, GetRemoteAgentStatus)
 http_server.go             — HTTP сервер (файлы, аватары, /health)
 db_hermes.go               — HermesDB (миграции, CRUD, токены)
 bot_commands.go            — Bot Commands: /status, /deploy, /logs, /restart, /ai
