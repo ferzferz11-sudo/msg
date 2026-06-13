@@ -2,9 +2,9 @@
 
 ## Текущий статус
 
-**Версия:** v1.1.3.1 (prod + dev)
+**Версия:** v1.1.3.7
 **Ветка:** feat/1.1.3.x
-**Тег:** v1.1.3.1
+**Тег:** v1.1.3.7
 
 ---
 
@@ -12,25 +12,24 @@
 
 - Сервер: `/root/msg`, dev порт 50052, prod порт 50051
 - Android: `/root/msg.client.android`
+- Remote Agent: `/root/msg.remote.agent`
 - Оба репозитория на ветке `feat/1.1.3.x`
-- Android v1.1.3.1 — выпущен 2026-06-14
-- Сервер v1.1.3.1 — выпущен 2026-06-14
 
 ---
 
-## Что сделано в v1.1.3.1
+## Что сделано в v1.1.3.7
 
 ### Сервер
-- ✅ GenerateAgentToken возвращает ошибку при неудачном сохранении в БД
-- ✅ hermesDB == nil check
-- ✅ Rate limiting на GenerateAgentToken (5s per user)
-- ✅ Token RPC дедуплицирован (убран из messenger.proto)
-- ✅ Debug логи обёрнуты в DEBUG env var
+- ✅ `DeployAgentTaskStream` — server-side streaming RPC для real-time stdout/stderr/progress
+- ✅ `HandleTaskStream` + `RemoteTaskStreamUpdate` + `onStream` callback в hermes_remote_manager
+- ✅ AuthService unit tests (10 tests + benchmarks)
 
 ### Android
-- ✅ Убран Toast "Вход выполнен"
-- ✅ Авто-прокрутка, версия на SplashActivity
-- ✅ Debug логи обёрнуты в BuildConfig.DEBUG
+- ✅ ErrorHandler — единый обработчик ошибок
+- ✅ AppLog.error() во всех catch-блоках с Toast
+- ✅ deployAgentTaskStream() → callbackFlow
+- ✅ sendMessageStreaming() с real-time Flow collection
+- ✅ Fix: CancellationException больше не показывает тост
 
 ---
 
@@ -39,14 +38,13 @@
 ```
 ┌─────────────┐  gRPC          ┌──────────────┐  gRPC           ┌─────────────┐
 │  Android    │ ──────────────→ │   Server     │ ←────────────── │   Remote    │
-│  Client     │  GenerateToken  │   (Go)       │  Connect        │   Agent     │
-│             │  ListTokens     │              │  (streaming)    │   (Python)  │
-│             │  DeployTask     │              │                 │             │
+│  Client     │  DeployTask    │   (Go)       │  Connect        │   Agent     │
+│             │  Stream        │              │  (streaming)    │   (Python)  │
 └─────────────┘                 └──────────────┘                 └─────────────┘
 ```
 
 **gRPC сервисы:**
-- `messenger.ChatService` — Chat, ListRemoteAgents, DeployAgentTask, GetRemoteAgentStatus
+- `messenger.ChatService` — Chat, ListRemoteAgents, DeployAgentTask, DeployAgentTaskStream, GetRemoteAgentStatus
 - `hermes_agent.HermesAgentService` — Connect, GenerateAgentToken, RevokeAgentToken, ListAgentTokens
 - `messenger.AuthService` — SignIn, SignUp
 
@@ -60,20 +58,21 @@
 
 ### Сервер
 - `server.go` — инициализация hermesDB, ServerVersion
+- `server_ai.go` — AI Chat + RemoteAgent RPC (DeployAgentTask, DeployAgentTaskStream)
 - `hermes_agent_service.go` — token RPC + Connect
-- `hermes_remote_manager.go` — remote agent manager
+- `hermes_remote_manager.go` — remote agent manager + streaming
 - `db_hermes.go` — SaveAgentToken, ListAgentTokens, GetAgentTokenByHash
 - `auth/jwt.go` — GenerateAgentToken, ValidateAgentToken
+- `messenger.proto` — все RPC определения
 
 ### Android
-- `data/grpc/HermesGrpc.kt` — все gRPC методы
+- `data/grpc/HermesGrpc.kt` — все gRPC методы (unary + streaming)
+- `data/grpc/GrpcClient.kt` — фасад
 - `ui/remote/RemoteAgentSettingsActivity.kt` — управление токенами
 - `ui/remote/RemoteAgentActivity.kt` — чат с агентом
-- `ui/remote/RemoteAgentViewModel.kt` — состояние
-
-### Агент
-- `hermes_remote_agent.py` — remote agent daemon
-- `adapter.py` — Platform Adapter
+- `ui/remote/RemoteAgentViewModel.kt` — состояние + streaming
+- `data/models/ErrorHandler.kt` — единый обработчик ошибок
+- `data/models/AppLog.kt` — глобальный логгер
 
 ---
 
@@ -88,21 +87,17 @@
 
 ---
 
-## Задачи для следующей версии (v1.1.3.2 или v1.1.4.0)
+## Задачи для следующей версии
 
-### P1 — Android баги (исправить первыми)
-- Проверить все remote agent activity на краши и NPE
-- Проверить token list refresh после генерации
-- Проверить revoke token flow
+### P1 — Agent streaming output
+- Обновить `hermes_remote_agent.py` — отправлять `TaskStreamUpdate` через gRPC
+- Агент должен стримить stdout/stderr по мере выполнения команды
 
-### P2 — Agent flow в Android
-- **Индикатор "агент не подключён"** в RemoteAgentActivity
-- **Кнопка "Скопировать команду"** в TokenDialog: `python3 hermes_remote_agent.py --server host:port --token <jwt>`
-- **Авто-рефреш** списка агентов каждые 30 сек
-- **Объединить** AgentListActivity + RemoteAgentActivity (убрать дублирование)
-- **AgentSettingsActivity** — полноценные настройки агента (server URL, token, capabilities)
+### P2 — Тесты
+- Модульные тесты для OWL streaming (owl_test.go)
+- Модульные тесты для DeployAgentTaskStream
 
-### P3 — Сервер
-- Health check endpoint (readiness/liveness)
-- Graceful shutdown для gRPC сервера
+### P3 — Улучшения
+- Кэширование запросов чатов (Android)
 - Structured logging (zap/logrus)
+- Prometheus метрики

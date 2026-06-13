@@ -1,38 +1,53 @@
-# Промпт для новой сессии — v1.1.3.6
+# Промпт для новой сессии — v1.1.3.7
 
-## Статус: Сервер v1.1.3.4, Android v1.1.3.6 (feat/1.1.3.x).
+## Статус: Сервер v1.1.3.7, Android v1.1.3.7 (feat/1.1.3.x).
 
-## Последние изменения (v1.1.3.6)
+## Последние изменения (v1.1.3.7)
 
-### Android — Remote Agent UI redesign (commit a9cde26)
-- ✅ TabLayout в настройках: "Шлюз" / "Токен"
-- ✅ Gateway tab: форма скрывается при подключении, показывает статус + IP шлюза
-- ✅ Token tab: генерация токена, управление агентом, список токенов
-- ✅ Инструкции для обоих режимов подключения
-- ✅ Статус на тулбаре чата: тип подключения (шлюз IP / токен)
-- ✅ Start/Stop кнопки в статус-баре чата
-- ✅ Persist selected agent в SharedPreferences
-- ✅ version.txt → 1.1.3.6
+### Сервер — DeployAgentTaskStream (commit ecab8e4)
+- ✅ `messenger.proto`: `DeployAgentTaskStream` RPC (server-side streaming)
+- ✅ `server_ai.go`: streaming handler с onStream callback
+- ✅ `hermes_remote_manager.go`: `HandleTaskStream` + `RemoteTaskStreamUpdate` + `onStream` callback
+- ✅ Dev сервер обновлён и работает
 
-### Сервер — AuthService tests (commit c9b3b14)
-- ✅ 10 unit tests + benchmarks для SignIn/SignUp
+### Android — ErrorHandler + Streaming + AppLog (commit ebd7d7b)
+- ✅ `ErrorHandler.kt` — единый обработчик ошибок
+- ✅ `MessengerProto.kt`: `DeployAgentTaskStreamResponseProto`
+- ✅ `HermesGrpc.kt`: `deployAgentTaskStream()` → callbackFlow
+- ✅ `GrpcClient.kt`: `deployAgentTaskStream()` facade
+- ✅ `RemoteAgentViewModel.kt`: `sendMessageStreaming()` с real-time Flow collection
+- ✅ `RemoteAgentActivity.kt`: streaming mode
+- ✅ AppLog.error() во всех catch-блоках с Toast
+- ✅ Fix: "Job was cancelled" тост подавлен
+- ✅ version.txt → 1.1.3.7
 
-## Промпт для следующей сессии (feat/1.1.3.x — v1.1.3.7)
+## Промпт для следующей сессии (feat/1.1.3.x — v1.1.3.8)
 
 ```
-ЗАДАЧА: Продолжить работу над Lava Messenger. v1.1.3.6 выпущена.
+ЗАДАЧА: Продолжить работу над Lava Messenger. v1.1.3.7 выпущена.
 
-Текущая версия: Сервер v1.1.3.4, Android v1.1.3.6
+Текущая версия: Сервер v1.1.3.7, Android v1.1.3.7
 Ветка: feat/1.1.3.x
 
-Что сделано в v1.1.3.6:
-- Remote Agent UI redesign: TabLayout (Шлюз/Токен), инструкции, статус на тулбаре
+Что сделано в v1.1.3.7:
+- DeployAgentTaskStream — server-side streaming (сервер + клиент)
+- ErrorHandler — единый обработчик ошибок с AppLog
+- AppLog.error() во всех catch-блоках с Toast ошибками
+- Fix: CancellationException больше не показывает тост
 - AuthService unit tests (10 tests + benchmarks)
-- Changelog обновлён для обоих репозиториев
 
 ЗАДАЧИ НА СЛЕДУЮЩУЮ ССЕССИЮ:
 
-## 1. Модульные тесты для OWL streaming
+## 1. Обновить hermes_remote_agent.py — streaming output
+
+Агент должен отправлять TaskStreamUpdate через gRPC Connect stream:
+- Промежуточный stdout/stderr по мере выполнения команды
+- Progress updates (шаги, проценты)
+- Финальный результат с done=true
+
+Файл: /root/msg.remote.agent/hermes_remote_agent.py
+
+## 2. Модульные тесты для OWL streaming
 
 Файл: owl_test.go
 
@@ -43,157 +58,30 @@
 - TestGetOwlHistory_ReturnsMessages — история чата возвращает сообщения из БД
 
 Требования:
-- Мокать OpenRouter API через httptest.Server (не делать реальные запросы)
-- Тесты должны быть быстрыми (< 5 сек на тест)
-- Покрытие > 70% для owl.go
+- Мокать OpenRouter API через httptest.Server
+- Тесты быстрые (< 5 сек)
 - t.Parallel() где возможно
 
-## 2. Streaming результатов задач агентом обратно клиенту
+## 3. Модульные тесты для DeployAgentTaskStream
 
-Добавить server-side streaming RPC:
-- Новый proto RPC: DeployAgentTaskStream(DeployAgentTaskRequest) returns (stream DeployAgentTaskResponse)
-- Сервер отправляет промежуточные результаты по мере выполнения
-- Android клиент подписывается на поток результатов
+Файл: server_ai_test.go
+
+Тесты:
+- TestDeployAgentTaskStream_Success — стриминг stdout/stderr → финальный done
+- TestDeployAgentTaskStream_AgentNotFound — агент не подключён
+- TestDeployAgentTaskStream_Timeout — таймаут задачи
 
 ОБЩИЕ ТРЕБОВАНИЯ:
 - go test ./... должен проходить без ошибок
 - Тесты не должны зависеть от внешних сервисов
-```
-- ✅ INTEGRATION_SESSION.md обновлён
+- Использовать t.Parallel() где возможно
 
-## SSH подключение
+Известные проблемы (не исправлено):
+- Сообщения пользователя видны только после ответа агента (нужна отладка на устройстве)
 
-```bash
-ssh lava
-```
-
----
-
-## Что сделано в v1.1.3.5
-
-### Android — Remote Agent: фоновое подключение (persistent connection)
-- ✅ `RemoteAgentService.kt` — foreground service с SSH туннелем + gRPC
-- ✅ `RemoteAgentManager.kt` — singleton для bind/unbind UI к сервису
-- ✅ `RemoteAgentSettingsActivity.kt` — ServiceConnection + RemoteAgentStateListener
-- ✅ `RemoteAgentActivity.kt` — ServiceConnection + RemoteAgentStateListener
-- ✅ `AndroidManifest.xml` — RemoteAgentService + FOREGROUND_SERVICE_CONNECTED_DEVICE
-- ✅ `RemoteAgentViewModel.kt` — tunnel check через RemoteAgentManager
-- ✅ Notification показывает статус подключения
-- ✅ START_STICKY — перезапускается системой
-- ✅ Исправлен баг: `import lavender.client.android.HermesGrpc` → удалён (commit f5832a4)
-
-### Архитектура persistent connection
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    RemoteAgentService                        │
-│                    (Foreground Service)                      │
-│                                                             │
-│  ┌─────────────────┐  ┌──────────────────┐                 │
-│  │ HermesGateway   │  │ GrpcClient       │                 │
-│  │ Manager         │  │ (persistent)     │                 │
-│  │ (SSH tunnel)    │  │                  │                 │
-│  └────────┬────────┘  └────────┬─────────┘                 │
-│           │                    │                            │
-│  ┌────────┴────────────────────┴─────────┐                 │
-│  │         RemoteAgentManager            │                 │
-│  │         (singleton, binds to App)      │                 │
-│  └───────────────────────────────────────┘                 │
-└─────────────────────────────────────────────────────────────┘
-           │                              │
-           │ ServiceConnection            │ ServiceConnection
-           ▼                              ▼
-┌──────────────────────┐    ┌──────────────────────────┐
-│ RemoteAgentSettings  │    │ RemoteAgentActivity      │
-│ Activity             │    │ (чат с агентом)          │
-│ (настройки туннеля)  │    │                          │
-└──────────────────────┘    └──────────────────────────┘
-```
-
----
-
-## Что сделано в v1.1.3.4
-
-### Сервер
-- ✅ `messenger.proto`: `TunnelMode` enum + 8 полей туннеля в `DeployAgentTaskRequest`
-- ✅ `server_ai.go`: логирование tunnel_mode в DeployAgentTask
-- ✅ `server.go`: ServerVersion → 1.1.3.4
-- ✅ Сборка и деплой на prod
-
-### Android
-- ✅ `HermesGatewayManager.kt` — управление SSH туннелем через JSch
-- ✅ `RemoteAgentSettingsActivity.kt` — UI "Подключение через шлюз"
-- ✅ `MessengerProto.kt` — tunnel_mode поля
-- ✅ `HermesGrpc.kt` — сериализация tunnel_mode
-- ✅ JSch зависимость (`com.jcraft:jsch:0.1.55`)
-
-### Remote Agent
-- ✅ 40 unit tests для `hermes_remote_agent.py` (все проходят)
-- ✅ Исправлен баг: `TaskType.Name()` для неизвестных enum значений
-
----
-
-## Критические файлы
-
-### Сервер
-- `hermes_agent_service.go` — Agent Process Management + Token RPCs
-- `hermes_remote_manager.go` — RemoteAgentManager
-- `server_ai.go` — DeployAgentTask (blocking)
-- `messenger.proto` — обновлённый proto с TunnelMode
-- `scripts/release.sh` — выпуск релизов
-
-### Android
-- `HermesGrpc.kt` — все unary RPC методы
-- `RemoteAgentSettingsActivity.kt` — UI управления агентом + Hermes Gateway
-- `RemoteAgentActivity.kt` — чат с агентом
-- `RemoteAgentViewModel.kt` — ViewModel
-- `MessengerProto.kt` — hand-written proto типы
-- `HermesGatewayManager.kt` — управление SSH туннелем
-- `RemoteAgentService.kt` — foreground service (new in v1.1.3.5)
-- `RemoteAgentManager.kt` — singleton для привязки UI к сервису (new in v1.1.3.5)
-
-### Remote Agent (отдельный репо)
-- `/root/msg.remote.agent/hermes_remote_agent.py`
-- `/root/msg.remote.agent/hermes_remote_pb2.py`
-- `/root/msg.remote.agent/hermes_remote_pb2_grpc.py`
-
----
-
-## Правила
-- НЕ assembleRelease на сервере (OOM)
-- НЕ compileDebugKotlin без крайней необходимости
-- Proto gen: `--go_out=gen --go_opt=paths=source_relative`
-- Коммитить/пушить после каждого изменения
-- Версию не менять без явного указания пользователя
-
-## Документация
-
-### Сервер (`/root/msg/doc/`)
-- `INDEX.md` → `TASKS.md` → `PROMPT.md`
-- `RELEASE.md` — выпуск релизов + Hermes Gateway
-- `AI_SERVICES.md` — архитектура AI сервисов (OWL + Hermes)
-- `PITFALLS.md` — подводные камни
-
-### Android (`/root/msg.client.android/doc/`)
-- `INDEX.md` → `TASKS.md` → `PROMPT_ANDROID.md`
-- `REMOTE_AGENT.md` — документация Remote Agent
-- `STRUCTURE.md` — справочник структуры кода
-
-### Remote Agent (`/root/msg.remote.agent/doc/`)
-- `INDEX.md` → `TASKS.md`
-- `TEST_CASES.md` — 31 тест-кейс
-- `TESTING.md` — гайд по тестированию
-
-## Скиллы
-- lavender-messenger (корневой)
-- lavender-messenger:lavender-android для Android-работы
-
-## Выпуск релизов
-
-```bash
-# С сервера (ssh lava):
-./scripts/release.sh 1.1.3.5 --deploy
-
-# С Mac (удалённо, через ssh lava):
-./scripts/release.sh 1.1.3.5 --deploy --remote
+Бэклог (после тестов):
+- Structured logging на сервере (низкий)
+- Graceful shutdown для gRPC сервера (низкий)
+- Health check endpoint (низкий)
+- Prometheus метрики (низкий)
 ```
