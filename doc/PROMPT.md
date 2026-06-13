@@ -1,22 +1,34 @@
-# Промпт для новой сессии — v1.1.3.5
+# Промпт для новой сессии — v1.1.3.6
 
-## Статус: Сервер v1.1.3.4 (прод обновлён). Android v1.1.3.5 (feat/1.1.3.x).
+## Статус: Сервер v1.1.3.4, Android v1.1.3.6 (feat/1.1.3.x).
 
-## Последние изменения
+## Последние изменения (v1.1.3.6)
 
-### Android — Remote Agent chat (commits ee5e115, 4cfa8be)
-- ✅ TextWatcher для send button
-- ✅ CommandButton с CommandBottomSheet (12 команд)
-- ✅ Авто-прокрутка чата
-- ✅ Fix: "Агент не выбран" — auto-select первого агента при отправке
-- ✅ Компилируется, сообщения отправляются
+### Android — Remote Agent UI redesign (commit a9cde26)
+- ✅ TabLayout в настройках: "Шлюз" / "Токен"
+- ✅ Gateway tab: форма скрывается при подключении, показывает статус + IP шлюза
+- ✅ Token tab: генерация токена, управление агентом, список токенов
+- ✅ Инструкции для обоих режимов подключения
+- ✅ Статус на тулбаре чата: тип подключения (шлюз IP / токен)
+- ✅ Start/Stop кнопки в статус-баре чата
+- ✅ Persist selected agent в SharedPreferences
+- ✅ version.txt → 1.1.3.6
 
 ### Сервер — AuthService tests (commit c9b3b14)
 - ✅ 10 unit tests + benchmarks для SignIn/SignUp
-- ✅ Все тесты проходят
 
-### Документация
-- ✅ PROMPT.md, TASKS.md, INDEX.md обновлены
+## ЗАДАЧИ НА СЛЕДУЮЩУЮ ССЕССИЮ
+
+### 1. Модульные тесты для OWL streaming
+Файл: owl_test.go
+- Мокать OpenRouter API через httptest.Server
+- TestChatWithOWL_Success, TestChatWithOWL_RateLimit, TestChatWithOWL_EmptyMessage
+- TestGetOwlHistory_ReturnsMessages
+
+### 2. Streaming результатов задач
+- Новый proto RPC: DeployAgentTaskStream
+- Сервер отправляет промежуточные результаты
+- Android клиент подписывается на поток
 - ✅ INTEGRATION_SESSION.md обновлён
 
 ## SSH подключение
