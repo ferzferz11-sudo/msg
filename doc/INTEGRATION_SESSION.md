@@ -1,8 +1,8 @@
 # Lava Messenger — Интеграционная сессия
 
-**Текущая версия:** v1.1.3.8
+**Текущая версия:** v1.1.3.9
 **Обновлено:** 2026-06-13
-**Тег:** v1.1.3.8 (stable)
+**Тег:** v1.1.3.9 (stable)
 **Ветка:** feat/1.1.3.x
 
 ---
@@ -78,9 +78,17 @@ hermes_remote.proto          — Определение протокола
 
 ---
 
-## Статус: v1.1.3.8 — СТАБИЛЬНАЯ
+## Статус: v1.1.3.9 — СТАБИЛЬНАЯ
 
-Сервер v1.1.3.8 работает на prod и dev. Android v1.1.3.8 обновлён.
+Сервер v1.1.3.9 работает на prod и dev. Android v1.1.3.9 обновлён.
+
+### Android v1.1.3.9
+- **Espresso Tests** — написаны тесты: ChatListActivityTest (18), RemoteAgentActivityTest (12), ChatWidgetTest, EmptyChatTextTest
+- **Empty chat text fix** — `favorites_description` показывался для ВСЕХ пустых чатов. Исправлено: только для `chat.type == "favorites"`. Обычные пустые чаты → "No messages" / "Нет сообщений"
+- **Новые строки** — `no_messages` в values/strings.xml + values-ru/strings.xml
+
+### Сервер v1.1.3.9
+- **ServerVersion** обновлён с 1.1.3.7 → 1.1.3.9 (синхронизация с Android)
 
 ### Сервер v1.1.3.8
 - **DeployAgentTaskStream fix** — исправлена проблема двойного done=True

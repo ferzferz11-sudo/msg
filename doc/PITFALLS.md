@@ -110,6 +110,11 @@
 - **Правило:** Использовать `diffResult.dispatchUpdatesTo()` с `ListUpdateCallback` и offset +1 для Favorites
 - Паттерн аналогичен `setChats()` — см. ChatAdapter.kt
 
+### ChatAdapter empty chat text (v1.1.3.9)
+- **Анти-pattern:** показывать `favorites_description` для всех пустых чатов
+- **Правило:** `favorites_description` только для `chat.type == "favorites"`, остальные пустые чаты → `no_messages` ("No messages" / "Нет сообщений")
+- Пустой `lastMessageText` ≠ Favorites, всегда проверяйте `chat.type`
+
 ### ChatAdapter Favorites offset
 - Favorites всегда на position 0, не участвует в DiffUtil
 - Все notify* вызовы смещены на +1 для Favorites

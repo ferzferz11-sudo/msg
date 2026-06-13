@@ -1,5 +1,8 @@
 # Лава — Server Changelog
 
+## [1.1.3.9] - 2026-06-13
+- **ServerVersion** обновлён с 1.1.3.7 → 1.1.3.9 (синронизация с Android)
+
 ## [1.1.3.8] - 2026-06-13
 - **DeployAgentTaskStream fix — single done=True with full TaskResult data**
   - Исправлена проблема: done=True отправлялся клиенту дважды (первый раз с пустыми полями из stream update, второй раз с полными данными из TaskResult)
