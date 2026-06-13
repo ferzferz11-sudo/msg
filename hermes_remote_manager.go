@@ -60,6 +60,21 @@ type RemoteTaskResult struct {
 	Error     string
 }
 
+// RemoteTaskStreamUpdate — промежуточное обновление задачи (для streaming)
+type RemoteTaskStreamUpdate struct {
+	TaskID      string
+	StdoutChunk string // промежуточный stdout
+	StderrChunk string // промежуточный stderr
+	Progress    string // progress message
+	Status      string // "running", "completed", "failed", "timeout", "cancelled"
+	Done        bool   // true = последнее сообщение
+	Stdout      string // полный stdout (при Done)
+	Stderr      string // полный stderr (при Done)
+	ExitCode    int32  // финальный exit code (при Done)
+	DurationMs  int64  // финальная длительность в мс (при Done)
+	Error       string // финальная ошибка (при Done)
+}
+
 // RemoteAgentManager — менеджер всех удалённых агентов
 type RemoteAgentManager struct {
 	agents map[string]*RemoteAgent // key = agent_id
@@ -73,7 +88,8 @@ type RemoteAgentManager struct {
 	taskQueue chan *RemoteTask
 
 	// Callbacks
-	onResult func(agentID string, result *RemoteTaskResult)
+	onResult    func(agentID string, result *RemoteTaskResult)
+	onStream    func(agentID string, stream *RemoteTaskStreamUpdate) // для real-time вывода
 
 	// Карта task_id → *RemoteTask для результатов
 	pendingTasks map[string]*RemoteTask
@@ -200,6 +216,13 @@ func (m *RemoteAgentManager) HandleTaskResult(agentID string, result *RemoteTask
 			agent.ActiveTasks--
 		}
 		agent.mu.Unlock()
+	}
+}
+
+// HandleTaskStream — промежуточное обновление от агента (stdout/stderr/progress)
+func (m *RemoteAgentManager) HandleTaskStream(agentID string, update *RemoteTaskStreamUpdate) {
+	if m.onStream != nil {
+		m.onStream(agentID, update)
 	}
 }
 

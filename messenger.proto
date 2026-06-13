@@ -717,6 +717,7 @@ service ChatService {
   rpc DeleteHermesSession(DeleteHermesSessionRequest) returns (DeleteHermesSessionResponse);
   rpc ListRemoteAgents(ListRemoteAgentsRequest) returns (ListRemoteAgentsResponse);
   rpc DeployAgentTask(DeployAgentTaskRequest) returns (DeployAgentTaskResponse);
+  rpc DeployAgentTaskStream(DeployAgentTaskRequest) returns (stream DeployAgentTaskStreamResponse);
   rpc GetRemoteAgentStatus(GetRemoteAgentStatusRequest) returns (GetRemoteAgentStatusResponse);
 
   // AI Chat (unified for OWL + Hermes)
@@ -1101,6 +1102,20 @@ message DeployAgentTaskResponse {
   string stderr = 5;
   int32 exit_code = 6;
   int64 duration_ms = 7;
+}
+
+message DeployAgentTaskStreamResponse {
+  string task_id = 1;
+  string stdout_chunk = 2;       // промежуточный stdout (по строкам или чанкам)
+  string stderr_chunk = 3;       // промежуточный stderr
+  string progress = 4;           // progress message (шаги, проценты)
+  string status = 5;             // "running", "completed", "failed", "timeout"
+  string stdout = 6;             // полный stdout (при done=true)
+  string stderr = 7;             // полный stderr (при done=true)
+  int32 exit_code = 8;           // финальный exit code
+  int64 duration_ms = 9;         // финальная длительность
+  string error = 10;             // финальная ошибка
+  bool done = 11;                // true = последний чанк, задача завершена
 }
 
 message GetRemoteAgentStatusRequest {

@@ -1192,6 +1192,132 @@ func (s *server) DeployAgentTask(_ context.Context, req *gen.DeployAgentTaskRequ
 	}, nil
 }
 
+func (s *server) DeployAgentTaskStream(req *gen.DeployAgentTaskRequest, stream gen.ChatService_DeployAgentTaskStreamServer) error {
+	if s.hermesOrchestrator == nil || s.hermesOrchestrator.remoteManager == nil {
+		if err := stream.Send(&gen.DeployAgentTaskStreamResponse{
+			TaskId: "", Error: "remote manager not available", Done: true, Status: "failed",
+		}); err != nil {
+			return err
+		}
+		return nil
+	}
+
+	taskID := uuid.New().String()[:12]
+
+	if req.TunnelMode != gen.TunnelMode_TUNNEL_NONE {
+		log.Printf("[DeployAgentTaskStream] Task %s: tunnel_mode=%v, tunnel_host=%s, tunnel_local_port=%d",
+			taskID, req.TunnelMode, req.TunnelHost, req.TunnelLocalPort)
+	}
+
+	task := &RemoteTask{
+		ID:           taskID,
+		AgentID:      req.AgentId,
+		Type:         req.TaskType,
+		Params:       req.Params,
+		WorkingDir:   req.WorkingDir,
+		TimeoutSec:   int(req.TimeoutSec),
+		StreamOutput: true,
+	}
+
+	// Канал для промежуточных обновлений от агента
+	streamCh := make(chan *RemoteTaskStreamUpdate, 64)
+	var finalResult *RemoteTaskResult
+
+	// Callback для промежуточных обновлений
+	s.hermesOrchestrator.remoteManager.onStream = func(agentID string, update *RemoteTaskStreamUpdate) {
+		if update.TaskID == taskID {
+			select {
+			case streamCh <- update:
+			default:
+			}
+		}
+	}
+
+	// Callback для финального результата
+	s.hermesOrchestrator.remoteManager.onResult = func(agentID string, result *RemoteTaskResult) {
+		if result.TaskID == taskID {
+			finalResult = result
+			close(streamCh)
+		}
+	}
+
+	if err := s.hermesOrchestrator.remoteManager.SendTask(task); err != nil {
+		if sendErr := stream.Send(&gen.DeployAgentTaskStreamResponse{
+			TaskId: taskID, Error: err.Error(), Done: true, Status: "failed",
+		}); sendErr != nil {
+			return sendErr
+		}
+		return nil
+	}
+
+	// Отправляем первое сообщение — задача принята
+	if err := stream.Send(&gen.DeployAgentTaskStreamResponse{
+		TaskId: taskID, Status: "running", Progress: "Задача отправлена агенту...",
+	}); err != nil {
+		return err
+	}
+
+	// Стримим промежуточные обновления до завершения
+	for update := range streamCh {
+		if update.Done || update.Status == "completed" || update.Status == "failed" || update.Status == "timeout" || update.Status == "cancelled" {
+			// Финальное сообщение
+			resp := &gen.DeployAgentTaskStreamResponse{
+				TaskId:      taskID,
+				Status:      update.Status,
+				Progress:    update.Progress,
+				Stdout:      update.Stdout,
+				Stderr:      update.Stderr,
+				ExitCode:    update.ExitCode,
+				DurationMs:  update.DurationMs,
+				Error:       update.Error,
+				Done:        true,
+				StdoutChunk: update.StdoutChunk,
+				StderrChunk: update.StderrChunk,
+			}
+			if err := stream.Send(resp); err != nil {
+				return err
+			}
+			return nil
+		}
+
+		// Промежуточное обновление
+		if err := stream.Send(&gen.DeployAgentTaskStreamResponse{
+			TaskId:      taskID,
+			Status:      update.Status,
+			Progress:    update.Progress,
+			StdoutChunk: update.StdoutChunk,
+			StderrChunk: update.StderrChunk,
+		}); err != nil {
+			log.Printf("[DeployAgentTaskStream] send error: %v", err)
+			return err
+		}
+	}
+
+	// Если канал закрыт без done=true (не должно случаться, но на всякий случай)
+	if finalResult != nil {
+		if err := stream.Send(&gen.DeployAgentTaskStreamResponse{
+			TaskId:     taskID,
+			Status:     finalResult.Status,
+			Stdout:     finalResult.Stdout,
+			Stderr:     finalResult.Stderr,
+			ExitCode:   int32(finalResult.ExitCode),
+			DurationMs: int64(finalResult.Duration.Milliseconds()),
+			Error:      finalResult.Error,
+			Done:       true,
+		}); err != nil {
+			return err
+		}
+		return nil
+	}
+
+	if err := stream.Send(&gen.DeployAgentTaskStreamResponse{
+		TaskId: taskID, Error: "task cancelled or lost", Done: true, Status: "cancelled",
+	}); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (s *server) GetRemoteAgentStatus(_ context.Context, req *gen.GetRemoteAgentStatusRequest) (*gen.GetRemoteAgentStatusResponse, error) {
 	if s.hermesOrchestrator == nil || s.hermesOrchestrator.remoteManager == nil {
 		return &gen.GetRemoteAgentStatusResponse{Status: "unavailable"}, nil

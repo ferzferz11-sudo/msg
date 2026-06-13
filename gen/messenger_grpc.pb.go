@@ -93,6 +93,7 @@ const (
 	ChatService_DeleteHermesSession_FullMethodName    = "/messenger.ChatService/DeleteHermesSession"
 	ChatService_ListRemoteAgents_FullMethodName       = "/messenger.ChatService/ListRemoteAgents"
 	ChatService_DeployAgentTask_FullMethodName        = "/messenger.ChatService/DeployAgentTask"
+	ChatService_DeployAgentTaskStream_FullMethodName  = "/messenger.ChatService/DeployAgentTaskStream"
 	ChatService_GetRemoteAgentStatus_FullMethodName   = "/messenger.ChatService/GetRemoteAgentStatus"
 	ChatService_ChatWithAI_FullMethodName             = "/messenger.ChatService/ChatWithAI"
 	ChatService_GetAIChatHistory_FullMethodName       = "/messenger.ChatService/GetAIChatHistory"
@@ -196,6 +197,7 @@ type ChatServiceClient interface {
 	DeleteHermesSession(ctx context.Context, in *DeleteHermesSessionRequest, opts ...grpc.CallOption) (*DeleteHermesSessionResponse, error)
 	ListRemoteAgents(ctx context.Context, in *ListRemoteAgentsRequest, opts ...grpc.CallOption) (*ListRemoteAgentsResponse, error)
 	DeployAgentTask(ctx context.Context, in *DeployAgentTaskRequest, opts ...grpc.CallOption) (*DeployAgentTaskResponse, error)
+	DeployAgentTaskStream(ctx context.Context, in *DeployAgentTaskRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[DeployAgentTaskStreamResponse], error)
 	GetRemoteAgentStatus(ctx context.Context, in *GetRemoteAgentStatusRequest, opts ...grpc.CallOption) (*GetRemoteAgentStatusResponse, error)
 	// AI Chat (unified for OWL + Hermes)
 	ChatWithAI(ctx context.Context, in *AIChatRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[AIChatResponse], error)
@@ -1000,6 +1002,25 @@ func (c *chatServiceClient) DeployAgentTask(ctx context.Context, in *DeployAgent
 	return out, nil
 }
 
+func (c *chatServiceClient) DeployAgentTaskStream(ctx context.Context, in *DeployAgentTaskRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[DeployAgentTaskStreamResponse], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &ChatService_ServiceDesc.Streams[5], ChatService_DeployAgentTaskStream_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[DeployAgentTaskRequest, DeployAgentTaskStreamResponse]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type ChatService_DeployAgentTaskStreamClient = grpc.ServerStreamingClient[DeployAgentTaskStreamResponse]
+
 func (c *chatServiceClient) GetRemoteAgentStatus(ctx context.Context, in *GetRemoteAgentStatusRequest, opts ...grpc.CallOption) (*GetRemoteAgentStatusResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetRemoteAgentStatusResponse)
@@ -1012,7 +1033,7 @@ func (c *chatServiceClient) GetRemoteAgentStatus(ctx context.Context, in *GetRem
 
 func (c *chatServiceClient) ChatWithAI(ctx context.Context, in *AIChatRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[AIChatResponse], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &ChatService_ServiceDesc.Streams[5], ChatService_ChatWithAI_FullMethodName, cOpts...)
+	stream, err := c.cc.NewStream(ctx, &ChatService_ServiceDesc.Streams[6], ChatService_ChatWithAI_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1081,7 +1102,7 @@ func (c *chatServiceClient) RenameAIChat(ctx context.Context, in *RenameAIChatRe
 
 func (c *chatServiceClient) ChatWithPipeline(ctx context.Context, in *PipelineRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[PipelineResponse], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &ChatService_ServiceDesc.Streams[6], ChatService_ChatWithPipeline_FullMethodName, cOpts...)
+	stream, err := c.cc.NewStream(ctx, &ChatService_ServiceDesc.Streams[7], ChatService_ChatWithPipeline_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1150,7 +1171,7 @@ func (c *chatServiceClient) GetOWLStatus(ctx context.Context, in *OWLStatusReque
 
 func (c *chatServiceClient) SubscribeNotifications(ctx context.Context, in *SubscribeNotificationsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[ServerNotification], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &ChatService_ServiceDesc.Streams[7], ChatService_SubscribeNotifications_FullMethodName, cOpts...)
+	stream, err := c.cc.NewStream(ctx, &ChatService_ServiceDesc.Streams[8], ChatService_SubscribeNotifications_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1308,6 +1329,7 @@ type ChatServiceServer interface {
 	DeleteHermesSession(context.Context, *DeleteHermesSessionRequest) (*DeleteHermesSessionResponse, error)
 	ListRemoteAgents(context.Context, *ListRemoteAgentsRequest) (*ListRemoteAgentsResponse, error)
 	DeployAgentTask(context.Context, *DeployAgentTaskRequest) (*DeployAgentTaskResponse, error)
+	DeployAgentTaskStream(*DeployAgentTaskRequest, grpc.ServerStreamingServer[DeployAgentTaskStreamResponse]) error
 	GetRemoteAgentStatus(context.Context, *GetRemoteAgentStatusRequest) (*GetRemoteAgentStatusResponse, error)
 	// AI Chat (unified for OWL + Hermes)
 	ChatWithAI(*AIChatRequest, grpc.ServerStreamingServer[AIChatResponse]) error
@@ -1566,6 +1588,9 @@ func (UnimplementedChatServiceServer) ListRemoteAgents(context.Context, *ListRem
 }
 func (UnimplementedChatServiceServer) DeployAgentTask(context.Context, *DeployAgentTaskRequest) (*DeployAgentTaskResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeployAgentTask not implemented")
+}
+func (UnimplementedChatServiceServer) DeployAgentTaskStream(*DeployAgentTaskRequest, grpc.ServerStreamingServer[DeployAgentTaskStreamResponse]) error {
+	return status.Errorf(codes.Unimplemented, "method DeployAgentTaskStream not implemented")
 }
 func (UnimplementedChatServiceServer) GetRemoteAgentStatus(context.Context, *GetRemoteAgentStatusRequest) (*GetRemoteAgentStatusResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetRemoteAgentStatus not implemented")
@@ -2933,6 +2958,17 @@ func _ChatService_DeployAgentTask_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ChatService_DeployAgentTaskStream_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(DeployAgentTaskRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(ChatServiceServer).DeployAgentTaskStream(m, &grpc.GenericServerStream[DeployAgentTaskRequest, DeployAgentTaskStreamResponse]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type ChatService_DeployAgentTaskStreamServer = grpc.ServerStreamingServer[DeployAgentTaskStreamResponse]
+
 func _ChatService_GetRemoteAgentStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetRemoteAgentStatusRequest)
 	if err := dec(in); err != nil {
@@ -3651,6 +3687,11 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "ChatWithOrchestrator",
 			Handler:       _ChatService_ChatWithOrchestrator_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "DeployAgentTaskStream",
+			Handler:       _ChatService_DeployAgentTaskStream_Handler,
 			ServerStreams: true,
 		},
 		{
