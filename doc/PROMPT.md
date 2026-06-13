@@ -1,87 +1,39 @@
-# Промпт для новой сессии — v1.1.3.7
+# Промпт для новой сессии — v1.1.3.8
 
 ## Статус: Сервер v1.1.3.7, Android v1.1.3.7 (feat/1.1.3.x).
 
-## Последние изменения (v1.1.3.7)
+## ⚠️ ТЕКУЩЕЕ СОСТОЯНИЕ
 
-### Сервер — DeployAgentTaskStream (commit ecab8e4)
-- ✅ `messenger.proto`: `DeployAgentTaskStream` RPC (server-side streaming)
-- ✅ `server_ai.go`: streaming handler с onStream callback
-- ✅ `hermes_remote_manager.go`: `HandleTaskStream` + `RemoteTaskStreamUpdate` + `onStream` callback
-- ✅ Dev сервер обновлён и работает
+Ничего не работает корректно на устройстве. Клиент "собирается" но сломан.
 
-### Android — ErrorHandler + Streaming + AppLog (commit ebd7d7b)
-- ✅ `ErrorHandler.kt` — единый обработчик ошибок
-- ✅ `MessengerProto.kt`: `DeployAgentTaskStreamResponseProto`
-- ✅ `HermesGrpc.kt`: `deployAgentTaskStream()` → callbackFlow
-- ✅ `GrpcClient.kt`: `deployAgentTaskStream()` facade
-- ✅ `RemoteAgentViewModel.kt`: `sendMessageStreaming()` с real-time Flow collection
-- ✅ `RemoteAgentActivity.kt`: streaming mode
-- ✅ AppLog.error() во всех catch-блоках с Toast
-- ✅ Fix: "Job was cancelled" тост подавлен
-- ✅ version.txt → 1.1.3.7
+## ЗАДАЧИ НА ССЕССИЮ v1.1.3.8
 
-## Промпт для следующей сессии (feat/1.1.3.x — v1.1.3.8)
+### 🔴 P0 — ИСПРАВИТЬ РАБОТУ С АГЕНТОМ
 
-```
-ЗАДАЧА: Продолжить работу над Lava Messenger. v1.1.3.7 выпущена.
+1. **Переписка через шлюз не работает** — "Job was cancelled" тост,
+   сообщение не отправляется. Найти и исправить причину.
 
-Текущая версия: Сервер v1.1.3.7, Android v1.1.3.7
-Ветка: feat/1.1.3.x
+2. **Переписка через токен не работает** — не тестировалось, но код тот же.
 
-Что сделано в v1.1.3.7:
-- DeployAgentTaskStream — server-side streaming (сервер + клиент)
-- ErrorHandler — единый обработчик ошибок с AppLog
-- AppLog.error() во всех catch-блоках с Toast ошибками
-- Fix: CancellationException больше не показывает тост
-- AuthService unit tests (10 tests + benchmarks)
+3. **Панель статуса в чате с агентом сломана** — невидимый текст,
+   кнопки Start/Stop уходят за экран. Полностью переделать UI.
 
-ЗАДАЧИ НА СЛЕДУЮЩУЮ ССЕССИЮ:
+4. **Список серверов при входе** — исправлено в коде (CredentialStore вместо
+   gRPC getServers), но НЕ ПРОВЕРЕНО на устройстве.
 
-## 1. Обновить hermes_remote_agent.py — streaming output
+### Серверная часть
 
-Агент должен отправлять TaskStreamUpdate через gRPC Connect stream:
-- Промежуточный stdout/stderr по мере выполнения команды
-- Progress updates (шаги, проценты)
-- Финальный результат с done=true
+Сервер v1.1.3.7 работает корректно на dev. На prod нужно обновить когда
+клиент будет готов.
 
-Файл: /root/msg.remote.agent/hermes_remote_agent.py
+## КРИТИЧЕСКИЕ ФАЙЛЫ
 
-## 2. Модульные тесты для OWL streaming
+- `ui/remote/RemoteAgentActivity.kt` — чат с агентом (СЛОМАН UI)
+- `ui/remote/RemoteAgentViewModel.kt` — sendMessageStreaming + fallback
+- `data/grpc/HermesGrpc.kt` — gRPC методы, Channel-based streaming
+- `data/updates/UpdateManager.kt` — скачивание обновлений (источник "Job was cancelled")
 
-Файл: owl_test.go
+## ЧЕГО НЕ ДЕЛАТЬ
 
-Тесты:
-- TestChatWithOWL_Success — отправка сообщения → получение ответа через stream
-- TestChatWithOWL_RateLimit — превышение лимита → ошибка rate limit
-- TestChatWithOWL_EmptyMessage — пустое сообщение → ошибка валидации
-- TestGetOwlHistory_ReturnsMessages — история чата возвращает сообщения из БД
-
-Требования:
-- Мокать OpenRouter API через httptest.Server
-- Тесты быстрые (< 5 сек)
-- t.Parallel() где возможно
-
-## 3. Модульные тесты для DeployAgentTaskStream
-
-Файл: server_ai_test.go
-
-Тесты:
-- TestDeployAgentTaskStream_Success — стриминг stdout/stderr → финальный done
-- TestDeployAgentTaskStream_AgentNotFound — агент не подключён
-- TestDeployAgentTaskStream_Timeout — таймаут задачи
-
-ОБЩИЕ ТРЕБОВАНИЯ:
-- go test ./... должен проходить без ошибок
-- Тесты не должны зависеть от внешних сервисов
-- Использовать t.Parallel() где возможно
-
-Известные проблемы (не исправлено):
-- Сообщения пользователя видны только после ответа агента (нужна отладка на устройстве)
-
-Бэклог (после тестов):
-- Structured logging на сервере (низкий)
-- Graceful shutdown для gRPC сервера (низкий)
-- Health check endpoint (низкий)
-- Prometheus метрики (низкий)
-```
+- НЕ писать в CHANGELOG.md что "исправлено" — это неправда
+- НЕ добавлять фичи пока P0 не исправлены
