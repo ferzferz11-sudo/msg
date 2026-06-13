@@ -101,6 +101,10 @@ func (h *hermesAgentServer) Connect(stream hermesagent.HermesAgentService_Connec
 			}
 		case hermesagent.AgentMessageType_AGENT_LOG:
 			h.handleAgentLog(msg)
+		case hermesagent.AgentMessageType_AGENT_TASK_STREAM_UPDATE:
+			if as != nil {
+				h.handleTaskStreamUpdate(as, msg)
+			}
 		case hermesagent.AgentMessageType_AGENT_DISCONNECT:
    if os.Getenv("DEBUG") != "" {
 			log.Printf("[HermesAgentService] agent %s disconnecting", msg.AgentId)
@@ -190,9 +194,9 @@ func (h *hermesAgentServer) handleTaskResult(as *agentStream, msg *hermesagent.A
 		return
 	}
  if os.Getenv("DEBUG") != "" {
-	log.Printf("[HermesAgentService] task=%s status=%v duration=%dms",
-		result.TaskId, result.Status, result.DurationMs)
- }
+		log.Printf("[HermesAgentService] task=%s status=%v duration=%dms",
+			result.TaskId, result.Status, result.DurationMs)
+	}
 
 	h.hermesOrchestrator.remoteManager.HandleTaskResult(as.agentID, &RemoteTaskResult{
 		TaskID: result.TaskId, Status: taskStatusFromProto(result.Status),
@@ -200,6 +204,31 @@ func (h *hermesAgentServer) handleTaskResult(as *agentStream, msg *hermesagent.A
 		ExitCode: int(result.ExitCode),
 		Duration: time.Duration(result.DurationMs) * time.Millisecond,
 		Error:    result.Error,
+	})
+}
+
+// handleTaskStreamUpdate — промежуточное обновление задачи от агента (streaming)
+func (h *hermesAgentServer) handleTaskStreamUpdate(as *agentStream, msg *hermesagent.AgentMessage) {
+	var update hermesagent.TaskStreamUpdate
+	if err := proto.Unmarshal(msg.Payload, &update); err != nil {
+		if os.Getenv("DEBUG") != "" {
+			log.Printf("[HermesAgentService] stream update unmarshal error: %v", err)
+		}
+		return
+	}
+
+	if os.Getenv("DEBUG") != "" {
+		log.Printf("[HermesAgentService] stream update: task=%s status=%s done=%v chunk_len=%d",
+			update.TaskId, update.Status, update.Done, len(update.StdoutChunk))
+	}
+
+	h.hermesOrchestrator.remoteManager.HandleTaskStream(as.agentID, &RemoteTaskStreamUpdate{
+		TaskID:      update.TaskId,
+		StdoutChunk: update.StdoutChunk,
+		StderrChunk: update.StderrChunk,
+		Progress:    update.Progress,
+		Status:      update.Status,
+		Done:        update.Done,
 	})
 }
 

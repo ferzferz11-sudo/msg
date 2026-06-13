@@ -295,16 +295,35 @@ func (s *server) DeployAgentTaskStream(req *gen.DeployAgentTaskRequest, stream g
 
 		if update.Done || update.Status == "completed" || update.Status == "failed" ||
 			update.Status == "timeout" || update.Status == "cancelled" {
-			// Финальное сообщение — включаем полные буферы
-			resp.Stdout = update.Stdout
-			resp.Stderr = update.Stderr
-			resp.ExitCode = update.ExitCode
-			resp.DurationMs = update.DurationMs
-			resp.Error = update.Error
+			// Финальное stream update — отправляем частичные буферы
+			// и ждём полный TaskResult от агента
 			resp.Done = true
-
 			if err := stream.Send(resp); err != nil {
 				return err
+			}
+
+			// Если TaskResult ещё не пришёл, ждём его
+			if finalResult == nil {
+				select {
+				case <-task.Done:
+					finalResult = task.Result
+				case <-time.After(5 * time.Second):
+					log.Printf("%s timeout waiting for final result", logTask)
+				}
+			}
+
+			// Отправляем полный результат
+			if finalResult != nil {
+				return stream.Send(&gen.DeployAgentTaskStreamResponse{
+					TaskId:     taskID,
+					Status:     finalResult.Status,
+					Stdout:     finalResult.Stdout,
+					Stderr:     finalResult.Stderr,
+					ExitCode:   int32(finalResult.ExitCode),
+					DurationMs: int64(finalResult.Duration.Milliseconds()),
+					Error:      finalResult.Error,
+					Done:       true,
+				})
 			}
 			return nil
 		}
