@@ -283,58 +283,50 @@ func (s *server) DeployAgentTaskStream(req *gen.DeployAgentTaskRequest, stream g
 		return err
 	}
 
-	// Стримим обновления
+	// Стримим обновления от агента.
+	// При done=True от агента — НЕ отправляем done=True клиенту сразу,
+	// а ставим флаг streamDone и продолжаем слушать streamCh.
+	// Канал закроется в onResult когда придёт TaskResult.
+	// После этого отправляем один финальный done=True с полными данными.
+	var streamDone bool
+
 	for update := range streamCh {
-		resp := &gen.DeployAgentTaskStreamResponse{
+		// Агент сигнализировал о завершении стрима (done=True).
+		// TaskResult придёт отдельным сообщением через onResult.
+		if update.Done || update.Status == "completed" || update.Status == "failed" ||
+			update.Status == "timeout" || update.Status == "cancelled" {
+			streamDone = true
+			continue
+		}
+
+		if err := stream.Send(&gen.DeployAgentTaskStreamResponse{
 			TaskId:      taskID,
 			Status:      update.Status,
 			Progress:    update.Progress,
 			StdoutChunk: update.StdoutChunk,
 			StderrChunk: update.StderrChunk,
-		}
-
-		if update.Done || update.Status == "completed" || update.Status == "failed" ||
-			update.Status == "timeout" || update.Status == "cancelled" {
-			// Финальное stream update — отправляем частичные буферы
-			// и ждём полный TaskResult от агента
-			resp.Done = true
-			if err := stream.Send(resp); err != nil {
-				return err
-			}
-
-			// Если TaskResult ещё не пришёл, ждём его
-			if finalResult == nil {
-				select {
-				case <-task.Done:
-					finalResult = task.Result
-				case <-time.After(5 * time.Second):
-					log.Printf("%s timeout waiting for final result", logTask)
-				}
-			}
-
-			// Отправляем полный результат
-			if finalResult != nil {
-				return stream.Send(&gen.DeployAgentTaskStreamResponse{
-					TaskId:     taskID,
-					Status:     finalResult.Status,
-					Stdout:     finalResult.Stdout,
-					Stderr:     finalResult.Stderr,
-					ExitCode:   int32(finalResult.ExitCode),
-					DurationMs: int64(finalResult.Duration.Milliseconds()),
-					Error:      finalResult.Error,
-					Done:       true,
-				})
-			}
-			return nil
-		}
-
-		if err := stream.Send(resp); err != nil {
+		}); err != nil {
 			log.Printf("%s send error: %v", logTask, err)
 			return err
 		}
 	}
 
-	// Fallback: канал закрыт без done=true
+	// streamCh закрыт — onResult сработал, finalResult доступен.
+	// Отправляем один финальный done=True с полными буферами из TaskResult.
+	if streamDone && finalResult != nil {
+		return stream.Send(&gen.DeployAgentTaskStreamResponse{
+			TaskId:     taskID,
+			Status:     finalResult.Status,
+			Stdout:     finalResult.Stdout,
+			Stderr:     finalResult.Stderr,
+			ExitCode:   int32(finalResult.ExitCode),
+			DurationMs: int64(finalResult.Duration.Milliseconds()),
+			Error:      finalResult.Error,
+			Done:       true,
+		})
+	}
+
+	// Fallback: канал закрыт без done=true от агента, но результат есть
 	if finalResult != nil {
 		return stream.Send(&gen.DeployAgentTaskStreamResponse{
 			TaskId:     taskID,
@@ -348,6 +340,7 @@ func (s *server) DeployAgentTaskStream(req *gen.DeployAgentTaskRequest, stream g
 		})
 	}
 
+	// Fallback: результат так и не пришёл (агент отключился, таймаут)
 	return stream.Send(&gen.DeployAgentTaskStreamResponse{
 		TaskId: taskID,
 		Error:  "task cancelled or lost",
