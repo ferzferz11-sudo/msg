@@ -17,18 +17,48 @@
 ### Сервер — AuthService tests (commit c9b3b14)
 - ✅ 10 unit tests + benchmarks для SignIn/SignUp
 
-## ЗАДАЧИ НА СЛЕДУЮЩУЮ ССЕССИЮ
+## Промпт для следующей сессии (feat/1.1.3.x — v1.1.3.7)
 
-### 1. Модульные тесты для OWL streaming
+```
+ЗАДАЧА: Продолжить работу над Lava Messenger. v1.1.3.6 выпущена.
+
+Текущая версия: Сервер v1.1.3.4, Android v1.1.3.6
+Ветка: feat/1.1.3.x
+
+Что сделано в v1.1.3.6:
+- Remote Agent UI redesign: TabLayout (Шлюз/Токен), инструкции, статус на тулбаре
+- AuthService unit tests (10 tests + benchmarks)
+- Changelog обновлён для обоих репозиториев
+
+ЗАДАЧИ НА СЛЕДУЮЩУЮ ССЕССИЮ:
+
+## 1. Модульные тесты для OWL streaming
+
 Файл: owl_test.go
-- Мокать OpenRouter API через httptest.Server
-- TestChatWithOWL_Success, TestChatWithOWL_RateLimit, TestChatWithOWL_EmptyMessage
-- TestGetOwlHistory_ReturnsMessages
 
-### 2. Streaming результатов задач
-- Новый proto RPC: DeployAgentTaskStream
-- Сервер отправляет промежуточные результаты
-- Android клиент подписывается на поток
+Тесты:
+- TestChatWithOWL_Success — отправка сообщения → получение ответа через stream
+- TestChatWithOWL_RateLimit — превышение лимита → ошибка rate limit
+- TestChatWithOWL_EmptyMessage — пустое сообщение → ошибка валидации
+- TestGetOwlHistory_ReturnsMessages — история чата возвращает сообщения из БД
+
+Требования:
+- Мокать OpenRouter API через httptest.Server (не делать реальные запросы)
+- Тесты должны быть быстрыми (< 5 сек на тест)
+- Покрытие > 70% для owl.go
+- t.Parallel() где возможно
+
+## 2. Streaming результатов задач агентом обратно клиенту
+
+Добавить server-side streaming RPC:
+- Новый proto RPC: DeployAgentTaskStream(DeployAgentTaskRequest) returns (stream DeployAgentTaskResponse)
+- Сервер отправляет промежуточные результаты по мере выполнения
+- Android клиент подписывается на поток результатов
+
+ОБЩИЕ ТРЕБОВАНИЯ:
+- go test ./... должен проходить без ошибок
+- Тесты не должны зависеть от внешних сервисов
+```
 - ✅ INTEGRATION_SESSION.md обновлён
 
 ## SSH подключение

@@ -1,5 +1,11 @@
 # Лава — Server Changelog
 
+## [1.1.3.6] - 2026-06-13
+- **AuthService — модульные тесты**: 10 unit tests + benchmarks для SignIn/SignUp
+  - Mock authDB интерфейс для изолированного тестирования
+  - Покрытие > 80% для auth_service.go
+  - Бенчмарки для HashPassword и SignUp
+
 ## [1.1.3.5] - 2026-06-13
 - **Android**: Remote Agent — persistent background connection
   - `RemoteAgentService.kt` — foreground service с SSH туннелем + gRPC
