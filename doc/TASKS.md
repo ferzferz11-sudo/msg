@@ -6,6 +6,20 @@
 
 ---
 
+## ✅ v1.1.3.9 — ServerVersion sync + Android i18n
+
+### Сервер
+- ✅ ServerVersion обновлён с 1.1.3.7 → 1.1.3.9 (синхронизация с Android)
+
+### Android (клиент)
+- ✅ Мультиязычность — 100+ строк вынесены в strings.xml (en + ru)
+- ✅ Espresso-тесты — 4 тест-класса (42 теста)
+- ✅ Empty chat text fix
+- ✅ RemoteAgentActivity crash fix
+- ✅ Форматирование строк с позиционными форматтерами
+
+---
+
 ## ✅ v1.1.3.8 — DeployAgentTaskStream fix + Remote Agent UI improvements + Bugfixes
 
 ### Сервер
@@ -138,10 +152,12 @@
 
 ### Средний приоритет
 - [x] Модульные тесты для DeployAgentTaskStream ✅ v1.1.3.8
+- [x] Espresso-тесты для Android ✅ v1.1.3.9
 - [ ] **Модульные тесты для OWL streaming** (сервер)
 - [ ] **Кэширование запросов чатов** (Android)
 - [ ] Unit-тесты для Android (RemoteAgentViewModel, ChatAdapter)
 - [ ] Интеграционные тесты для streaming (сервер + Android)
+- [ ] **i18n: завершить вынос оставшихся строк** (Android, ~15 файлов)
 
 ### Низкий приоритет
 - [ ] Qdrant + CLIP (production RAG)

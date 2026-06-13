@@ -6,9 +6,9 @@
 
 ---
 
-## СТАТУС: v1.1.3.8 — СТАБИЛЬНАЯ ВЕРСИЯ
+## СТАТУС: v1.1.3.9 — СТАБИЛЬНАЯ ВЕРСИЯ
 
-Прод и dev серверы обновлены. Android релиз v1.1.3.8 выпущен.
+Прод и dev серверы обновлены. Android релиз v1.1.3.9 выпущен.
 
 ---
 
@@ -17,7 +17,7 @@
 ### Сервер (/root/msg)
 ```
 main.go                    — Entry point, gRPC server, graceful shutdown
-server.go                  — Структура server, общие методы (ServerVersion = "1.1.3.8")
+server.go                  — Структура server, общие методы (ServerVersion = "1.1.3.9")
 server_*.go                — Методы по доменам
 server_remote.go           — Remote Agent RPC (DeployAgentTaskStream fix: single done=True)
 hermes_remote_manager.go   — HandleTaskStream + StreamDone flag
