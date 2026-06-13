@@ -6,6 +6,13 @@
   - `server_ai.go`: streaming handler — отправляет задачу, подписывается на onStream callback, стримит промежуточные чанки
   - `hermes_remote_manager.go`: `HandleTaskStream` + `RemoteTaskStreamUpdate` type + `onStream` callback
   - При done=true — финальное сообщение с полным stdout/stderr/exit_code/duration_ms
+- **Рефакторинг: Remote Agent RPC вынесен в `server_remote.go`**
+  - `ListRemoteAgents`, `GetRemoteAgentStatus`, `DeployAgentTask`, `DeployAgentTaskStream`
+  - `ensureRemoteManager()` — единая проверка зависимостей для всех RPC
+  - Graceful degradation: `ListRemoteAgents` возвращает пустой список если менеджер недоступен
+  - Stale detection: агенты с heartbeat > 120с помечаются `status="stale"`
+  - `DeployAgentTask/Stream` — проверка существования агента перед отправкой
+  - `generateTaskID()` — утилита для генерации коротких task ID
 - Dev сервер обновлён и работает
 
 ## [1.1.3.6] - 2026-06-13

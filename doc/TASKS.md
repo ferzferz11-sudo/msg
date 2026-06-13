@@ -1,56 +1,40 @@
 # Лава — Задачи
 
-**Версия:** v1.1.3.8
+**Версия:** v1.1.3.7
 **Ветка:** feat/1.1.3.x
 **Обновлено:** 2026-06-13
 
 ---
 
-## ✅ v1.1.3.8 — Server: Remote Agent refactoring + Android P0 fixes
-
-### Сервер
-- ✅ Все Remote Agent RPC вынесены в `server_remote.go` (ListRemoteAgents, DeployAgentTask, DeployAgentTaskStream, GetRemoteAgentStatus)
-- ✅ `server_ai.go` содержит только AI Chat + Hermes Orchestrator RPC
-- ✅ `ensureRemoteManager()` — единая проверка зависимостей для всех RPC
-- ✅ `ListRemoteAgents` — graceful degradation (пустой список вместо ошибки если менеджер недоступен)
-- ✅ `ListRemoteAgents` — автоматический stale detection (heartbeat > 120с)
-- ✅ `DeployAgentTask` / `DeployAgentTaskStream` — проверка существования агента перед отправкой
-- ✅ `generateTaskID()` — вынесена в server_remote.go
-- ✅ Dev сервер обновлён и работает
-
-### Android
-- ✅ `ensureAgentSelected()` — загрузка с сервера + fallback на дефолтного агента
-- ✅ `ensureAgentSelected()` — имя агента из настроек шлюза (sshHost)
-- ✅ Убрана рекурсия в `sendMessageStreaming()`
-- ✅ `loadAgents()` — не пишет в `_error` (только AppLog.info)
-- ✅ Убраны дублирующие `refreshAgentStatus()`
-- ✅ Status bar: ConstraintLayout + фиксированные кнопки + контрастный текст
-
----
-
-## ✅ v1.1.3.7 — DeployAgentTaskStream + AuthService tests
+## ✅ v1.1.3.7 — DeployAgentTaskStream + AuthServer tests + P0 Bugfixes
 
 ### Сервер
 - ✅ `messenger.proto`: `DeployAgentTaskStream` RPC (server-side streaming)
-  - `DeployAgentTaskStreamResponse`: task_id, stdout_chunk, stderr_chunk, progress, status, stdout, stderr, exit_code, duration_ms, error, done
 - ✅ `server_ai.go`: `DeployAgentTaskStream` handler
-  - Отправляет задачу через `SendTask` → подписывается на `onStream` callback
-  - Стримит промежуточные stdout/stderr/progress через gRPC stream
-  - Финальное сообщение с done=true
 - ✅ `hermes_remote_manager.go`: `HandleTaskStream` + `RemoteTaskStreamUpdate` + `onStream` callback
-- ✅ Dev сервер обновлён и работает
+- ✅ **Рефакторинг**: все Remote Agent RPC вынесены в `server_remote.go`
+  - `ListRemoteAgents`, `GetRemoteAgentStatus`, `DeployAgentTask`, `DeployAgentTaskStream`
+  - `ensureRemoteManager()` — единая проверка зависимостей
+  - Graceful degradation + stale detection
+  - Проверка существования агента перед отправкой
 - ✅ AuthService — 10 unit tests + benchmarks
+- ✅ Dev сервер обновлён и работает
 
 ### Android
-- ✅ `ErrorHandler.kt` — единый обработчик ошибок (CancellationException→INFO, gRPC/network/error→ERROR)
+- ✅ `ErrorHandler.kt` — единый обработчик ошибок
 - ✅ `MessengerProto.kt`: `DeployAgentTaskStreamResponseProto`
 - ✅ `HermesGrpc.kt`: `deployAgentTaskStream()` → callbackFlow
 - ✅ `GrpcClient.kt`: `deployAgentTaskStream()` facade
 - ✅ `RemoteAgentViewModel.kt`: `sendMessageStreaming()` с real-time Flow collection
 - ✅ `RemoteAgentActivity.kt`: streaming mode
 - ✅ AppLog.error() во всех catch-блоках с Toast
-- ✅ Fix: "Job was cancelled" тост подавлен
-- ✅ TASKS.md, version.txt обновлены
+- ✅ Fix: CancellationException больше не показывает тост
+
+### P0 Bugfixes
+- ✅ "Агент не выбран" — `ensureAgentSelected()` с fallback на дефолтного агента
+- ✅ Status bar — ConstraintLayout + фиксированные кнопки + контрастный текст
+- ✅ "Job was cancelled" подавлен — loadAgents не пишет в _error
+- ✅ Убраны дублирующие refreshAgentStatus()
 
 ---
 
