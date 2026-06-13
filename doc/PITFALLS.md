@@ -30,8 +30,12 @@
 - Паттерн: статический first item должен быть добавлен ДО загрузки данных с сервера
 
 ### Favorites flickering
-- Исправлено в c873fbc: `sendSync()` передавал list без favoritesItem, вызывая remove/insert каждые 5с
+- **Статус:** исправлено в v1.1.2.8 (c873fbc), подтверждено в v1.1.3.7
+- `sendSync()` передавал list без favoritesItem, вызывая remove/insert каждые 5с
 - Паттерн: статический first item в RecyclerView должен быть ВКЛЮЧЁН во все background updates
+- Решение: Favorites вынесен как отдельный `favoritesItem` в ChatAdapter, не участвует в DiffUtil
+- DiffUtil работает только с actualChats, все notify* вызовы смещены на +1 для Favorites
+- `startSync()` при сравнении изменений использует offset `i + 1` для Favorites
 
 ### ChangelogActivity — bundled changelog
 - **changelog.txt УДАЛЁН** из проекта и из деплоя на сервер (v1.1.2.6)
