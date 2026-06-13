@@ -1,8 +1,8 @@
 # Lava Messenger — Интеграционная сессия
 
-**Текущая версия:** v1.1.3.7
+**Текущая версия:** v1.1.3.8
 **Обновлено:** 2026-06-13
-**Тег:** v1.1.3.7 (stable)
+**Тег:** v1.1.3.8 (stable)
 **Ветка:** feat/1.1.3.x
 
 ---
@@ -78,9 +78,19 @@ hermes_remote.proto          — Определение протокола
 
 ---
 
-## Статус: v1.1.3.7 — СТАБИЛЬНАЯ
+## Статус: v1.1.3.8 — СТАБИЛЬНАЯ
 
-Сервер v1.1.3.7 работает на prod и dev. Android v1.1.3.7 протестирован.
+Сервер v1.1.3.8 работает на prod и dev. Android v1.1.3.8 обновлён.
+
+### Сервер v1.1.3.8
+- **DeployAgentTaskStream fix** — исправлена проблема двойного done=True
+  - При `done=True` от агента — сервер ставит флаг `streamDone` и продолжает слушать streamCh
+  - После закрытия streamCh (onResult от TaskResult) — отправляется **один** финальный `done=True` с полными данными
+  - Убран 5-секундный таймаут ожидания TaskResult
+  - `server_remote_test.go`: 6 unit-тестов
+
+### Android v1.1.3.8
+- **RemoteAgentViewModel fix** — при финальном `done=True` используются полные буферы из `update.stdout`/`update.stderr` (из TaskResult), fallback на накопленные чанки
 
 ### Сервер v1.1.3.7
 - `server_remote.go` — все Remote Agent RPC вынесены из `server_ai.go`

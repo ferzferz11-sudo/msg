@@ -1,8 +1,22 @@
 # Лава — Задачи
 
-**Версия:** v1.1.3.7
+**Версия:** v1.1.3.8
 **Ветка:** feat/1.1.3.x
 **Обновлено:** 2026-06-13
+
+---
+
+## ✅ v1.1.3.8 — DeployAgentTaskStream fix: single done=True
+
+### Сервер
+- ✅ **DeployAgentTaskStream fix** — исправлена проблема двойного done=True
+  - При `done=True` от агента — `streamDone` flag, continue без отправки клиенту
+  - После закрытия streamCh (onResult) — один финальный `done=True` с полными данными
+  - Убран 5с таймаут ожидания TaskResult
+  - `server_remote_test.go` — 6 unit-тестов
+
+### Android
+- ✅ **RemoteAgentViewModel fix** — при финальном `done=True` использует полные буферы из `update.stdout`/`update.stderr`, fallback на чанки
 
 ---
 
@@ -98,11 +112,11 @@
 ## 📋 Бэклог
 
 ### Высокий приоритет
-- [x] Streaming результатов задач агентом обратно клиенту ✅ v1.1.3.7
+- [x] Streaming результатов задач агентом обратно клиенту ✅ v1.1.3.8 (fix: single done=True)
 - [x] Favorites мерцание при обновлении списка чатов ✅ v1.1.2.8 (подтверждено v1.1.3.7)
 
 ### Средний приоритет
-- [ ] Модульные тесты для OWL streaming (owl_test.go — сервер)
+- [x] Модульные тесты для DeployAgentTaskStream ✅ v1.1.3.8 (server_remote_test.go — 6 unit-тестов)
 - [ ] Обновить hermes_remote_agent.py — поддержка streaming output
 - [ ] Кэширование запросов чатов (Android)
 

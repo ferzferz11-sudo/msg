@@ -1,5 +1,13 @@
 # Лава — Server Changelog
 
+## [1.1.3.8] - 2026-06-13
+- **DeployAgentTaskStream fix — single done=True with full TaskResult data**
+  - Исправлена проблема: done=True отправлялся клиенту дважды (первый раз с пустыми полями из stream update, второй раз с полными данными из TaskResult)
+  - Теперь: при `done=True` от агента — сервер ставит флаг `streamDone` и продолжает слушать streamCh
+  - После закрытия streamCh (onResult callback от TaskResult) — отправляется **один** финальный `done=True` с полными Stdout/Stderr/ExitCode/DurationMs
+  - Убран 5-секундный таймаут ожидания TaskResult (теперь ждём через закрытие канала)
+  - `server_remote_test.go`: 6 unit-тестов (nil manager, empty agent_id, filtering logic, response fields, single done=True)
+
 ## [1.1.3.7] - 2026-06-13
 - **DeployAgentTaskStream** — server-side streaming RPC для real-time вывода задач
   - `messenger.proto`: новый `DeployAgentTaskStream` RPC + `DeployAgentTaskStreamResponse` с полями: stdout_chunk, stderr_chunk, progress, status, done
