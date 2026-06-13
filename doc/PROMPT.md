@@ -1,14 +1,14 @@
-# Промпт для новой сессии — v1.1.3.7 (stable)
+# Промпт для новой сессии — v1.1.3.8 (stable)
 
 **Дата:** 2026-06-13
-**Версия:** v1.1.3.7
+**Версия:** v1.1.3.8
 **Ветка:** feat/1.1.3.x
 
 ---
 
-## СТАТУС: v1.1.3.7 — СТАБИЛЬНАЯ ВЕРСИЯ
+## СТАТУС: v1.1.3.8 — СТАБИЛЬНАЯ ВЕРСИЯ
 
-Прод и dev серверы обновлены и работают.
+Прод и dev серверы обновлены. Android релиз v1.1.3.8 выпущен.
 
 ---
 
@@ -17,17 +17,19 @@
 ### Сервер (/root/msg)
 ```
 main.go                    — Entry point, gRPC server, graceful shutdown
-server.go                  — Структура server, общие методы (ServerVersion = "1.1.3.7")
-server_*.go                — Методы по доменам (chat, users, chats, messages, profile, push, contacts, themes, drafts, muted, favorites, ai)
-server_ai.go               — AI Chat + Hermes Orchestrator RPC (OWL, AI, Hermes sessions, agents)
-server_remote.go           — Remote Agent RPC (ListRemoteAgents, GetRemoteAgentStatus, DeployAgentTask, DeployAgentTaskStream) [NEW]
+server.go                  — Структура server, общие методы (ServerVersion = "1.1.3.8")
+server_*.go                — Методы по доменам
+server_remote.go           — Remote Agent RPC (DeployAgentTaskStream fix: single done=True)
+hermes_remote_manager.go   — HandleTaskStream + StreamDone flag
+server_remote_test.go      — 6 unit-тестов для streaming
 ai_chat_manager.go         — Единый менеджер AI чатов
 owl.go                     — OWL AI: streaming через OpenRouter API
-hermes_orchestrator.go     — Hermes: оркестрация агентов, маршрутизация
-hermes_agent_service.go   — HermesAgentService: Connect, tokens, agent process mgmt
-hermes_remote_manager.go  — RemoteAgentManager: Register, SendTask, HandleTaskResult, HandleTaskStream
-http_server.go             — HTTP сервер (файлы, аватары, /health)
+hermes_orchestrator.go     — Hermes: оркестрация агентов
+hermes_agent_service.go    — HermesAgentService: Connect, tokens
+http_server.go             — HTTP сервер (/files, /avatars, /health)
 db.go / db_hermes.go       — Database layer
+messenger.proto            — ChatService, Remote Agent RPC
+```
 auth_service.go            — AuthService (SignIn, SignUp)
 jwt.go                     — JWT генерация/валидация
 bot_commands.go            — Bot Commands: /status, /deploy, /logs, /restart, /ai

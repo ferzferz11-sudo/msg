@@ -6,17 +6,34 @@
 
 ---
 
-## ✅ v1.1.3.8 — DeployAgentTaskStream fix: single done=True
+## ✅ v1.1.3.8 — DeployAgentTaskStream fix + Remote Agent UI improvements + Bugfixes
 
 ### Сервер
 - ✅ **DeployAgentTaskStream fix** — исправлена проблема двойного done=True
   - При `done=True` от агента — `streamDone` flag, continue без отправки клиенту
   - После закрытия streamCh (onResult) — один финальный `done=True` с полными данными
-  - Убран 5с таймаут ожидания TaskResult
   - `server_remote_test.go` — 6 unit-тестов
 
-### Android
-- ✅ **RemoteAgentViewModel fix** — при финальном `done=True` использует полные буферы из `update.stdout`/`update.stderr`, fallback на чанки
+### Android — Remote Agent UI
+- ✅ **Тулбар** — toolbar_background + ThemeUi.bind() единообразно с другими активити (чат + настройки)
+- ✅ **Status bar** — LinearLayout вместо ConstraintLayout, кнопки не уезжают
+- ✅ **Input fields** — все поля шлюза получают цвета из темы
+- ✅ **Кнопка Start** — скрыта если агент не настроен (нет туннеля/токена/агента)
+- ✅ **done=True** — RemoteAgentViewModel использует полные буферы из TaskResult
+
+### Android — другие исправления
+- ✅ **ChatAdapter filter()** — dispatchUpdatesTo с offset +1 вместо notifyItemRangeChanged
+- ✅ **EditProfileActivity** — кнопка «Сохранить» при пустом initialBio
+- ✅ **String resources** — устранена конкатенация в setText
+
+### Документация
+- ✅ **INDEX.md** — создан индекс документации Android
+- ✅ **PROMPT_ANDROID.md** — обновлён до v1.1.3.8
+- ✅ **PROMPT.md** (сервер) — обновлён до v1.1.3.8
+- ✅ **PITFALLS.md** — добавлены паттерны DeployAgentTaskStream и Android
+- ✅ **PATTERNS.md** — создан справочник паттернов
+- ✅ **REMOTE_AGENT.md** — добавлена секция Streaming, обновлена история
+- ✅ **ThemeApplier** — добавлены Remote Agent input fields в commonInputs
 
 ---
 
@@ -112,19 +129,25 @@
 ## 📋 Бэклог
 
 ### Высокий приоритет
-- [x] Streaming результатов задач агентом обратно клиенту ✅ v1.1.3.8 (fix: single done=True)
-- [x] Favorites мерцание при обновлении списка чатов ✅ v1.1.2.8 (подтверждено v1.1.3.7)
+- [x] Streaming результатов задач агентом обратно клиенту ✅ v1.1.3.8
+- [x] Favorites мерцание ✅ v1.1.2.8
+- [ ] **Обновить hermes_remote_agent.py — поддержка streaming output**
+  - Агент ещё НЕ отправляет streaming updates
+  - Сервер готов, клиент готов
+  - Нужно: агент отправляет AGENT_TASK_STREAM_UPDATE с done=False, затем done=True
 
 ### Средний приоритет
-- [x] Модульные тесты для DeployAgentTaskStream ✅ v1.1.3.8 (server_remote_test.go — 6 unit-тестов)
-- [ ] Обновить hermes_remote_agent.py — поддержка streaming output
-- [ ] Кэширование запросов чатов (Android)
+- [x] Модульные тесты для DeployAgentTaskStream ✅ v1.1.3.8
+- [ ] **Модульные тесты для OWL streaming** (сервер)
+- [ ] **Кэширование запросов чатов** (Android)
+- [ ] Unit-тесты для Android (RemoteAgentViewModel, ChatAdapter)
+- [ ] Интеграционные тесты для streaming (сервер + Android)
 
 ### Низкий приоритет
 - [ ] Qdrant + CLIP (production RAG)
 - [ ] Structured logging (zap/logrus)
 - [ ] Prometheus метрики
-- [ ] Модульные тесты для streaming (сервер + Android)
+- [ ] Health check endpoint используется в Android
 
 ---
 
