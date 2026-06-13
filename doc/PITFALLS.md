@@ -103,6 +103,38 @@
 
 ---
 
+## Android — паттерны и анти-patterns
+
+### ChatAdapter filter() с Favorites
+- **Анти-pattern:** `notifyItemRangeChanged(1, filtered.size)` — не обновляет размер списка → crash при уменьшении
+- **Правило:** Использовать `diffResult.dispatchUpdatesTo()` с `ListUpdateCallback` и offset +1 для Favorites
+- Паттерн аналогичен `setChats()` — см. ChatAdapter.kt
+
+### ChatAdapter Favorites offset
+- Favorites всегда на position 0, не участвует в DiffUtil
+- Все notify* вызовы смещены на +1 для Favorites
+- `getItemCount()` = displayedChats.size + 1 (если Favorites есть)
+
+### ChatWidget reuse
+- Обязательно: TextWatcher для send button visibility, commandButton listener, hide internal toolbar, auto-scroll
+- Без TextWatcher send button не появляется/исчезает при вводе
+
+### Error Handling
+- Все Toast ошибки дублировать в AppLog.error()
+- CancellationException → AppLog.info() (не ERROR), re-throw, НЕ показывать toast
+- "Job was cancelled" — CancellationException в ViewModelScope, обрабатывать отдельно
+
+### Темы
+- НЕ использовать `?attr/` в XML для текста на кастомных тёмных темах
+- Цвета устанавливать программно через ThemeUtils.parseSafeColor()
+- Новые FAB добавлять в ThemeApplier
+
+### Сборка
+- НЕ компилировать на сервере (OOM kill)
+- assembleRelease — ТОЛЬКО локально
+
+---
+
 ## Пути к репозиториям
 
 ### Android — отдельный репозиторий
@@ -136,6 +168,25 @@
 ---
 
 ## Remote Agent (v1.1.3.0)
+
+### DeployAgentTaskStream — стриминг результатов (v1.1.3.8)
+
+**Поток данных:**
+```
+Агент → AGENT_TASK_STREAM_UPDATE(done=False) → onStream → streamCh → клиент
+Агент → AGENT_TASK_STREAM_UPDATE(done=True)  → streamDone flag, continue (НЕ отправляем клиенту)
+Агент → AGENT_TASK_RESULT                    → onResult → close(streamCh)
+Сервер → клиент: один done=True с полными Stdout/Stderr/ExitCode/DurationMs
+```
+
+**Правила:**
+- При `done=True` от агента — НЕ отправлять `done=True` клиенту сразу
+- Ставить флаг `streamDone = true`, `continue`
+- После закрытия `streamCh` (от `onResult`) — отправить **один** `done=True` с полными данными
+- НЕ использовать таймаут ожидания TaskResult — ждать через закрытие канала
+
+**Анти-pattern (v1.1.3.7):**
+- Двойной `done=True` — первый пустой, второй полный → клиент видит мерцание
 
 ### Token RPC маршрутизация
 
