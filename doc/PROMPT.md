@@ -1,15 +1,23 @@
 # Промпт для новой сессии — v1.1.3.5
 
-## Статус: Сервер v1.1.3.4 (прод обновлён). Android v1.1.3.5 (feat/1.1.3.x). Ветка feat/1.1.3.x.
+## Статус: Сервер v1.1.3.4 (прод обновлён). Android v1.1.3.5 (feat/1.1.3.x).
 
-## Последнее изменение (commit ee5e115)
+## Последние изменения
 
-### Android — Remote Agent chat: исправления UI
-- ✅ TextWatcher для send button — показывается только при наличии текста
-- ✅ CommandButton с CommandBottomSheet — 12 команд агента (help, status, logs, deploy, restart, git, docker, ps, df, uptime)
-- ✅ Авто-прокрутка чата при новых сообщениях
-- ✅ Исправлен баг: сообщения пользователя не отправлялись после ввода текста
-- ✅ Исправлен баг: иконка команд была без обработчика
+### Android — Remote Agent chat (commits ee5e115, 4cfa8be)
+- ✅ TextWatcher для send button
+- ✅ CommandButton с CommandBottomSheet (12 команд)
+- ✅ Авто-прокрутка чата
+- ✅ Fix: "Агент не выбран" — auto-select первого агента при отправке
+- ✅ Компилируется, сообщения отправляются
+
+### Сервер — AuthService tests (commit c9b3b14)
+- ✅ 10 unit tests + benchmarks для SignIn/SignUp
+- ✅ Все тесты проходят
+
+### Документация
+- ✅ PROMPT.md, TASKS.md, INDEX.md обновлены
+- ✅ INTEGRATION_SESSION.md обновлён
 
 ## SSH подключение
 

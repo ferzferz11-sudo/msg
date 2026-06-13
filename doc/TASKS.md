@@ -6,12 +6,18 @@
 
 ---
 
-## ✅ v1.1.3.5 — Remote Agent: фоновое подключение (persistent connection) + UI fix
+## ✅ v1.1.3.5 — Remote Agent: фоновое подключение + UI fix + AuthService tests
 
-### UI исправления (commit ee5e115)
-- ✅ TextWatcher для send button — показывается только при наличии текста
-- ✅ CommandButton с CommandBottomSheet — 12 команд агента
-- ✅ Авто-прокрутка чата при новых сообщениях
+### UI исправления
+- ✅ TextWatcher для send button — commit ee5e115
+- ✅ CommandButton с CommandBottomSheet (12 команд) — commit ee5e115
+- ✅ Авто-прокрутка чата — commit ee5e115
+- ✅ Fix "Агент не выбран" — auto-select первого агента — commit 4cfa8be
+- ✅ Компилируется, сообщения отправляются
+
+### Сервер
+- ✅ AuthService unit tests (10 tests + benchmarks) — commit c9b3b14
+- ✅ Фильтрация токенов по пользователю — уже реализована
 - ✅ Dev сервер запущен и работает
 
 ### Проблема

@@ -435,10 +435,11 @@ cd /root/msg.client.android
 - Android: /root/msg.client.android
 - Оба репозитория на ветке feat/1.1.3.x
 
-Что сделано в последних коммитах:
-- Remote Agent chat UI fix (send button, command menu, auto-scroll) — commit ee5e115
+Что сделано в последних коммитах (Remote Agent chat):
+- UI fix: send button, command menu, auto-scroll — commit ee5e115
 - AuthService unit tests (10 tests + benchmarks) — commit c9b3b14
-- Фильтрация токенов по пользователю — уже реализовано
+- Fix "Агент не выбран" — auto-select agent in sendMessage — commit 4cfa8be
+- Фильтрация токенов по пользователю — уже реализована на сервере
 - Dev сервер запущен и работает
 
 ЗАДАЧИ НА ЭТУ ССЕССИЮ:
@@ -452,7 +453,6 @@ cd /root/msg.client.android
 - TestChatWithOWL_RateLimit — превышение лимита → ошибка rate limit
 - TestChatWithOWL_EmptyMessage — пустое сообщение → ошибка валидации
 - TestGetOwlHistory_ReturnsMessages — история чата возвращает сообщения из БД
-- TestGetOwlHistory_Unauthorized — неавторизованный доступ → ошибка
 
 Требования:
 - Мокать OpenRouter API (не делать реальные запросы)
@@ -462,7 +462,7 @@ cd /root/msg.client.android
 
 ## 2. Streaming результатов задач агентом обратно клиенту
 
-Добавить server-side streaming RPC для DeployAgentTask:
+Добавить server-side streaming RPC:
 - Новый proto RPC: DeployAgentTaskStream(DeployAgentTaskRequest) returns (stream DeployAgentTaskResponse)
 - Сервер отправляет промежуточные результаты по мере выполнения
 - Android клиент подписывается на поток результатов
