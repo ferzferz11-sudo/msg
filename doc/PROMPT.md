@@ -10,16 +10,18 @@
 
 ### 🔴 P0 — ИСПРАВИТЬ РАБОТУ С АГЕНТОМ
 
-1. **Переписка через шлюз не работает** — "Job was cancelled" тост,
-   сообщение не отправляется. Найти и исправить причину.
+1. **"Агент не выбран" при подключении через шлюз и токен** — корень проблемы:
+   - `_selectedAgent` = null когда агент подключён
+   - `loadAgents()` вызывает `GrpcClient.listRemoteAgents()` который может падать
+   - Нужно: при подключении авто-загружать агентов и выбирать первого.
+     Если `listRemoteAgents()` падает — создать дефолтного агента локально.
+   - Для обоих режимов (шлюз + токен) — один и тот же код.
 
-2. **Переписка через токен не работает** — не тестировалось, но код тот же.
-
-3. **Панель статуса в чате с агентом сломана** — невидимый текст,
+2. **Панель статуса в чате с агентом сломана** — невидимый текст,
    кнопки Start/Stop уходят за экран. Полностью переделать UI.
 
-4. **Список серверов при входе** — исправлено в коде (CredentialStore вместо
-   gRPC getServers), но НЕ ПРОВЕРЕНО на устройстве.
+3. **"Job was cancelled" тост** — подавить CancellationException чтобы
+   не всплывал как тост при отмене корутины.
 
 ### Серверная часть
 
@@ -29,9 +31,9 @@
 ## КРИТИЧЕСКИЕ ФАЙЛЫ
 
 - `ui/remote/RemoteAgentActivity.kt` — чат с агентом (СЛОМАН UI)
-- `ui/remote/RemoteAgentViewModel.kt` — sendMessageStreaming + fallback
+- `ui/remote/RemoteAgentViewModel.kt` — sendMessageStreaming + selectAgent + loadAgents
 - `data/grpc/HermesGrpc.kt` — gRPC методы, Channel-based streaming
-- `data/updates/UpdateManager.kt` — скачивание обновлений (источник "Job was cancelled")
+- `data/updates/UpdateManager.kt` — возможный источник "Job was cancelled"
 
 ## ЧЕГО НЕ ДЕЛАТЬ
 
