@@ -226,8 +226,27 @@ python3 hermes_remote_agent.py --server host:port --token <jwt>
 
 - Индекс: `/root/msg/doc/INDEX.md`
 - Сервер: `/root/msg/doc/INTEGRATION_SESSION.md`, `/root/msg/doc/TASKS.md`
-- Android: `/root/msg.client.android/doc/TASKS.md`, `/root/msg.client.android/doc/STRUCTURE.md`
+- Android: `/root/msg.client.android/doc/INDEX.md`, `/root/msg.client.android/doc/PROMPT_ANDROID.md`
+- Android заметки: `/root/msg.client.android/doc/SESSION_NOTES.md`
 - AI сервисы: `/root/msg/doc/AI_SERVICES.md`
 - Подводные камни: `/root/msg/doc/PITFALLS.md`
 - Remote Agent: `/root/msg.client.android/doc/REMOTE_AGENT.md`
 - Промпт для следующей сессии: внизу INTEGRATION_SESSION.md
+
+---
+
+## Промпт для следующей сессии
+
+**Версия:** v1.1.3.9 → следующая v1.1.3.10 или v1.1.4.0 (на усмотрение пользователя)
+
+**Приоритеты:**
+1. Завершить i18n — вынести оставшиеся ~15 файлов (NewChatActivity, MessageAdapter, HermesGatewayManager, RemoteAgentManager, SecurityActivity, ThemesActivity, CallActivity, AgentListActivity, RemoteAgentActivity agentCommands)
+2. Обновить hermes_remote_agent.py — поддержка streaming output (сервер готов, клиент готов)
+3. Кэширование запросов чатов
+4. Unit-тесты для Android
+
+**Правила:**
+- НЕ компилировать на сервере (OOM kill)
+- Все новые строки ОДНОВРЕМЕННО в values/strings.xml + values-ru/strings.xml
+- getString() правильно по контексту (Activity/Adapter/ViewModel)
+- Коммитить и пушить после каждого значимого изменения
