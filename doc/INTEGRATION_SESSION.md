@@ -2,7 +2,7 @@
 
 **Текущая версия:** v1.1.3.7
 **Обновлено:** 2026-06-13
-**Тег:** v1.1.3.7 (в разработке)
+**Тег:** v1.1.3.7 (stable)
 **Ветка:** feat/1.1.3.x
 
 ---
@@ -78,24 +78,24 @@ hermes_remote.proto          — Определение протокола
 
 ---
 
-## Статус: v1.1.3.7 — ЗАВЕРШЕНА
+## Статус: v1.1.3.7 — СТАБИЛЬНАЯ
+
+Сервер v1.1.3.7 работает на prod и dev. Android v1.1.3.7 протестирован.
 
 ### Сервер v1.1.3.7
-- `messenger.proto`: `DeployAgentTaskStream` RPC (server-side streaming) + `DeployAgentTaskStreamResponse`
-- `server_ai.go`: `DeployAgentTaskStream` handler — стримит промежуточные stdout/stderr/progress
-- `hermes_remote_manager.go`: `HandleTaskStream` + `RemoteTaskStreamUpdate` type + `onStream` callback
-- Dev сервер обновлён и работает
+- `server_remote.go` — все Remote Agent RPC вынесены из `server_ai.go`
+- `ensureRemoteManager()` — единая проверка зависимостей
+- Graceful degradation + stale detection
+- Prod сервер обновлён
 
 ### Android v1.1.3.7
-- `ErrorHandler.kt` — единый обработчик ошибок с автоматическим добавлением в AppLog
-- `MessengerProto.kt`: `DeployAgentTaskStreamResponseProto`
-- `HermesGrpc.kt`: `deployAgentTaskStream()` → callbackFlow для server-side streaming
-- `GrpcClient.kt`: `deployAgentTaskStream()` facade
-- `RemoteAgentViewModel.kt`: `sendMessageStreaming()` с real-time Flow collection
-- `RemoteAgentActivity.kt`: переключение на `sendMessageStreaming`
-- Все catch-блоки с Toast ошибками → `AppLog.error()`
-- Fix: CancellationException больше не показывает тост
-- TASKS.md, version.txt обновлены
+- Убран выбор сервера из шторок логина/регистрации
+- Переключение сервера только через ServersActivity
+- Room DB migration 8→9 (defensive)
+- ErrorHandler.kt — единый обработчик ошибок
+- ensureAgentSelected() — авто-выбор агента
+- Status bar: ConstraintLayout + фиксированные кнопки
+- Fallback на prod сервер
 
 ---
 
