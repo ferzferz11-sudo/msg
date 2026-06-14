@@ -1068,15 +1068,15 @@ func (db *DB) GetUserId(user string) (string, error)       { return db.GetUserId
 
 func (db *DB) AddUserDevice(userID, deviceID, deviceName, clientVersion, ipAddress string) error {
 	_, err := db.Exec(`
-		INSERT INTO user_devices (device_id, user_id, device_name, client_version, ip_address, last_seen_at)
-		VALUES ($1, $2::uuid, $3, $4, $5, NOW())
-		ON CONFLICT (device_id) DO UPDATE SET
-			user_id = EXCLUDED.user_id,
+		INSERT INTO user_devices (user_id, device_id, device_name, client_version, ip_address, last_seen_at)
+		VALUES ($1, $2, $3, $4, $5, NOW())
+		ON CONFLICT (user_id, device_id) DO UPDATE SET
 			device_name = EXCLUDED.device_name,
 			client_version = EXCLUDED.client_version,
 			ip_address = EXCLUDED.ip_address,
+			is_active = TRUE,
 			last_seen_at = NOW()
-	`, deviceID, userID, deviceName, clientVersion, ipAddress)
+	`, userID, deviceID, deviceName, clientVersion, ipAddress)
 	return err
 }
 
