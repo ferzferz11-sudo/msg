@@ -1,236 +1,55 @@
 # Лава — Задачи
 
-**Версия:** v1.2.0.0
+**Версия:** v1.2.0.1
 **Ветка:** feat/1.1.3.x
-**Обновлено:** 2026-06-14 (сессия 4)
+**Обновлено:** 2026-06-14 (сессия 6)
 
 ---
 
-## ✅ v1.2.0.0 — AuthService v2 (JWT) + v1 deprecated + Server version bump
+## ✅ v1.2.0.1 — AuthService v2 (JWT) + Server info + UI fixes
 
 ### Сервер
-- ✅ **ServerVersion обновлён до v1.2.0.0** (server.go:33)
-- ✅ **AuthService v1 deprecated warning** — при входе через Chat stream (v1), сервер отправляет:
-  `DEPRECATED: AuthService v1 is deprecated. Please upgrade to v2 (JWT).`
-  - v1 продолжает работать для совместимости со старыми клиентами
-- ✅ **AuthService v2 (JWT)** — полностью реализован и работает:
-  - SignInV2/SignUpV2 → JWT access (15min) + refresh (30 days)
-  - RefreshToken — ротация refresh token с обнаружением reuse
-  - SignOut/RevokeDevice/GetDevices — управление сессиями
-  - gRPC Bearer token interceptor — валидация JWT на каждом вызове
-  - Device management (user_devices, device_auth_log)
-  - Auth audit log
-- ✅ Dev сервер работает с v2 auth
+- ✅ **ServerVersion обновлён до v1.2.0.1** (server.go:33)
+- ✅ **Service version constants** — AuthServiceVersion="2.0", ChatServiceVersion="1.0", etc.
+- ✅ **Endpoint `/info`** — возвращает версии сервисов для client capability negotiation
+- ✅ **APP_ENV support** — загрузка `.env.<APP_ENV>` (.env.dev при APP_ENV=dev)
+- ✅ **Systemd: Environment=APP_ENV=dev** вместо EnvironmentFile
+- ✅ **Dev server endpoint** — `GET http://host:8083/info` работает на dev
 
 ### Android
-- ⏳ **AuthService v2 интеграция** — запланировано на следующую сессию
-  - Клиент должен поддерживать оба метода входа (v2 приоритет, fallback на v1)
-  - При получении deprecated warning от v1 — показать уведомление
-
----
-
-## ✅ v1.1.3.11 — Device registration fix + AuthV2 dev setup + Client double-login fix
-
-### Сервер
-- ✅ **AddUserDevice fix** — `ON CONFLICT (device_id)` → `ON CONFLICT (user_id, device_id)` (db.go:1069)
-  - Исправлена ошибка `42P10: there is no unique or exclusion constraint matching the ON CONFLICT specification`
-  - device_id не был UNIQUE, а (user_id, device_id) — есть UNIQUE constraint
-  - Добавлен `is_active = TRUE` при UPDATE
-- ✅ **JWT_SECRET** исправлен на dev и prod (32 байта = 64 hex символа)
-  - Был короткий (21-36 символов), SignInV2 падал с "JWT_SECRET must be at least 32 bytes"
-  - Новый ключ: `2c6328bd467b2b15cdf87ed01b4c6c3ea70b91864d4500fad4870ee341d8546b`
-- ✅ Dev сервер обновлён и работает (порт 50052)
-- ✅ V2 SignInV2 работает на dev (JWT токены выдаются)
-- ✅ Тесты `go test ./...` проходят
-- ✅ Коммит: `7a6b546`
-
-### Android
-- ✅ **Двойной вход на клиенте — ИСПРАВЛЕНО**
-  - Лог подтверждал 3 входа подряд: `ferz11→dev:50052`, `ferz→dev:50052`, `ferz→prod:50051`
-  - Причина: `CredentialStore.setServerAddress()` вызывался ДО `SessionManager.login()` в ServersActivity
-  - Сервер адрес сохранялся преждевременно, ChatListActivity видел новый сервер и делал auto-login
-  - onResume тоже делал reconnect по условию `savedServerAddress != currentServerAddress`
-  - Исправления:
-    - `ServersActivity`: `setServerAddress` вызывается только после успешного входа (SUCCESS callback)
-    - `ChatListActivity.serversActivityLauncher`: убран auto-login, пользователь уже вошёл
-    - `ChatListActivity.onResume`: добавлен флаг `justReturnedFromServersActivity` для пропуска reconnect
-  - Обновлена документация: PATTERNS.md (server switch pattern), CHANGELOG.md
-
----
-
-## ✅ v1.1.3.10 — Structured logging + i18n completion + Stability
-
-### Сервер
-- ✅ **Structured logging** — logrus вместо log.Printf (354 вызова заменены)
-  - JSON/text формат через `LOG_FORMAT` env
-  - Уровни через `LOG_LEVEL` env
-- ✅ **Grace period fix** — очистка истекших в `GetOnlineUsers()`
-- ✅ **Интеграционные тесты streaming** — 4 новых теста (NilManager, InvalidAgent, WithRegisteredAgent, MultipleChunks)
-- ✅ **Тестовые скрипты** — `run-tests.sh`, `run-unit-tests.sh`, `run-streaming-tests.sh`
-
-### Android
-- ✅ **i18n завершён** — все user-facing строки вынесены (~50 строк)
-- ✅ **Unit-тесты** — ErrorHandlerTest (11), ChatAdapterTest (15)
-- ✅ **Crash fixes** — OwlSettingsActivity, RemoteAgentActivity (getString в полях класса)
-
----
-
-## ✅ v1.1.3.9 — ServerVersion sync + Android i18n
-
-### Сервер
-- ✅ ServerVersion обновлён с 1.1.3.7 → 1.1.3.9 (синхронизация с Android)
-
-### Android (клиент)
-- ✅ Мультиязычность — 100+ строк вынесены в strings.xml (en + ru)
-- ✅ Espresso-тесты — 4 тест-класса (42 теста)
-- ✅ Empty chat text fix
-- ✅ RemoteAgentActivity crash fix
-- ✅ Форматирование строк с позиционными форматтерами
-
----
-
-## ✅ v1.1.3.8 — DeployAgentTaskStream fix + Remote Agent UI improvements + Bugfixes
-
-### Сервер
-- ✅ **DeployAgentTaskStream fix** — исправлена проблема двойного done=True
-  - При `done=True` от агента — `streamDone` flag, continue без отправки клиенту
-  - После закрытия streamCh (onResult) — один финальный `done=True` с полными данными
-  - `server_remote_test.go` — 6 unit-тестов
-
-### Android — Remote Agent UI
-- ✅ **Тулбар** — toolbar_background + ThemeUi.bind() единообразно с другими активити (чат + настройки)
-- ✅ **Status bar** — LinearLayout вместо ConstraintLayout, кнопки не уезжают
-- ✅ **Input fields** — все поля шлюза получают цвета из темы
-- ✅ **Кнопка Start** — скрыта если агент не настроен (нет туннеля/токена/агента)
-- ✅ **done=True** — RemoteAgentViewModel использует полные буферы из TaskResult
-
-### Android — другие исправления
-- ✅ **ChatAdapter filter()** — dispatchUpdatesTo с offset +1 вместо notifyItemRangeChanged
-- ✅ **EditProfileActivity** — кнопка «Сохранить» при пустом initialBio
-- ✅ **String resources** — устранена конкатенация в setText
+- ✅ **AuthV2 integration** — SessionManager.loginV2() с fallback на v1
+- ✅ **JWT token storage** — AuthManager.storeTokens(), getAccessToken(), getRefreshToken(), getBearerToken()
+- ✅ **UserSession** — accessToken, refreshToken, authMethod, isJwtAuth
+- ✅ **Toolbar flickering fix** — isConnecting flag, единый поток загрузки
+- ✅ **Logout сохраняет username** — last_username в legacy prefs
+- ✅ **Предзаполнение username** — LoginBottomSheet.prefillUsername()
+- ✅ **Убран диалог "Предложить регистрацию"** — Toast с реальной ошибкой
+- ✅ **Cancel в login/register sheets** — закрывает шторку и возвращает к auth choice
+- ✅ **Подавлены DEPRECATION warnings** — @Suppress("DEPRECATION") на loginV1 fallback
 
 ### Документация
-- ✅ **INDEX.md** — создан индекс документации Android
-- ✅ **PROMPT_ANDROID.md** — обновлён до v1.1.3.8
-- ✅ **PROMPT.md** (сервер) — обновлён до v1.1.3.8
-- ✅ **PITFALLS.md** — добавлены паттерны DeployAgentTaskStream и Android
-- ✅ **PATTERNS.md** — создан справочник паттернов
-- ✅ **REMOTE_AGENT.md** — добавлена секция Streaming, обновлена история
-- ✅ **ThemeApplier** — добавлены Remote Agent input fields в commonInputs
-
----
-
-## ✅ v1.1.3.7 — DeployAgentTaskStream + AuthServer tests + P0 Bugfixes
-
-### Сервер
-- ✅ `messenger.proto`: `DeployAgentTaskStream` RPC (server-side streaming)
-- ✅ `server_ai.go`: `DeployAgentTaskStream` handler
-- ✅ `hermes_remote_manager.go`: `HandleTaskStream` + `RemoteTaskStreamUpdate` + `onStream` callback
-- ✅ **Рефакторинг**: все Remote Agent RPC вынесены в `server_remote.go`
-  - `ListRemoteAgents`, `GetRemoteAgentStatus`, `DeployAgentTask`, `DeployAgentTaskStream`
-  - `ensureRemoteManager()` — единая проверка зависимостей
-  - Graceful degradation + stale detection
-  - Проверка существования агента перед отправкой
-- ✅ AuthService — 10 unit tests + benchmarks
-- ✅ Dev сервер обновлён и работает
-
-### Android
-- ✅ `ErrorHandler.kt` — единый обработчик ошибок
-- ✅ `MessengerProto.kt`: `DeployAgentTaskStreamResponseProto`
-- ✅ `HermesGrpc.kt`: `deployAgentTaskStream()` → callbackFlow
-- ✅ `GrpcClient.kt`: `deployAgentTaskStream()` facade
-- ✅ `RemoteAgentViewModel.kt`: `sendMessageStreaming()` с real-time Flow collection
-- ✅ `RemoteAgentActivity.kt`: streaming mode
-- ✅ AppLog.error() во всех catch-блоках с Toast
-- ✅ Fix: CancellationException больше не показывает тост
-
-### P0 Bugfixes
-- ✅ "Агент не выбран" — `ensureAgentSelected()` с fallback на дефолтного агента
-- ✅ Status bar — ConstraintLayout + фиксированные кнопки + контрастный текст
-- ✅ "Job was cancelled" подавлен — loadAgents не пишет в _error
-- ✅ Убраны дублирующие refreshAgentStatus()
-
----
-
-## ✅ v1.1.3.6 — AuthService tests
-
-### Сервер
-- ✅ AuthService unit tests (10 tests + benchmarks) — commit c9b3b14
-
----
-
-## ✅ v1.1.3.5 — Remote Agent: persistent connection
-
-### Android
-- ✅ `RemoteAgentService.kt` — foreground service с SSH туннелем + gRPC — commit abc1234
-- ✅ `RemoteAgentManager.kt` — singleton для bind/unbind к сервису
-- ✅ `RemoteAgentSettingsActivity.kt` / `RemoteAgentActivity.kt` — ServiceConnection + RemoteAgentStateListener
-- ✅ `AndroidManifest.xml` — RemoteAgentService + FOREGROUND_SERVICE_CONNECTED_DEVICE
-- ✅ Notification со статусом, START_STICKY
-
----
-
-## ✅ v1.1.3.4 — Hermes Gateway + AuthService
-
-### Сервер
-- ✅ `messenger.proto`: `TunnelMode` enum + 8 полей туннеля в `DeployAgentTaskRequest`
-- ✅ Сборка и деплой на prod
-
-### Android
-- ✅ `HermesGatewayManager.kt` — управление SSH туннелем (JSch)
-- ✅ `RemoteAgentSettingsActivity.kt` — UI "Подключение через шлюз"
-- ✅ `MessengerProto.kt` — tunnel_mode поля
-- ✅ JSch зависимость
-
-### Remote Agent
-- ✅ 40 unit tests для `hermes_remote_agent.py`
-
----
-
-## ✅ v1.1.3.3 — Task results + reconnect
-
-### Сервер
-- ✅ `DeployAgentTaskResponse` расширен: +stdout, +stderr, +exit_code, +duration_ms
-- ✅ Reconnect с exponential backoff
-- ✅ Token filtering по created_by
-
----
-
-## ✅ v1.1.3.2 — Token management + health check
-
-### Сервер
-- ✅ `/health` endpoint
-- ✅ Graceful shutdown (SIGINT/SIGTERM → GracefulStop)
-- ✅ Agent Process Management (StartAgent, StopAgent, GetAgentProcessStatus)
-
-### Android
-- ✅ HermesGrpc — все методы реализованы
-- ✅ Debug логи обёрнуты в BuildConfig.DEBUG
+- ✅ **Dev Server Management в PITFALLS.md** — systemd, .env, common issues
+- ✅ **Обновлён INTEGRATION_SESSION.md** — v1.2.0.1
+- ✅ **Обновлён INDEX.md**
 
 ---
 
 ## 📋 Бэклог
 
 ### Высокий приоритет
-- [x] Streaming результатов задач агентом обратно клиенту ✅ v1.1.3.8
-- [x] Favorites мерцание ✅ v1.1.2.8
-- [x] **Обновить hermes_remote_agent.py — поддержка streaming output** ✅ v1.1.3.10
-- [ ] **Единая система авторизации (AuthService v2)** — JWT, device management, refresh tokens
+- [ ] **Тестирование JWT auth на dev** — регистрация, вход, refresh token, logout
+- [ ] **Token refresh interceptor** — автоматический refresh при 401 от сервера
+- [ ] **Подставить Bearer token во все gRPC вызовы** — getChats, getHistory, sendMessage, etc.
+- [ ] **Протестировать server switch** — prod ↔ dev, проверить что токены не конфликтуют
 
 ### Средний приоритет
-- [x] Модульные тесты для DeployAgentTaskStream ✅ v1.1.3.8
-- [x] Espresso-тесты для Android ✅ v1.1.3.9
-- [x] **Модульные тесты для OWL streaming** ✅ v1.1.3.10
-- [x] **Кэширование запросов чатов** ✅ v1.1.3.10
-- [x] Unit-тесты для Android (ErrorHandler, ChatAdapter) ✅ v1.1.3.10
-- [x] **i18n: завершить вынос оставшихся строк** ✅ v1.1.3.10
-- [x] **Интеграционные тесты для streaming** ✅ v1.1.3.10
+- [ ] **Тесты для /info endpoint** — unit-тесты для http_server.go
+- [ ] **Обновить CHANGELOG.md** — сервер и Android
+- [ ] **Проверить шторку профиля** — нет горизонтальной черты (divider)
 
 ### Низкий приоритет
-- [x] **Structured logging (logrus)** ✅ v1.1.3.10
 - [ ] Qdrant + CLIP (production RAG)
 - [ ] Prometheus метрики
-- [ ] Health check endpoint используется в Android
 
 ---
 
@@ -239,18 +58,19 @@
 ### Сервер (Go)
 ```
 main.go                    — Entry point, gRPC server, graceful shutdown
-logger.go                  — Structured logging (logrus)
-server.go                  — структура server, общие методы
-server_*.go                — методы по доменам (14 файлов)
-ai_chat_manager.go         — единый менеджер AI чатов
-owl.go                     — OWL AI: streaming через OpenRouter
-hermes_orchestrator.go     — Hermes: оркестрация агентов
-hermes_agent_service.go    — HermesAgentService: Connect, tokens, agent process mgmt
-hermes_remote_manager.go   — RemoteAgentManager: Register, SendTask, HandleTaskResult, HandleTaskStream
-server_ai.go               — AI Chat + Hermes Orchestrator RPC
-server_remote.go           — Remote Agent RPC (ListRemoteAgents, DeployAgentTask, DeployAgentTaskStream)
-http_server.go             — HTTP сервер (файлы, аватары, /health)
-db.go / db_hermes.go       — Database layer
+server.go                  — ServerVersion, service version constants
+auth_service.go            — AuthService v1 (deprecated)
+auth_service_v2.go         — AuthService v2 (JWT, основной)
+auth_interceptor.go        — gRPC Bearer token interceptor
+auth_jwt.go                — JWT генерация/валидация
+db_auth_devices.go         — CRUD для user_devices + device_auth_log
+db_auth_migrations.go      — миграция таблиц
+server_remote.go           — Remote Agent RPC
+hermes_remote_manager.go   — HandleTaskStream
+ai_chat_manager.go         — AI чаты
+owl.go                     — OWL AI
+hermes_orchestrator.go     — Hermes Orchestrator
+http_server.go             — HTTP (/health, /info)
 messenger.proto            — ChatService, AuthService, AI Chat, Remote Agent RPC
 hermes_remote.proto        — HermesAgentService
 ```
@@ -258,29 +78,23 @@ hermes_remote.proto        — HermesAgentService
 ### Android (Kotlin)
 ```
 data/
-├── proto/MessengerProto.kt       — Все proto data classes
-├── grpc/GrpcClient.kt             — Facade
-├── grpc/HermesGrpc.kt             — Hermes/Remote Agent gRPC (unary + streaming)
-├── grpc/OwlGrpc.kt                — OWL gRPC (streaming)
+├── proto/MessengerProto.kt       — Все proto data classes (AuthResponseV2Proto, etc.)
+├── grpc/GrpcClient.kt             — Facade (signInV2, signUpV2, refreshToken)
 ├── grpc/RealGrpcClient.kt         — Реализация gRPC клиента
-├── models/ErrorHandler.kt          — Единый обработчик ошибок (NEW v1.1.3.7)
-├── models/AppLog.kt               — Глобальный логгер
-└── session/SessionManager.kt      — Управление сессией
+├── session/CredentialStore.kt     — Credentials + server list + last_username
+├── session/SessionManager.kt      — loginV2 (JWT) + loginV1 (legacy fallback)
+├── session/UserSession.kt         — accessToken, refreshToken, authMethod, isJwtAuth
+├── auth/AuthManager.kt            — JWT token storage, getBearerToken, getAccessToken
+└── models/ErrorHandler.kt         — Единый обработчик ошибок
 
-ui/remote/
-├── RemoteAgentActivity.kt         — Чат с агентом (streaming)
-├── RemoteAgentSettingsActivity.kt — Токены + SSH туннель
-├── RemoteAgentViewModel.kt        — ViewModel (sendMessageStreaming)
-├── RemoteAgentService.kt           — Foreground service
-├── RemoteAgentManager.kt           — Singleton manager
-└── HermesGatewayManager.kt         — SSH туннель (JSch)
-```
-
-### Remote Agent (Python, отдельный репо)
-```
-hermes_remote_agent.py       — Основной скрипт
-adapter.py                   — Platform Adapter
-hermes_remote.proto          — Определение протокола
+ui/
+├── widget/
+│   ├── ServerAuthBottomSheet.kt   — Шторка выбора входа
+│   ├── LoginBottomSheet.kt        — Шторка входа (prefillUsername)
+│   └── RegisterBottomSheet.kt     — Шторка регистрации
+├── remote/                        — Remote Agent UI
+├── chat/widget/ChatWidget.kt      — Общий виджет чата
+└── adapter/ChatAdapter.kt         — Адаптер чатов
 ```
 
 ---
@@ -289,6 +103,6 @@ hermes_remote.proto          — Определение протокола
 
 | Репозиторий | URL | Текущая версия |
 |-------------|-----|----------------|
-| msg | https://github.com/ferzferz11-sudo/msg | v1.1.3.7 |
-| msg.client.android | https://github.com/ferzferz11-sudo/msg.client.android | v1.1.3.7 |
+| msg | https://github.com/ferzferz11-sudo/msg | v1.2.0.1 |
+| msg.client.android | https://github.com/ferzferz11-sudo/msg.client.android | v1.1.3.11+ |
 | msg.remote.agent | https://github.com/ferzferz11-sudo/msg.remote.agent | v1.1.3.4 |
