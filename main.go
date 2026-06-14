@@ -47,8 +47,8 @@ func main() {
 	// If .env file doesn't exist, fall back to system environment variables
 	appEnv := os.Getenv("APP_ENV")
 	if appEnv != "" {
-		if err := godotenv.Load("." + appEnv + ".env"); err != nil {
-			logger.Warnf("No .%s.env file found, trying .env", appEnv)
+		if err := godotenv.Load(".env." + appEnv); err != nil {
+			logger.Warnf("No .env.%s file found, trying .env", appEnv)
 			godotenv.Load()
 		}
 	} else {
