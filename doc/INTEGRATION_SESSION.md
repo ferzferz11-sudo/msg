@@ -1,9 +1,34 @@
 # Lava Messenger — Интеграционная сессия
 
-**Текущая версия:** v1.2.0.1 (dev) → v1.2.0.2 (следующая)
-**Обновлено:** 2026-06-14 (сессия 7)
+**Текущая версия:** v1.2.0.1 (сервер) / v1.1.3.12 (Android)
+**Обновлено:** 2026-06-14 (сессия 8)
 **Тег:** v1.1.3.10 (stable)
 **Ветка:** feat/1.1.3.x
+
+---
+
+## Сессия 8 — Bearer Token Interceptor + Token Refresh + Per-server token validation
+
+### Что сделано
+
+1. **BearerTokenInterceptor (Android)** — новый `ClientInterceptor`, автоматически подставляющий JWT Bearer token во все gRPC вызовы
+   - Пропускает AuthService (нет токена), Chat stream (legacy auth с password), и вызовы без JWT (legacy v1)
+   - Полная совместимость с prod сервером (v1) — если нет токена, интерцептор является no-op
+2. **Proactive Token Refresh (Android)** — периодическая проверка истечения access token каждые 60с
+   - Refresh через `AuthService/RefreshToken` за 5 минут до истечения
+   - Корректная остановка при logout / FORCE_LOGOUT
+3. **Per-server token validation** — токены привязаны к серверу, который их выдал
+   - `CredentialStore.setJwtServerAddress()` / `getJwtServerAddress()` — отслеживание сервера
+   - При смене сервера — автоматическая очистка старых токенов
+   - При восстановлении сессии — проверка совпадения сервера
+4. **SessionManager.login()** — `clearTokens()` перед новым логином
+5. **AuthManager.clearTokens()** — также очищает `jwt_server_address`
+
+### Коммиты (Android)
+- (pending)
+
+### Коммиты (сервер)
+- Без изменений — сервер v1.2.0.1 не менялся
 
 ---
 
@@ -217,11 +242,10 @@ python3 hermes_remote_agent.py --server host:port --token <jwt>
 **Версия:** v1.2.0.1 (сервер) / v1.1.3.12 (Android) → следующая v1.2.0.2 / v1.1.3.13
 
 **Приоритеты:**
-1. **Bearer token interceptor (Android)** — создать ClientInterceptor, подставляющий Bearer token во все gRPC вызовы. `getAuthMetadata()` уже определён в RealGrpcClient, но не вызывается.
-2. **Token refresh interceptor (Android)** — автоматический refresh при 401. `AuthManager.needsRefresh()` определён, но не вызывается.
-3. **Тестирование JWT auth на dev** — регистрация, вход, refresh token, logout
-4. **Протестировать server switch** — prod ↔ dev, проверить что токены не конфликтуют
-5. **Редеплой prod сервера** — после тестирования на dev. ON CONFLICT 42P10 ошибка была из-за старого бинарника.
+1. **Тестирование на prod (v1)** — убедиться что legacy flow не сломан, BearerTokenInterceptor является no-op
+2. **Тестирование на dev (v2 JWT)** — полный цикл: регистрация, вход, refresh token, logout
+3. **Протестировать server switch** — prod ↔ dev, проверить что токены не конфликтуют
+4. **Редеплой prod сервера** — после тестирования. ON CONFLICT 42P10 ошибка была из-за старого бинарника.
 
 **Правила:**
 - НЕ компилировать на сервере (OOM kill)
