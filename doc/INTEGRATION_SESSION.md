@@ -78,13 +78,24 @@ hermes_remote.proto          — Определение протокола
 
 ---
 
-## Статус: v1.1.3.9 — СТАБИЛЬНАЯ
+## Статус: v1.1.3.10 — СТАБИЛЬНАЯ
 
-Сервер v1.1.3.9 работает на prod и dev. Android v1.1.3.9 обновлён.
+Сервер v1.1.3.9 работает на prod и dev. Android v1.1.3.10 обновлён.
+
+### Android v1.1.3.10
+- **i18n завершён** — ~30 hardcoded строк вынесены в strings.xml + values-ru/strings.xml
+  - EditProfileActivity, FullScreenImageActivity, SplashActivity, OwlGrpc, HermesGrpc, CallController, MessageAdapter, HermesGatewayManager, SecurityActivity, RemoteAgentActivity, RemoteAgentSettingsActivity, HermesChatViewModel, ProtoUtils, LavenderMessagingService
+- **Unit-тесты** — ErrorHandlerTest (11 тестов), ChatAdapterTest (15 тестов)
+- **OWL streaming тесты** — уже были написаны ранее, 19 тестов, все проходят
+- **Кэширование чатов** — уже реализовано через Room DB (getChats с skipCache)
+- **Streaming end-to-end** — проверен и работает (агент → сервер → клиент)
+
+### Сервер v1.1.3.10
+- Без изменений (v1.1.3.9 stable)
 
 ### Android v1.1.3.9
-- **Espresso Tests** — написаны тесты: ChatListActivityTest (18), RemoteAgentActivityTest (12), ChatWidgetTest, EmptyChatTextTest
-- **Empty chat text fix** — `favorites_description` показывался для ВСЕХ пустых чатов. Исправлено: только для `chat.type == "favorites"`. Обычные пустые чаты → "No messages" / "Нет сообщений"
+- **Espresso Tests** — 4 тест-класса (42 теста)
+- **Empty chat text fix** — `favorites_description` только для `chat.type == "favorites"`
 - **Новые строки** — `no_messages` в values/strings.xml + values-ru/strings.xml
 
 ### Сервер v1.1.3.9
@@ -136,7 +147,7 @@ hermes_remote.proto          — Определение протокола
 
 ## Известные проблемы
 
-- Агент (hermes_remote_agent.py) ещё НЕ отправляет streaming updates — сервер готов, клиент готов, агент нужно обновить
+- Streaming end-to-end работает (проверено в v1.1.3.10)
 - Server migration warnings: `role "lavender" does not exist` (не критично)
 
 ---

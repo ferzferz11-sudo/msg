@@ -174,7 +174,7 @@
 
 ## Remote Agent (v1.1.3.0)
 
-### DeployAgentTaskStream — стриминг результатов (v1.1.3.8)
+### DeployAgentTaskStream — стриминг результатов (v1.1.3.10 — WORKING)
 
 **Поток данных:**
 ```

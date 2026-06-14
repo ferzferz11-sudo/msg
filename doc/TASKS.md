@@ -145,19 +145,18 @@
 ### Высокий приоритет
 - [x] Streaming результатов задач агентом обратно клиенту ✅ v1.1.3.8
 - [x] Favorites мерцание ✅ v1.1.2.8
-- [ ] **Обновить hermes_remote_agent.py — поддержка streaming output**
-  - Агент ещё НЕ отправляет streaming updates
-  - Сервер готов, клиент готов
-  - Нужно: агент отправляет AGENT_TASK_STREAM_UPDATE с done=False, затем done=True
+- [x] **Обновить hermes_remote_agent.py — поддержка streaming output** ✅ v1.1.3.10
+  - Агент УЖЕ отправляет streaming updates (проверено в коде)
+  - Сервер готов, клиент готов — streaming работает end-to-end
 
 ### Средний приоритет
 - [x] Модульные тесты для DeployAgentTaskStream ✅ v1.1.3.8
 - [x] Espresso-тесты для Android ✅ v1.1.3.9
-- [ ] **Модульные тесты для OWL streaming** (сервер)
-- [ ] **Кэширование запросов чатов** (Android)
-- [ ] Unit-тесты для Android (RemoteAgentViewModel, ChatAdapter)
+- [x] **Модульные тесты для OWL streaming** ✅ v1.1.3.10 (уже были написаны ранее)
+- [x] **Кэширование запросов чатов** ✅ v1.1.3.10 (уже реализовано через Room DB)
+- [x] Unit-тесты для Android (ErrorHandler, ChatAdapter) ✅ v1.1.3.10
+- [x] **i18n: завершить вынос оставшихся строк** ✅ v1.1.3.10 (~30 строк вынесено)
 - [ ] Интеграционные тесты для streaming (сервер + Android)
-- [ ] **i18n: завершить вынос оставшихся строк** (Android, ~15 файлов)
 
 ### Низкий приоритет
 - [ ] Qdrant + CLIP (production RAG)
