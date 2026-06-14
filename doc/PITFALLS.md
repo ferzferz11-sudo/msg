@@ -2,11 +2,19 @@
 
 Подводные камни и известные проблемы. Читать перед началом работы!
 
-**Обновлено:** 2026-06-09
+**Обновлено:** 2026-06-14
 
 ---
 
 ## Android
+
+### Server switch — двойной вход (v1.1.3.11 — исправлено)
+- **Анти-pattern:** `CredentialStore.setServerAddress()` до `SessionManager.login()` в ServersActivity
+- **Симптом:** 3 входа подряд при смене сервера (лог: ferz11→dev, ferz→dev, ferz→prod)
+- **Причина:** преждевременное сохранение serverAddress → ChatListActivity видит новый сервер → auto-login → onResume reconnect
+- **Правило:** сохранять serverAddress ТОЛЬКО после успешного входа (SUCCESS callback)
+- **Правило:** НЕ делать auto-login в serversActivityLauncher — пользователь уже вошёл
+- **Правило:** использовать флаг `justReturnedFromServersActivity` для пропуска reconnect в onResume
 
 ### SplashActivity
 - `UserSession`, не `Session` (`data/session/UserSession.kt`)

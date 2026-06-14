@@ -1,9 +1,24 @@
 # Lava Messenger — Интеграционная сессия
 
-**Текущая версия:** v1.1.3.10
-**Обновлено:** 2026-06-14 (сессия 2)
+**Текущая версия:** v1.1.3.11 (dev)
+**Обновлено:** 2026-06-14 (сессия 3)
 **Тег:** v1.1.3.10 (stable)
 **Ветка:** feat/1.1.3.x
+
+---
+
+## Сессия 3 — Client double-login bugfix
+
+### Что сделано
+1. **Исправлен баг двойного входа при смене сервера**:
+   - Лог: 3 входа подряд (ferz11→dev:50052, ferz→dev:50052, ferz→prod:50051)
+   - Причина: `CredentialStore.setServerAddress()` вызывался до `SessionManager.login()`
+   - Исправление: setServerAddress только после успешного входа
+   - Убран auto-login из `ChatListActivity.serversActivityLauncher`
+   - Добавлен флаг `justReturnedFromServersActivity` для предотвращения reconnect в onResume
+
+### Коммиты
+- (pending) fix: double-login bug on server switch
 
 ---
 

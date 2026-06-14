@@ -1,12 +1,12 @@
 # Лава — Задачи
 
-**Версия:** v1.1.3.10
+**Версия:** v1.1.3.11
 **Ветка:** feat/1.1.3.x
-**Обновлено:** 2026-06-14 (сессия 2)
+**Обновлено:** 2026-06-14 (сессия 3)
 
 ---
 
-## ✅ v1.1.3.11 — Device registration fix + AuthV2 dev setup
+## ✅ v1.1.3.11 — Device registration fix + AuthV2 dev setup + Client double-login fix
 
 ### Сервер
 - ✅ **AddUserDevice fix** — `ON CONFLICT (device_id)` → `ON CONFLICT (user_id, device_id)` (db.go:1069)
@@ -21,15 +21,17 @@
 - ✅ Тесты `go test ./...` проходят
 - ✅ Коммит: `7a6b546`
 
-### Известные проблемы (не исправлено)
-- ⚠️ **Двойной вход на клиенте** — при смене сервера (prod → dev) клиент делает два входа подряд:
-  1. Из `ServersActivity.showServerLoginSheet` (ручной ввод логина/пароля)
-  2. Из `ChatListActivity.serversActivityLauncher` (auto-login со старыми credentials)
-  - Причина: `CredentialStore.setServerAddress` вызывается ДО входа в `ServersActivity`,
-    и `ChatListActivity` думает что сервер тот же, делает auto-login
-  - Нужно исправить на клиенте: не сохранять serverAddress до успешного входа,
-    либо сравнивать с последним сервером авторизации
-  - Stack trace логирование добавлено в `SessionManager.login` (коммит `2d0f53c`, откачен)
+### Android
+- ✅ **Двойной вход на клиенте — ИСПРАВЛЕНО**
+  - Лог подтверждал 3 входа подряд: `ferz11→dev:50052`, `ferz→dev:50052`, `ferz→prod:50051`
+  - Причина: `CredentialStore.setServerAddress()` вызывался ДО `SessionManager.login()` в ServersActivity
+  - Сервер адрес сохранялся преждевременно, ChatListActivity видел новый сервер и делал auto-login
+  - onResume тоже делал reconnect по условию `savedServerAddress != currentServerAddress`
+  - Исправления:
+    - `ServersActivity`: `setServerAddress` вызывается только после успешного входа (SUCCESS callback)
+    - `ChatListActivity.serversActivityLauncher`: убран auto-login, пользователь уже вошёл
+    - `ChatListActivity.onResume`: добавлен флаг `justReturnedFromServersActivity` для пропуска reconnect
+  - Обновлена документация: PATTERNS.md (server switch pattern), CHANGELOG.md
 
 ---
 
