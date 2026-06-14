@@ -7,7 +7,7 @@
 
 ---
 
-## Сессия 8 — Bearer Token Interceptor + Token Refresh + Per-server token validation
+## Сессия 8 — Bearer Token Interceptor + Token Refresh + Per-server validation
 
 ### Что сделано
 
@@ -23,12 +23,29 @@
    - При восстановлении сессии — проверка совпадения сервера
 4. **SessionManager.login()** — `clearTokens()` перед новым логином
 5. **AuthManager.clearTokens()** — также очищает `jwt_server_address`
+6. **getChats() error callback** — `callback(emptyList())` при onClose ошибке
+7. **loadChats() timeout** — `withTimeoutOrNull(10с)` предотвращает зависание
+8. **Миграция UNIQUE constraint** на user_devices (db_auth_devices.go)
+
+### Деплой
+- Сервер v1.2.0.1 собран и деплоен на prod
+- Prod: `Listening clients at [::]:50051`, `HTTP server started on port 8082`
+- Android v1.1.3.12 — тестирование на dev и prod пройдено
+
+### Известные проблемы
+- **42P10 на prod БД** — UNIQUE constraint на user_devices не добавлен к существующей таблице
+  - Нужно вручную: `ALTER TABLE user_devices ADD CONSTRAINT ... UNIQUE (user_id, device_id)`
+  - Не критично — аутентификация работает
+- **Первый вход на prod — только Favorites** — проблема в локальном кеше Android, после очистки всё ОК
 
 ### Коммиты (Android)
-- (pending)
+- `960d55c` — feat: BearerTokenInterceptor + proactive token refresh + per-server validation
+- `55beed2` — fix: CredentialStore edit() + add RefreshTokenResponseProto import
+- `e6049db` — fix: getChats timeout + error callback to prevent hanging
+- `c240ff7` — debug: add logging for loadChats flow investigation
 
 ### Коммиты (сервер)
-- Без изменений — сервер v1.2.0.1 не менялся
+- `5d35914` — docs: update documentation for v1.1.3.12 (session 8)
 
 ---
 
@@ -242,10 +259,10 @@ python3 hermes_remote_agent.py --server host:port --token <jwt>
 **Версия:** v1.2.0.1 (сервер) / v1.1.3.12 (Android) → следующая v1.2.0.2 / v1.1.3.13
 
 **Приоритеты:**
-1. **Тестирование на prod (v1)** — убедиться что legacy flow не сломан, BearerTokenInterceptor является no-op
-2. **Тестирование на dev (v2 JWT)** — полный цикл: регистрация, вход, refresh token, logout
-3. **Протестировать server switch** — prod ↔ dev, проверить что токены не конфликтуют
-4. **Редеплой prod сервера** — после тестирования. ON CONFLICT 42P10 ошибка была из-за старого бинарника.
+1. **UNIQUE constraint на prod БД** — вручную выполнить ALTER TABLE user_devices
+2. **Редеплой prod сервера** — после тестирования на dev
+3. **Выпуск Android клиента** — v1.1.3.12 готова к релизу
+4. **Bearer token в Chat stream** — вместо password в первом сообщении (v1.2.1.x, отложено)
 
 **Правила:**
 - НЕ компилировать на сервере (OOM kill)

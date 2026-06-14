@@ -71,7 +71,29 @@ func (db *DB) CreateDeviceTables() error {
 
 	CREATE INDEX IF NOT EXISTS idx_device_auth_log_user ON device_auth_log(user_id);
 	`
+
 	_, err := db.Exec(query)
+	if err != nil {
+		return err
+	}
+
+	// Migration: add UNIQUE constraint if missing (for tables created before this constraint was added)
+	_, err = db.Exec(`
+		DO $$
+		BEGIN
+			IF NOT EXISTS (
+				SELECT 1 FROM pg_constraint 
+				WHERE conname = 'user_devices_user_id_device_id_key'
+				AND conrelid = 'user_devices'::regclass
+			) THEN
+				ALTER TABLE user_devices 
+				ADD CONSTRAINT user_devices_user_id_device_id_key 
+				UNIQUE (user_id, device_id);
+			END IF;
+		EXCEPTION WHEN duplicate_table THEN
+			-- constraint already exists, ignore
+		END $$;
+	`)
 	return err
 }
 

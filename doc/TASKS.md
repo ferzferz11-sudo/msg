@@ -2,7 +2,7 @@
 
 **Версия:** v1.2.0.1
 **Ветка:** feat/1.1.3.x
-**Обновлено:** 2026-06-14 (сессия 7)
+**Обновлено:** 2026-06-14 (сессия 8)
 
 ---
 
@@ -16,8 +16,16 @@
 - ✅ **Systemd: Environment=APP_ENV=dev** вместо множественных Environment=
 - ✅ **Dev server endpoint** — `GET http://host:8083/info` работает на dev
 - ✅ **Dev server поднят** — работает на порту 50052 (gRPC), 8083 (HTTP)
+- ✅ **AuthInterceptor** — gRPC Bearer token interceptor (unary + streaming)
+- ✅ **AuthService v2** — SignInV2, SignUpV2, RefreshToken, SignOut, RevokeDevice, GetDevices
+- ✅ **Token rotation** — обнаружение refresh token reuse
+- ✅ **Device management** — user_devices, device_auth_log таблицы
+- ✅ **Миграция UNIQUE constraint** на user_devices (db_auth_devices.go)
 
 ### Android
+- ✅ **BearerTokenInterceptor** — ClientInterceptor для JWT Bearer token
+- ✅ **Proactive token refresh** — проверка каждые 60с
+- ✅ **Per-server token validation** — jwt_server_address в CredentialStore
 - ✅ **AuthV2 integration** — SessionManager.loginV2() с fallback на v1
 - ✅ **JWT token storage** — AuthManager.storeTokens(), getAccessToken(), getRefreshToken(), getBearerToken()
 - ✅ **UserSession** — accessToken, refreshToken, authMethod, isJwtAuth
@@ -26,28 +34,32 @@
 - ✅ **Предзаполнение username** — LoginBottomSheet.prefillUsername()
 - ✅ **Убран диалог "Предложить регистрацию"** — Toast с реальной ошибкой
 - ✅ **Cancel в login/register sheets** — закрывает шторку и возвращает к auth choice
-- ✅ **Подавлены DEPRECATION warnings** — @Suppress("DEPRECATION") на loginV1 fallback
 - ✅ **Auth bottom sheets cosmetics** — drag handle, status indicator, dividers
 - ✅ **ServersActivity оставлена** — для управления списком серверов
+- ✅ **getChats() error callback** — callback(emptyList()) при ошибке
+- ✅ **loadChats() timeout** — withTimeoutOrNull(10с)
 
 ### Документация
 - ✅ **Dev Server Management в PITFALLS.md** — systemd, .env, common issues
 - ✅ **Обновлён INTEGRATION_SESSION.md** — v1.2.0.1
 - ✅ **Обновлён INDEX.md**
+- ✅ **Обновлён PROMPT.md**
+- ✅ **Обновлён PROMPT_SERVER.md**
+- ✅ **Обновлён PROMPT_ANDROID.md**
+- ✅ **Обновлён PATTERNS.md**
+- ✅ **Обновлён CHANGELOG.md** (сервер + Android)
 
 ---
 
 ## 📋 Бэклог
 
 ### Высокий приоритет
-- [ ] **Bearer token interceptor (Android)** — подставить Bearer token во все gRPC вызовы. `getAuthMetadata()` определён, но не вызывается.
-- [ ] **Token refresh interceptor (Android)** — автоматический refresh при 401. `AuthManager.needsRefresh()` определён, но не вызывается.
-- [ ] **Тестирование JWT auth на dev** — регистрация, вход, refresh token, logout
-- [ ] **Редеплой prod сервера** — ON CONFLICT 42P10 ошибка была в логах. UNIQUE constraint сейчас есть, но нужен редеплой с новым бинарником.
+- [ ] **UNIQUE constraint на prod БД** — вручную выполнить ALTER TABLE на prod
+- [ ] **Редеплой prod сервера** — после тестирования на dev
 
 ### Средний приоритет
 - [ ] **Тесты для /info endpoint** — unit-тесты для http_server.go
-- [ ] **Обновить CHANGELOG.md** — сервер и Android
+- [ ] **Bearer token в Chat stream** — вместо password в первом сообщении (v1.2.1.x)
 
 ### Низкий приоритет
 - [ ] Qdrant + CLIP (production RAG)
@@ -66,7 +78,7 @@ auth_service_v2.go         — AuthService v2 (JWT, основной)
 auth_interceptor.go        — gRPC Bearer token interceptor
 auth_jwt.go                — JWT генерация/валидация
 db_auth_devices.go         — CRUD для user_devices + device_auth_log
-db_auth_migrations.go      — миграция таблис
+db_auth_migrations.go      — миграция таблиц
 server_remote.go           — Remote Agent RPC
 hermes_remote_manager.go   — HandleTaskStream
 ai_chat_manager.go         — AI чаты
@@ -90,12 +102,13 @@ ui/
 └── adapter/ChatAdapter.kt         — Адаптер чатов
 
 data/
-├── grpc/GrpcClient.kt             — Facade (signInV2, signUpV2, refreshToken)
+├── grpc/BearerTokenInterceptor.kt — ClientInterceptor для JWT
+├── grpc/GrpcClient.kt             — Facade
 ├── grpc/RealGrpcClient.kt         — Реализация gRPC
-├── session/CredentialStore.kt     — Credentials + last_username + server list
-├── session/SessionManager.kt      — loginV2 (JWT) + loginV1 (legacy fallback)
-├── session/UserSession.kt         — accessToken, refreshToken, authMethod, isJwtAuth
-├── auth/AuthManager.kt            — JWT token storage, getBearerToken, getAccessToken
+├── auth/AuthManager.kt            — JWT token storage
+├── session/CredentialStore.kt     — Credentials + jwt_server_address
+├── session/SessionManager.kt      — loginV2 + loginV1 fallback
+├── session/UserSession.kt         — accessToken, refreshToken, authMethod
 └── models/ErrorHandler.kt         — Единый обработчик ошибок
 ```
 
@@ -106,5 +119,5 @@ data/
 | Репозиторий | URL | Текущая версия |
 |-------------|-----|----------------|
 | msg | https://github.com/ferzferz11-sudo/msg | v1.2.0.1 |
-| msg.client.android | https://github.com/ferzferz11-sudo/msg.client.android | v1.1.3.12 (dev) |
+| msg.client.android | https://github.com/ferzferz11-sudo/msg.client.android | v1.1.3.12 |
 | msg.remote.agent | https://github.com/ferzferz11-sudo/msg.remote.agent | v1.1.3.4 |

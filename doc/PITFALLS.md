@@ -293,3 +293,35 @@
 - `GET http://host:8082/info` — возвращает версии сервисов
 - Используется Android клиентом для capability negotiation
 - `services.auth >= "2.0"` → JWT workflow, иначе legacy
+
+---
+
+## Сессия 8 — новые подводные камни
+
+### BearerTokenInterceptor — совместимость с v1 серверами
+- Интерцептор является no-op если `AuthManager.getBearerToken() == null`
+- При подключении к v1 серверу (без JWT) — токен не подставляется, запросы идут без Bearer
+- Chat stream пропускается интерцептором (legacy auth с password)
+- **Анти-pattern**: не добавлять Bearer token в Chat stream — сервер не ожидает его
+
+### UNIQUE constraint на user_devices
+- `CREATE TABLE IF NOT EXISTS` НЕ добавляет UNIQUE constraint к существующей таблице
+- На prod сервере таблица `user_devices` может существовать без UNIQUE constraint
+- Ошибка 42P10: `pq: there is no unique or exclusion constraint matching the ON CONFLICT specification`
+- **Решение**: миграция через `ALTER TABLE ... ADD CONSTRAINT ... UNIQUE (user_id, device_id)`
+- Добавлено в db_auth_devices.go, но требует ручного выполнения на prod БД
+
+### getChats() callback при ошибке
+- Если канал мёртв — `getChats()` возвращается без вызова callback → корутина зависает
+- Исправлено: `onClose` вызывает `callback(emptyList())` при ошибке
+- `loadChats()` обёрнут в `withTimeoutOrNull(10с)` для предотвращения зависания
+
+### EncryptedSharedPreferences.edit()
+- `EncryptedSharedPreferences.edit()` НЕ принимает лямбду (в отличие от `androidx.core.content.edit`)
+- **Правило**: использовать `edit().putXxx().apply()` или `edit().remove().apply()`
+- **Анти-pattern**: `edit { putString(...) }` — не компилируется
+
+### Первый вход на prod — только Favorites
+- Проблема в локальном кеше Android — после очистки всё ОК
+- Не является багом нового кода
+- `loadChats()` может не вызваться если `connectionStatus` не успел перейти в READY

@@ -1,5 +1,22 @@
 # Лава — Server Changelog
 
+## [1.2.0.1] - 2026-06-14
+
+### Новое: Server info endpoint
+- **GET /info** — возвращает версии сервисов для client capability negotiation
+- `services.auth >= "2.0"` → клиент использует JWT workflow
+- `services.auth < "2.0"` или endpoint недоступен → legacy workflow
+
+### Новое: APP_ENV support
+- Загрузка `.env.<APP_ENV>` (например `.env.dev`) вместо `.env`
+- Systemd: только `Environment=APP_ENV=dev`, без дублирования переменных
+
+### Исправлено
+- Panic после `failed to listen` — добавлен `return` после ошибки `net.Listen`
+- Systemd dev unit упрощён
+
+---
+
 ## [1.2.0.0] - 2026-06-14
 
 ### Новое: AuthService v2 (JWT) — основной метод аутентификации

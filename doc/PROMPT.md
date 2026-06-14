@@ -1,4 +1,4 @@
-# Промпт для новой сессии — v1.2.0.1 (dev)
+# Промпт для новой сессии — v1.2.0.1
 
 **Дата:** 2026-06-14
 **Версия:** v1.2.0.1
@@ -6,13 +6,11 @@
 
 ---
 
-## СТАТУС: v1.2.0.1 — DEV
+## СТАТУС: v1.2.0.1 — DEV + PROD
 
-Сервер: v1.2.0.1 на dev (порт 50052, HTTP 8083). AuthService v2 (JWT) основной, v1 deprecated.
-Android: AuthV2 интегрирован (loginV2 + fallback на v1), JWT token storage, toolbar flickering исправлен.
-Dev сервер работает, логи доступны на http://13.140.25.249/server-logs-dev
-
-**Текущая задача:** Bearer token interceptor (Android) + token refresh + тестирование JWT auth на dev.
+Сервер: v1.2.0.1 на dev (порт 50052, HTTP 8083) и prod (порт 50051, HTTP 8082).
+Android: v1.1.3.12 — BearerTokenInterceptor + proactive refresh + per-server validation.
+Тестирование пройдено на dev и prod.
 
 ---
 
@@ -43,7 +41,7 @@ hermes_remote.proto        — HermesAgentService
 ui/
 ├── widget/
 │   ├── ServerAuthBottomSheet.kt    — шторка выбора входа (лого + сервер + статус)
-│   ├── LoginBottomSheet.kt         — шторка входа (username/password + prefill)
+│   ├── LoginBottomSheet.kt         — шторка входа (prefillUsername)
 │   └── RegisterBottomSheet.kt      — шторка регистрации
 ├── ServersActivity.kt              — управление списком серверов
 ├── remote/                         — Remote Agent UI
@@ -51,12 +49,13 @@ ui/
 └── adapter/ChatAdapter.kt          — адаптер чатов (clearAll)
 
 data/
-├── grpc/GrpcClient.kt              — facade (signInV2, signUpV2, refreshToken)
-├── grpc/RealGrpcClient.kt          — реализация gRPC (getAuthMetadata определён, но не вызывается)
-├── session/CredentialStore.kt      — credentials + server list + last_username
-├── session/SessionManager.kt       — loginV2 (JWT) + loginV1 (legacy fallback)
-├── session/UserSession.kt          — accessToken, refreshToken, authMethod, isJwtAuth
-├── auth/AuthManager.kt             — JWT token storage, getBearerToken, getAccessToken
+├── grpc/BearerTokenInterceptor.kt  — ClientInterceptor для JWT Bearer token
+├── grpc/GrpcClient.kt              — фасад
+├── grpc/RealGrpcClient.kt          — реализация gRPC
+├── auth/AuthManager.kt             — JWT token storage, getBearerToken, needsRefresh
+├── session/CredentialStore.kt      — credentials, jwt_server_address, last_username
+├── session/SessionManager.kt       — loginV2 + loginV1 fallback, startTokenRefresh
+├── session/UserSession.kt          — accessToken, refreshToken, authMethod
 └── models/ErrorHandler.kt          — единый обработчик ошибок
 ```
 
@@ -71,11 +70,13 @@ data/
 - Device management (user_devices, device_auth_log)
 - `/info` endpoint — версии сервисов для client capability negotiation
 - APP_ENV — загрузка `.env.<APP_ENV>` для dev сервера
-- Systemd: только `Environment=APP_ENV=dev`, без дублирования переменных
+- Token rotation с обнаружением reuse
 
 ### Android
+- BearerTokenInterceptor — автоматическая подстановка JWT Bearer token
+- Proactive token refresh — каждые 60с, за 5 минут до истечения
+- Per-server token validation — токены привязаны к серверу
 - 3 auth виджета: ServerAuthBottomSheet, LoginBottomSheet, RegisterBottomSheet
-- Health check через http://host:8082/health
 - isLoadingChats предотвращает двойную загрузку
 - startSync() останавливается при смене сервера
 - LoginV2 с fallback на V1 при недоступности JWT
@@ -127,16 +128,9 @@ systemctl start lavender-server
 # Тесты
 go test ./...
 
-# Proto gen
-protoc --go_out=./gen --go_opt=paths=source_relative --go-grpc_out=./gen --go-grpc_opt=paths=source_relative messenger.proto
-
 # Логи
 journalctl -u lavender-server-dev -f
 journalctl -u lavender-server -f
-
-# HTTP логи через браузер
-# Prod: http://13.140.25.249/server-logs
-# Dev:  http://13.140.25.249/server-logs-dev
 
 # === ANDROID ===
 cd /root/msg.client.android
@@ -175,8 +169,17 @@ cd /root/msg.client.android
 
 ## ИЗВЕСТНЫЕ ПРОБЛЕМЫ
 
-- **Bearer token не подставляется в gRPC (Android)** — `getAuthMetadata()` определён, но не вызывается. Нужен ClientInterceptor.
-- **Нет token refresh (Android)** — `AuthManager.needsRefresh()` определён, но не вызывается.
-- **Streaming end-to-end** — работает
-- **ON CONFLICT 42P10 на prod** — ошибка была в логах. UNIQUE constraint сейчас есть в БД. Нужен редеплой prod сервера.
-- **Шторка профиля** — divider есть, всё OK
+### 42P10 на prod БД (НЕ исправлена)
+- `pq: there is no unique or exclusion constraint matching the ON CONFLICT specification`
+- Таблица `user_devices` на prod создана до добавления UNIQUE constraint
+- Нужно вручную выполнить на prod БД:
+  ```sql
+  ALTER TABLE user_devices 
+  ADD CONSTRAINT user_devices_user_id_device_id_key 
+  UNIQUE (user_id, device_id);
+  ```
+- Не критично — аутентификация работает
+
+### Первый вход на prod — только Favorites (Android)
+- Проблема в локальном кеше — после очистки всё ОК
+- Не является багом нового кода

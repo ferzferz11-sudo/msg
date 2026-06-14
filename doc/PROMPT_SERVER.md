@@ -2,9 +2,9 @@
 
 ## Текущий статус
 
-**Версия:** v1.1.3.9
+**Версия:** v1.2.0.1
 **Ветка:** feat/1.1.3.x
-**Тег:** v1.1.3.7
+**Тег:** v1.1.3.10 (stable)
 
 ---
 
@@ -17,36 +17,55 @@
 
 ---
 
-## Что сделано в v1.1.3.7
+## Что сделано (v1.2.0.1)
 
 ### Сервер
-- ✅ `DeployAgentTaskStream` — server-side streaming RPC для real-time stdout/stderr/progress
-- ✅ `HandleTaskStream` + `RemoteTaskStreamUpdate` + `onStream` callback в hermes_remote_manager
-- ✅ AuthService unit tests (10 tests + benchmarks)
+- ✅ **AuthService v2 (JWT)** — SignInV2, SignUpV2, RefreshToken, SignOut, RevokeDevice, GetDevices
+- ✅ **AuthInterceptor** — gRPC Bearer token interceptor (streaming + unary)
+- ✅ **/info endpoint** — версии сервисов для client capability negotiation
+- ✅ **APP_ENV support** — загрузка `.env.<APP_ENV>` для dev сервера
+- ✅ **Device management** — user_devices, device_auth_log таблицы
+- ✅ **Token rotation** — обнаружение refresh token reuse
+- ✅ **ServerVersion** = "1.2.0.1" (server.go:33)
+- ✅ Миграция UNIQUE constraint на user_devices (db_auth_devices.go)
 
 ### Android
-- ✅ ErrorHandler — единый обработчик ошибок
-- ✅ AppLog.error() во всех catch-блоках с Toast
-- ✅ deployAgentTaskStream() → callbackFlow
-- ✅ sendMessageStreaming() с real-time Flow collection
-- ✅ Fix: CancellationException больше не показывает тост
+- ✅ **BearerTokenInterceptor** — автоматическая подстановка JWT Bearer token в gRPC
+- ✅ **Proactive token refresh** — проверка каждые 60с, refresh за 5 минут до истечения
+- ✅ **Per-server token validation** — токены привязаны к серверу, очистка при смене
+- ✅ **3 auth видьеты** — ServerAuthBottomSheet, LoginBottomSheet, RegisterBottomSheet
+- ✅ **Server switch** — корректная смена prod/dev серверов
+- ✅ **i18n** — values/strings.xml (en) + values-ru/strings.xml
 
 ---
 
 ## Архитектура
 
 ```
-┌─────────────┐  gRPC          ┌──────────────┐  gRPC           ┌─────────────┐
-│  Android    │ ──────────────→ │   Server     │ ←────────────── │   Remote    │
-│  Client     │  DeployTask    │   (Go)       │  Connect        │   Agent     │
-│             │  Stream        │              │  (streaming)    │   (Python)  │
-└─────────────┘                 └──────────────┘                 └─────────────┘
+┌─────────────┐  gRPC          ┌──────────────┐
+│  Android    │ ──────────────→ │   Server     │
+│  Client     │  Bearer token   │   (Go)       │
+│  v1.1.3.12  │  (JWT v2)       │   v1.2.0.1   │
+└─────────────┘                 └──────────────┘
 ```
 
 **gRPC сервисы:**
-- `messenger.ChatService` — Chat, ListRemoteAgents, DeployAgentTask, DeployAgentTaskStream, GetRemoteAgentStatus
-- `hermes_agent.HermesAgentService` — Connect, GenerateAgentToken, RevokeAgentToken, ListAgentTokens
-- `messenger.AuthService` — SignIn, SignUp
+- `messenger.ChatService` — Chat (streaming), GetChats, GetHistory, SendMessage, etc.
+- `messenger.AuthService` — SignInV2, SignUpV2, RefreshToken, SignOut, RevokeDevice, GetDevices (v2, JWT)
+- `messenger.AuthService` — SignIn, SignUp (v1, deprecated)
+- `hermes_agent.HermesAgentService` — Connect, GenerateAgentToken, etc.
+
+**Auth flow (v2):**
+```
+Client → /info → services.auth >= "2.0" → JWT workflow
+  → SignInV2 → access_token + refresh_token
+  → Bearer token в metadata для всех последующих вызовов
+  → Proactive refresh за 5 минут до истечения
+
+Client → /info = 404 или auth < "2.0" → Legacy workflow
+  → Chat stream с password в первом сообщении
+  → BearerTokenInterceptor = no-op (нет токена)
+```
 
 **Порты:**
 - 50051 — prod
@@ -57,47 +76,86 @@
 ## Критические файлы
 
 ### Сервер
-- `server.go` — инициализация hermesDB, ServerVersion
-- `server_ai.go` — AI Chat + RemoteAgent RPC (DeployAgentTask, DeployAgentTaskStream)
-- `hermes_agent_service.go` — token RPC + Connect
-- `hermes_remote_manager.go` — remote agent manager + streaming
-- `db_hermes.go` — SaveAgentToken, ListAgentTokens, GetAgentTokenByHash
-- `auth/jwt.go` — GenerateAgentToken, ValidateAgentToken
-- `messenger.proto` — все RPC определения
+- `server.go` — ServerVersion, service version constants, InitDB
+- `auth_service_v2.go` — SignInV2, SignUpV2, RefreshToken, SignOut, RevokeDevice, GetDevices
+- `auth_interceptor.go` — AuthInterceptor (unary), AuthStreamInterceptor (streaming)
+- `auth_jwt.go` — GenerateTokenPair, ValidateToken, ExtractJTI
+- `db_auth_devices.go` — UpsertDevice, ValidateRefreshToken, device management
+- `http_server.go` — /health, /info endpoints
+- `main.go` — entry point, gRPC server interceptors
 
 ### Android
-- `data/grpc/HermesGrpc.kt` — все gRPC методы (unary + streaming)
+- `data/grpc/BearerTokenInterceptor.kt` — ClientInterceptor для JWT Bearer token
 - `data/grpc/GrpcClient.kt` — фасад
-- `ui/remote/RemoteAgentSettingsActivity.kt` — управление токенами
-- `ui/remote/RemoteAgentActivity.kt` — чат с агентом
-- `ui/remote/RemoteAgentViewModel.kt` — состояние + streaming
-- `data/models/ErrorHandler.kt` — единый обработчик ошибок
-- `data/models/AppLog.kt` — глобальный логгер
+- `data/grpc/RealGrpcClient.kt` — реализация gRPC (connect, getChats, signInV2, refreshToken)
+- `data/auth/AuthManager.kt` — JWT token storage, getBearerToken, needsRefresh, clearTokens
+- `data/session/SessionManager.kt` — loginV2 + loginV1 fallback, startTokenRefresh, per-server validation
+- `data/session/CredentialStore.kt` — credentials, jwt_server_address tracking
+- `ui/widget/ServerAuthBottomSheet.kt` — шторка выбора входа
 
 ---
 
 ## Правила
 
-- **НЕ** запускать assembleRelease на сервере (OOM, нужно 2GB+)
-- **НЕ** запускать compileDebugKotlin без крайней необходимости
-- Перед любым gradle задачами: `free -h`, если < 2GB free → НЕ запускать
-- version.txt обновлять ДО release.sh
+- **НЕ** запускать assembleRelease на сервере (OOM)
+- **НЕ** компилировать на сервере без крайней необходимости
+- **НЕ** деплоить на prod без тестирования на dev
+- JWT_SECRET: минимум 32 байта, НЕ коммитить
 - Коммитить и пушить после каждого значимого изменения
-- Токены показываются ОДИН РАЗ — логировать при генерации
+- server.go:33 — версия сервера
+- version.txt — версия Android
 
 ---
 
-## Задачи для следующей версии
+## DEV vs PROD
 
-### P1 — Agent streaming output
-- Обновить `hermes_remote_agent.py` — отправлять `TaskStreamUpdate` через gRPC
-- Агент должен стримить stdout/stderr по мере выполнения команды
+| Характеристика | Dev | Prod |
+|----------------|-----|------|
+| Порт gRPC | 50052 | 50051 |
+| Порт HTTP | 8083 | 8082 |
+| Сервис | lavender-server-dev | lavender-server |
+| Конфиг | .env.dev | .env |
+| DB | chat_db_dev | chat_db |
+| Версия | v1.2.0.1 | v1.2.0.1 (после редеплоя) |
+| JWT | да | да |
+| /info | да | да (после редеплоя) |
 
-### P2 — Тесты
-- Модульные тесты для OWL streaming (owl_test.go)
-- Модульные тесты для DeployAgentTaskStream
+---
 
-### P3 — Улучшения
-- Кэширование запросов чатов (Android)
-- Structured logging (zap/logrus)
-- Prometheus метрики
+## Команды
+
+```bash
+# Сборка
+cd /root/msg && export PATH=$PATH:/usr/local/go/bin:~/go/bin
+go build -o /tmp/lavender-server-dev .   # dev
+go build -o /tmp/lavender-server .        # prod
+
+# Деплой на dev
+systemctl stop lavender-server-dev
+cp /tmp/lavender-server-dev /root/LavenderMessenger/run/lavender-server-dev
+systemctl start lavender-server-dev
+
+# Деплой на prod (после тестирования на dev!)
+systemctl stop lavender-server
+cp /tmp/lavender-server /root/LavenderMessenger/run/lavender-server
+systemctl start lavender-server
+
+# Логи
+journalctl -u lavender-server-dev -f
+journalctl -u lavender-server -f
+```
+
+---
+
+## Известные проблемы
+
+### 42P10 на prod БД (НЕ исправлена)
+- `Failed to register device ... pq: there is no unique or exclusion constraint matching the ON CONFLICT specification`
+- Причина: таблица `user_devices` на prod создана до добавления UNIQUE constraint
+- **Решение**: вручную выполнить на prod БД:
+  ```sql
+  ALTER TABLE user_devices 
+  ADD CONSTRAINT user_devices_user_id_device_id_key 
+  UNIQUE (user_id, device_id);
+  ```
+- Не критично — пользователь аутентифицируется, но device registration не проходит
