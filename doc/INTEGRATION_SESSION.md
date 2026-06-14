@@ -1,9 +1,35 @@
 # Lava Messenger — Интеграционная сессия
 
-**Текущая версия:** v1.1.3.11 (dev)
-**Обновлено:** 2026-06-14 (сессия 3)
+**Текущая версия:** v1.2.0.0 (dev)
+**Обновлено:** 2026-06-14 (сессия 4)
 **Тег:** v1.1.3.10 (stable)
 **Ветка:** feat/1.1.3.x
+
+---
+
+## Сессия 4 — Server v1.2.0.0 + AuthService v1 deprecated
+
+### Что сделано
+1. **ServerVersion обновлён до v1.2.0.0** (server.go:33)
+2. **AuthService v1 deprecated warning** — при входе через Chat stream (v1), сервер отправляет:
+   `DEPRECATED: AuthService v1 is deprecated. Please upgrade to v2 (JWT).`
+   - v1 продолжает работать для совместимости со старыми клиентами
+   - Все функции v1 работают, но помечены deprecated
+3. **AuthService v2 (JWT)** — основной метод аутентификации:
+   - SignInV2/SignUpV2 → JWT access (15min) + refresh (30 days) tokens
+   - RefreshToken — ротация refresh token
+   - SignOut/RevokeDevice/GetDevices — управление сессиями
+   - gRPC Bearer token interceptor — валидация JWT на каждом вызове
+   - Device management (user_devices, device_auth_log)
+
+### Структура Auth v2
+```
+auth_service_v2.go      — SignInV2/SignUpV2/RefreshToken/SignOut/RevokeDevice/GetDevices
+auth_interceptor.go     — gRPC Bearer token interceptor (пропускает AuthService + legacy Chat)
+db_auth_devices.go      — CRUD для user_devices + device_auth_log
+db_auth_migrations.go   — миграция существующих таблиц
+auth_jwt.go             — JWT генерация/валидация
+```
 
 ---
 

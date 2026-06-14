@@ -135,6 +135,17 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 			// Single unified log line for successful auth and initial connection
 			logger.Infof("Auth success: %s (v%s), initial signal: %s", msg.User, msg.ClientVersion, msg.RoomId)
 
+			// v1 auth deprecated warning — client should migrate to AuthService v2 (JWT)
+			deprecatedMsg := &gen.Message{
+				User:      "SYSTEM",
+				Text:      "DEPRECATED: AuthService v1 is deprecated. Please upgrade to v2 (JWT).",
+				Id:        uuid.New().String(),
+				CreatedAt: timestamppb.Now(),
+			}
+			if err := stream.Send(deprecatedMsg); err != nil {
+				logger.Errorf("Failed to send deprecated warning: %v", err)
+			}
+
 			// Update last client version and last seen timestamp in DB
 			if msg.ClientVersion != "" {
 				_ = s.db.UpdateClientVersion(msg.User, msg.ClientVersion)

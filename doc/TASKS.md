@@ -1,8 +1,31 @@
 # Лава — Задачи
 
-**Версия:** v1.1.3.11
+**Версия:** v1.2.0.0
 **Ветка:** feat/1.1.3.x
-**Обновлено:** 2026-06-14 (сессия 3)
+**Обновлено:** 2026-06-14 (сессия 4)
+
+---
+
+## ✅ v1.2.0.0 — AuthService v2 (JWT) + v1 deprecated + Server version bump
+
+### Сервер
+- ✅ **ServerVersion обновлён до v1.2.0.0** (server.go:33)
+- ✅ **AuthService v1 deprecated warning** — при входе через Chat stream (v1), сервер отправляет:
+  `DEPRECATED: AuthService v1 is deprecated. Please upgrade to v2 (JWT).`
+  - v1 продолжает работать для совместимости со старыми клиентами
+- ✅ **AuthService v2 (JWT)** — полностью реализован и работает:
+  - SignInV2/SignUpV2 → JWT access (15min) + refresh (30 days)
+  - RefreshToken — ротация refresh token с обнаружением reuse
+  - SignOut/RevokeDevice/GetDevices — управление сессиями
+  - gRPC Bearer token interceptor — валидация JWT на каждом вызове
+  - Device management (user_devices, device_auth_log)
+  - Auth audit log
+- ✅ Dev сервер работает с v2 auth
+
+### Android
+- ⏳ **AuthService v2 интеграция** — запланировано на следующую сессию
+  - Клиент должен поддерживать оба метода входа (v2 приоритет, fallback на v1)
+  - При получении deprecated warning от v1 — показать уведомление
 
 ---
 
