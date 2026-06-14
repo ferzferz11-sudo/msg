@@ -83,7 +83,7 @@ hermes_remote.proto          — Определение протокола
 Сервер v1.1.3.9 работает на prod и dev. Android v1.1.3.10 обновлён.
 
 ### Android v1.1.3.10
-- **i18n завершён** — ~30 hardcoded строк вынесены в strings.xml + values-ru/strings.xml
+- **i18n полностью завершён** — все user-facing hardcoded строки вынесены в strings.xml + values-ru/strings.xml (~50 строк)
   - EditProfileActivity, FullScreenImageActivity, SplashActivity, OwlGrpc, HermesGrpc, CallController, MessageAdapter, HermesGatewayManager, SecurityActivity, RemoteAgentActivity, RemoteAgentSettingsActivity, HermesChatViewModel, ProtoUtils, LavenderMessagingService
 - **Unit-тесты** — ErrorHandlerTest (11 тестов), ChatAdapterTest (15 тестов)
 - **OWL streaming тесты** — уже были написаны ранее, 19 тестов, все проходят
