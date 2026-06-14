@@ -1,122 +1,166 @@
-# Lavender Messenger — Архитектурный анализ
+# Lavender Messenger — Архитектура
 
-**Дата:** 2026-06-04
-**Версия сервера:** 1.1.0.15
-**Версия клиента:** 1.1.0.10+
+**Дата:** 2026-06-14
+**Версия сервера:** 1.1.3.10
+**Версия клиента:** 1.1.3.10
 
 ---
 
 ## 1. Общая архитектура
 
 ```
-┌─────────────┐     gRPC (bidirectional)    ┌──────────────┐
-│   Android   │◄────────────────────────────►│              │
-│   Client    │     gRPC (unary)             │   Go Server  │
-│  (Kotlin)   │◄────────────────────────────►│   (main.go)  │
-└─────────────┘                              └──────┬───────┘
-                                                    │
-┌─────────────┐     gRPC (bidirectional)           │
-│    iOS      │◄──────────────────────────────────►│
-│   Client    │                                    │
-│   (Swift)   │                              ┌─────┴─────┐
-└─────────────┘                              │ PostgreSQL │
-                                             │   (DB)     │
-┌─────────────┐                              └───────────┘
-│   macOS     │     gRPC
-│   Client    │◄────────────────────────────►│
-│   (Swift)   │                              │
-└─────────────┘                    ┌─────────┴─────────┐
-                                   │       FCM         │
-                                   │  (Push Notif.)    │
-                                   └───────────────────┘
+┌─────────────────┐     gRPC (bidirectional)    ┌──────────────────┐
+│                 │◄────────────────────────────►│                  │
+│  Android Client │     gRPC (unary)             │    Go Server     │
+│    (Kotlin)     │◄────────────────────────────►│    (main.go)     │
+│                 │                              │                  │
+└─────────────────┘                              └────────┬─────────┘
+                                                          │
+┌─────────────────┐                                       │
+│  Remote Agent   │     gRPC (bidirectional)              │
+│    (Python)     │◄────────────────────────────────────►│
+└─────────────────┘                                       │
+                                                          │
+                                                 ┌────────┴────────┐
+                                                 │    PostgreSQL   │
+                                                 │      (DB)       │
+                                                 └─────────────────┘
 ```
 
 ## 2. Порты
 
-| Сервис | Порт | Протокол |
-|--------|------|----------|
-| gRPC (prod) | 50051 | gRPC |
-| gRPC (dev) | 50052 | gRPC |
-| HTTP (prod) | 8081-8082 | HTTP |
-| HTTP (dev) | 8083 | HTTP |
+| Сервис | Порт | Протокол | Описание |
+|--------|------|----------|----------|
+| gRPC (prod) | 50051 | gRPC | Основной сервер |
+| gRPC (dev) | 50052 | gRPC | Dev сервер |
+| HTTP (prod) | 8081-8082 | HTTP | Файлы, аватары, /health |
+| HTTP (dev) | 8083 | HTTP | Dev HTTP |
+| Log Monitor | 8090 | HTTP | Логи (опционально) |
 
-## 3. Hermes Multi-Agent Orchestrator (v1.1.0.15)
+## 3. Структура сервера (Go)
 
-### Архитектура
-
-```
-ChatService (gRPC)
-  │
-  ├─→ ChatWithPipeline → Orchestrator.ProcessWithPipeline()
-  │                         │
-  │                         ├─→ RAG Pipeline (core/rag/)
-  │                         │     ├─ EmbeddingService (TF-IDF → Qdrant+CLIP)
-  │                         │     └─ VectorSearch (in-memory → Qdrant)
-  │                         │
-  │                         ├─ LLM Router (core/llm/)
-  │                         │     ├─ OpenRouter (default, priority=10)
-  │                         │     └─ Hermes local (prefix=local/, priority=20)
-  │                         │
-  │                         └─ Tool Executor (core/tools/)
-  │                               ├─ search_messages
-  │                               ├─ search_users
-  │                               ├─ web_search
-  │                               └─ get_chat_info
-  │
-  ├─→ Orchestrate → Orchestrator.Orchestrate()
-  │                   ├─ analyzeRequest (LLM routing)
-  │                   ├─ runSingleAgent
-  │                   ├─ runParallelAgents
-  │                   └─ runPipelineAgents
-  │
-  └─→ HermesAgentService ←─ hermes-agent daemon (НЕ РЕАЛИЗОВАНО)
-```
-
-### LLM Router
-- **OpenRouter** (default) — SSE streaming, tool calls, multimodal images
-- **Hermes local** (prefix=local/) — `hermes chat -q --quiet`, stateless, --resume для сессий
-
-### RAG Pipeline
-- Интерфейсы: `EmbeddingService`, `VectorSearch`, `RAGPipeline`
-- Текущая реализация: in-memory TF-IDF (384 dim, cosine similarity)
-- Production план: Qdrant + CLIP
-
-### Tool Executor
-- `search_messages` — ILIKE по messages таблице
-- `search_users` — поиск по username/display_name/phone
-- `web_search` — DuckDuckGo Instant Answer API
-- `get_chat_info` — имя чата, тип, количество участников
-
-### Pipeline (core/pipeline/)
-- Адаптивный tool calling loop: max 10 итераций (страховка от бесконечного цикла)
-- Цикл продолжается пока LLM вызывает tools, останавливается когда ответ финальный
-
-## 4. Технический стек
-
-### Сервер
-- Go 1.26, gRPC, PostgreSQL, Firebase Cloud Messaging
-- AES-256-GCM, bcrypt, keepalive 20s/20s
-- systemd сервис, .env конфигурация
-- Hermes Agent v0.14.0 (Python 3.11.15) — локальный LLM провайдер
-
-### Клиент (Android)
-- Kotlin, gRPC (protobuf-lite manual), Room, Firebase, WebRTC
-- minSdk 29, compileSdk 37, targetSdk 35
-- MVVM + StateFlow + ViewBinding
-- Material Design 3
-
-## 5. Ключевые файлы
+### Пакеты
 
 | Файл | Назначение |
 |------|------------|
-| `main.go` | gRPC + HTTP серверы, точка входа |
-| `server.go` | Основные gRPC хендлеры (~3550 строк) |
-| `hermes_orchestrator.go` | Оркестратор, LLM Router + RAG + Pipeline init |
-| `hermes_agents.go` | Реестр агентов (8 агентов) |
-| `core/pipeline/pipeline.go` | RAG → LLM → Tool Calling loop |
-| `core/llm/` | LLM Router + провайдеры |
-| `core/rag/` | RAG интерфейсы + in-memory реализация |
-| `core/tools/` | Tool Executor |
+| `main.go` | Точка входа, gRPC + HTTP серверы |
+| `logger.go` | Structured logging (logrus) |
+| `server.go` | Основные gRPC хендлеры |
+| `server_chat.go` | Авторизация, стриминг сообщений |
+| `server_chats.go` | Чаты: создание, удаление, список |
+| `server_users.go` | Пользователи: профиль, аватар |
+| `server_messages.go` | Сообщения: история, реакции, редактирование |
+| `server_profile.go` | Профиль: username, password, удаление |
+| `server_push.php` | FCM push-уведомления |
+| `server_contacts.go` | Контакты |
+| `server_themes.go` | Темы оформления |
+| `server_favorites.go` | Избранное |
+| `server_drafts.go` | Черновики сообщений |
+| `server_muted.go` | Отключённые чаты |
+| `server_management.go` | Управление сервером |
+| `server_ai.go` | AI: OWL, Hermes, оркестратор |
+| `server_remote.go` | Remote Agent RPC |
+| `hermes_orchestrator.go` | Оркестратор агентов |
+| `hermes_agents.go` | Реестр агентов |
+| `hermes_agent_service.go` | HermesAgentService gRPC |
+| `hermes_remote_manager.go` | Менеджер Remote Agent |
+| `owl.go` | OWL AI сессии |
 | `db.go` | PostgreSQL, миграции |
-| `db_hermes.go` | миграции Hermes таблиц |
-| `messenger.proto` | gRPC определения |
+| `db_hermes.go` | Миграции Hermes таблиц |
+| `http_server.go` | HTTP сервер (файлы, загрузки) |
+
+### Core пакеты
+
+| Файл | Назначение |
+|------|------------|
+| `core/llm/provider.go` | LLM Router |
+| `core/llm/openrouter/` | OpenRouter провайдер |
+| `core/llm/hermes/` | Hermes провайдер |
+| `core/pipeline/pipeline.go` | RAG → LLM → Tools pipeline |
+| `core/rag/` | RAG интерфейсы + in-memory |
+| `core/tools/` | Tool Executor |
+
+## 4. Remote Agent
+
+```
+┌─────────────┐     gRPC bidirectional     ┌──────────────────┐
+│   Python    │◄──────────────────────────►│   Go Server      │
+│   Agent     │                            │   (server_remote)│
+└─────────────┘                            └──────────────────┘
+
+Протокол:
+  Agent → Connect → AGENT_REGISTER
+  Agent → AGENT_HEARTBEAT (каждые 30с)
+  Agent → AGENT_TASK_STREAM_UPDATE (stdout/stderr chunks)
+  Agent → AGENT_TASK_STREAM_UPDATE (done=True)
+  Agent → AGENT_TASK_RESULT (финальный результат)
+```
+
+### Типы задач
+
+| Тип | Описание |
+|-----|----------|
+| shell | Выполнение shell команд |
+| git | Git операции |
+| build | Сборка проекта |
+| deploy | Деплой |
+| file | Операции с файлами |
+| docker | Docker операции |
+| ai | AI задачи |
+
+## 5. Технический стек
+
+### Сервер
+- Go 1.26
+- gRPC + Protocol Buffers
+- PostgreSQL (database/sql + pq)
+- Firebase Cloud Messaging (push)
+- logrus (structured logging)
+- systemd, .env конфигурация
+- JWT аутентификация для Remote Agent
+
+### Клиент (Android)
+- Kotlin, gRPC (protobuf-lite manual)
+- Room Database, Firebase, WebRTC
+- MVVM + StateFlow + ViewBinding
+- Material Design 3
+
+## 6. Логирование
+
+Используется `logrus` (structured logging):
+
+```bash
+# Формат (по умолчанию text)
+LOG_FORMAT=json   # JSON для production
+LOG_FORMAT=text   # Читаемый для dev
+
+# Уровень (по умолчанию info)
+LOG_LEVEL=debug|info|warn|error
+```
+
+Пример JSON output:
+```json
+{"time":"2026-06-14T04:33:55","level":"info msg":"Listening clients at [::]:50052"}
+```
+
+## 7. Тесты
+
+| Команда | Описание |
+|---------|----------|
+| `./scripts/run-tests.sh` | Все тесты |
+| `./scripts/run-unit-tests.sh` | Unit-тесты |
+| `./scripts/run-streaming-tests.sh` | Тесты стриминга |
+
+## 8. Деплой
+
+| Команда | Описание |
+|---------|----------|
+| `./scripts/deploy-dev.sh` | Деплой на dev |
+| `./scripts/release.sh <version>` | Релиз |
+
+## 9. Безопасность
+
+- JWT токены для Remote Agent (SHA-256 хеш в БД)
+- Grace period 30с для переподключения агентов
+- E2EE для секретных чатов (AES-256-GCM)
+- Rate limiting: OWL 10 req/min, Hermes 5 req/min

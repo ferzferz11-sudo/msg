@@ -1,8 +1,25 @@
 # Лава — Задачи
 
-**Версия:** v1.1.3.9
+**Версия:** v1.1.3.10
 **Ветка:** feat/1.1.3.x
-**Обновлено:** 2026-06-13
+**Обновлено:** 2026-06-14
+
+---
+
+## ✅ v1.1.3.10 — Structured logging + i18n completion + Stability
+
+### Сервер
+- ✅ **Structured logging** — logrus вместо log.Printf (354 вызова заменены)
+  - JSON/text формат через `LOG_FORMAT` env
+  - Уровни через `LOG_LEVEL` env
+- ✅ **Grace period fix** — очистка истекших в `GetOnlineUsers()`
+- ✅ **Интеграционные тесты streaming** — 4 новых теста (NilManager, InvalidAgent, WithRegisteredAgent, MultipleChunks)
+- ✅ **Тестовые скрипты** — `run-tests.sh`, `run-unit-tests.sh`, `run-streaming-tests.sh`
+
+### Android
+- ✅ **i18n завершён** — все user-facing строки вынесены (~50 строк)
+- ✅ **Unit-тесты** — ErrorHandlerTest (11), ChatAdapterTest (15)
+- ✅ **Crash fixes** — OwlSettingsActivity, RemoteAgentActivity (getString в полях класса)
 
 ---
 
@@ -155,12 +172,12 @@
 - [x] **Модульные тесты для OWL streaming** ✅ v1.1.3.10 (уже были написаны ранее)
 - [x] **Кэширование запросов чатов** ✅ v1.1.3.10 (уже реализовано через Room DB)
 - [x] Unit-тесты для Android (ErrorHandler, ChatAdapter) ✅ v1.1.3.10
-- [x] **i18n: завершить вынос оставшихся строк** ✅ v1.1.3.10 (~50 строк вынесено, все user-facing строки локализованы)
-- [ ] Интеграционные тесты для streaming (сервер + Android)
+- [x] **i18n: завершить вынос оставшихся строк** ✅ v1.1.3.10
+- [x] **Интеграционные тесты для streaming** ✅ v1.1.3.10
 
 ### Низкий приоритет
+- [x] **Structured logging (logrus)** ✅ v1.1.3.10
 - [ ] Qdrant + CLIP (production RAG)
-- [ ] Structured logging (zap/logrus)
 - [ ] Prometheus метрики
 - [ ] Health check endpoint используется в Android
 
@@ -171,18 +188,18 @@
 ### Сервер (Go)
 ```
 main.go                    — Entry point, gRPC server, graceful shutdown
+logger.go                  — Structured logging (logrus)
 server.go                  — структура server, общие методы
-server_*.go                — методы по доменам (12 файлов)
+server_*.go                — методы по доменам (14 файлов)
 ai_chat_manager.go         — единый менеджер AI чатов
 owl.go                     — OWL AI: streaming через OpenRouter
 hermes_orchestrator.go     — Hermes: оркестрация агентов
-hermes_agent_service.go   — HermesAgentService: Connect, tokens, agent process mgmt
-hermes_remote_manager.go  — RemoteAgentManager: Register, SendTask, HandleTaskResult, HandleTaskStream
-server_ai.go               — AI Chat + RemoteAgent RPC (DeployAgentTask, DeployAgentTaskStream)
+hermes_agent_service.go    — HermesAgentService: Connect, tokens, agent process mgmt
+hermes_remote_manager.go   — RemoteAgentManager: Register, SendTask, HandleTaskResult, HandleTaskStream
+server_ai.go               — AI Chat + Hermes Orchestrator RPC
+server_remote.go           — Remote Agent RPC (ListRemoteAgents, DeployAgentTask, DeployAgentTaskStream)
 http_server.go             — HTTP сервер (файлы, аватары, /health)
 db.go / db_hermes.go       — Database layer
-auth_service.go            — AuthService (SignIn, SignUp)
-jwt.go                     — JWT генерация/валидация
 messenger.proto            — ChatService, AuthService, AI Chat, Remote Agent RPC
 hermes_remote.proto        — HermesAgentService
 ```
