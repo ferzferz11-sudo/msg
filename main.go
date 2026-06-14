@@ -72,8 +72,10 @@ func main() {
 	// Read server address from environment variables
 	// Falls back to default port 50051 if not specified
 	serverAddress := os.Getenv("SERVER_ADDRESS")
+	logger.Infof("SERVER_ADDRESS from env: '%s'", serverAddress)
 	if serverAddress == "" {
 		serverAddress = ":50051" // Default gRPC port
+		logger.Infof("Using default server address: %s", serverAddress)
 	}
 
 	// Establish database connection for message persistence
@@ -113,6 +115,7 @@ func main() {
 			logger.Errorf("failed to listen: %v\n\nHint: Port %s is already in use. To fix:\n  lsof -ti:%s | xargs kill -9 2>/dev/null; go run .", err, port, port)
 		}
 		logger.Errorf("failed to listen: %v", err)
+		return
 	}
 
 	// Initialize a new gRPC server instance with auth interceptors

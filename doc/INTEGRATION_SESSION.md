@@ -1,31 +1,31 @@
 # Lava Messenger — Интеграционная сессия
 
-**Текущая версия:** v1.2.0.0 (dev)
-**Обновлено:** 2026-06-14 (сессия 5)
+**Текущая версия:** v1.2.0.1 (dev)
+**Обновлено:** 2026-06-14 (сессия 6)
 **Тег:** v1.1.3.10 (stable)
 **Ветка:** feat/1.1.3.x
 
 ---
 
-## Сессия 5 — Auth widgets + Server switch fix + Chat flickering fix
+## Сессия 6 — AuthService v2 (JWT) + Server info endpoint
 
 ### Что сделано
-1. **3 auth виджета** — ServerAuthBottomSheet, LoginBottomSheet, RegisterBottomSheet
-   - Единый стиль: лого + сервер + статус (health check) + кнопки
-   - Используются в ChatListActivity и ServersActivity
-   - Имена серверов: "Lava Germany" (prod), "Lava Germany dev" (dev)
-2. **Server switch исправлен** — один вход, правильный сервер, нет мерцания
-3. **Chat flickering исправлен** — isLoadingChats, isTransitioning флаги
-4. **i18n** — server_default_name, app_version_format ("Lava: app Android v1.1.3.11")
+1. **Server `/info` endpoint** — `GET http://host:8082/info` возвращает версии сервисов для client capability negotiation
+   - `services.auth >= "2.0"` → клиент использует JWT workflow (SignInV2/SignUpV2)
+   - `services.auth < "2.0"` или endpoint недоступен → legacy workflow (Chat stream auth)
+2. **Service version constants** — `AuthServiceVersion`, `ChatServiceVersion`, etc. в server.go
+3. **APP_ENV support** — main.go загружает `.env.<APP_ENV>` (например `.env.dev`) вместо `.env`
+4. **Android AuthV2 integration** — SessionManager.loginV2() с fallback на v1
+5. **ChatListActivity toolbar flickering fix** — единый поток загрузки чатов
 
 ### Коммиты
-- `7d9769f` — fix: double-login bug on server switch
-- `bc0e701` — fix: server switch — clear chats, update session, wait for READY
-- `ee4d44d` — refactor: extract LoginBottomSheet and RegisterBottomSheet widgets
-- `0382343` — feat: ServerAuthBottomSheet with health check + fix chat flickering
-- `502154b` — fix: prevent double auth sheet, i18n for server name and app version
-- `eba9459` — refactor: server info only on ServerAuthBottomSheet
-- `f312a62` — fix: prevent concurrent loadChats and sync after server switch
+- `725d0ad` — fix: .env file loading — use .env.APP_ENV format (.env.dev)
+- `4b9824e` — chore: bump server version to 1.2.0.1-dev
+- `d2ee3b7` — fix: support APP_ENV for .env file selection, add /info endpoint
+- `6c771b7` — feat: add /info endpoint for client capability negotiation
+- `155c0dc` — fix: replace isNullOrEmpty/isNotEmpty with length checks
+- `30ca714` — feat: AuthService v2 (JWT) integration — login/register with token storage
+- `3da8d80` — fix: prevent toolbar flickering after server switch
 
 ---
 

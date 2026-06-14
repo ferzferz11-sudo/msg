@@ -246,3 +246,50 @@
   `listOf(R.id.aiFab, R.id.addChatFab, R.id.addContactFab, R.id.addThemeFab)`
 - ThemeApplier устанавливает `backgroundTintList=customPrimary` и `imageTintList=customOnPrimary`
 - Без этого FAB остаётся default `colorSecondaryContainer`
+
+---
+
+## Dev Server Management
+
+### Systemd service
+- **Файл:** `/etc/systemd/system/lavender-server-dev.service`
+- **НЕ редактировать напрямую** — использовать `sudo tee`:
+  ```bash
+  sudo tee /etc/systemd/system/lavender-server-dev.service > /dev/null << 'EOF'
+  [Unit]
+  Description=Lavender Messenger Server — DEV
+  After=network.target postgresql.service
+  Wants=postgresql.service
+
+  [Service]
+  Type=simple
+  WorkingDirectory=/root/LavenderMessenger/run
+  ExecStart=/root/LavenderMessenger/run/lavender-server-dev
+  Restart=always
+  RestartSec=5
+  Environment=APP_ENV=dev
+
+  [Install]
+  WantedBy=multi-user.target
+  EOF
+  ```
+- После изменения: `sudo systemctl daemon-reload && sudo systemctl restart lavender-server-dev`
+
+### Environment files
+- **Dev config:** `/root/LavenderMessenger/run/.env.dev` — загружается автоматически при `APP_ENV=dev`
+- **Prod config:** `/root/LavenderMessenger/run/.env`
+- **НЕ коммитить** .env файлы — содержат секреты (JWT_SECRET, DB credentials, API keys)
+- Формат: `KEY=value` (без кавычек, без пробелов вокруг `=`)
+
+### Common issues
+- **`missing port in address`** — значит `SERVER_ADDRESS` не загрузился из .env. Проверить:
+  1. `APP_ENV=dev` установлен в systemd service
+  2. `.env.dev` существует и содержит `SERVER_ADDRESS=0.0.0.0:50052`
+  3. Нет старого `Environment=SERVER_ADDRESS=***` в systemd service
+- **Panic после `failed to listen`** — баг в main.go: нет `return` после ошибки `net.Listen`. Исправлено в v1.2.0.1+
+- **Text file busy** при копировании бинарника — сначала `systemstctl stop`, потом `kill -9 <PID>`, потом копировать
+
+### Server info endpoint
+- `GET http://host:8082/info` — возвращает версии сервисов
+- Используется Android клиентом для capability negotiation
+- `services.auth >= "2.0"` → JWT workflow, иначе legacy
