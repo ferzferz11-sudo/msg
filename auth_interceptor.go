@@ -47,10 +47,12 @@ func AuthStreamInterceptor(srv interface{}, ss grpc.ServerStream, info *grpc.Str
 		return handler(srv, ss)
 	}
 
-	// For Chat stream with legacy auth (password in first message),
-	// we need special handling — the interceptor just checks metadata here.
-	// Legacy chat stream auth is handled in the Chat RPC handler itself.
-	if info.FullMethod == "/messenger.ChatService/Chat" {
+	// Legacy streams (v1 clients without JWT): Chat, Typing, CallSession
+	// These streams handle auth internally (password in first message / username-based)
+	switch info.FullMethod {
+	case "/messenger.ChatService/Chat",
+		"/messenger.ChatService/Typing",
+		"/messenger.ChatService/CallSession":
 		return handler(srv, ss)
 	}
 

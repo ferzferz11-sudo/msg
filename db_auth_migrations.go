@@ -63,6 +63,21 @@ func (db *DB) MigrateDeviceTables() error {
 	}
 	db.Exec(`CREATE INDEX IF NOT EXISTS idx_device_auth_log_user ON device_auth_log(user_id)`)
 
+	// Step 8: Create user_settings for ProfileService v2 (locale, theme, push, custom)
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS user_settings (
+			user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+			locale VARCHAR(10) DEFAULT 'en',
+			theme_id VARCHAR(255) DEFAULT '',
+			push_enabled BOOLEAN DEFAULT TRUE,
+			custom JSONB DEFAULT '{}'::jsonb,
+			updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+		)
+	`)
+	if err != nil {
+		logger.Warnf("Migration: could not create user_settings: %v", err)
+	}
+
 	// Verify
 	var colCount int
 	db.QueryRow(`SELECT COUNT(*) FROM information_schema.columns WHERE table_name = 'user_devices'`).Scan(&colCount)

@@ -184,9 +184,19 @@ func main() {
 	hermesAgentServer := newHermesAgentServer(srv, orchestrator)
 	hermesagent.RegisterHermesAgentServiceServer(s, hermesAgentServer)
 
-	// Register server management service (super admin only)
-	srvMgmt := &serverServiceServer{db: db}
-	gen.RegisterServerServiceServer(s, srvMgmt)
+	// Register ProfileService v2 (JWT-only, dev server only)
+	if appEnv == "dev" {
+		profileServer := newProfileServerV2(db)
+		gen.RegisterProfileServiceServer(s, profileServer)
+		logger.Info("ProfileService v2 registered (dev)")
+	}
+
+	// Register server management service (only dev)
+	if appEnv == "dev" {
+		srvMgmt := &serverServiceServer{db: db}
+		gen.RegisterServerServiceServer(s, srvMgmt)
+		logger.Info("ServerService registered (dev)")
+	}
 
 	// Log server startup information
 	logger.Infof("Listening clients at %v", lis.Addr())
