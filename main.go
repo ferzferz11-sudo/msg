@@ -45,8 +45,14 @@ func main() {
 
 	// Load environment variables from .env file for local development
 	// If .env file doesn't exist, fall back to system environment variables
-	if err := godotenv.Load(); err != nil {
-		logger.Error("No .env file found or error loading it, using system environment variables")
+	appEnv := os.Getenv("APP_ENV")
+	if appEnv != "" {
+		if err := godotenv.Load("." + appEnv + ".env"); err != nil {
+			logger.Warnf("No .%s.env file found, trying .env", appEnv)
+			godotenv.Load()
+		}
+	} else {
+		godotenv.Load()
 	}
 
 	// Initialize Firebase Admin SDK
