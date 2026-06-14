@@ -12,7 +12,8 @@
 1. **INTEGRATION_SESSION.md** — текущий контекст интеграции (версии, архитектура, что сделано, что нет)
 2. **TASKS.md** — таск-трекер (сделано/не сделано по приоритетам)
 3. **CHANGELOG.md** (в корне) — история версий сервера
-4. **doc/PROMPT_ANDROID.md** (в `/root/msg.client.android/`) — обучающий промпт для Android-сессий
+4. **PROMPT.md** — промпт для любых сессий (общий)
+5. **PROMPT_SERVER.md** — промпт для серверных сессий
 
 ---
 
@@ -31,8 +32,8 @@
 |------|-----------|-------------|
 | `AI_SERVICES.md` | AI-сервисы: архитектура, API, потоки данных, proto mapping | **При работе с AI чатами** |
 | `PITFALLS.md` | Подводные камни и известные проблемы | **Перед началом работы** |
+| `AUTHSERVICE_V2.md` | AuthService v2: JWT, device management, миграция | При работе с авторизацией |
 | `HERMES_ORCHESTRATOR_DOC.md` | Документация Hermes Orchestrator | При работе с Hermes |
-| `LAVENDER_CHAT_PROJECT.md` | Проект Lavender Chat | При работе над ChatWidget |
 | `PROJECT_MEMORY.md` | Проектная память: ключевые решения | Для общего контекста |
 | `PROMPT.md` | Промпт для любых сессий (общий) | **При старте новой сессии** |
 | `PROMPT_SERVER.md` | Промпт для серверных сессий | **При старте новой серверной сессии** |
@@ -53,7 +54,6 @@
 | `/root/msg.client.android/doc/TASKS.md` | Таск-трекер Android |
 | `/root/msg.client.android/doc/PATTERNS.md` | Паттерны разработки Android |
 | `/root/msg.client.android/doc/REMOTE_AGENT.md` | Документация Remote Agent |
-| `/root/msg.client.android/doc/SESSION_NOTES.md` | Заметки текущей сессии |
 | `/root/msg.client.android/CHANGELOG.md` | История изменений Android |
 
 ---
@@ -66,5 +66,5 @@
 - После каждого значимого изменения: обновлять INTEGRATION_SESSION.md + TASKS.md + соответствующие документы
 - При каждом релизе: обновлять CHANGELOG.md (сервер + Android), INTEGRATION_SESSION.md, TASKS.md, PITFALLS.md
 - Промпт для следующей сессии всегда внизу INTEGRATION_SESSION.md
-- Версия сервера в server.go:34, версия Android в version.txt
+- Версия сервера в server.go:33, версия Android в version.txt
 - changelog.txt БОЛЬШЕ НЕ ИСПОЛЬЗУЕТСЯ

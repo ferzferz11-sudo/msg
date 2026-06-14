@@ -1,33 +1,17 @@
 # Промпт для новой сессии — v1.2.0.0 (dev)
 
-**Дата:** 2026-06-14 (сессия 4)
+**Дата:** 2026-06-14
 **Версия:** v1.2.0.0
 **Ветка:** feat/1.1.3.x
 
 ---
 
-## СТАТУС: v1.2.0.0 — DEV (AuthService v2 + v1 deprecated)
+## СТАТУС: v1.2.0.0 — DEV
 
 Сервер: v1.2.0.0 — AuthService v2 (JWT) основной, v1 deprecated (но работает).
-Android: v1.1.3.11 — исправлен двойной вход, нужна интеграция AuthService v2.
+Android: 3 auth виджета (ServerAuth, Login, Register), server switch исправлен.
 
----
-
-## ИЗМЕНЕНИЯ В ЭТОЙ СЕССИИ
-
-### Сервер
-- ✅ **AddUserDevice fix** (db.go:1069): `ON CONFLICT (device_id)` → `ON CONFLICT (user_id, device_id)`
-  - Исправлена ошибка 42P10 при повторной регистрации устройства
-  - Коммит: `7a6b546`
-- ✅ **JWT_SECRET** исправлен на dev и prod (32 байта)
-  - V2 SignInV2 работает на dev
-
-### Известные проблемы (НЕ ИСПРАВЛЕНО)
-- ⚠️ **Двойной вход на клиенте** при смене сервера (prod → dev):
-  - Клиент делает два входа: из ServersActivity и из ChatListActivity auto-login
-  - Причина: CredentialStore.setServerAddress вызывается ДО входа в ServersActivity
-  - Нужно исправить: не сохранять serverAddress до успешного входа
-  - Подробности в TASKS.md и INTEGRATION_SESSION.md
+**Текущая задача:** Мерцание тулбара после входа через серверы — "не может подключиться" + кружок перезагрузки.
 
 ---
 
@@ -36,24 +20,38 @@ Android: v1.1.3.11 — исправлен двойной вход, нужна и
 ### Сервер (/root/msg)
 ```
 main.go                    — Entry point, gRPC server, graceful shutdown
-- **server.go** — Структура server, общие методы (ServerVersion = "1.1.3.10")
-server_*.go                — Методы по доменам
-server_remote.go           — Remote Agent RPC (DeployAgentTaskStream fix: single done=True)
-hermes_remote_manager.go   — HandleTaskStream + StreamDone flag
-server_remote_test.go      — 6 unit-тестов для streaming
-ai_chat_manager.go         — Единый менеджер AI чатов
-owl.go                     — OWL AI: streaming через OpenRouter API
-hermes_orchestrator.go     — Hermes: оркестрация агентов
-hermes_agent_service.go    — HermesAgentService: Connect, tokens
-http_server.go             — HTTP сервер (/files, /avatars, /health)
-db.go / db_hermes.go       — Database layer
-messenger.proto            — ChatService, Remote Agent RPC
-```
-auth_service.go            — AuthService (SignIn, SignUp)
-jwt.go                     — JWT генерация/валидация
-bot_commands.go            — Bot Commands: /status, /deploy, /logs, /restart, /ai
+server.go                  — ServerVersion = "1.2.0.0"
+auth_service.go            — AuthService v1 (deprecated, но работает)
+auth_service_v2.go         — AuthService v2 (JWT, основной)
+auth_interceptor.go        — gRPC Bearer token interceptor
+auth_jwt.go                — JWT генерация/валидация
+db_auth_devices.go         — CRUD для user_devices + device_auth_log
+db_auth_migrations.go      — миграция таблиц
+server_remote.go           — Remote Agent RPC
+hermes_remote_manager.go   — HandleTaskStream
+ai_chat_manager.go         — AI чаты
+owl.go                     — OWL AI
+hermes_orchestrator.go     — Hermes Orchestrator
+http_server.go             — HTTP (/health на 8082)
 messenger.proto            — ChatService, AuthService, AI Chat, Remote Agent RPC
-hermes_remote.proto        — HermesAgentService
+```
+
+### Android (/root/msg.client.android)
+```
+ui/
+├── widget/
+│   ├── ServerAuthBottomSheet.kt    — шторка выбора входа (лого + сервер + статус)
+│   ├── LoginBottomSheet.kt         — шторка входа
+│   └── RegisterBottomSheet.kt      — шторка регистрации
+├── remote/                         — Remote Agent UI
+├── chat/widget/ChatWidget.kt       — общий виджет чата
+└── adapter/ChatAdapter.kt          — адаптер чатов (clearAll)
+
+data/
+├── grpc/GrpcClient.kt              — facade
+├── session/CredentialStore.kt      — credentials + server list + getDefaultServer()
+├── session/SessionManager.kt       — управление сессией
+└── models/ErrorHandler.kt          — единый обработчик ошибок
 ```
 
 ---
@@ -61,17 +59,16 @@ hermes_remote.proto        — HermesAgentService
 ## КЛЮЧЕВЫЕ РЕШЕНИЯ
 
 ### Сервер
-- **server_remote.go** — все Remote Agent RPC вынесены из server_ai.go в отдельный файл
-- **ensureRemoteManager()** — единая проверка зависимостей для всех Remote Agent RPC
-- **Graceful degradation** — ListRemoteAgents возвращает пустой список если менеджер недоступен
-- **Stale detection** — heartbeat > 120с → status="stale"
-- **DeployAgentTask/Stream** — проверка существования агента перед отправкой
+- AuthService v2 (JWT) — основной метод аутентификации
+- AuthService v1 — deprecated, но работает для совместимости
+- gRPC Bearer token interceptor — валидация JWT на каждом вызове
+- Device management (user_devices, device_auth_log)
 
-### Android (ключевые изменения)
-- **Нет выбора сервера в логине** — сервер всегда из CredentialStore (по умолчанию prod)
-- **Переключение сервера** — только через ServersActivity
-- **ErrorHandler.kt** — единый обработчик ошибок с AppLog
-- **Room DB version 9** — defensive migration
+### Android
+- 3 auth виджета: ServerAuthBottomSheet, LoginBottomSheet, RegisterBottomSheet
+- Health check через http://host:8082/health
+- isLoadingChats предотвращает двойную загрузку
+- startSync() останавливается при смене сервера
 
 ---
 
@@ -79,12 +76,10 @@ hermes_remote.proto        — HermesAgentService
 
 1. НЕ компилировать на сервере (OOM kill)
 2. Коммитить и пушить после каждого значимого изменения
-3. Версия сервера в `server.go:34`, версия Android в `version.txt`
-4. Разделение архитектуры — каждый домен в своём server_*.go файле
-5. userId (UUID) — всегда как ключ, НЕ username
-6. changelog.txt БОЛЬШЕ НЕ ИСПОЛЬЗУЕТСЯ
-7. Agent tokens: в БД хранится SHA-256 хеш, не сам токен
-8. JWT секрет: минимум 32 байта, НЕ коммитить
+3. Версия сервера в server.go:33, версия Android в version.txt
+4. userId (UUID) — всегда как ключ, НЕ username
+5. changelog.txt БОЛЬШЕ НЕ ИСПОЛЬЗУЕТСЯ
+6. JWT секрет: минимум 32 байта, НЕ коммитить
 
 ---
 
@@ -104,10 +99,6 @@ systemctl stop lavender-server
 cp /tmp/lavender-server /root/LavenderMessenger/run/lavender-server
 systemctl start lavender-server
 
-# Proto gen
-protoc --go_out=./gen --go_opt=paths=source_relative \
-  --go-grpc_out=./gen --go-grpc_opt=paths=source_relative messenger.proto
-
 # Тесты
 go test ./...
 
@@ -123,6 +114,7 @@ cd /root/msg.client.android
 | Характеристика | Dev | Prod |
 |----------------|-----|------|
 | Порт | 50052 | 50051 |
+| Имя | Lava Germany dev | Lava Germany |
 | Сервис | lavender-server-dev | lavender-server |
 | Конфиг | .env.dev | .env |
 | DB | chat_db_dev | chat_db |
@@ -143,5 +135,5 @@ cd /root/msg.client.android
 
 ## ИЗВЕСТНЫЕ ПРОБЛЕМЫ
 
-- Streaming end-to-end работает (проверено в v1.1.3.10)
+- Streaming end-to-end работает
 - Server migration warnings: `role "lavender" does not exist` (не критично)
