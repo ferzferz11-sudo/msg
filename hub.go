@@ -218,10 +218,14 @@ func (h *Hub) GetOnlineUsers() []string {
 	}
 	h.mu.RUnlock()
 
-	// Also include users in grace period (reconnecting)
+	// Also include users in grace period (reconnecting) — but only if not expired
 	h.graceMu.Lock()
-	for username := range h.gracePeriods {
-		userMap[username] = struct{}{}
+	for username, t := range h.gracePeriods {
+		if time.Since(t) < gracePeriodDuration {
+			userMap[username] = struct{}{}
+		} else {
+			delete(h.gracePeriods, username)
+		}
 	}
 	h.graceMu.Unlock()
 
