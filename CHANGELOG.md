@@ -1,5 +1,23 @@
 # Лава — Server Changelog
 
+## [1.2.0.0] - 2026-06-14
+
+### Новое: AuthService v2 (JWT) — основной метод аутентификации
+- **SignInV2/SignUpV2** — JWT access (15min) + refresh (30 days) tokens
+- **RefreshToken** — ротация refresh token с обнаружением reuse
+- **SignOut/RevokeDevice/GetDevices** — управление сессиями
+- **gRPC Bearer token interceptor** — валидация JWT на каждом вызове
+- **Device management** — user_devices, device_auth_log таблицы
+- **Auth audit log** — логирование всех auth событий
+
+### Deprecated: AuthService v1 (Chat stream auth)
+- v1 продолжает работать для совместимости со старыми клиентами
+- При входе по v1 сервер отправляет warning:
+  `DEPRECATED: AuthService v1 is deprecated. Please upgrade to v2 (JWT).`
+- Все функции v1 работают без ограничений
+
+---
+
 ## [1.1.3.10] - 2026-06-14
 
 ### Исправлено
