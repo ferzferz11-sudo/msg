@@ -158,12 +158,26 @@ hermes_remote.proto          — Определение протокола
 
 ## Что НЕ сделано (по приоритету)
 
+### Высокий приоритет
+- [x] **AuthService v2 — серверная часть** ✅ v1.1.4.0 (d1d7515)
+  - JWT access (15min) + refresh (30days) tokens
+  - Device management (register, list, revoke)
+  - gRPC Bearer token interceptor
+  - Device auth audit log
+  - Таблицы: user_devices, device_auth_log
+- [ ] **AuthService v2 — интеграция в клиенты**
+  - [x] Android — частично (AuthManager, GrpcClient V2 methods, marshallers)
+  - [ ] Web — план в `/root/msg.client.web/doc/PROMPT.md`
+  - [ ] iOS — план в `/root/msg.client.ios/doc/PROMPT.md`
+  - [ ] macOS — план в `/root/msg.client.macos/msg.client.macos/doc/PROMPT.md`
+
 ### Средний приоритет
-- [ ] **Единая система авторизации** — новый AuthService для всех клиентов (Android, Web, macOS, iOS)
-  - Текущая авторизация через Chat stream (password в первом Message) — deprecated
-  - Новая: отдельный AuthService с JWT токенами, device management, session management
-  - Старые клиенты продолжают работать через старый механизм
-  - Новые клиенты используют AuthService + JWT
+- [ ] **Фаза 3 (v1.2.0) — миграция и deprecation**
+  - Deprecate Chat stream auth (warning в ответе)
+  - Сервер требует JWT для новых фич
+  - Старые клиенты получают "update available" notification
+  - Удаление legacy auth кода из клиентов
+  - Timeline: после того как все клиенты перейдут на V2 (минимум 2-4 недели)
 
 ### Низкий приоритет
 - [ ] Qdrant + CLIP (production RAG)
