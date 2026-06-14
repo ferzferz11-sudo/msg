@@ -163,14 +163,13 @@
 - [x] Streaming результатов задач агентом обратно клиенту ✅ v1.1.3.8
 - [x] Favorites мерцание ✅ v1.1.2.8
 - [x] **Обновить hermes_remote_agent.py — поддержка streaming output** ✅ v1.1.3.10
-  - Агент УЖЕ отправляет streaming updates (проверено в коде)
-  - Сервер готов, клиент готов — streaming работает end-to-end
+- [ ] **Единая система авторизации (AuthService v2)** — JWT, device management, refresh tokens
 
 ### Средний приоритет
 - [x] Модульные тесты для DeployAgentTaskStream ✅ v1.1.3.8
 - [x] Espresso-тесты для Android ✅ v1.1.3.9
-- [x] **Модульные тесты для OWL streaming** ✅ v1.1.3.10 (уже были написаны ранее)
-- [x] **Кэширование запросов чатов** ✅ v1.1.3.10 (уже реализовано через Room DB)
+- [x] **Модульные тесты для OWL streaming** ✅ v1.1.3.10
+- [x] **Кэширование запросов чатов** ✅ v1.1.3.10
 - [x] Unit-тесты для Android (ErrorHandler, ChatAdapter) ✅ v1.1.3.10
 - [x] **i18n: завершить вынос оставшихся строк** ✅ v1.1.3.10
 - [x] **Интеграционные тесты для streaming** ✅ v1.1.3.10

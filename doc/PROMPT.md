@@ -1,6 +1,6 @@
-# Промпт для новой сессии — v1.1.3.9 (stable)
+# Промпт для новой сессии — v1.1.3.10 (stable)
 
-**Дата:** 2026-06-13 (updated)
+**Дата:** 2026-06-14 (updated)
 **Версия:** v1.1.3.10
 **Ветка:** feat/1.1.3.x
 
@@ -17,7 +17,7 @@
 ### Сервер (/root/msg)
 ```
 main.go                    — Entry point, gRPC server, graceful shutdown
-server.go                  — Структура server, общие методы (ServerVersion = "1.1.3.9")
+- **server.go** — Структура server, общие методы (ServerVersion = "1.1.3.10")
 server_*.go                — Методы по доменам
 server_remote.go           — Remote Agent RPC (DeployAgentTaskStream fix: single done=True)
 hermes_remote_manager.go   — HandleTaskStream + StreamDone flag

@@ -1,8 +1,8 @@
 # Lava Messenger — Интеграционная сессия
 
-**Текущая версия:** v1.1.3.9
-**Обновлено:** 2026-06-13
-**Тег:** v1.1.3.9 (stable)
+**Текущая версия:** v1.1.3.10
+**Обновлено:** 2026-06-14
+**Тег:** v1.1.3.10 (stable)
 **Ветка:** feat/1.1.3.x
 
 ---
@@ -80,7 +80,7 @@ hermes_remote.proto          — Определение протокола
 
 ## Статус: v1.1.3.10 — СТАБИЛЬНАЯ
 
-Сервер v1.1.3.9 работает на prod и dev. Android v1.1.3.10 обновлён.
+Сервер v1.1.3.10 работает на prod и dev. Android v1.1.3.10 обновлён.
 
 ### Android v1.1.3.10
 - **i18n полностью завершён** — все user-facing hardcoded строки вынесены в strings.xml + values-ru/strings.xml (~50 строк)
@@ -91,7 +91,11 @@ hermes_remote.proto          — Определение протокола
 - **Streaming end-to-end** — проверен и работает (агент → сервер → клиент)
 
 ### Сервер v1.1.3.10
-- Без изменений (v1.1.3.9 stable)
+- **Structured logging** — logrus вместо log.Printf (354 вызова заменены)
+- **Grace period fix** — очистка истекших в GetOnlineUsers()
+- **Интеграционные тесты streaming** — 4 новых теста
+- **Тестовые скрипты** — run-tests.sh, run-unit-tests.sh, run-streaming-tests.sh
+- ServerVersion обновлён до 1.1.3.10
 
 ### Android v1.1.3.9
 - **Espresso Tests** — 4 тест-класса (42 теста)
@@ -155,15 +159,16 @@ hermes_remote.proto          — Определение протокола
 ## Что НЕ сделано (по приоритету)
 
 ### Средний приоритет
-- Модульные тесты для OWL streaming (сервер)
-- Обновить hermes_remote_agent.py — поддержка streaming output
-- Кэширование запросов чатов
+- [ ] **Единая система авторизации** — новый AuthService для всех клиентов (Android, Web, macOS, iOS)
+  - Текущая авторизация через Chat stream (password в первом Message) — deprecated
+  - Новая: отдельный AuthService с JWT токенами, device management, session management
+  - Старые клиенты продолжают работать через старый механизм
+  - Новые клиенты используют AuthService + JWT
 
 ### Низкий приоритет
-- Qdrant + CLIP (production RAG)
-- Structured logging (zap/logrus)
-- Prometheus метрики
-- Health check endpoint (есть /health но не используется в Android)
+- [ ] Qdrant + CLIP (production RAG)
+- [ ] Prometheus метрики
+- [ ] Health check endpoint используется в Android
 
 ---
 
