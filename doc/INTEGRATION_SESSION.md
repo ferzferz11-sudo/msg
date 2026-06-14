@@ -1,9 +1,41 @@
 # Lava Messenger — Интеграционная сессия
 
-**Текущая версия:** v1.2.0.1 (dev)
-**Обновлено:** 2026-06-14 (сессия 6)
+**Текущая версия:** v1.2.0.1 (dev) → v1.2.0.2 (следующая)
+**Обновлено:** 2026-06-14 (сессия 7)
 **Тег:** v1.1.3.10 (stable)
 **Ветка:** feat/1.1.3.x
+
+---
+
+## Сессия 7 — Dev server fix + Android auth cosmetics + code cleanup
+
+### Что сделано
+
+1. **Dev server поднят** — был inactive dead, запущен на порту 50052 (gRPC), 8083 (HTTP)
+2. **Nginx** — `/server-logs-dev` проксирует на :8091, логи доступны
+3. **Systemd dev unit** — упрощён, только `Environment=APP_ENV=dev` (без дублирования переменных)
+4. **Android auth cosmetics:**
+   - `app_version_format`: "client" → "app" (EN), "клиент" → "приложение" (RU)
+   - Status indicator — только кружок (без текста), зелёный/красный, слева от названия сервера
+   - Drag handle добавлен во все шторки входа
+   - Убраны горизонтальные dividers из шторок входа
+5. **Android code cleanup:**
+   - `showAuthChoiceDialog()` — убран `getDefaultServer()`, захардожен дефолт
+   - `onResume()` — убран `justReturnedFromServersActivity` guard
+   - Profile menu — скрыта кнопка `actionServers`
+   - `AppDatabase` — `fallbackToDestructiveMigrationOnDowngrade(dropAllTables = true)`
+   - `ServersActivity` оставлена для управления списком серверов
+6. **БД prod** — UNIQUE constraint на `user_devices(user_id, device_id)` существует, дубликатов нет. Ошибка 42P10 была из-за старого бинарника.
+
+### Коммиты (Android)
+- `c64856b` — cosmetics: auth bottom sheets UI fixes
+- `13d6045` — fix: restore TextView import
+- `36cb2a6` — fix: replace deprecated fallbackToDestructiveMigration
+- `689796e` — fix: auth bottom sheets - drag handle, status indicator, remove dividers
+- `bcf8cf2` — fix: fallbackToDestructiveMigrationOnDowngrade with param
+
+### Коммиты (сервер)
+- `9156054` — docs: update all documentation for v1.2.0.1
 
 ---
 
@@ -182,17 +214,18 @@ python3 hermes_remote_agent.py --server host:port --token <jwt>
 
 ## Промпт для следующей сессии
 
-**Версия:** v1.2.0.1 → следующая v1.2.0.2 или v1.2.1.0
+**Версия:** v1.2.0.1 (сервер) / v1.1.3.12 (Android) → следующая v1.2.0.2 / v1.1.3.13
 
 **Приоритеты:**
-1. **Тестирование JWT auth на dev** — регистрация, вход, refresh token, logout
-2. **Token refresh interceptor** — автоматический refresh при 401 от сервера
-3. **Подставить Bearer token во все gRPC вызовы** — getChats, getHistory, sendMessage, etc.
+1. **Bearer token interceptor (Android)** — создать ClientInterceptor, подставляющий Bearer token во все gRPC вызовы. `getAuthMetadata()` уже определён в RealGrpcClient, но не вызывается.
+2. **Token refresh interceptor (Android)** — автоматический refresh при 401. `AuthManager.needsRefresh()` определён, но не вызывается.
+3. **Тестирование JWT auth на dev** — регистрация, вход, refresh token, logout
 4. **Протестировать server switch** — prod ↔ dev, проверить что токены не конфликтуют
-5. **Обновить документацию** — INTEGRATION_SESSION.md, TASKS.md, CHANGELOG.md
+5. **Редеплой prod сервера** — после тестирования на dev. ON CONFLICT 42P10 ошибка была из-за старого бинарника.
 
 **Правила:**
 - НЕ компилировать на сервере (OOM kill)
 - Все новые строки ОДНОВРЕМЕННО в values/strings.xml (en) + values-ru/strings.xml
 - getString() правильно по контексту (Activity/Adapter/ViewModel)
 - Коммитить и пушить после каждого значимого изменения
+- НЕ деплоить на prod без тестирования на dev
