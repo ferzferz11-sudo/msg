@@ -10,7 +10,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// authDB defines the database methods used by authServer.
+// authDB defines the database methods used by authServer and authServerV2.
 // *DB implements this interface.
 type authDB interface {
 	UserExists(user string) (bool, error)
@@ -23,6 +23,17 @@ type authDB interface {
 	// queryUserProfile fetches extended profile fields for a user.
 	// Returns email, bio, status, createdAt, lastSeenAt.
 	queryUserProfile(username string) (email, bio, status string, createdAt, lastSeenAt time.Time, err error)
+
+	// V2 methods — JWT + device management
+	UpsertDevice(userID, deviceID, deviceName, deviceType, clientVersion, ipAddress, userAgent string) (*UserDevice, error)
+	UpdateDeviceRefreshToken(userID, deviceID, jti string, expiresAt time.Time) error
+	GetDevices(userID string) ([]UserDevice, error)
+	RevokeDevice(userID, deviceID string) error
+	RevokeAllDevices(userID string) error
+	IsDeviceActive(userID, deviceID string) (bool, error)
+	ValidateRefreshToken(userID, deviceID, jti string) (bool, error)
+	UpdateDeviceLastSeen(userID, deviceID string) error
+	LogAuthEvent(userID, deviceID, action, ipAddress, clientVersion string, success bool, errorMessage string)
 }
 
 // authServer implements gen.AuthServiceServer

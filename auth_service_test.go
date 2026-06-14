@@ -102,6 +102,34 @@ func (m *mockAuthDB) addUser(username, hash, email string) {
 	}
 }
 
+// V2 mock methods
+func (m *mockAuthDB) UpsertDevice(userID, deviceID, deviceName, deviceType, clientVersion, ipAddress, userAgent string) (*UserDevice, error) {
+	return &UserDevice{ID: "dev-" + deviceID, UserID: userID, DeviceID: deviceID, DeviceName: deviceName}, nil
+}
+func (m *mockAuthDB) UpdateDeviceRefreshToken(userID, deviceID, jti string, expiresAt time.Time) error {
+	return nil
+}
+func (m *mockAuthDB) GetDevices(userID string) ([]UserDevice, error) {
+	return nil, nil
+}
+func (m *mockAuthDB) RevokeDevice(userID, deviceID string) error {
+	return nil
+}
+func (m *mockAuthDB) RevokeAllDevices(userID string) error {
+	return nil
+}
+func (m *mockAuthDB) IsDeviceActive(userID, deviceID string) (bool, error) {
+	return true, nil
+}
+func (m *mockAuthDB) ValidateRefreshToken(userID, deviceID, jti string) (bool, error) {
+	return true, nil
+}
+func (m *mockAuthDB) UpdateDeviceLastSeen(userID, deviceID string) error {
+	return nil
+}
+func (m *mockAuthDB) LogAuthEvent(userID, deviceID, action, ipAddress, clientVersion string, success bool, errorMessage string) {
+}
+
 // ===== SignIn tests =====
 
 func TestSignIn_Success(t *testing.T) {

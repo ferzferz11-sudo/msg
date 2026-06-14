@@ -1365,5 +1365,60 @@ message AuthResponse {
 service AuthService {
   rpc SignIn(SignInRequest) returns (AuthResponse);
   rpc SignUp(SignUpRequest) returns (AuthResponse);
+
+  // V2 — JWT-based authentication with device management
+  rpc SignInV2(SignInRequestV2) returns (AuthResponseV2);
+  rpc SignUpV2(SignUpRequestV2) returns (AuthResponseV2);
+  rpc RefreshToken(RefreshTokenRequest) returns (RefreshTokenResponse);
+  rpc SignOut(SignOutRequest) returns (AuthResponse);
+  rpc RevokeDevice(RevokeDeviceRequest) returns (AuthResponse);
+  // GetDevices is already in ChatService — reused via interceptor context
+}
+
+// ======= Auth V2 Messages =======
+
+message SignInRequestV2 {
+  string username = 1;
+  string password = 2;
+  DeviceInfo device = 3;
+  string client_version = 4;
+}
+
+message SignUpRequestV2 {
+  string username = 1;
+  string password = 2;
+  string email = 3;
+  DeviceInfo device = 4;
+  string client_version = 5;
+}
+
+message AuthResponseV2 {
+  bool success = 1;
+  string message = 2;
+  string access_token = 3;
+  string refresh_token = 4;
+  int64 access_expires_at = 5;
+  int64 refresh_expires_at = 6;
+  User user = 7;
+}
+
+message RefreshTokenRequest {
+  string refresh_token = 1;
+}
+
+message RefreshTokenResponse {
+  string access_token = 1;
+  string refresh_token = 2;
+  int64 access_expires_at = 3;
+  int64 refresh_expires_at = 4;
+}
+
+message SignOutRequest {
+  string refresh_token = 1;
+  bool all_devices = 2;
+}
+
+message RevokeDeviceRequest {
+  string device_id = 1;
 }
 

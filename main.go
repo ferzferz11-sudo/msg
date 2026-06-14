@@ -109,7 +109,7 @@ func main() {
 		logger.Errorf("failed to listen: %v", err)
 	}
 
-	// Initialize a new gRPC server instance
+	// Initialize a new gRPC server instance with auth interceptors
 	s := grpc.NewServer(
 		grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
 			MinTime:             5 * time.Second, // Minimum time between client pings
@@ -122,6 +122,8 @@ func main() {
 			Time:                  20 * time.Second, // Ping clients every 20s
 			Timeout:               20 * time.Second, // Allow 20s for response (lenient for emulators/mobile)
 		}),
+		grpc.UnaryInterceptor(AuthInterceptor),
+		grpc.StreamInterceptor(AuthStreamInterceptor),
 	)
 
 	// Create our chat service instance with Hub for connection management
@@ -155,11 +157,18 @@ func main() {
 	// Run Hermes DB migrations
 	runHermesMigrations(db.DB)
 
+	// Create/migrate auth v2 tables (user_devices, device_auth_log)
+	if err := db.MigrateDeviceTables(); err != nil {
+		logger.Warnf("Warning: failed to migrate auth v2 tables: %v", err)
+	} else {
+		logger.Info("Auth v2 tables (user_devices, device_auth_log) ready")
+	}
+
 	// Register our chat service with the gRPC server
 	gen.RegisterChatServiceServer(s, srv)
 
-	// Register Auth Service
-	authServer := newAuthServer(db)
+	// Register Auth Service (v1 legacy + v2 JWT)
+	authServer := newAuthServerV2(db)
 	gen.RegisterAuthServiceServer(s, authServer)
 
 	// Register Hermes Agent Service (for hermes-agent daemon connections)
