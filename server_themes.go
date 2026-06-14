@@ -3,7 +3,6 @@ package main
 import (
 	"LavenderMessenger/gen"
 	"context"
-	"log"
 )
 
 func (s *server) GetThemes(_ context.Context, req *gen.GetThemesRequest) (*gen.GetThemesResponse, error) {
@@ -44,7 +43,7 @@ func (s *server) GetThemes(_ context.Context, req *gen.GetThemesRequest) (*gen.G
 		})
 	}
 
-	log.Printf("Retrieved %d custom themes for user %s (Current: %s)", len(customThemes), username, currentID)
+	logger.Infof("Retrieved %d custom themes for user %s (Current: %s)", len(customThemes), username, currentID)
 
 	return &gen.GetThemesResponse{
 		CurrentThemeId: currentID,
@@ -61,13 +60,13 @@ func (s *server) SaveTheme(_ context.Context, req *gen.SaveThemeRequest) (*gen.S
 		}
 	}
 
-	log.Printf("Saving theme '%s' (ID: %s) for user %s. Chat Background URL: %s", req.Theme.Name, req.Theme.Id, username, req.Theme.ChatBackgroundImageUrl)
+	logger.Infof("Saving theme '%s' (ID: %s) for user %s. Chat Background URL: %s", req.Theme.Name, req.Theme.Id, username, req.Theme.ChatBackgroundImageUrl)
 	err := s.db.SaveUserTheme(username, req.Theme)
 	if err != nil {
 		s.logErrorOnce("SaveTheme:"+username, "Failed to save theme for %s: %v", username, err)
 		return &gen.SaveThemeResponse{Success: false, Message: err.Error()}, nil
 	}
-	log.Printf("Theme '%s' saved successfully for %s", req.Theme.Name, username)
+	logger.Infof("Theme '%s' saved successfully for %s", req.Theme.Name, username)
 	return &gen.SaveThemeResponse{Success: true, Message: "Theme saved"}, nil
 }
 
@@ -80,7 +79,7 @@ func (s *server) SetCurrentTheme(_ context.Context, req *gen.SetCurrentThemeRequ
 		}
 	}
 
-	log.Printf("Setting current theme to %s for user %s", req.ThemeId, username)
+	logger.Infof("Setting current theme to %s for user %s", req.ThemeId, username)
 	err := s.db.SetCurrentTheme(username, req.ThemeId)
 	if err != nil {
 		s.logErrorOnce("SetCurrentTheme:"+username, "Failed to set current theme for %s: %v", username, err)
@@ -98,12 +97,12 @@ func (s *server) DeleteTheme(_ context.Context, req *gen.DeleteThemeRequest) (*g
 		}
 	}
 
-	log.Printf("Deleting theme %s for user %s", req.ThemeId, username)
+	logger.Infof("Deleting theme %s for user %s", req.ThemeId, username)
 	err := s.db.DeleteUserTheme(username, req.ThemeId)
 	if err != nil {
 		s.logErrorOnce("DeleteTheme:"+username, "Failed to delete theme for %s: %v", username, err)
 		return &gen.DeleteThemeResponse{Success: false}, nil
 	}
-	log.Printf("Theme %s deleted successfully for %s", req.ThemeId, username)
+	logger.Infof("Theme %s deleted successfully for %s", req.ThemeId, username)
 	return &gen.DeleteThemeResponse{Success: true}, nil
 }

@@ -23,7 +23,6 @@ package main
 import (
 	"LavenderMessenger/gen"
 	"fmt"
-	"log"
 	"sync"
 	"time"
 
@@ -62,7 +61,7 @@ func (s *server) logErrorOnce(key string, format string, v ...interface{}) {
 		}
 	}
 	s.recentErrors.Store(key, now)
-	log.Printf(format, v...)
+	logger.Errorf(format, v...)
 }
 
 func (s *server) logFCM(level, format string, v ...interface{}) {
@@ -79,7 +78,7 @@ func (s *server) logFCM(level, format string, v ...interface{}) {
 	if len(s.fcmLogs) > 100 {
 		s.fcmLogs = s.fcmLogs[1:]
 	}
-	log.Printf("[FCM %s] %s", level, msg)
+	logger.Infof("[FCM %s] %s", level, msg)
 }
 
 // resolveUserId converts a potential username to a user ID if needed

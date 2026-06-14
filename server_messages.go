@@ -5,7 +5,6 @@ import (
 	"LavenderMessenger/gen"
 	"context"
 	"encoding/json"
-	"log"
 
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -23,7 +22,7 @@ func (s *server) GetHistory(_ context.Context, req *gen.GetHistoryRequest) (*gen
 
 	rawMessages, err := s.db.GetMessages(limit, roomID)
 	if err != nil {
-		log.Printf("Error fetching history: %v", err)
+		logger.Errorf("Error fetching history: %v", err)
 		return nil, err
 	}
 
@@ -38,7 +37,7 @@ func (s *server) GetHistory(_ context.Context, req *gen.GetHistoryRequest) (*gen
 
 		// Check if encrypted data is empty
 		if len(m.Encrypted) == 0 {
-			log.Printf("Warning: message %s has empty encrypted data", m.MessageID)
+			logger.Warnf("Warning: message %s has empty encrypted data", m.MessageID)
 			continue // Skip messages with no encrypted data
 		}
 
@@ -60,7 +59,7 @@ func (s *server) GetHistory(_ context.Context, req *gen.GetHistoryRequest) (*gen
 				} else if m.ImageURL != "" {
 					msgType = "image"
 				}
-				log.Printf("Failed to decrypt %s message %s (User: %s, Room: %s): %v", msgType, m.MessageID, m.Username, m.RoomID, err)
+				logger.Infof("Failed to decrypt %s message %s (User: %s, Room: %s): %v", msgType, m.MessageID, m.Username, m.RoomID, err)
 
 				// Show user-friendly error in the chat
 				decryptedText = "не удалось расшифровать"
@@ -69,7 +68,7 @@ func (s *server) GetHistory(_ context.Context, req *gen.GetHistoryRequest) (*gen
 
 		// Check if decrypted text is empty (skip ONLY if NO media and NOT E2EE)
 		if decryptedText == "" && m.ImageURL == "" && m.VoiceURL == "" && !msgIsE2EE {
-			log.Printf("Warning: message %s decrypted to empty string, skipping", m.MessageID)
+			logger.Warnf("Warning: message %s decrypted to empty string, skipping", m.MessageID)
 			continue
 		}
 
@@ -142,11 +141,11 @@ func (s *server) SetReaction(_ context.Context, req *gen.ReactionRequest) (*gen.
 		}
 	}
 
-	log.Printf("[Reaction] %s on %s (%s) by %s", req.Reaction.Emoji, req.MessageId, msgText, req.Reaction.User)
+	logger.Infof("[Reaction] %s on %s (%s) by %s", req.Reaction.Emoji, req.MessageId, msgText, req.Reaction.User)
 
 	err = s.db.SetReaction(req.MessageId, req.Reaction.User, req.Reaction.Emoji)
 	if err != nil {
-		log.Printf("Failed to set reaction: %v", err)
+		logger.Infof("Failed to set reaction: %v", err)
 		return &gen.ReactionResponse{Success: false}, err
 	}
 
@@ -204,7 +203,7 @@ func (s *server) SetReaction(_ context.Context, req *gen.ReactionRequest) (*gen.
 		}
 
 		// 5. Broadcast to everyone in the room
-		log.Printf("Broadcasting updated message %s with reactions to room %s", msg.Id, msg.RoomId)
+		logger.Infof("Broadcasting updated message %s with reactions to room %s", msg.Id, msg.RoomId)
 		s.hub.Broadcast(msg)
 	}
 
@@ -244,7 +243,7 @@ func (s *server) DeleteMessages(_ context.Context, req *gen.DeleteMessagesReques
 		}
 
 		if !canDelete {
-			log.Printf("Unauthorized delete attempt by %s for message in %s", req.RequesterUsername, msg.RoomId)
+			logger.Infof("Unauthorized delete attempt by %s for message in %s", req.RequesterUsername, msg.RoomId)
 			continue
 		}
 
@@ -253,12 +252,12 @@ func (s *server) DeleteMessages(_ context.Context, req *gen.DeleteMessagesReques
 			// Get full message with image URLs before deletion
 			fullMsg, err := s.db.GetMessageByUUID(msg.Id)
 			if err != nil {
-				log.Printf("Failed to get message %s: %v", msg.Id, err)
+				logger.Infof("Failed to get message %s: %v", msg.Id, err)
 			} else {
 				// Delete single image file if exists
 				if fullMsg.ImageURL != "" {
 					if err := DeleteImageFile(fullMsg.ImageURL); err != nil {
-						log.Printf("Failed to delete image file for message %s: %v", msg.Id, err)
+						logger.Infof("Failed to delete image file for message %s: %v", msg.Id, err)
 						// Continue with message deletion even if image deletion fails
 					}
 				}
@@ -269,7 +268,7 @@ func (s *server) DeleteMessages(_ context.Context, req *gen.DeleteMessagesReques
 					if err := json.Unmarshal([]byte(fullMsg.ImageURLs), &imageURLs); err == nil {
 						for _, url := range imageURLs {
 							if err := DeleteImageFile(url); err != nil {
-								log.Printf("Failed to delete gallery image file for message %s: %v", msg.Id, err)
+								logger.Infof("Failed to delete gallery image file for message %s: %v", msg.Id, err)
 								// Continue with message deletion even if image deletion fails
 							}
 						}
@@ -280,7 +279,7 @@ func (s *server) DeleteMessages(_ context.Context, req *gen.DeleteMessagesReques
 			err = s.db.DeleteMessageByUUID(msg.Id)
 			if err == nil {
 				anyDeleted = true
-				log.Printf("Deleted message by ID: %s", msg.Id)
+				logger.Infof("Deleted message by ID: %s", msg.Id)
 
 				// Increment chat list version for all participants to trigger cache refresh
 				_ = s.db.IncrementParticipantsChatListVersion(msg.RoomId)
@@ -299,7 +298,7 @@ func (s *server) DeleteMessages(_ context.Context, req *gen.DeleteMessagesReques
 		targetTime := msg.CreatedAt.AsTime()
 		candidates, err := s.db.GetMessagesByUserAndTime(msg.User, targetTime)
 		if err != nil {
-			log.Printf("Failed to find message for deletion: %v", err)
+			logger.Infof("Failed to find message for deletion: %v", err)
 			continue
 		}
 
@@ -313,7 +312,7 @@ func (s *server) DeleteMessages(_ context.Context, req *gen.DeleteMessagesReques
 				// Delete single image file if candidate has one
 				if candidate.ImageURL != "" {
 					if err := DeleteImageFile(candidate.ImageURL); err != nil {
-						log.Printf("Failed to delete image file for candidate message: %v", err)
+						logger.Infof("Failed to delete image file for candidate message: %v", err)
 						// Continue with message deletion even if image deletion fails
 					}
 				}
@@ -324,7 +323,7 @@ func (s *server) DeleteMessages(_ context.Context, req *gen.DeleteMessagesReques
 					if err := json.Unmarshal([]byte(candidate.ImageURLs), &imageURLs); err == nil {
 						for _, url := range imageURLs {
 							if err := DeleteImageFile(url); err != nil {
-								log.Printf("Failed to delete gallery image file for candidate message: %v", err)
+								logger.Infof("Failed to delete gallery image file for candidate message: %v", err)
 								// Continue with message deletion even if image deletion fails
 							}
 						}
@@ -334,7 +333,7 @@ func (s *server) DeleteMessages(_ context.Context, req *gen.DeleteMessagesReques
 				err = s.db.DeleteMessageByID(candidate.ID)
 				if err == nil {
 					anyDeleted = true
-					log.Printf("Deleted message by content from %s", msg.User)
+					logger.Infof("Deleted message by content from %s", msg.User)
 
 					// Increment chat list version for all participants to trigger cache refresh
 					_ = s.db.IncrementParticipantsChatListVersion(candidate.RoomID)
@@ -361,7 +360,7 @@ func (s *server) EditMessage(_ context.Context, req *gen.EditMessageRequest) (*g
 
 	err := s.db.UpdateMessageText(req.MessageId, req.Text)
 	if err != nil {
-		log.Printf("Failed to edit message %s: %v", req.MessageId, err)
+		logger.Infof("Failed to edit message %s: %v", req.MessageId, err)
 		return &gen.EditMessageResponse{Success: false, Message: err.Error()}, nil
 	}
 
@@ -404,6 +403,6 @@ func (s *server) EditMessage(_ context.Context, req *gen.EditMessageRequest) (*g
 		})
 	}
 
-	log.Printf("Edited message %s", req.MessageId)
+	logger.Infof("Edited message %s", req.MessageId)
 	return &gen.EditMessageResponse{Success: true, Message: "Message edited successfully"}, nil
 }

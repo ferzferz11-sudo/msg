@@ -3,7 +3,6 @@ package main
 import (
 	"LavenderMessenger/gen"
 	"context"
-	"log"
 )
 
 func (s *server) AddContact(_ context.Context, req *gen.AddContactRequest) (*gen.AddContactResponse, error) {
@@ -17,10 +16,10 @@ func (s *server) AddContact(_ context.Context, req *gen.AddContactRequest) (*gen
 
 	err := s.db.AddContact(username, req.ContactUsername)
 	if err != nil {
-		log.Printf("Failed to add contact %s for %s: %v", req.ContactUsername, username, err)
+		logger.Infof("Failed to add contact %s for %s: %v", req.ContactUsername, username, err)
 		return &gen.AddContactResponse{Success: false, Message: err.Error()}, nil
 	}
-	log.Printf("User %s added contact %s", username, req.ContactUsername)
+	logger.Infof("User %s added contact %s", username, req.ContactUsername)
 	return &gen.AddContactResponse{Success: true, Message: "Contact added successfully"}, nil
 }
 
@@ -35,10 +34,10 @@ func (s *server) RemoveContact(_ context.Context, req *gen.RemoveContactRequest)
 
 	err := s.db.RemoveContact(username, req.ContactUsername)
 	if err != nil {
-		log.Printf("Failed to remove contact %s for %s: %v", req.ContactUsername, username, err)
+		logger.Infof("Failed to remove contact %s for %s: %v", req.ContactUsername, username, err)
 		return &gen.RemoveContactResponse{Success: false, Message: err.Error()}, nil
 	}
-	log.Printf("User %s removed contact %s", username, req.ContactUsername)
+	logger.Infof("User %s removed contact %s", username, req.ContactUsername)
 	return &gen.RemoveContactResponse{Success: true, Message: "Contact removed successfully"}, nil
 }
 
@@ -53,7 +52,7 @@ func (s *server) GetContacts(_ context.Context, req *gen.GetContactsRequest) (*g
 
 	contacts, err := s.db.GetContacts(username)
 	if err != nil {
-		log.Printf("Failed to get contacts for %s: %v", username, err)
+		logger.Infof("Failed to get contacts for %s: %v", username, err)
 		return &gen.GetContactsResponse{Contacts: nil}, nil
 	}
 	return &gen.GetContactsResponse{Contacts: contacts}, nil

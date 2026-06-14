@@ -8,7 +8,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"strings"
 	"time"
@@ -153,7 +152,7 @@ func ConnectDB() (*DB, error) {
 		if _, err := db.Exec(q); err != nil {
 			// Игнорируем ошибки "must be owner of table" — таблицы уже существуют
 			if !strings.Contains(err.Error(), "must be owner of table") {
-				log.Printf("Migration error: %v", err)
+				logger.Errorf("Migration error: %v", err)
 			}
 		}
 	}

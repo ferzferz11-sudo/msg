@@ -8,13 +8,12 @@ import (
 	"encoding/json"
 	"LavenderMessenger/gen"
 	"context"
-	"log"
 )
 
 func (s *server) GetUserId(_ context.Context, req *gen.GetUserIdRequest) (*gen.GetUserIdResponse, error) {
 	userID, err := s.db.GetUserIdByUsername(req.Username)
 	if err != nil {
-		log.Printf("Failed to get user ID for %s: %v", req.Username, err)
+		logger.Infof("Failed to get user ID for %s: %v", req.Username, err)
 		return &gen.GetUserIdResponse{UserId: "", Found: false}, nil
 	}
 	return &gen.GetUserIdResponse{UserId: userID, Found: true}, nil
@@ -26,7 +25,7 @@ func (s *server) AddFavorite(ctx context.Context, req *gen.AddFavoriteRequest) (
 	}
 	err := s.db.AddFavorite(req.UserId, req.MessageId)
 	if err != nil {
-		log.Printf("Failed to add favorite: %v", err)
+		logger.Infof("Failed to add favorite: %v", err)
 		return &gen.AddFavoriteResponse{Success: false, Message: err.Error()}, nil
 	}
 	return &gen.AddFavoriteResponse{Success: true}, nil
@@ -38,7 +37,7 @@ func (s *server) RemoveFavorite(ctx context.Context, req *gen.RemoveFavoriteRequ
 	}
 	err := s.db.RemoveFavorite(req.UserId, req.MessageId)
 	if err != nil {
-		log.Printf("Failed to remove favorite: %v", err)
+		logger.Infof("Failed to remove favorite: %v", err)
 		return &gen.RemoveFavoriteResponse{Success: false}, nil
 	}
 	return &gen.RemoveFavoriteResponse{Success: true}, nil
@@ -50,7 +49,7 @@ func (s *server) GetFavorites(ctx context.Context, req *gen.GetFavoritesRequest)
 	}
 	favs, err := s.db.GetFavorites(req.UserId)
 	if err != nil {
-		log.Printf("Failed to get favorites: %v", err)
+		logger.Infof("Failed to get favorites: %v", err)
 		return &gen.GetFavoritesResponse{Messages: nil}, nil
 	}
 
@@ -218,14 +217,14 @@ func (s *server) RequestPasswordReset(_ context.Context, req *gen.RequestPasswor
 	userId, err := s.db.GetUserIdByEmail(req.Email)
 	if err != nil {
 		// Don't reveal if email exists or not for security
-		log.Printf("Password reset requested for non-existent email: %s", req.Email)
+		logger.Infof("Password reset requested for non-existent email: %s", req.Email)
 		return &gen.RequestPasswordResetResponse{Success: true, Message: "If the email exists, a reset link has been sent"}, nil
 	}
 
 	// Generate reset token
 	token, err := GenerateResetToken()
 	if err != nil {
-		log.Printf("Failed to generate reset token: %v", err)
+		logger.Infof("Failed to generate reset token: %v", err)
 		return &gen.RequestPasswordResetResponse{Success: false, Message: "Failed to generate reset token"}, nil
 	}
 
@@ -235,21 +234,21 @@ func (s *server) RequestPasswordReset(_ context.Context, req *gen.RequestPasswor
 	// Save token to database
 	err = s.db.CreatePasswordResetToken(token, userId, expiresAt)
 	if err != nil {
-		log.Printf("Failed to save reset token: %v", err)
+		logger.Infof("Failed to save reset token: %v", err)
 		return &gen.RequestPasswordResetResponse{Success: false, Message: "Failed to save reset token"}, nil
 	}
 
 	// Send email with token
 	err = SendPasswordResetEmail(req.Email, token)
 	if err != nil {
-		log.Printf("Failed to send reset email: %v", err)
+		logger.Infof("Failed to send reset email: %v", err)
 		if err.Error() == "SMTP_NOT_CONFIGURED" {
 			return &gen.RequestPasswordResetResponse{Success: false, Message: "SMTP_NOT_CONFIGURED"}, nil
 		}
 		return &gen.RequestPasswordResetResponse{Success: false, Message: "Failed to send reset email"}, nil
 	}
 
-	log.Printf("Password reset initiated for email: %s", req.Email)
+	logger.Infof("Password reset initiated for email: %s", req.Email)
 	return &gen.RequestPasswordResetResponse{Success: true, Message: "If the email exists, a reset link has been sent"}, nil
 }
 
@@ -261,7 +260,7 @@ func (s *server) ResetPassword(_ context.Context, req *gen.ResetPasswordRequest)
 	// Validate token and get user ID
 	userId, err := s.db.ValidatePasswordResetToken(req.Token)
 	if err != nil {
-		log.Printf("Invalid or expired reset token: %v", err)
+		logger.Infof("Invalid or expired reset token: %v", err)
 		return &gen.ResetPasswordResponse{Success: false, Message: "Invalid or expired reset token"}, nil
 	}
 
@@ -269,20 +268,20 @@ func (s *server) ResetPassword(_ context.Context, req *gen.ResetPasswordRequest)
 	var username string
 	err = s.db.QueryRow(`SELECT username FROM users WHERE id=$1::uuid`, userId).Scan(&username)
 	if err != nil {
-		log.Printf("Failed to get username from user ID: %v", err)
+		logger.Infof("Failed to get username from user ID: %v", err)
 		return &gen.ResetPasswordResponse{Success: false, Message: "User not found"}, nil
 	}
 
 	// Update password
 	err = s.db.UpdatePassword(username, req.NewPassword)
 	if err != nil {
-		log.Printf("Failed to update password: %v", err)
+		logger.Infof("Failed to update password: %v", err)
 		return &gen.ResetPasswordResponse{Success: false, Message: "Failed to update password"}, nil
 	}
 
 	// Delete used token
 	_ = s.db.DeletePasswordResetToken(req.Token)
 
-	log.Printf("Password reset successful for user: %s", username)
+	logger.Infof("Password reset successful for user: %s", username)
 	return &gen.ResetPasswordResponse{Success: true, Message: "Password reset successfully"}, nil
 }

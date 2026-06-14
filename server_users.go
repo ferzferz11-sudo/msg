@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"LavenderMessenger/gen"
 	"context"
-	"log"
 
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -14,7 +13,7 @@ func (s *server) GetAllUsers(ctx context.Context, req *gen.GetAllUsersRequest) (
 	_ = req // req is required by gRPC interface but not used here
 	users, err := s.db.GetAllUsers()
 	if err != nil {
-		log.Printf("Error fetching all users: %v", err)
+		logger.Errorf("Error fetching all users: %v", err)
 		return nil, err
 	}
 
@@ -54,11 +53,11 @@ func (s *server) UpdateProfile(_ context.Context, req *gen.UpdateProfileRequest)
 
 	err := s.db.UpdateProfile(username, req.Bio, req.Status)
 	if err != nil {
-		log.Printf("Failed to update profile for %s: %v", username, err)
+		logger.Infof("Failed to update profile for %s: %v", username, err)
 		return &gen.UpdateProfileResponse{Success: false, Message: err.Error()}, nil
 	}
 
-	log.Printf("Updated profile for %s", username)
+	logger.Infof("Updated profile for %s", username)
 	return &gen.UpdateProfileResponse{Success: true, Message: "Profile updated successfully"}, nil
 }
 
@@ -73,17 +72,17 @@ func (s *server) GetUserProfile(_ context.Context, req *gen.GetUserProfileReques
 	if req.UserId != "" {
 		profile, err = s.db.GetUserProfileById(req.UserId)
 		if err != nil {
-			log.Printf("Failed to get profile for user_id %s: %v", req.UserId, err)
+			logger.Infof("Failed to get profile for user_id %s: %v", req.UserId, err)
 			return &gen.GetUserProfileResponse{}, nil
 		}
 	} else if req.Username != "" {
 		profile, err = s.db.GetUserProfile(req.Username)
 		if err != nil {
-			log.Printf("Failed to get profile for username %s: %v", req.Username, err)
+			logger.Infof("Failed to get profile for username %s: %v", req.Username, err)
 			return &gen.GetUserProfileResponse{}, nil
 		}
 	} else {
-		log.Printf("Failed to get profile: neither user_id nor username provided")
+		logger.Info("Failed to get profile: neither user_id nor username provided")
 		return &gen.GetUserProfileResponse{}, nil
 	}
 
@@ -113,7 +112,7 @@ func (s *server) GetUserAvatar(_ context.Context, req *gen.GetUserAvatarRequest)
 
 	avatarURL, fullAvatarURL, err := s.db.GetUserAvatarWithFull(username)
 	if err != nil {
-		log.Printf("Failed to get avatar for %s: %v", username, err)
+		logger.Infof("Failed to get avatar for %s: %v", username, err)
 		return &gen.GetUserAvatarResponse{AvatarUrl: "", FullAvatarUrl: ""}, nil
 	}
 

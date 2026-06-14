@@ -6,7 +6,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
@@ -85,14 +84,14 @@ func (s *server) ChatWithOWL(req *gen.OWLRequest, stream gen.ChatService_ChatWit
 		apiKey = s.owlApiKey
 	}
 
-	log.Printf("OWL: chat=%s, user=%s, msg=%q, history_len=%d, model=%s, custom_key=%t",
+	logger.Infof("OWL: chat=%s, user=%s, msg=%q, history_len=%d, model=%s, custom_key=%t",
 		chatID, userID, req.Message, len(history), model, req.ApiKey != "" || settings.UserAPIKey != "")
 
 	// Call OpenRouter
-	log.Printf("OWL: calling OpenRouter for chat %s, model=%s, history_len=%d", chatID, model, len(history))
+	logger.Infof("OWL: calling OpenRouter for chat %s, model=%s, history_len=%d", chatID, model, len(history))
 	response, err := callOpenRouterContext(context.Background(), apiKey, model, systemPrompt, history)
 	if err != nil {
-		log.Printf("OWL: OpenRouter error for chat %s: %v", chatID, err)
+		logger.Errorf("OWL: OpenRouter error for chat %s: %v", chatID, err)
 		// Refund rate limit slot on failure
 		if hasCustomKey {
 			owlRateLimiter.cancel(userID)
@@ -101,7 +100,7 @@ func (s *server) ChatWithOWL(req *gen.OWLRequest, stream gen.ChatService_ChatWit
 		}
 		return fmt.Errorf("AI service error: %w", err)
 	}
-	log.Printf("OWL: OpenRouter response for chat %s: %q (len=%d)", chatID, response, len(response))
+	logger.Infof("OWL: OpenRouter response for chat %s: %q (len=%d)", chatID, response, len(response))
 
 	// Add assistant response to history
 	owlSessions.addMessage(chatID, "assistant", response)
@@ -109,7 +108,7 @@ func (s *server) ChatWithOWL(req *gen.OWLRequest, stream gen.ChatService_ChatWit
 	// Update chat last message
 	_, _ = s.db.Exec("UPDATE chats SET last_message_text=$1, last_message_time=NOW() WHERE id=$2",
 		truncateString(response, 100), chatID)
-	log.Printf("OWL: updated last_message_text for chat %s: %q", chatID, truncateString(response, 100))
+	logger.Infof("OWL: updated last_message_text for chat %s: %q", chatID, truncateString(response, 100))
 
 	// Stream response in chunks
 	words := strings.Fields(response)
@@ -123,7 +122,7 @@ func (s *server) ChatWithOWL(req *gen.OWLRequest, stream gen.ChatService_ChatWit
 			Text:     chunk,
 			Finished: isLast,
 		}); err != nil {
-			log.Printf("OWL: stream send error for chat %s: %v", chatID, err)
+			logger.Errorf("OWL: stream send error for chat %s: %v", chatID, err)
 			return err
 		}
 		time.Sleep(30 * time.Millisecond)
@@ -149,9 +148,9 @@ func (s *server) getNextChatNumber(userID, chatType string) int {
 }
 
 func (s *server) CreateOwlChat(_ context.Context, req *gen.CreateOwlChatRequest) (*gen.CreateOwlChatResponse, error) {
-	log.Printf("CreateOwlChat: called user_id=%q name=%q", req.UserId, req.Name)
+	logger.Infof("CreateOwlChat: called user_id=%q name=%q", req.UserId, req.Name)
 	if req.UserId == "" {
-		log.Printf("CreateOwlChat: ERROR empty user_id")
+		logger.Error("CreateOwlChat: ERROR empty user_id")
 		return &gen.CreateOwlChatResponse{Success: false, Message: "user_id is required"}, nil
 	}
 
@@ -160,7 +159,7 @@ func (s *server) CreateOwlChat(_ context.Context, req *gen.CreateOwlChatRequest)
 	if uname, err := s.db.GetUsernameByID(req.UserId); err == nil && uname != "" {
 		username = uname
 	}
-	log.Printf("CreateOwlChat: resolved username=%q for user_id=%q", username, req.UserId)
+	logger.Infof("CreateOwlChat: resolved username=%q for user_id=%q", username, req.UserId)
 
 	// Generate sequential number for this user's OWL chats
 	num := s.getNextChatNumber(req.UserId, "owl")
@@ -170,7 +169,7 @@ func (s *server) CreateOwlChat(_ context.Context, req *gen.CreateOwlChatRequest)
 	}
 
 	chatID := "owl-" + uuid.New().String()
-	log.Printf("CreateOwlChat: creating chat %q name=%q for user %q", chatID, name, username)
+	logger.Infof("CreateOwlChat: creating chat %q name=%q for user %q", chatID, name, username)
 
 	participantsJSON, _ := json.Marshal([]string{req.UserId})
 	_, err := s.db.Exec(
@@ -178,11 +177,11 @@ func (s *server) CreateOwlChat(_ context.Context, req *gen.CreateOwlChatRequest)
 		chatID, name, string(participantsJSON), username, req.UserId,
 	)
 	if err != nil {
-		log.Printf("CreateOwlChat: DB error: %v", err)
+		logger.Errorf("CreateOwlChat: DB error: %v", err)
 		return &gen.CreateOwlChatResponse{Success: false, Message: "failed to create chat: " + err.Error()}, nil
 	}
 
-	log.Printf("CreateOwlChat: SUCCESS chat_id=%q name=%q user=%q", chatID, name, username)
+	logger.Infof("CreateOwlChat: SUCCESS chat_id=%q name=%q user=%q", chatID, name, username)
 	return &gen.CreateOwlChatResponse{
 		ChatId:  chatID,
 		Name:    name,
@@ -397,7 +396,7 @@ func (s *server) ChatWithAI(req *gen.AIChatRequest, stream gen.ChatService_ChatW
 
 	if session.AgentType == "hermes" {
 		// Route to Hermes Orchestrator
-		log.Printf("[ChatWithAI] routing to Hermes orchestrator: session=%s user=%s", sessionID, userID)
+		logger.Infof("[ChatWithAI] routing to Hermes orchestrator: session=%s user=%s", sessionID, userID)
 
 		// Update active agent if specified
 		if req.AgentId != "" {
@@ -416,7 +415,7 @@ func (s *server) ChatWithAI(req *gen.AIChatRequest, stream gen.ChatService_ChatW
 				})
 			})
 		if err != nil {
-			log.Printf("[ChatWithAI] orchestrator error: %v", err)
+			logger.Errorf("[ChatWithAI] orchestrator error: %v", err)
 			// Refund rate limit slot on failure
 			if hasCustomKey {
 				owlRateLimiter.cancel(userID)
@@ -433,7 +432,7 @@ func (s *server) ChatWithAI(req *gen.AIChatRequest, stream gen.ChatService_ChatW
 		}
 	} else {
 		// Route to OWL (OpenRouter)
-		log.Printf("[ChatWithAI] routing to OWL: session=%s user=%s", sessionID, userID)
+		logger.Infof("[ChatWithAI] routing to OWL: session=%s user=%s", sessionID, userID)
 
 		// Build history
 		history, _ := manager.GetHistory(sessionID, 50)
@@ -474,7 +473,7 @@ func (s *server) ChatWithAI(req *gen.AIChatRequest, stream gen.ChatService_ChatW
 				})
 			})
 		if err != nil {
-			log.Printf("[ChatWithAI] OpenRouter error: %v", err)
+			logger.Errorf("[ChatWithAI] OpenRouter error: %v", err)
 			// Refund rate limit slot on failure
 			if hasCustomKey {
 				owlRateLimiter.cancel(userID)
@@ -665,7 +664,7 @@ func (s *server) ChatWithOrchestrator(req *gen.OrchestratorRequest, stream gen.C
 		chatID = "hermes-" + userID
 	}
 
-	log.Printf("[Lava] chat=%s user=%s session=%s msg=%q", chatID, userID, req.SessionId, truncateString(req.Message, 80))
+	logger.Infof("[Lava] chat=%s user=%s session=%s msg=%q", chatID, userID, req.SessionId, truncateString(req.Message, 80))
 
 	// Rate limit check: custom key users get 10/min, free tier gets 20/hour
 	hermSet := hermesSettings.getSettings(chatID)
@@ -691,12 +690,12 @@ func (s *server) ChatWithOrchestrator(req *gen.OrchestratorRequest, stream gen.C
 	// Handle /help command — send welcome message with agent list
 	if strings.TrimSpace(req.Message) == "/help" {
 		welcomeMsg := s.buildWelcomeMessage()
-		log.Printf("[Lava] sending /help welcome message for user=%s", userID)
+		logger.Infof("[Lava] sending /help welcome message for user=%s", userID)
 		if err := stream.Send(&gen.OrchestratorResponse{
 			Token:    welcomeMsg,
 			Finished: true,
 		}); err != nil {
-			log.Printf("[Lava] /help send error: %v", err)
+			logger.Errorf("[Lava] /help send error: %v", err)
 			return err
 		}
 		// Save to DB via AIChatManager
@@ -708,7 +707,7 @@ func (s *server) ChatWithOrchestrator(req *gen.OrchestratorRequest, stream gen.C
 
 	// Run orchestrator — collect full response for DB saving
 	var fullResponse strings.Builder
-	log.Printf("[Lava] calling Orchestrate for user=%s chat=%s", userID, chatID)
+	logger.Infof("[Lava] calling Orchestrate for user=%s chat=%s", userID, chatID)
 	err := s.hermesOrchestrator.Orchestrate(stream.Context(), userID, chatID, req.Message,
 		func(token string, finished bool) error {
 			if !finished && token != "" {
@@ -721,7 +720,7 @@ func (s *server) ChatWithOrchestrator(req *gen.OrchestratorRequest, stream gen.C
 		})
 
 	if err != nil {
-		log.Printf("[Lava] orchestrator error for user %s: %v", userID, err)
+		logger.Errorf("[Lava] orchestrator error for user %s: %v", userID, err)
 		// Refund rate limit slot on failure
 		if hasCustomHermesKey {
 			owlRateLimiter.cancel(userID)
@@ -732,7 +731,7 @@ func (s *server) ChatWithOrchestrator(req *gen.OrchestratorRequest, stream gen.C
 			Token:    "",
 			Finished: true,
 			Error:    err.Error(),
-		}); err != nil { log.Printf("Failed to send orchestrator response: %v", err) }
+		}); err != nil { logger.Infof("Failed to send orchestrator response: %v", err) }
 		return nil
 	}
 
@@ -753,7 +752,7 @@ func (s *server) ChatWithOrchestrator(req *gen.OrchestratorRequest, stream gen.C
 	_, _ = s.db.Exec("UPDATE chats SET last_message_text=$1, last_message_time=NOW() WHERE id=$2",
 		truncateString(assistantResponse, 100), chatID)
 
-	log.Printf("[Lava] Orchestrate completed for user=%s", userID)
+	logger.Infof("[Lava] Orchestrate completed for user=%s", userID)
 	return nil
 }
 
@@ -772,7 +771,7 @@ func (s *server) ChatWithPipeline(req *gen.PipelineRequest, stream gen.ChatServi
 		return status.Error(codes.Unavailable, "orchestrator not initialized")
 	}
 
-	log.Printf("[Pipeline] user=%s msg=%q images=%d model_hint=%q",
+	logger.Infof("[Pipeline] user=%s msg=%q images=%d model_hint=%q",
 		userID, truncateString(req.Message, 80), len(req.Images), req.ModelHint)
 
 	// Запускаем pipeline
@@ -790,14 +789,14 @@ func (s *server) ChatWithPipeline(req *gen.PipelineRequest, stream gen.ChatServi
 	)
 
 	if err != nil {
-		log.Printf("[Pipeline] error for user %s: %v", userID, err)
+		logger.Errorf("[Pipeline] error for user %s: %v", userID, err)
 		// Refund rate limit slot on failure
 		owlRateLimiter.cancel(userID)
 		if err := stream.Send(&gen.PipelineResponse{
 			Finished: true,
 			Error:    err.Error(),
 		}); err != nil {
-			log.Printf("Failed to send pipeline response: %v", err)
+			logger.Infof("Failed to send pipeline response: %v", err)
 		}
 		return nil
 	}
@@ -879,7 +878,7 @@ func (s *server) ListAgents(_ context.Context, req *gen.ListAgentsRequest) (*gen
 		"SELECT id, name, COALESCE(system_prompt, ''), COALESCE(model, ''), COALESCE(max_tokens, 2048) FROM hermes_custom_agents WHERE user_id = $1 ORDER BY created_at ASC",
 		userID)
 	if err != nil {
-		log.Printf("[Lava] ListAgents DB error: %v", err)
+		logger.Errorf("[Lava] ListAgents DB error: %v", err)
 		return &gen.ListAgentsResponse{}, nil
 	}
 	defer rows.Close()
@@ -938,14 +937,14 @@ func (s *server) CreateAgent(_ context.Context, req *gen.CreateAgentRequest) (*g
 		agentID, userID, userID, req.PresetId, req.Name, req.SystemPrompt, req.Model, req.MaxTokens,
 	)
 	if err != nil {
-		log.Printf("[Lava] CreateAgent DB error: %v", err)
+		logger.Errorf("[Lava] CreateAgent DB error: %v", err)
 		return &gen.CreateAgentResponse{Success: false, Error: err.Error()}, nil
 	}
 
 	// Reload custom agents in registry
 	s.hermesOrchestrator.registry.LoadCustomAgents(s.db.DB)
 
-	log.Printf("[Lava] created agent %s for user %s", agentID, userID)
+	logger.Infof("[Lava] created agent %s for user %s", agentID, userID)
 	return &gen.CreateAgentResponse{Success: true, AgentId: agentID}, nil
 }
 
@@ -1052,19 +1051,19 @@ func (s *server) ListUserAgents(_ context.Context, req *gen.ListUserAgentsReques
 
 func (s *server) CreateHermesSession(_ context.Context, req *gen.CreateHermesSessionRequest) (*gen.CreateHermesSessionResponse, error) {
 	userID := req.UserId
-	log.Printf("[Lava] CreateHermesSession: user_id=%q name=%q", userID, req.Name)
+	logger.Infof("[Lava] CreateHermesSession: user_id=%q name=%q", userID, req.Name)
 	if userID == "" {
-		log.Printf("[Lava] CreateHermesSession: ERROR empty user_id")
+		logger.Error("[Lava] CreateHermesSession: ERROR empty user_id")
 		return &gen.CreateHermesSessionResponse{Success: false, Error: "user_id is required"}, nil
 	}
 
 	// Resolve username → UUID if needed (hermes_sessions.user_id is UUID type)
 	if _, err := uuid.Parse(userID); err != nil {
 		if uid, err := s.db.GetUserIdByUsername(userID); err == nil && uid != "" {
-			log.Printf("[Lava] CreateHermesSession: resolved username %q → UUID %q", userID, uid)
+			logger.Infof("[Lava] CreateHermesSession: resolved username %q → UUID %q", userID, uid)
 			userID = uid
 		} else {
-			log.Printf("[Lava] CreateHermesSession: WARNING could not resolve username %q to UUID, using as-is", userID)
+			logger.Warnf("[Lava] CreateHermesSession: WARNING could not resolve username %q to UUID, using as-is", userID)
 		}
 	}
 
@@ -1082,7 +1081,7 @@ func (s *server) CreateHermesSession(_ context.Context, req *gen.CreateHermesSes
 		sessionID, userID, name,
 	)
 	if err != nil {
-		log.Printf("[Lava] CreateHermesSession: DB error (hermes_sessions): %v", err)
+		logger.Errorf("[Lava] CreateHermesSession: DB error (hermes_sessions): %v", err)
 		return &gen.CreateHermesSessionResponse{Success: false, Error: err.Error()}, nil
 	}
 
@@ -1097,10 +1096,10 @@ func (s *server) CreateHermesSession(_ context.Context, req *gen.CreateHermesSes
 		sessionID, name, string(participantsJSON), username, userID,
 	)
 	if err != nil {
-		log.Printf("[Lava] CreateHermesSession: WARNING failed to insert into chats: %v", err)
+		logger.Warnf("[Lava] CreateHermesSession: WARNING failed to insert into chats: %v", err)
 	}
 
-	log.Printf("[Lava] CreateHermesSession: OK session_id=%s name=%s", sessionID, name)
+	logger.Infof("[Lava] CreateHermesSession: OK session_id=%s name=%s", sessionID, name)
 	return &gen.CreateHermesSessionResponse{Success: true, SessionId: sessionID, Name: name}, nil
 }
 
@@ -1210,7 +1209,7 @@ func (s *server) RenameAIChat(_ context.Context, req *gen.RenameAIChatRequest) (
 func (s *server) GetFreeModels(_ context.Context, _ *gen.GetFreeModelsRequest) (*gen.GetFreeModelsResponse, error) {
 	models, err := s.db.GetFreeModels()
 	if err != nil {
-		log.Printf("[FreeModels] GetFreeModels error: %v", err)
+		logger.Errorf("[FreeModels] GetFreeModels error: %v", err)
 		return &gen.GetFreeModelsResponse{}, nil
 	}
 	result := make([]*gen.FreeModelInfo, 0, len(models))

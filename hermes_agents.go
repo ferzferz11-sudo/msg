@@ -7,7 +7,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"log"
 	"strings"
 	"time"
 )
@@ -242,7 +241,7 @@ func (r *HermesAgentRegistry) loadCustomAgents() {
 		 FROM hermes_custom_agents WHERE is_active = TRUE`,
 	)
 	if err != nil {
-		log.Printf("[HermesRegistry] load custom agents error: %v", err)
+		logger.Errorf("[HermesRegistry] load custom agents error: %v", err)
 		return
 	}
 	defer rows.Close()
@@ -261,7 +260,7 @@ func (r *HermesAgentRegistry) loadCustomAgents() {
 		}
 	}
 	if count > 0 {
-		log.Printf("[HermesRegistry] loaded %d custom agents from DB", count)
+		logger.Infof("[HermesRegistry] loaded %d custom agents from DB", count)
 	}
 }
 
@@ -303,7 +302,7 @@ func (r *HermesAgentRegistry) LoadCustomAgents(db *sql.DB) {
 	rows, err := db.Query(
 		"SELECT id, user_id, preset_id, name, COALESCE(system_prompt, ''), COALESCE(model, ''), COALESCE(max_tokens, 2048) FROM hermes_custom_agents ORDER BY created_at ASC")
 	if err != nil {
-		log.Printf("[Lava] LoadCustomAgents DB error: %v", err)
+		logger.Errorf("[Lava] LoadCustomAgents DB error: %v", err)
 		return
 	}
 	defer rows.Close()
@@ -347,7 +346,7 @@ func (r *HermesAgentRegistry) LoadCustomAgents(db *sql.DB) {
 		count++
 	}
 	if count > 0 {
-		log.Printf("[Lava] loaded %d custom agents from DB", count)
+		logger.Infof("[Lava] loaded %d custom agents from DB", count)
 	}
 }
 

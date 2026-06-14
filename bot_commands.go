@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"os/exec"
 	"runtime"
@@ -246,7 +245,7 @@ func handleBotDeploy(s *server, req *gen.BotCommandRequest) *gen.BotCommandRespo
 		}
 	}
 
-	log.Printf("[BotCommand] Deploy to %s requested by %s", target, req.Username)
+	logger.Infof("[BotCommand] Deploy to %s requested by %s", target, req.Username)
 
 	SendServerNotification("deploy", "🚀 Деплой запущен",
 		fmt.Sprintf("Пользователь %s запустил деплой на %s", req.Username, target),
@@ -259,12 +258,12 @@ func handleBotDeploy(s *server, req *gen.BotCommandRequest) *gen.BotCommandRespo
 		}
 		out, err := exec.Command("bash", script).CombinedOutput()
 		if err != nil {
-			log.Printf("[BotCommand] Deploy to %s failed: %v\nOutput: %s", target, err, string(out))
+			logger.Errorf("[BotCommand] Deploy to %s failed: %v\nOutput: %s", target, err, string(out))
 			SendServerNotification("deploy_error", "❌ Деплой не удался",
 				fmt.Sprintf("Деплой на %s завершился с ошибкой: %v", target, err),
 				map[string]string{"target": target, "error": err.Error()})
 		} else {
-			log.Printf("[BotCommand] Deploy to %s completed", target)
+			logger.Infof("[BotCommand] Deploy to %s completed", target)
 			SendServerNotification("deploy_done", "✅ Деплой завершён",
 				fmt.Sprintf("Деплой на %s успешно завершён", target),
 				map[string]string{"target": target})
@@ -286,7 +285,7 @@ func handleBotRestart(s *server, req *gen.BotCommandRequest) *gen.BotCommandResp
 		}
 	}
 
-	log.Printf("[BotCommand] Restart requested by %s", req.Username)
+	logger.Infof("[BotCommand] Restart requested by %s", req.Username)
 
 	SendServerNotification("restart", "🔄 Перезапуск сервера",
 		fmt.Sprintf("Пользователь %s запросил перезапуск dev сервера", req.Username),
@@ -294,7 +293,7 @@ func handleBotRestart(s *server, req *gen.BotCommandRequest) *gen.BotCommandResp
 
 	go func() {
 		time.Sleep(2 * time.Second)
-		log.Printf("[BotCommand] Restarting server via systemd...")
+		logger.Info("[BotCommand] Restarting server via systemd...")
 		exec.Command("systemctl", "restart", "lavender-server-dev").Run()
 	}()
 
@@ -365,11 +364,11 @@ func handleBotAI(s *server, req *gen.BotCommandRequest) *gen.BotCommandResponse 
 
 	messages := []map[string]string{{"role": "user", "content": message}}
 
-	log.Printf("[BotCommand] /ai from %s: %q", req.Username, message)
+	logger.Infof("[BotCommand] /ai from %s: %q", req.Username, message)
 
 	response, err := callOpenRouterContext(context.Background(), s.owlApiKey, s.owlModel, systemPrompt, messages)
 	if err != nil {
-		log.Printf("[BotCommand] /ai error for %s: %v", req.Username, err)
+		logger.Errorf("[BotCommand] /ai error for %s: %v", req.Username, err)
 		// Refund rate limit slot on failure
 		owlRateLimiter.cancel(req.UserId)
 		return &gen.BotCommandResponse{
@@ -564,7 +563,7 @@ func SendServerNotification(notifType, title, message string, metadata map[strin
 		Metadata:  metadata,
 	}
 	notifications.broadcast(notif)
-	log.Printf("[Notification] %s: %s - %s", notifType, title, message)
+	logger.Infof("[Notification] %s: %s - %s", notifType, title, message)
 }
 
 // ======= Notification RPC implementations =======

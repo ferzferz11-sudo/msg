@@ -6,7 +6,6 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -68,7 +67,7 @@ func (m *AIChatManager) CreateSession(userID, agentType string) (string, error) 
 	if err != nil {
 		return "", fmt.Errorf("failed to create AI chat session: %w", err)
 	}
-	log.Printf("[AIChatManager] created session %s for user %s (type=%s)", sessionID, userID, agentType)
+	logger.Infof("[AIChatManager] created session %s for user %s (type=%s)", sessionID, userID, agentType)
 	return sessionID, nil
 }
 
@@ -108,7 +107,7 @@ func (m *AIChatManager) GetSessionsByUser(userID string) ([]*AIChatSession, erro
 		var s AIChatSession
 		if err := rows.Scan(&s.ID, &s.UserID, &s.AgentType, &s.Model, &s.SystemPrompt,
 			&s.ActiveAgentID, &s.AgentMode, &s.CreatedAt, &s.UpdatedAt); err != nil {
-			log.Printf("[AIChatManager] scan error: %v", err)
+			logger.Errorf("[AIChatManager] scan error: %v", err)
 			continue
 		}
 		sessions = append(sessions, &s)
@@ -122,7 +121,7 @@ func (m *AIChatManager) DeleteSession(sessionID string) error {
 	if err != nil {
 		return fmt.Errorf("failed to delete session %s: %w", sessionID, err)
 	}
-	log.Printf("[AIChatManager] deleted session %s", sessionID)
+	logger.Infof("[AIChatManager] deleted session %s", sessionID)
 	return nil
 }
 
@@ -162,7 +161,7 @@ func (m *AIChatManager) GetHistory(sessionID string, limit int) ([]AIMessage, er
 	for rows.Next() {
 		var msg AIMessage
 		if err := rows.Scan(&msg.ID, &msg.SessionID, &msg.Role, &msg.Content, &msg.AgentID, &msg.CreatedAt); err != nil {
-			log.Printf("[AIChatManager] history scan error: %v", err)
+			logger.Errorf("[AIChatManager] history scan error: %v", err)
 			continue
 		}
 		messages = append(messages, msg)

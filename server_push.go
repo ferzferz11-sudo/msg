@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
@@ -26,7 +25,7 @@ func (s *server) RegisterToken(_ context.Context, req *gen.TokenRequest) (*gen.T
 
 	err := s.db.SaveUserToken(username, req.Token, req.PushEnabled)
 	if err != nil {
-		log.Printf("Failed to save token for %s: %v", username, err)
+		logger.Infof("Failed to save token for %s: %v", username, err)
 		return &gen.TokenResponse{Success: false}, err
 	}
 
@@ -130,7 +129,7 @@ func (s *server) saveConferenceSystemMessage(roomID, text, senderName, senderId 
 	// Save to DB (now supports ON CONFLICT update)
 	err := s.db.SaveMessage(msgId, user, uid, encryptedText, createdAt, "", "", "", roomID, "", "[]", "", 0)
 	if err != nil {
-		log.Printf("[CONF] Failed to save call system message: %v", err)
+		logger.Infof("[CONF] Failed to save call system message: %v", err)
 		return
 	}
 
@@ -178,7 +177,7 @@ func (s *server) broadcastConferenceStatus(roomID string) {
 
 func (s *server) sendConferencePush(targetUserID, text, roomID string, startTime time.Time) {
 	// Implementation for FCM push
-	log.Printf("[PUSH] Sending conference invitation to %s: %s (at %v)", targetUserID, text, startTime)
+	logger.Infof("[PUSH] Sending conference invitation to %s: %s (at %v)", targetUserID, text, startTime)
 
 	// Construct push data
 	data := map[string]string{
@@ -202,7 +201,7 @@ func (s *server) sendPushInternal(targetUserID, title, body string, data map[str
 	ctx := context.Background()
 	client, err := s.firebaseApp.Messaging(ctx)
 	if err != nil {
-		log.Printf("[FCM] Error getting messaging client: %v", err)
+		logger.Errorf("[FCM] Error getting messaging client: %v", err)
 		return
 	}
 
@@ -217,14 +216,14 @@ func (s *server) sendPushInternal(targetUserID, title, body string, data map[str
 
 	_, err = client.Send(ctx, pushMsg)
 	if err != nil {
-		log.Printf("[FCM] Error sending conference push: %v", err)
+		logger.Errorf("[FCM] Error sending conference push: %v", err)
 	}
 }
 
 func (s *server) saveCallSystemMessage(u1, u2, icon, text, senderName, senderId string) {
 	chatID, err := s.db.GetDirectChatBetweenUsers(u1, u2)
 	if err != nil {
-		log.Printf("[CALL] Failed to find chat for system message: %v", err)
+		logger.Infof("[CALL] Failed to find chat for system message: %v", err)
 		return
 	}
 
@@ -238,7 +237,7 @@ func (s *server) saveCallSystemMessage(u1, u2, icon, text, senderName, senderId 
 	encryptedText, _ := encrypt(displayText)
 	err = s.db.SaveMessage(msgId, senderName, senderId, encryptedText, createdAt, "", "", "", chatID, "", "[]", "", 0)
 	if err != nil {
-		log.Printf("[CALL] Failed to save call system message: %v", err)
+		logger.Infof("[CALL] Failed to save call system message: %v", err)
 		return
 	}
 
@@ -255,7 +254,7 @@ func (s *server) saveCallSystemMessage(u1, u2, icon, text, senderName, senderId 
 }
 
 func (s *server) handleAbruptDisconnect(userId string) {
-	log.Printf("[CALL] Handling abrupt disconnect for %s", userId)
+	logger.Infof("[CALL] Handling abrupt disconnect for %s", userId)
 
 	// Resolve userId to UUID if it's a username
 	resolvedUserId := s.resolveUserId(userId)
@@ -263,7 +262,7 @@ func (s *server) handleAbruptDisconnect(userId string) {
 	// Find all active/pending calls for this user
 	activeCalls, err := s.db.GetActiveCallsByUser(resolvedUserId)
 	if err != nil {
-		log.Printf("[CALL] Failed to get active calls for %s: %v", userId, err)
+		logger.Infof("[CALL] Failed to get active calls for %s: %v", userId, err)
 		return
 	}
 
@@ -288,9 +287,9 @@ func (s *server) handleAbruptDisconnect(userId string) {
 		// Try to deliver via hub to the receiver's call stream
 		delivered := s.hub.BroadcastCall(hangupSignal)
 		if !delivered {
-			log.Printf("[CALL] HANGUP not delivered to %s for call %s (receiver offline)", otherPartyId, call.CallID)
+			logger.Infof("[CALL] HANGUP not delivered to %s for call %s (receiver offline)", otherPartyId, call.CallID)
 		} else {
-			log.Printf("[CALL] HANGUP sent to %s for call %s", otherPartyId, call.CallID)
+			logger.Infof("[CALL] HANGUP sent to %s for call %s", otherPartyId, call.CallID)
 		}
 
 		// Also try to resolve username and send via their chat stream as system message

@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"strings"
 	"time"
 
@@ -25,7 +24,7 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 	defer func() {
 		// Unregister the client when the connection ends
 		s.hub.Unregister(stream)
-		log.Printf("Stream for %s closed", connectedUser)
+		logger.Infof("Stream for %s closed", connectedUser)
 	}()
 
 	for {
@@ -48,7 +47,7 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 			// Check if user exists first
 			userExists, err := s.db.UserExists(msg.User)
 			if err != nil {
-				log.Printf("Failed to check user existence: %v", err)
+				logger.Errorf("Failed to check user existence: %v", err)
 				return err
 			}
 
@@ -56,12 +55,12 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 				// User exists, verify password
 				storedHash, err := s.db.GetUserPasswordHash(msg.User)
 				if err != nil {
-					log.Printf("Failed to get password hash: %v", err)
+					logger.Errorf("Failed to get password hash: %v", err)
 					return err
 				}
 
 				if !CheckPassword(msg.Password, storedHash) {
-					log.Printf("Auth failed: %s", msg.User)
+					logger.Errorf("Auth failed: %s", msg.User)
 
 					// Send authentication failure message to the client
 					authFailMsg := &gen.Message{
@@ -71,7 +70,7 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 						CreatedAt: timestamppb.Now(),
 					}
 					if err := stream.Send(authFailMsg); err != nil {
-						log.Printf("Failed to send auth failed message: %v", err)
+						logger.Errorf("Failed to send auth failed message: %v", err)
 					}
 
 					return fmt.Errorf("authentication failed")
@@ -79,7 +78,7 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 			} else {
 				// User does not exist. Check if registration is requested.
 				if !msg.Register {
-					log.Printf("Login attempt for non-existent user: %s", msg.User)
+					logger.Infof("Login attempt for non-existent user: %s", msg.User)
 
 					// Send user not found message to the client
 					notFoundMsg := &gen.Message{
@@ -89,7 +88,7 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 						CreatedAt: timestamppb.Now(),
 					}
 					if err := stream.Send(notFoundMsg); err != nil {
-						log.Printf("Failed to send user not found message: %v", err)
+						logger.Errorf("Failed to send user not found message: %v", err)
 					}
 					return fmt.Errorf("user not found")
 				}
@@ -97,16 +96,16 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 				// New user, hash password and create
 				passwordHash, err := HashPassword(msg.Password)
 				if err != nil {
-					log.Printf("Failed to hash password: %v", err)
+					logger.Errorf("Failed to hash password: %v", err)
 					return err
 				}
 
 				err = s.db.SaveUser(msg.User, passwordHash)
 				if err != nil {
-					log.Printf("Failed to save user: %v", err)
+					logger.Errorf("Failed to save user: %v", err)
 					return err
 				}
-				log.Printf("Registered new user: %s", msg.User)
+				logger.Infof("Registered new user: %s", msg.User)
 
 				// Send registration success message to the client
 				regMsg := &gen.Message{
@@ -116,7 +115,7 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 					CreatedAt: timestamppb.Now(),
 				}
 				if err := stream.Send(regMsg); err != nil {
-					log.Printf("Failed to send registration success message: %v", err)
+					logger.Errorf("Failed to send registration success message: %v", err)
 				}
 			}
 
@@ -134,7 +133,7 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 			connectedUserID = uid
 
 			// Single unified log line for successful auth and initial connection
-			log.Printf("Auth success: %s (v%s), initial signal: %s", msg.User, msg.ClientVersion, msg.RoomId)
+			logger.Infof("Auth success: %s (v%s), initial signal: %s", msg.User, msg.ClientVersion, msg.RoomId)
 
 			// Update last client version and last seen timestamp in DB
 			if msg.ClientVersion != "" {
@@ -151,7 +150,7 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 				Id:        uuid.New().String(),
 				CreatedAt: timestamppb.Now(),
 			}
-			if err := stream.Send(serverInfoMsg); err != nil { log.Printf("Failed to send server info: %v", err) }
+			if err := stream.Send(serverInfoMsg); err != nil { logger.Errorf("Failed to send server info: %v", err) }
 
 			// Inform the user about their admin status (check by user_id first, then username)
 			if s.db.IsSuperAdmin(connectedUserID) || s.db.IsSuperAdmin(msg.User) {
@@ -163,7 +162,7 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 					CreatedAt:    timestamppb.Now(),
 				}
 				if err := stream.Send(statusMsg); err != nil {
-					log.Printf("Failed to send super admin status: %v", err)
+					logger.Errorf("Failed to send super admin status: %v", err)
 				}
 			}
 
@@ -175,9 +174,9 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 				}
 				err := s.db.AddUserDevice(connectedUserID, msg.DeviceId, msg.DeviceName, msg.ClientVersion, ip)
 				if err != nil {
-					log.Printf("Failed to register device %s for %s (ID: %s): %v", msg.DeviceId, msg.User, connectedUserID, err)
+					logger.Errorf("Failed to register device %s for %s (ID: %s): %v", msg.DeviceId, msg.User, connectedUserID, err)
 				} else {
-					log.Printf("Device registered: %s (%s) for %s", msg.DeviceName, msg.DeviceId, msg.User)
+					logger.Infof("Device registered: %s (%s) for %s", msg.DeviceName, msg.DeviceId, msg.User)
 				}
 			}
 
@@ -192,7 +191,7 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 			now := time.Now()
 			if lastTime, ok := s.recentMsgs.Load(msgHash); ok {
 				if now.Sub(lastTime.(time.Time)) < 2*time.Second {
-					log.Printf("Msg deduplicated: %s in %s", msg.User, msg.RoomId)
+					logger.Infof("Msg deduplicated: %s in %s", msg.User, msg.RoomId)
 					continue
 				}
 			}
@@ -202,7 +201,7 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 		// Reject messages from unauthenticated streams (except first auth message)
 		// Temporarily disabled to debug authentication issues
 		/*if !s.hub.IsAuthenticated(stream) && msg.Password == "" {
-			log.Printf("Rejected message from unauthenticated stream")
+			logger.Info("Rejected message from unauthenticated stream")
 			return fmt.Errorf("not authenticated")
 		}*/
 
@@ -242,7 +241,7 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 
 		// Bot command detection — messages starting with "/"
 		if strings.HasPrefix(strings.TrimSpace(msg.Text), "/") {
-			log.Printf("[BotCommand] %s in %s: %s", msg.User, roomID, msg.Text)
+			logger.Infof("[BotCommand] %s in %s: %s", msg.User, roomID, msg.Text)
 
 			// Parse command and args
 			parts := strings.Fields(msg.Text)
@@ -262,7 +261,7 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 			}
 			botResp, err := s.ProcessBotCommand(nil, botReq)
 			if err != nil {
-				log.Printf("[BotCommand] Error: %v", err)
+				logger.Errorf("[BotCommand] Error: %v", err)
 			} else if botResp != nil {
 				// Send bot response as a system message to the room
 				botMsg := &gen.Message{
@@ -285,35 +284,35 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 		// Log message — for E2EE/secret chats, never log message text
 		if msg.IsE2Ee {
 			if len(msg.ImageUrls) > 0 {
-				log.Printf("[%s] in %s: [E2EE image] (ImageURLs: %v)", msg.User, roomID, msg.ImageUrls)
+				logger.Infof("[%s] in %s: [E2EE image] (ImageURLs: %v)", msg.User, roomID, msg.ImageUrls)
 			} else if msg.ImageUrl != "" {
-				log.Printf("[%s] in %s: [E2EE image] (ImageURL: %s)", msg.User, roomID, msg.ImageUrl)
+				logger.Infof("[%s] in %s: [E2EE image] (ImageURL: %s)", msg.User, roomID, msg.ImageUrl)
 			} else if msg.VoiceUrl != "" {
-				log.Printf("[%s] in %s: [E2EE voice] (%d seconds)", msg.User, roomID, msg.Duration)
+				logger.Infof("[%s] in %s: [E2EE voice] (%d seconds)", msg.User, roomID, msg.Duration)
 			} else {
-				log.Printf("[%s] in %s: [E2EE encrypted message]", msg.User, roomID)
+				logger.Infof("[%s] in %s: [E2EE encrypted message]", msg.User, roomID)
 			}
 		} else {
 			if len(msg.ImageUrls) > 0 {
-				log.Printf("[%s] in %s: %s (ImageURLs: %v)", msg.User, roomID, msg.Text, msg.ImageUrls)
+				logger.Infof("[%s] in %s: %s (ImageURLs: %v)", msg.User, roomID, msg.Text, msg.ImageUrls)
 			} else if msg.ImageUrl != "" {
-				log.Printf("[%s] in %s: %s (ImageURL: %s)", msg.User, roomID, msg.Text, msg.ImageUrl)
+				logger.Infof("[%s] in %s: %s (ImageURL: %s)", msg.User, roomID, msg.Text, msg.ImageUrl)
 			} else if msg.VoiceUrl != "" {
-				log.Printf("[%s] in %s: Voice message (%d seconds) - %s", msg.User, roomID, msg.Duration, msg.VoiceUrl)
+				logger.Infof("[%s] in %s: Voice message (%d seconds) - %s", msg.User, roomID, msg.Duration, msg.VoiceUrl)
 			} else {
-				log.Printf("[%s] in %s: %s", msg.User, roomID, msg.Text)
+				logger.Infof("[%s] in %s: %s", msg.User, roomID, msg.Text)
 			}
 		}
 
 		if roomID == "" {
-			log.Printf("Skipping message with empty room ID from %s", msg.User)
+			logger.Infof("Skipping message with empty room ID from %s", msg.User)
 			continue
 		}
 
 		// Skip join messages (don't save to database)
 		if strings.HasSuffix(msg.Text, " joined") || strings.HasSuffix(msg.Text, " присоединился") {
 			// Still broadcast but don't save to DB
-			log.Printf("Skipping join message from DB save: %s", msg.Text)
+			logger.Infof("Skipping join message from DB save: %s", msg.Text)
 		} else {
 			// For E2EE messages, client already encrypted the payload
 			// Don't double-encrypt with server key
@@ -324,7 +323,7 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 				var err error
 				encryptedText, err = encrypt(msg.Text)
 				if err != nil {
-					log.Printf("Failed to encrypt message: %v", err)
+					logger.Errorf("Failed to encrypt message: %v", err)
 					continue
 				}
 			}
@@ -340,9 +339,9 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 			duration := msg.Duration
 			err = s.db.SaveMessage(msg.Id, msg.User, msg.UserId, encryptedText, msg.CreatedAt.AsTime(), msg.RepliedToMessageId, msg.RepliedToUser, msg.RepliedToText, roomID, imageURL, imageURLsJSON, voiceURL, duration, msg.IsE2Ee)
 			if err != nil {
-				log.Printf("Failed to save msg: %v", err)
+				logger.Errorf("Failed to save msg: %v", err)
 			} else {
-				log.Printf("Msg saved: %s (%s)", msg.Id, roomID)
+				logger.Infof("Msg saved: %s (%s)", msg.Id, roomID)
 			}
 		}
 
@@ -352,7 +351,7 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 		// Get user's avatar URL
 		avatarURL, err := s.db.GetUserAvatar(msg.User)
 		if err != nil {
-			log.Printf("Failed to get avatar for %s: %v", msg.User, err)
+			logger.Errorf("Failed to get avatar for %s: %v", msg.User, err)
 		}
 		msg.AvatarUrl = avatarURL
 
@@ -371,7 +370,7 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 
 		allUsers, err := s.db.GetAllUsers()
 		if err != nil {
-			log.Printf("Failed to get all users for push notifications: %v", err)
+			logger.Errorf("Failed to get all users for push notifications: %v", err)
 		} else {
 			for _, user := range allUsers {
 				// Skip the sender
@@ -380,7 +379,7 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 				}
 
 				if !senderNotifiesOthers {
-					log.Printf("Push skip: %s has disabled outgoing notifications", msg.User)
+					logger.Infof("Push skip: %s has disabled outgoing notifications", msg.User)
 					break // No need to check other participants if sender disabled it
 				}
 
@@ -403,7 +402,7 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 				}
 
 				// Send push notification to all users in the room
-				log.Printf("Push sent: %s", user.Username)
+				logger.Infof("Push sent: %s", user.Username)
 				// For secret chats, don't leak message content in push
 				pushText := msg.Text
 				if chat.IsSecret {
@@ -469,7 +468,7 @@ func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
 		s.hub.UnregisterCall(stream)
 		if currentUserId != "" {
 			username := s.resolveUsername(currentUserId)
-			log.Printf("[CALL] Stream closed: %s (%s)", currentUserId, username)
+			logger.Infof("[CALL] Stream closed: %s (%s)", currentUserId, username)
 			s.handleAbruptDisconnect(currentUserId)
 		}
 	}()
@@ -482,7 +481,7 @@ func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
 		if err != nil {
 			// Don't log normal connection closures as errors
 			if err != context.Canceled && !strings.Contains(err.Error(), "transport is closing") {
-				log.Printf("[CALL] Error receiving signal: %v", err)
+				logger.Errorf("[CALL] Error receiving signal: %v", err)
 			}
 			return err
 		}
@@ -497,7 +496,7 @@ func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
 			currentUserId = msg.SenderId
 			s.hub.UpdateCallName(stream, currentUserId)
 			username := s.resolveUsername(currentUserId)
-			log.Printf("[CALL] Stream identified: %s (%s)", currentUserId, username)
+			logger.Infof("[CALL] Stream identified: %s (%s)", currentUserId, username)
 		}
 
 		// Silence identity signals to reduce log volume
@@ -507,7 +506,7 @@ func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
 
 		senderName := s.resolveUsername(msg.SenderId)
 		receiverName := s.resolveUsername(msg.ReceiverId)
-		log.Printf("[CALL] Signal: %s | From: %s (%s) | To: %s (%s) | CallID: %s",
+		logger.Infof("[CALL] Signal: %s | From: %s (%s) | To: %s (%s) | CallID: %s",
 			msg.Type.String(), msg.SenderId, senderName, msg.ReceiverId, receiverName, msg.CallId)
 
 		// Handle database updates based on message type
@@ -515,15 +514,15 @@ func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
 		case gen.CallMessage_INITIATE:
 			callId, err := s.db.CreateCall(msg.SenderId, msg.ReceiverId, "video", "")
 			if err != nil {
-				log.Printf("[CALL] Failed to create call in DB: %v", err)
+				logger.Errorf("[CALL] Failed to create call in DB: %v", err)
 			} else {
 				msg.CallId = callId
-				log.Printf("[CALL] New call created: %s", callId)
+				logger.Infof("[CALL] New call created: %s", callId)
 			}
 
 			// 1. Route to receiver
 			delivered := s.hub.BroadcastCall(msg)
-			log.Printf("[CALL] INITIATE from %s to %s delivered: %v", msg.SenderId, msg.ReceiverId, delivered)
+			logger.Infof("[CALL] INITIATE from %s to %s delivered: %v", msg.SenderId, msg.ReceiverId, delivered)
 
 			// 2. Route back to sender so they get the generated call_id
 			originalReceiver := msg.ReceiverId
@@ -539,16 +538,16 @@ func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
 			continue
 
 		case gen.CallMessage_ACCEPT:
-			log.Printf("[CALL] Accepted: %s", msg.CallId)
+			logger.Infof("[CALL] Accepted: %s", msg.CallId)
 			_ = s.db.UpdateCallStatus(msg.CallId, "active")
 		case gen.CallMessage_REJECT:
-			log.Printf("[CALL] Rejected: %s", msg.CallId)
+			logger.Infof("[CALL] Rejected: %s", msg.CallId)
 			_ = s.db.UpdateCallStatus(msg.CallId, "rejected")
 			// For missed calls, the message should be attributed to the CALLER (ReceiverId in REJECT signal)
 			// so that the person who missed it sees it as an incoming message (on the left)
 			s.saveCallSystemMessage(senderName, receiverName, "📞↘️", "Пропущенный вызов", receiverName, msg.ReceiverId)
 		case gen.CallMessage_HANGUP:
-			log.Printf("[CALL] Hung up: %s", msg.CallId)
+			logger.Infof("[CALL] Hung up: %s", msg.CallId)
 			_ = s.db.UpdateCallStatus(msg.CallId, "completed")
 
 			durationText := ""
@@ -565,7 +564,7 @@ func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
 			if s.hub.GetConferenceCreator(msg.RoomId) == "" {
 				s.hub.InitiateConference(msg.RoomId, msg.SenderId, msg.SenderName)
 				// Initial setup doesn't broadcast to everyone yet, just creates the lobby
-				log.Printf("[CONF] Lobby created for room %s by %s", msg.RoomId, msg.SenderId)
+				logger.Infof("[CONF] Lobby created for room %s by %s", msg.RoomId, msg.SenderId)
 			}
 			// Respond to creator with the status
 			s.broadcastConferenceStatus(msg.RoomId)
@@ -637,7 +636,7 @@ func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
 		// Broadcast WebRTC signals (OFFER, ANSWER, ICE) to partner
 		delivered := s.hub.BroadcastCall(msg)
 		if !delivered {
-			log.Printf("[CALL] Warning: Signal %s not delivered to %s (offline)",
+			logger.Warnf("[CALL] Warning: Signal %s not delivered to %s (offline)",
 				msg.Type.String(), msg.ReceiverId)
 		}
 	}

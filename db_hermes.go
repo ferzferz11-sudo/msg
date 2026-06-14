@@ -6,7 +6,6 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
-	"log"
 	"strings"
 	"time"
 
@@ -221,7 +220,7 @@ func runHermesMigrations(db *sql.DB) {
 	for _, q := range queries {
 		if _, err := db.Exec(q); err != nil {
 			if !strings.Contains(err.Error(), "must be owner of table") {
-				log.Printf("[Lava] Migration error: %v", err)
+				logger.Errorf("[Lava] Migration error: %v", err)
 			}
 		}
 	}
@@ -244,7 +243,7 @@ func (h *HermesDB) SaveOrchestratorMessage(sessionID, userID, role, agentID, con
 		sessionID, userID, role, agentID, content,
 	)
 	if err != nil {
-		log.Printf("[HermesDB] save message error: %v", err)
+		logger.Errorf("[HermesDB] save message error: %v", err)
 	}
 }
 
@@ -292,7 +291,7 @@ func (h *HermesDB) SaveAgentRun(sessionID, userID, agentID, mode, reason string)
 		sessionID, userID, agentID, mode, reason,
 	).Scan(&id)
 	if err != nil {
-		log.Printf("[HermesDB] save agent run error: %v", err)
+		logger.Errorf("[HermesDB] save agent run error: %v", err)
 		return 0
 	}
 	return id
@@ -305,7 +304,7 @@ func (h *HermesDB) CompleteAgentRun(runID int, status string) {
 		status, runID,
 	)
 	if err != nil {
-		log.Printf("[HermesDB] complete agent run error: %v", err)
+		logger.Errorf("[HermesDB] complete agent run error: %v", err)
 	}
 }
 
@@ -372,7 +371,7 @@ func (h *HermesDB) GetUserHermesSessions(userID string) ([]struct {
 			LastMessageTime time.Time
 		}
 		if err := rows.Scan(&r.ID, &r.Name, &r.ActiveAgentID, &r.AgentMode, &r.CreatedAt, &r.UpdatedAt, &r.LastMessageText, &r.LastMessageTime); err != nil {
-			log.Printf("[HermesDB] GetUserHermesSessions scan error: %v", err)
+			logger.Errorf("[HermesDB] GetUserHermesSessions scan error: %v", err)
 			continue
 		}
 		res = append(res, r)
@@ -390,7 +389,7 @@ func (h *HermesDB) SaveSession(sessionID, userID, activeAgentID, mode string) {
 		sessionID, userID, activeAgentID, mode,
 	)
 	if err != nil {
-		log.Printf("[HermesDB] save session error: %v", err)
+		logger.Errorf("[HermesDB] save session error: %v", err)
 	}
 }
 

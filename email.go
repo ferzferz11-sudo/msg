@@ -7,7 +7,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"net/smtp"
 	"os"
 )
@@ -45,10 +44,10 @@ If you did not request this password reset, please ignore this email.
 
 	err := smtp.SendMail(addr, auth, fromEmail, []string{email}, []byte(message))
 	if err != nil {
-		log.Printf("Failed to send email to %s: %v", email, err)
+		logger.Errorf("Failed to send email to %s: %v", email, err)
 		return err
 	}
 
-	log.Printf("Password reset email sent to %s", email)
+	logger.Infof("Password reset email sent to %s", email)
 	return nil
 }

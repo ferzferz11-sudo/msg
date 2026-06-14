@@ -8,7 +8,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"log"
 	"strings"
 	"sync"
 	"time"
@@ -81,9 +80,9 @@ func NewOrchestrator(registry *HermesAgentRegistry, db *sql.DB, apiKey, model st
 			Provider:    hermesProvider,
 			Priority:    20,
 		})
-		log.Printf("[Orchestrator] Hermes local provider registered (prefix=local/)")
+		logger.Info("[Orchestrator] Hermes local provider registered (prefix=local/)")
 	} else {
-		log.Printf("[Orchestrator] Hermes local provider not available: %v", err)
+		logger.Infof("[Orchestrator] Hermes local provider not available: %v", err)
 	}
 	o.llmRouter = llmRouter
 
@@ -96,9 +95,9 @@ func NewOrchestrator(registry *HermesAgentRegistry, db *sql.DB, apiKey, model st
 	toolExecutor := tools.NewDefaultToolExecutor(db)
 	o.aiPipeline = pipeline.NewPipeline(llmRouter, o.ragPipeline, toolExecutor)
 
-	log.Printf("[Orchestrator] LLM Router initialized with OpenRouter provider (model=%s)", model)
-	log.Printf("[Orchestrator] RAG Pipeline initialized (in-memory, TF-IDF embeddings, dim=384)")
-	log.Printf("[Orchestrator] Tool Executor initialized (search_messages, search_users, web_search, get_chat_info)")
+	logger.Infof("[Orchestrator] LLM Router initialized with OpenRouter provider (model=%s)", model)
+	logger.Info("[Orchestrator] RAG Pipeline initialized (in-memory, TF-IDF embeddings, dim=384)")
+	logger.Info("[Orchestrator] Tool Executor initialized (search_messages, search_users, web_search, get_chat_info)")
 
 	return o
 }
@@ -128,7 +127,7 @@ func (o *Orchestrator) getOrCreateSession(userID string) *OrchestratorSession {
 				LastActivity: time.Now(),
 			}
 			o.sessions[userID] = s
-			log.Printf("[ORCHESTRATOR] reusing existing session %s for user %s", existingID, userID)
+			logger.Infof("[ORCHESTRATOR] reusing existing session %s for user %s", existingID, userID)
 			return s
 		}
 	}
@@ -190,7 +189,7 @@ func (o *Orchestrator) Orchestrate(ctx context.Context, userID, chatID, userMess
 		return fmt.Errorf("orchestrator analysis failed: %w", err)
 	}
 
-	log.Printf("[ORCHESTRATOR] user=%s decision: mode=%s agents=%v reason=%s",
+	logger.Infof("[ORCHESTRATOR] user=%s decision: mode=%s agents=%v reason=%s",
 		userID, decision.Mode, decision.AgentIDs, decision.Reason)
 
 	// Шаг 1.5: Проверяем есть ли remote agents в решении
@@ -201,14 +200,14 @@ func (o *Orchestrator) Orchestrate(ctx context.Context, userID, chatID, userMess
 			resolvedAgentIDs = append(resolvedAgentIDs, agentID)
 		} else if remoteAgent := o.remoteManager.GetAgent(agentID); remoteAgent != nil {
 			// Remote agent найден — выполняем через него
-			log.Printf("[ORCHESTRATOR] routing to remote agent: %s (%s)", agentID, remoteAgent.Name)
+			logger.Infof("[ORCHESTRATOR] routing to remote agent: %s (%s)", agentID, remoteAgent.Name)
 			return o.runRemoteAgent(ctx, session, remoteAgent, userMessage, streamFn)
 		}
 	}
 
 	if len(resolvedAgentIDs) == 0 {
 		// Ни локальных, ни remote агентов не найдено — fallback на hermes-owl
-		log.Printf("[ORCHESTRATOR] no agents found, fallback to hermes-owl")
+		logger.Info("[ORCHESTRATOR] no agents found, fallback to hermes-owl")
 		resolvedAgentIDs = []string{"hermes-owl"}
 	}
 	decision.AgentIDs = resolvedAgentIDs
@@ -280,7 +279,7 @@ func (o *Orchestrator) analyzeRequest(ctx context.Context, session *Orchestrator
 	response, err := callOpenRouterContext(ctx, o.apiKey, o.model, orchestratorPrompt, messages)
 	if err != nil {
 		// Fallback: используем OWL для всех запросов
-		log.Printf("[ORCHESTRATOR] analysis error, fallback to OWL: %v", err)
+		logger.Errorf("[ORCHESTRATOR] analysis error, fallback to OWL: %v", err)
 		return &RoutingDecision{
 			Mode:     "single",
 			AgentIDs: []string{"hermes-owl"},
@@ -363,7 +362,7 @@ func (o *Orchestrator) runSingleAgent(ctx context.Context, session *Orchestrator
 	session.ActiveAgentID = agentID
 	session.mu.Unlock()
 
-	log.Printf("[ORCHESTRATOR] running single agent: %s (%s)", agentID, agent.Name)
+	logger.Infof("[ORCHESTRATOR] running single agent: %s (%s)", agentID, agent.Name)
 
 	// Стримим информацию о выбранном агенте
 	intro := fmt.Sprintf("[%s] ", agent.Name)
@@ -401,7 +400,7 @@ func (o *Orchestrator) runSingleAgent(ctx context.Context, session *Orchestrator
 
 // runParallelAgents — запускает нескольких агентов параллельно
 func (o *Orchestrator) runParallelAgents(ctx context.Context, session *OrchestratorSession, agentIDs []string, userMessage string, streamFn func(token string, finished bool) error) error {
-	log.Printf("[ORCHESTRATOR] running parallel agents: %v", agentIDs)
+	logger.Infof("[ORCHESTRATOR] running parallel agents: %v", agentIDs)
 
 	type agentResult struct {
 		AgentID  string
@@ -482,7 +481,7 @@ func (o *Orchestrator) runParallelAgents(ctx context.Context, session *Orchestra
 
 // runPipelineAgents — цепочка агентов: output N → input N+1
 func (o *Orchestrator) runPipelineAgents(ctx context.Context, session *OrchestratorSession, agentIDs []string, userMessage string, streamFn func(token string, finished bool) error) error {
-	log.Printf("[ORCHESTRATOR] running pipeline agents: %v", agentIDs)
+	logger.Infof("[ORCHESTRATOR] running pipeline agents: %v", agentIDs)
 
 	currentInput := userMessage
 
@@ -620,7 +619,7 @@ func (o *Orchestrator) runRemoteAgent(
 	userMessage string,
 	streamFn func(token string, finished bool) error,
 ) error {
-	log.Printf("[ORCHESTRATOR] runRemoteAgent: agent=%s (%s) host=%s", agent.ID, agent.Name, agent.Host)
+	logger.Infof("[ORCHESTRATOR] runRemoteAgent: agent=%s (%s) host=%s", agent.ID, agent.Name, agent.Host)
 
 	// Информируем пользователя о маршрутизации
 	intro := fmt.Sprintf("→ [%s@%s] ", agent.Name, agent.Host)

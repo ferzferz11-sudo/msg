@@ -1,9 +1,9 @@
 package llm
 
 import (
+	"log"
 	"context"
 	"fmt"
-	"log"
 	"strings"
 	"sync"
 )

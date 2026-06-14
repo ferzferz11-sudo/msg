@@ -4,7 +4,6 @@ import (
 	"LavenderMessenger/gen"
 	"context"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -50,7 +49,7 @@ func (a *authServer) SignIn(ctx context.Context, req *gen.SignInRequest) (*gen.A
 	// Check if user exists
 	exists, err := a.db.UserExists(username)
 	if err != nil {
-		log.Printf("SignIn: UserExists error for %s: %v", username, err)
+		logger.Errorf("SignIn: UserExists error for %s: %v", username, err)
 		return &gen.AuthResponse{
 			Success: false,
 			Message: "internal error",
@@ -67,7 +66,7 @@ func (a *authServer) SignIn(ctx context.Context, req *gen.SignInRequest) (*gen.A
 	// Verify password
 	storedHash, err := a.db.GetUserPasswordHash(username)
 	if err != nil {
-		log.Printf("SignIn: GetUserPasswordHash error for %s: %v", username, err)
+		logger.Errorf("SignIn: GetUserPasswordHash error for %s: %v", username, err)
 		return &gen.AuthResponse{
 			Success: false,
 			Message: "internal error",
@@ -99,7 +98,7 @@ func (a *authServer) SignIn(ctx context.Context, req *gen.SignInRequest) (*gen.A
 	// Update last seen
 	_ = a.db.UpdateLastSeen(username)
 
-	log.Printf("SignIn: %s (ID: %s)", username, userID)
+	logger.Infof("SignIn: %s (ID: %s)", username, userID)
 
 	return &gen.AuthResponse{
 		Success: true,
@@ -133,7 +132,7 @@ func (a *authServer) SignUp(ctx context.Context, req *gen.SignUpRequest) (*gen.A
 	// Check if user already exists
 	exists, err := a.db.UserExists(username)
 	if err != nil {
-		log.Printf("SignUp: UserExists error for %s: %v", username, err)
+		logger.Errorf("SignUp: UserExists error for %s: %v", username, err)
 		return &gen.AuthResponse{
 			Success: false,
 			Message: "internal error",
@@ -151,7 +150,7 @@ func (a *authServer) SignUp(ctx context.Context, req *gen.SignUpRequest) (*gen.A
 	if email != "" {
 		emailExists, err := a.db.EmailExists(email)
 		if err != nil {
-			log.Printf("SignUp: EmailExists error for %s: %v", email, err)
+			logger.Errorf("SignUp: EmailExists error for %s: %v", email, err)
 			return &gen.AuthResponse{
 				Success: false,
 				Message: "internal error",
@@ -168,7 +167,7 @@ func (a *authServer) SignUp(ctx context.Context, req *gen.SignUpRequest) (*gen.A
 	// Hash password
 	passwordHash, err := HashPassword(password)
 	if err != nil {
-		log.Printf("SignUp: HashPassword error for %s: %v", username, err)
+		logger.Errorf("SignUp: HashPassword error for %s: %v", username, err)
 		return &gen.AuthResponse{
 			Success: false,
 			Message: "internal error",
@@ -178,7 +177,7 @@ func (a *authServer) SignUp(ctx context.Context, req *gen.SignUpRequest) (*gen.A
 	// Save user
 	err = a.db.SaveUserWithEmail(username, passwordHash, email)
 	if err != nil {
-		log.Printf("SignUp: SaveUserWithEmail error for %s: %v", username, err)
+		logger.Errorf("SignUp: SaveUserWithEmail error for %s: %v", username, err)
 		return &gen.AuthResponse{
 			Success: false,
 			Message: fmt.Sprintf("failed to create user: %v", err),
@@ -192,7 +191,7 @@ func (a *authServer) SignUp(ctx context.Context, req *gen.SignUpRequest) (*gen.A
 	// Generate session token
 	token := uuid.New().String()
 
-	log.Printf("SignUp: new user %s (ID: %s)", username, userID)
+	logger.Infof("SignUp: new user %s (ID: %s)", username, userID)
 
 	return &gen.AuthResponse{
 		Success: true,

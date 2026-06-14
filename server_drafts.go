@@ -2,7 +2,6 @@ package main
 
 import (
 	"time"
-	"log"
 	"github.com/google/uuid"
 	"LavenderMessenger/gen"
 	"context"
@@ -40,7 +39,7 @@ func (s *server) SaveDraft(_ context.Context, req *gen.SaveDraftRequest) (*gen.S
 		s.logErrorOnce("SaveDraft:"+req.UserId, "Failed to save draft for user %s in room %s: %v", req.UserId, req.RoomId, err)
 		return &gen.SaveDraftResponse{Success: false, Message: err.Error()}, nil
 	}
-	log.Printf("Draft saved for user %s in room %s (length: %d)", req.UserId, req.RoomId, len(req.DraftText))
+	logger.Infof("Draft saved for user %s in room %s (length: %d)", req.UserId, req.RoomId, len(req.DraftText))
 	return &gen.SaveDraftResponse{Success: true, Message: "Draft saved successfully"}, nil
 }
 
@@ -100,7 +99,7 @@ func (s *server) DeleteDraft(_ context.Context, req *gen.DeleteDraftRequest) (*g
 	}
 	// Only log if we actually deleted something (not for empty/duplicate deletions)
 	if deleted {
-		log.Printf("Draft deleted for user %s in room %s", req.UserId, req.RoomId)
+		logger.Infof("Draft deleted for user %s in room %s", req.UserId, req.RoomId)
 	}
 	return &gen.DeleteDraftResponse{Success: true}, nil
 }

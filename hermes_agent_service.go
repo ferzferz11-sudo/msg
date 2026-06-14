@@ -8,7 +8,6 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"os/exec"
 	"strings"
@@ -74,14 +73,14 @@ func (h *hermesAgentServer) Connect(stream hermesagent.HermesAgentService_Connec
 		msg, err := stream.Recv()
 		if err == io.EOF {
    if os.Getenv("DEBUG") != "" {
-			log.Printf("[HermesAgentService] stream closed")
+			logger.Info("[HermesAgentService] stream closed")
    }
 			h.unregisterStream(as)
 			return nil
 		}
 		if err != nil {
    if os.Getenv("DEBUG") != "" {
-			log.Printf("[HermesAgentService] recv error: %v", err)
+			logger.Errorf("[HermesAgentService] recv error: %v", err)
    }
 			h.unregisterStream(as)
 			return err
@@ -107,18 +106,18 @@ func (h *hermesAgentServer) Connect(stream hermesagent.HermesAgentService_Connec
 			}
 		case hermesagent.AgentMessageType_AGENT_DISCONNECT:
    if os.Getenv("DEBUG") != "" {
-			log.Printf("[HermesAgentService] agent %s disconnecting", msg.AgentId)
+			logger.Infof("[HermesAgentService] agent %s disconnecting", msg.AgentId)
    }
 			h.unregisterStream(as)
 			return nil
 		case hermesagent.AgentMessageType_AGENT_ERROR:
    if os.Getenv("DEBUG") != "" {
-			log.Printf("[HermesAgentService] agent %s error: %s", msg.AgentId, string(msg.Payload))
+			logger.Errorf("[HermesAgentService] agent %s error: %s", msg.AgentId, string(msg.Payload))
    }
 			h.handleAgentError(msg)
 		default:
    if os.Getenv("DEBUG") != "" {
-			log.Printf("[HermesAgentService] unknown type: %v", msg.Type)
+			logger.Infof("[HermesAgentService] unknown type: %v", msg.Type)
    }
 		}
 	}
@@ -148,7 +147,7 @@ func (h *hermesAgentServer) handleRegister(stream hermesagent.HermesAgentService
 		agentID = msg.AgentId
 	}
  if os.Getenv("DEBUG") != "" {
-	log.Printf("[HermesAgentService] register: id=%s name=%s host=%s caps=%v",
+	logger.Infof("[HermesAgentService] register: id=%s name=%s host=%s caps=%v",
 		agentID, info.AgentName, info.Host, info.Capabilities)
  }
 
@@ -189,12 +188,12 @@ func (h *hermesAgentServer) handleTaskResult(as *agentStream, msg *hermesagent.A
 	var result hermesagent.TaskResult
 	if err := proto.Unmarshal(msg.Payload, &result); err != nil {
   if os.Getenv("DEBUG") != "" {
-		log.Printf("[HermesAgentService] result unmarshal error: %v", err)
+		logger.Errorf("[HermesAgentService] result unmarshal error: %v", err)
   }
 		return
 	}
  if os.Getenv("DEBUG") != "" {
-		log.Printf("[HermesAgentService] task=%s status=%v duration=%dms",
+		logger.Infof("[HermesAgentService] task=%s status=%v duration=%dms",
 			result.TaskId, result.Status, result.DurationMs)
 	}
 
@@ -212,13 +211,13 @@ func (h *hermesAgentServer) handleTaskStreamUpdate(as *agentStream, msg *hermesa
 	var update hermesagent.TaskStreamUpdate
 	if err := proto.Unmarshal(msg.Payload, &update); err != nil {
 		if os.Getenv("DEBUG") != "" {
-			log.Printf("[HermesAgentService] stream update unmarshal error: %v", err)
+			logger.Errorf("[HermesAgentService] stream update unmarshal error: %v", err)
 		}
 		return
 	}
 
 	if os.Getenv("DEBUG") != "" {
-		log.Printf("[HermesAgentService] stream update: task=%s status=%s done=%v chunk_len=%d",
+		logger.Infof("[HermesAgentService] stream update: task=%s status=%s done=%v chunk_len=%d",
 			update.TaskId, update.Status, update.Done, len(update.StdoutChunk))
 	}
 
@@ -236,7 +235,7 @@ func (h *hermesAgentServer) handleAgentLog(msg *hermesagent.AgentMessage) {
 	var entry hermesagent.LogEntry
 	if err := proto.Unmarshal(msg.Payload, &entry); err == nil {
   if os.Getenv("DEBUG") != "" {
-		log.Printf("[AgentLog %s@%s] %s", entry.Level, msg.AgentId, entry.Message)
+		logger.Infof("[AgentLog %s@%s] %s", entry.Level, msg.AgentId, entry.Message)
   }
 	}
 }
@@ -262,7 +261,7 @@ func (h *hermesAgentServer) unregisterStream(as *agentStream) {
 func (h *hermesAgentServer) validateToken(agentID, token string) bool {
 	if token == "" {
   if os.Getenv("DEBUG") != "" {
-		log.Printf("[HermesAgentService] reject %s: empty token", agentID)
+		logger.Infof("[HermesAgentService] reject %s: empty token", agentID)
   }
 		return false
 	}
@@ -271,7 +270,7 @@ func (h *hermesAgentServer) validateToken(agentID, token string) bool {
 	claims, err := auth.ValidateAgentToken(token)
 	if err != nil {
   if os.Getenv("DEBUG") != "" {
-		log.Printf("[HermesAgentService] reject %s: invalid token: %v", agentID, err)
+		logger.Infof("[HermesAgentService] reject %s: invalid token: %v", agentID, err)
   }
 		return false
 	}
@@ -279,7 +278,7 @@ func (h *hermesAgentServer) validateToken(agentID, token string) bool {
 	// Проверяем что agent_id в токене совпадает с заявленным
 	if claims.AgentID != agentID {
   if os.Getenv("DEBUG") != "" {
-		log.Printf("[HermesAgentService] reject %s: token agent_id mismatch (token=%s)",
+		logger.Infof("[HermesAgentService] reject %s: token agent_id mismatch (token=%s)",
 			agentID, claims.AgentID)
   }
 		return false
@@ -291,20 +290,20 @@ func (h *hermesAgentServer) validateToken(agentID, token string) bool {
 		storedToken, err := h.server.hermesDB.GetAgentTokenByHash(tokenHash)
 		if err != nil {
    if os.Getenv("DEBUG") != "" {
-			log.Printf("[HermesAgentService] reject %s: token not found in DB: %v", agentID, err)
+			logger.Infof("[HermesAgentService] reject %s: token not found in DB: %v", agentID, err)
    }
 			return false
 		}
 		if storedToken.Revoked {
    if os.Getenv("DEBUG") != "" {
-			log.Printf("[HermesAgentService] reject %s: token revoked", agentID)
+			logger.Infof("[HermesAgentService] reject %s: token revoked", agentID)
    }
 			return false
 		}
 	}
 
  if os.Getenv("DEBUG") != "" {
-	log.Printf("[HermesAgentService] token valid: %s (%s)", agentID, claims.AgentName)
+	logger.Infof("[HermesAgentService] token valid: %s (%s)", agentID, claims.AgentName)
  }
 	return true
 }
@@ -327,7 +326,7 @@ func (h *hermesAgentServer) isAdmin(userID string) bool {
 // GenerateAgentToken — генерация JWT токена для нового агента
 func (h *hermesAgentServer) GenerateAgentToken(_ context.Context, req *hermesagent.GenerateAgentTokenRequest) (*hermesagent.GenerateAgentTokenResponse, error) {
  if os.Getenv("DEBUG") != "" {
-	log.Printf("[HermesAgentService] GenerateAgentToken: agentId=%s name=%s adminUser=%s", req.AgentId, req.AgentName, req.AdminUserId)
+	logger.Infof("[HermesAgentService] GenerateAgentToken: agentId=%s name=%s adminUser=%s", req.AgentId, req.AgentName, req.AdminUserId)
  }
 	if req.AgentId == "" || req.AgentName == "" {
 		return &hermesagent.GenerateAgentTokenResponse{
@@ -368,7 +367,7 @@ func (h *hermesAgentServer) GenerateAgentToken(_ context.Context, req *hermesage
 
 	if h.server.hermesDB == nil {
 		if os.Getenv("DEBUG") != "" {
-			log.Printf("[HermesAgentService] hermesDB is nil, token not persisted!")
+			logger.Info("[HermesAgentService] hermesDB is nil, token not persisted!")
 		}
 		return &hermesagent.GenerateAgentTokenResponse{
 			Success: false, Error: "database not available",
@@ -379,14 +378,14 @@ func (h *hermesAgentServer) GenerateAgentToken(_ context.Context, req *hermesage
 		req.Capabilities, expiresAt, req.AdminUserId,
 	); err != nil {
 		if os.Getenv("DEBUG") != "" {
-			log.Printf("[HermesAgentService] failed to save token: %v", err)
+			logger.Infof("[HermesAgentService] failed to save token: %v", err)
 		}
 		return &hermesagent.GenerateAgentTokenResponse{
 			Success: false, Error: fmt.Sprintf("save token: %v", err),
 		}, nil
 	}
 	if os.Getenv("DEBUG") != "" {
-		log.Printf("[HermesAgentService] token saved: agentId=%s hash=%s", req.AgentId, tokenHash[:16])
+		logger.Infof("[HermesAgentService] token saved: agentId=%s hash=%s", req.AgentId, tokenHash[:16])
 	}
 
 	claims, _ := auth.ValidateAgentToken(token)
@@ -415,7 +414,7 @@ func (h *hermesAgentServer) RevokeAgentToken(_ context.Context, req *hermesagent
 	}
 
  if os.Getenv("DEBUG") != "" {
-	log.Printf("[HermesAgentService] token revoked: agent=%s by=%s", req.AgentId, req.AdminUserId)
+	logger.Infof("[HermesAgentService] token revoked: agent=%s by=%s", req.AgentId, req.AdminUserId)
  }
 	return &hermesagent.RevokeAgentTokenResponse{Success: true}, nil
 }
@@ -423,7 +422,7 @@ func (h *hermesAgentServer) RevokeAgentToken(_ context.Context, req *hermesagent
 // ListAgentTokens — список всех токенов агентов
 func (h *hermesAgentServer) ListAgentTokens(_ context.Context, req *hermesagent.ListAgentTokensRequest) (*hermesagent.ListAgentTokensResponse, error) {
 	if os.Getenv("DEBUG") != "" {
-		log.Printf("[HermesAgentService] ListAgentTokens: adminUser=%s", req.AdminUserId)
+		logger.Infof("[HermesAgentService] ListAgentTokens: adminUser=%s", req.AdminUserId)
 	}
 	if h.server.hermesDB == nil {
 		return &hermesagent.ListAgentTokensResponse{
@@ -644,7 +643,7 @@ func (h *hermesAgentServer) StartAgent(_ context.Context, req *hermesagent.Start
 	}
 	serverAgentProcesses[req.AgentId] = ap
 
-	log.Printf("[AgentManager] Started agent %s (pid=%d, script=%s)", req.AgentId, cmd.Process.Pid, script)
+	logger.Infof("[AgentManager] Started agent %s (pid=%d, script=%s)", req.AgentId, cmd.Process.Pid, script)
 
 	// Wait for process in background to clean up
 	go func() {
@@ -652,7 +651,7 @@ func (h *hermesAgentServer) StartAgent(_ context.Context, req *hermesagent.Start
 		serverAgentMu.Lock()
 		delete(serverAgentProcesses, req.AgentId)
 		serverAgentMu.Unlock()
-		log.Printf("[AgentManager] Agent %s (pid=%d) exited", req.AgentId, ap.pid)
+		logger.Infof("[AgentManager] Agent %s (pid=%d) exited", req.AgentId, ap.pid)
 	}()
 
 	return &hermesagent.StartAgentResponse{
@@ -686,7 +685,7 @@ func (h *hermesAgentServer) StopAgent(_ context.Context, req *hermesagent.StopAg
 	}
 
 	delete(serverAgentProcesses, req.AgentId)
-	log.Printf("[AgentManager] Stopped agent %s (pid=%d)", req.AgentId, ap.pid)
+	logger.Infof("[AgentManager] Stopped agent %s (pid=%d)", req.AgentId, ap.pid)
 
 	return &hermesagent.StopAgentResponse{Success: true}, nil
 }

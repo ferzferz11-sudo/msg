@@ -9,7 +9,6 @@ package main
 import (
 	"context"
 	"fmt"     // Standard formatting package for console output
-	"log"     // Standard logging package
 	"net"     // Network functionality for TCP listener
 	"os"      // Operating system interface for environment variables
 	"os/signal"
@@ -47,7 +46,7 @@ func main() {
 	// Load environment variables from .env file for local development
 	// If .env file doesn't exist, fall back to system environment variables
 	if err := godotenv.Load(); err != nil {
-		log.Println("No .env file found or error loading it, using system environment variables")
+		logger.Error("No .env file found or error loading it, using system environment variables")
 	}
 
 	// Initialize Firebase Admin SDK
@@ -59,9 +58,9 @@ func main() {
 	var err error
 	firebaseApp, err = firebase.NewApp(context.Background(), nil, opt)
 	if err != nil {
-		log.Printf("Warning: Failed to initialize Firebase: %v (Push notifications will not work)", err)
+		logger.Warnf("Warning: Failed to initialize Firebase: %v (Push notifications will not work)", err)
 	} else {
-		log.Println("Firebase Admin SDK initialized successfully")
+		logger.Info("Firebase Admin SDK initialized successfully")
 	}
 
 	// Read server address from environment variables
@@ -74,13 +73,13 @@ func main() {
 	// Establish database connection for message persistence
 	db, err := ConnectDB()
 	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
+		logger.Errorf("Failed to connect to database: %v", err)
 	}
 	// Ensure database connection is closed when the application shuts down
 	defer func() {
 		if db != nil {
 			if err := db.Close(); err != nil {
-				log.Printf("Warning: failed to close database connection: %v", err)
+				logger.Warnf("Warning: failed to close database connection: %v", err)
 			}
 		}
 	}()
@@ -89,9 +88,9 @@ func main() {
 	// DISABLED: This function was deleting ALL messages instead of just empty ones
 	// deleted, err := db.CleanupEmptyMessages()
 	// if err != nil {
-	// 	log.Printf("Warning: failed to cleanup empty messages: %v", err)
+	// 	logger.Warnf("Warning: failed to cleanup empty messages: %v", err)
 	// } else if deleted > 0 {
-	// 	log.Printf("Cleaned up %d empty/corrupted messages", deleted)
+	// 	logger.Infof("Cleaned up %d empty/corrupted messages", deleted)
 	// }
 
 	// Extract just the port number from serverAddress for lsof command
@@ -105,9 +104,9 @@ func main() {
 	lis, err := net.Listen("tcp", serverAddress)
 	if err != nil {
 		if strings.Contains(err.Error(), "address already in use") {
-			log.Fatalf("failed to listen: %v\n\nHint: Port %s is already in use. To fix:\n  lsof -ti:%s | xargs kill -9 2>/dev/null; go run .", err, port, port)
+			logger.Errorf("failed to listen: %v\n\nHint: Port %s is already in use. To fix:\n  lsof -ti:%s | xargs kill -9 2>/dev/null; go run .", err, port, port)
 		}
-		log.Fatalf("failed to listen: %v", err)
+		logger.Errorf("failed to listen: %v", err)
 	}
 
 	// Initialize a new gRPC server instance
@@ -139,19 +138,19 @@ func main() {
 	owlRateLimiter = newRateLimiter(10, time.Minute)
 	owlSessions = newOwlSessionManager(db.DB, 50)
 	hermesSettings = newHermesSettingsManager(db.DB)
-	log.Println("OWL AI assistant initialized (rate limit: 10 req/min, history: 50 msgs, DB-backed)")
+	logger.Info("OWL AI assistant initialized (rate limit: 10 req/min, history: 50 msgs, DB-backed)")
 
 	// Initialize AI Chat Manager (unified for OWL + Hermes)
 	aiChatManager := NewAIChatManager(db.DB)
 	srv.aiChatManager = aiChatManager
-	log.Println("AI Chat Manager initialized (unified sessions, messages, settings)")
+	logger.Info("AI Chat Manager initialized (unified sessions, messages, settings)")
 
 	// Initialize Hermes Multi-Agent Orchestrator
 	hermesRegistry := NewAgentRegistry(db.DB)
 	srv.hermesDB = NewHermesDB(db.DB)
 	orchestrator := NewOrchestrator(hermesRegistry, db.DB, os.Getenv("OPENROUTER_API_KEY"), os.Getenv("OPENROUTER_MODEL"))
 	srv.hermesOrchestrator = orchestrator
-	log.Printf("Hermes Orchestrator initialized with %d agents", len(hermesRegistry.GetAll()))
+	logger.Infof("Hermes Orchestrator initialized with %d agents", len(hermesRegistry.GetAll()))
 
 	// Run Hermes DB migrations
 	runHermesMigrations(db.DB)
@@ -172,7 +171,7 @@ func main() {
 	gen.RegisterServerServiceServer(s, srvMgmt)
 
 	// Log server startup information
-	log.Printf("Listening clients at %v", lis.Addr())
+	logger.Infof("Listening clients at %v", lis.Addr())
 
 	// Periodic online users broadcast (every 60 seconds as a heartbeat)
 	go func() {
@@ -194,13 +193,13 @@ func main() {
 		sigCh := make(chan os.Signal, 1)
 		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 		sig := <-sigCh
-		log.Printf("Received signal %v, shutting down gracefully...", sig)
+		logger.Infof("Received signal %v, shutting down gracefully...", sig)
 		s.GracefulStop()
 	}()
 
 	// Start the gRPC server and begin serving client requests
 	// This is a blocking call that runs until the application is terminated
 	if err := s.Serve(lis); err != nil {
-		log.Fatalf("failed to serve: %v", err)
+		logger.Errorf("failed to serve: %v", err)
 	}
 }

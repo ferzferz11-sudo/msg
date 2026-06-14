@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"time"
 
 	"LavenderMessenger/gen"
@@ -41,7 +40,7 @@ func (s *server) remoteManager() *RemoteAgentManager {
 func (s *server) ListRemoteAgents(_ context.Context, _ *gen.ListRemoteAgentsRequest) (*gen.ListRemoteAgentsResponse, error) {
 	mgr := s.remoteManager()
 	if mgr == nil {
-		log.Print("[ListRemoteAgents] manager unavailable, returning empty list")
+		logger.Info("[ListRemoteAgents] manager unavailable, returning empty list")
 		return &gen.ListRemoteAgentsResponse{}, nil
 	}
 
@@ -72,7 +71,7 @@ func (s *server) ListRemoteAgents(_ context.Context, _ *gen.ListRemoteAgentsRequ
 		result = append(result, info)
 	}
 
-	log.Printf("[ListRemoteAgents] returned %d agents", len(result))
+	logger.Infof("[ListRemoteAgents] returned %d agents", len(result))
 	return &gen.ListRemoteAgentsResponse{Agents: result}, nil
 }
 
@@ -128,7 +127,7 @@ func (s *server) DeployAgentTask(_ context.Context, req *gen.DeployAgentTaskRequ
 
 	// Логируем туннель если используется
 	if req.TunnelMode != gen.TunnelMode_TUNNEL_NONE {
-		log.Printf("%s tunnel_mode=%v tunnel_host=%s local_port=%d",
+		logger.Infof("%s tunnel_mode=%v tunnel_host=%s local_port=%d",
 			logTask, req.TunnelMode, req.TunnelHost, req.TunnelLocalPort)
 	}
 
@@ -152,7 +151,7 @@ func (s *server) DeployAgentTask(_ context.Context, req *gen.DeployAgentTaskRequ
 	}
 
 	if err := mgr.SendTask(task); err != nil {
-		log.Printf("%s send failed: %v", logTask, err)
+		logger.Infof("%s send failed: %v", logTask, err)
 		return &gen.DeployAgentTaskResponse{
 			Success: false,
 			TaskId:  taskID,
@@ -213,7 +212,7 @@ func (s *server) DeployAgentTaskStream(req *gen.DeployAgentTaskRequest, stream g
 	logTask := fmt.Sprintf("[DeployAgentTaskStream agent=%s task=%s]", req.AgentId, taskID)
 
 	if req.TunnelMode != gen.TunnelMode_TUNNEL_NONE {
-		log.Printf("%s tunnel_mode=%v tunnel_host=%s local_port=%d",
+		logger.Infof("%s tunnel_mode=%v tunnel_host=%s local_port=%d",
 			logTask, req.TunnelMode, req.TunnelHost, req.TunnelLocalPort)
 	}
 
@@ -306,7 +305,7 @@ func (s *server) DeployAgentTaskStream(req *gen.DeployAgentTaskRequest, stream g
 			StdoutChunk: update.StdoutChunk,
 			StderrChunk: update.StderrChunk,
 		}); err != nil {
-			log.Printf("%s send error: %v", logTask, err)
+			logger.Errorf("%s send error: %v", logTask, err)
 			return err
 		}
 	}

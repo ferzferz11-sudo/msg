@@ -1,10 +1,10 @@
 package hermes
 
 import (
+	"log"
 	"bufio"
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"os/exec"
 	"strings"

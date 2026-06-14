@@ -6,7 +6,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"sync"
 	"time"
 
@@ -120,7 +119,7 @@ func (m *RemoteAgentManager) RegisterAgent(info *RemoteAgent) {
 
 	m.agents[info.ID] = info
 
-	log.Printf("[RemoteAgent] registered: id=%s name=%s host=%s caps=%v",
+	logger.Infof("[RemoteAgent] registered: id=%s name=%s host=%s caps=%v",
 		info.ID, info.Name, info.Host, info.Capabilities)
 }
 
@@ -132,7 +131,7 @@ func (m *RemoteAgentManager) UnregisterAgent(agentID string) {
 	if agent, ok := m.agents[agentID]; ok {
 		agent.Status = "disconnected"
 		delete(m.agents, agentID)
-		log.Printf("[RemoteAgent] unregistered: id=%s", agentID)
+		logger.Infof("[RemoteAgent] unregistered: id=%s", agentID)
 	}
 }
 
@@ -298,7 +297,7 @@ func (m *RemoteAgentManager) SendTask(task *RemoteTask) error {
 	agent.ActiveTasks++
 	agent.mu.Unlock()
 
-	log.Printf("[RemoteAgent] task sent: agent=%s task=%s type=%s", task.AgentID, task.ID, task.Type)
+	logger.Infof("[RemoteAgent] task sent: agent=%s task=%s type=%s", task.AgentID, task.ID, task.Type)
 	return nil
 }
 
@@ -364,7 +363,7 @@ func (m *RemoteAgentManager) processTaskQueue() {
 		}
 		if agent != nil {
 			if err := m.SendTask(task); err != nil {
-				log.Printf("[RemoteAgent] task queue error: %v", err)
+				logger.Errorf("[RemoteAgent] task queue error: %v", err)
 			}
 		}
 	}
@@ -385,7 +384,7 @@ func (m *RemoteAgentManager) healthCheckLoop() {
 
 		for _, agent := range agents {
 			if time.Since(agent.LastHeartbeat) > 90*time.Second {
-				log.Printf("[RemoteAgent] heartbeat timeout: id=%s", agent.ID)
+				logger.Infof("[RemoteAgent] heartbeat timeout: id=%s", agent.ID)
 				m.UnregisterAgent(agent.ID)
 			}
 		}

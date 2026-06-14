@@ -12,7 +12,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -37,7 +36,7 @@ const (
 
 func closeFile(file io.ReadCloser) {
 	if err := file.Close(); err != nil {
-		log.Printf("Error closing file: %v", err)
+		logger.Errorf("Error closing file: %v", err)
 	}
 }
 
@@ -80,9 +79,9 @@ func StartHTTPServer(port string) {
 		serveFileHandler(w, r, "/audio/", audioPath)
 	})
 
-	log.Printf("HTTP server started on port %s", port)
+	logger.Infof("HTTP server started on port %s", port)
 	if err := http.ListenAndServe("0.0.0.0:"+port, nil); err != nil {
-		log.Printf("HTTP server error: %v", err)
+		logger.Errorf("HTTP server error: %v", err)
 	}
 }
 
@@ -96,9 +95,9 @@ func StartAPKServer(port string) {
 	fileServer := http.FileServer(http.Dir(apkDir))
 	mux.Handle("/", fileServer)
 
-	log.Printf("APK server started on port %s serving %s", port, apkDir)
+	logger.Infof("APK server started on port %s serving %s", port, apkDir)
 	if err := http.ListenAndServe("0.0.0.0:"+port, mux); err != nil {
-		log.Printf("APK server error: %v", err)
+		logger.Errorf("APK server error: %v", err)
 	}
 }
 
@@ -110,7 +109,7 @@ func uploadAvatarHandler(w http.ResponseWriter, r *http.Request) {
 
 	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
 	if err := r.ParseMultipartForm(maxUploadSize); err != nil {
-		log.Printf("Upload error: file too large: %v", err)
+		logger.Errorf("Upload error: file too large: %v", err)
 		http.Error(w, "File too large", http.StatusBadRequest)
 		return
 	}
@@ -118,7 +117,7 @@ func uploadAvatarHandler(w http.ResponseWriter, r *http.Request) {
 	// Process thumbnail (required)
 	thumbFile, thumbHandler, err := r.FormFile("avatar")
 	if err != nil {
-		log.Printf("Upload error: retrieving thumbnail file: %v", err)
+		logger.Errorf("Upload error: retrieving thumbnail file: %v", err)
 		http.Error(w, "Error retrieving thumbnail file", http.StatusBadRequest)
 		return
 	}
@@ -126,7 +125,7 @@ func uploadAvatarHandler(w http.ResponseWriter, r *http.Request) {
 
 	thumbBytes, err := io.ReadAll(thumbFile)
 	if err != nil {
-		log.Printf("Upload error: reading thumbnail file: %v", err)
+		logger.Errorf("Upload error: reading thumbnail file: %v", err)
 		http.Error(w, "Error reading thumbnail file", http.StatusInternalServerError)
 		return
 	}
@@ -141,7 +140,7 @@ func uploadAvatarHandler(w http.ResponseWriter, r *http.Request) {
 
 	thumbPath := filepath.Join(avatarsPath, thumbFilename)
 	if err := os.WriteFile(thumbPath, thumbBytes, 0644); err != nil {
-		log.Printf("Upload error: saving thumbnail to %s: %v", thumbPath, err)
+		logger.Errorf("Upload error: saving thumbnail to %s: %v", thumbPath, err)
 		http.Error(w, "Error saving thumbnail file", http.StatusInternalServerError)
 		return
 	}
@@ -181,10 +180,10 @@ func uploadAvatarHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if fullURL != "" {
-		log.Printf("Avatar uploaded: thumb=%s, full=%s", thumbFilename, filepath.Base(fullURL))
+		logger.Infof("Avatar uploaded: thumb=%s, full=%s", thumbFilename, filepath.Base(fullURL))
 		fmt.Fprintf(w, `{"url": "%s", "full_url": "%s"}`, thumbURL, fullURL)
 	} else {
-		log.Printf("Avatar uploaded: %s", thumbFilename)
+		logger.Infof("Avatar uploaded: %s", thumbFilename)
 		fmt.Fprintf(w, `{"url": "%s"}`, thumbURL)
 	}
 }
@@ -207,11 +206,11 @@ func uploadAudioHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("Received audio upload request")
+	logger.Info("Received audio upload request")
 
 	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
 	if err := r.ParseMultipartForm(maxUploadSize); err != nil {
-		log.Printf("Upload error: file too large: %v", err)
+		logger.Errorf("Upload error: file too large: %v", err)
 		http.Error(w, "File too large", http.StatusBadRequest)
 		return
 	}
@@ -222,7 +221,7 @@ func uploadAudioHandler(w http.ResponseWriter, r *http.Request) {
 	if durationStr != "" {
 		_, err := fmt.Sscanf(durationStr, "%d", &duration)
 		if err != nil {
-			log.Printf("Upload error: invalid duration format: %v", err)
+			logger.Errorf("Upload error: invalid duration format: %v", err)
 			http.Error(w, "Invalid duration format", http.StatusBadRequest)
 			return
 		}
@@ -230,17 +229,17 @@ func uploadAudioHandler(w http.ResponseWriter, r *http.Request) {
 
 	file, handler, err := r.FormFile("audio")
 	if err != nil {
-		log.Printf("Upload error: retrieving audio file: %v", err)
+		logger.Errorf("Upload error: retrieving audio file: %v", err)
 		http.Error(w, "Error retrieving file", http.StatusBadRequest)
 		return
 	}
 	defer closeFile(file)
 
-	log.Printf("Uploading audio file: %s (size: %d bytes, duration: %d seconds)", handler.Filename, handler.Size, duration)
+	logger.Infof("Uploading audio file: %s (size: %d bytes, duration: %d seconds)", handler.Filename, handler.Size, duration)
 
 	fileBytes, err := io.ReadAll(file)
 	if err != nil {
-		log.Printf("Upload error: reading file: %v", err)
+		logger.Errorf("Upload error: reading file: %v", err)
 		http.Error(w, "Error reading file", http.StatusInternalServerError)
 		return
 	}
@@ -249,7 +248,7 @@ func uploadAudioHandler(w http.ResponseWriter, r *http.Request) {
 	ext := strings.ToLower(filepath.Ext(handler.Filename))
 	validExts := map[string]bool{".m4a": true, ".aac": true, ".ogg": true, ".mp3": true, ".wav": true}
 	if !validExts[ext] {
-		log.Printf("Upload error: invalid audio format: %s", ext)
+		logger.Errorf("Upload error: invalid audio format: %s", ext)
 		http.Error(w, "Invalid audio format. Supported: m4a, aac, ogg, mp3, wav", http.StatusBadRequest)
 		return
 	}
@@ -260,7 +259,7 @@ func uploadAudioHandler(w http.ResponseWriter, r *http.Request) {
 
 	filePath := filepath.Join(audioPath, filename)
 	if err := os.WriteFile(filePath, fileBytes, 0644); err != nil {
-		log.Printf("Upload error: saving file to %s: %v", filePath, err)
+		logger.Errorf("Upload error: saving file to %s: %v", filePath, err)
 		http.Error(w, "Error saving file", http.StatusInternalServerError)
 		return
 	}
@@ -275,7 +274,7 @@ func uploadAudioHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fileURL := fmt.Sprintf("http://%s:%s/audio/%s", publicIP, httpPort, filename)
-	log.Printf("Audio file uploaded successfully! URL: %s, Duration: %d seconds", fileURL, duration)
+	logger.Infof("Audio file uploaded successfully! URL: %s, Duration: %d seconds", fileURL, duration)
 	w.Header().Set("Content-Type", "application/json")
 	fmt.Fprintf(w, `{"url": "%s", "duration": %d}`, fileURL, duration)
 }
@@ -286,28 +285,28 @@ func handleUpload(w http.ResponseWriter, r *http.Request, formKey, saveDir, urlP
 		return
 	}
 
-	log.Printf("Received upload request for key: %s", formKey)
+	logger.Infof("Received upload request for key: %s", formKey)
 
 	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
 	if err := r.ParseMultipartForm(maxUploadSize); err != nil {
-		log.Printf("Upload error: file too large: %v", err)
+		logger.Errorf("Upload error: file too large: %v", err)
 		http.Error(w, "File too large", http.StatusBadRequest)
 		return
 	}
 
 	file, handler, err := r.FormFile(formKey)
 	if err != nil {
-		log.Printf("Upload error: retrieving file for key %s: %v", formKey, err)
+		logger.Errorf("Upload error: retrieving file for key %s: %v", formKey, err)
 		http.Error(w, "Error retrieving file", http.StatusBadRequest)
 		return
 	}
 	defer closeFile(file)
 
-	log.Printf("Uploading file: %s (size: %d bytes)", handler.Filename, handler.Size)
+	logger.Infof("Uploading file: %s (size: %d bytes)", handler.Filename, handler.Size)
 
 	fileBytes, err := io.ReadAll(file)
 	if err != nil {
-		log.Printf("Upload error: reading file: %v", err)
+		logger.Errorf("Upload error: reading file: %v", err)
 		http.Error(w, "Error reading file", http.StatusInternalServerError)
 		return
 	}
@@ -327,7 +326,7 @@ func handleUpload(w http.ResponseWriter, r *http.Request, formKey, saveDir, urlP
 
 	filePath := filepath.Join(saveDir, filename)
 	if err := os.WriteFile(filePath, fileBytes, 0644); err != nil {
-		log.Printf("Upload error: saving file to %s: %v", filePath, err)
+		logger.Errorf("Upload error: saving file to %s: %v", filePath, err)
 		http.Error(w, "Error saving file", http.StatusInternalServerError)
 		return
 	}
@@ -342,7 +341,7 @@ func handleUpload(w http.ResponseWriter, r *http.Request, formKey, saveDir, urlP
 	}
 
 	fileURL := fmt.Sprintf("http://%s:%s%s%s", publicIP, httpPort, urlPrefix, filename)
-	log.Printf("File uploaded successfully! URL: %s", fileURL)
+	logger.Infof("File uploaded successfully! URL: %s", fileURL)
 	w.Header().Set("Content-Type", "application/json")
 	fmt.Fprintf(w, `{"url": "%s"}`, fileURL)
 }
@@ -417,7 +416,7 @@ func DeleteImageFile(imageURL string) error {
 		return fmt.Errorf("failed to remove file from disk: %w", err)
 	}
 
-	log.Printf("🗑️ Successfully deleted file from disk: %s", filePath)
+	logger.Infof("🗑️ Successfully deleted file from disk: %s", filePath)
 	return nil
 }
 

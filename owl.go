@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -76,15 +75,15 @@ func (s *owlSessionManager) getHistory(chatID string) []map[string]string {
 }
 
 func (s *owlSessionManager) addMessage(chatID, role, content string) {
-	log.Printf("owlSessionManager.addMessage: chatID=%s role=%s content_len=%d", chatID, role, len(content))
+	logger.Infof("owlSessionManager.addMessage: chatID=%s role=%s content_len=%d", chatID, role, len(content))
 	_, err := s.db.Exec(
 		"INSERT INTO owl_messages (chat_id, role, content) VALUES ($1, $2, $3)",
 		chatID, role, content,
 	)
 	if err != nil {
-		log.Printf("owlSessionManager: failed to save message: %v", err)
+		logger.Errorf("owlSessionManager: failed to save message: %v", err)
 	} else {
-		log.Printf("owlSessionManager: message saved OK chatID=%s role=%s", chatID, role)
+		logger.Infof("owlSessionManager: message saved OK chatID=%s role=%s", chatID, role)
 	}
 }
 
@@ -112,7 +111,7 @@ func (s *owlSessionManager) saveSettings(chatID, apiKey, model string) {
 		chatID, apiKey, model,
 	)
 	if err != nil {
-		log.Printf("owlSessionManager: failed to save settings: %v", err)
+		logger.Errorf("owlSessionManager: failed to save settings: %v", err)
 	}
 }
 
@@ -386,7 +385,7 @@ func (h *hermesSettingsManager) saveSettings(chatID, apiKey, model string) {
 		chatID, apiKey, model,
 	)
 	if err != nil {
-		log.Printf("hermesSettingsManager: failed to save settings: %v", err)
+		logger.Errorf("hermesSettingsManager: failed to save settings: %v", err)
 	}
 }
 

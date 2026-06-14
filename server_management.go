@@ -3,7 +3,6 @@ package main
 import (
 	"LavenderMessenger/gen"
 	"context"
-	"log"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -18,7 +17,7 @@ type serverServiceServer struct {
 func (s *serverServiceServer) ListServers(ctx context.Context, req *gen.ListServersRequest) (*gen.ListServersResponse, error) {
 	servers, err := s.db.GetAllServers()
 	if err != nil {
-		log.Printf("ListServers: %v", err)
+		logger.Infof("ListServers: %v", err)
 		return nil, status.Error(codes.Internal, "failed to list servers")
 	}
 

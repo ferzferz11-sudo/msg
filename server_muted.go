@@ -2,7 +2,6 @@ package main
 
 import (
 	"github.com/google/uuid"
-	"log"
 	"LavenderMessenger/gen"
 	"context"
 )
@@ -51,6 +50,6 @@ func (s *server) SetMutedChat(_ context.Context, req *gen.SetMutedChatRequest) (
 	if !req.Muted {
 		action = "unmuted"
 	}
-	log.Printf("Chat %s for user %s in room %s", action, req.UserId, req.RoomId)
+	logger.Infof("Chat %s for user %s in room %s", action, req.UserId, req.RoomId)
 	return &gen.SetMutedChatResponse{Success: true}, nil
 }
