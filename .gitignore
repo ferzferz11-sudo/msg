@@ -61,3 +61,5 @@ hermes-agent/*.pyc
 hermes-agent/gen_token.go
 hermes-agent/main.go
 hermes-agent/lavender-server-new
+doc/.env.bak
+doc/.env.dev.bak

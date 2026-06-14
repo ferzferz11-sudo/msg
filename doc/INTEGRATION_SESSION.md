@@ -1,13 +1,36 @@
 # Lava Messenger — Интеграционная сессия
 
 **Текущая версия:** v1.1.3.10
-**Обновлено:** 2026-06-14
+**Обновлено:** 2026-06-14 (сессия 2)
 **Тег:** v1.1.3.10 (stable)
 **Ветка:** feat/1.1.3.x
 
 ---
 
-## Контекст
+## Сессия 2 — Device registration fix + AuthV2 dev setup
+
+### Что сделано
+1. **AddUserDevice fix** (db.go:1069):
+   - `ON CONFLICT (device_id)` → `ON CONFLICT (user_id, device_id)`
+   - Исправлена ошибка 42P10 при повторной регистрации устройства
+   - Коммит: `7a6b546`
+
+2. **JWT_SECRET исправлен** на dev и prod:
+   - Был короткий (21-36 символов)
+   - Новый: `2c6328bd467b2b15cdf87ed01b4c6c3ea70b91864d4500fad4870ee341d8546b` (32 байта)
+   - V2 SignInV2 теперь работает на dev
+
+3. **Dev сервер** обновлён и работает (порт 50052)
+
+### Известные проблемы
+- **Двойной вход на клиенте** при смене сервера (prod → dev):
+  - Клиент делает два входа: из ServersActivity и из ChatListActivity auto-login
+  - Нужно исправить на клиенте: не сохранять serverAddress до успешного входа
+  - Подробности в TASKS.md
+
+### Коммиты
+- `7a6b546` — fix: AddUserDevice ON CONFLICT (user_id, device_id)
+- JWT_SECRET обновлён в .env и .env.dev (не коммитится — секрет)
 
 Lava Messenger — мессенджер с E2EE, AI-чатами (OWL, Hermes Orchestrator) и Remote Agent системой.
 Платформа: Android клиент (Kotlin) + Go сервер (gRPC) + Python агент (hermes_remote_agent.py).
