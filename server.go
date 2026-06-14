@@ -32,6 +32,16 @@ import (
 
 const ServerVersion = "1.2.0.0"
 
+// Service versions for client capability negotiation
+const (
+	AuthServiceVersion    = "2.0" // AuthService v2 (JWT) — current
+	ChatServiceVersion    = "1.0"
+	ProfileServiceVersion = "1.0"
+	AIServiceVersion      = "1.0"
+	FileServiceVersion    = "1.0"
+	PushServiceVersion    = "1.0"
+)
+
 // server implements the gRPC ChatService interface
 type server struct {
 	gen.UnimplementedChatServiceServer

@@ -63,6 +63,24 @@ func StartHTTPServer(port string) {
 		fmt.Fprintf(w, `{"status":"ok","version":"%s","time":"%s"}`, ServerVersion, time.Now().Format(time.RFC3339))
 	})
 
+	// Server info endpoint — returns service versions for client capability negotiation
+	http.HandleFunc("/info", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		info := map[string]interface{}{
+			"version":  ServerVersion,
+			"time":     time.Now().Format(time.RFC3339),
+			"services": map[string]string{
+				"auth":     AuthServiceVersion,
+				"chat":     ChatServiceVersion,
+				"profile":  ProfileServiceVersion,
+				"ai":       AIServiceVersion,
+				"files":    FileServiceVersion,
+				"push":     PushServiceVersion,
+			},
+		}
+		json.NewEncoder(w).Encode(info)
+	})
+
 	http.HandleFunc("/avatars/", func(w http.ResponseWriter, r *http.Request) {
 		serveFileHandler(w, r, "/avatars/", avatarsPath)
 	})
