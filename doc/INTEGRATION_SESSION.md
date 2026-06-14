@@ -1,9 +1,39 @@
 # Lava Messenger — Интеграционная сессия
 
-**Текущая версия:** v1.2.0.1 (сервер) / v1.1.3.12 (Android)
-**Обновлено:** 2026-06-14 (сессия 8)
-**Тег:** v1.1.3.10 (stable)
+**Текущая версия:** v1.2.1.0 (сервер dev) / v1.1.3.13 (Android)
+**Обновлено:** 2026-06-14 (сессия 9)
+**Тег:** v1.1.3.10 (stable prod)
 **Ветка:** feat/1.1.3.x
+
+---
+
+## Сессия 9 — ProfileService v2 + Typing/CallSession compat
+
+### Что сделано
+
+1. **ProfileService v2 (сервер)** — отдельный gRPC сервис для управления профилем с JWT Bearer auth
+   - Методы: GetProfile, UpdateProfile, UpdateAvatar, DeleteProfile, GetUserSettings, UpdateUserSettings
+   - Данные: аватар, bio, status, locale (en/ru), isSuperAdmin, theme, push settings
+   - Регистрируется ТОЛЬКО на dev сервере (APP_ENV=dev)
+   - ProfileServiceVersion = "2.0" в /info endpoint
+2. **user_settings таблица** — новая таблица для хранения настроек пользователя (locale, theme_id, push_enabled, custom JSONB)
+3. **Typing/CallSession whitelist** — добавлены в AuthStreamInterceptor как legacy streams (v1 compat)
+   - Теперь v1 клиенты могут вызывать Typing и CallSession без JWT
+4. **ProfileClient (Android)** — клиент для ProfileService v2 с автоопределением версии сервера через /info
+   - Fallback на legacy ChatService методы если profile < "2.0"
+   - Вызывается автоматически при connect() через fetchServerInfo()
+5. **ServerService** — зарегистрирован только на dev сервере (было на всех)
+
+### Деплой
+- Dev сервер: v1.2.1.0 — ProfileService v2 активен
+- Prod сервер: v1.1.3.10 — без изменений (ProfileService v2 не зарегистрирован)
+- Android: v1.1.3.13 — ProfileClient с fallback на v1
+
+### Коммиты (сервер)
+- `a989511` — feat: ProfileService v2 + Typing/CallSession interceptor whitelist
+
+### Коммиты (Android)
+- `dbbf266` — feat: ProfileService v2 client + Typing/CallSession compat
 
 ---
 
@@ -130,20 +160,21 @@
 ### Сервер (/root/msg)
 ```
 main.go                    — Entry point, gRPC server, graceful shutdown
-server.go                  — ServerVersion = "1.2.0.1", service version constants
+server.go                  — ServerVersion = "1.2.1.0", service version constants
 auth_service.go            — AuthService v1 (deprecated)
 auth_service_v2.go         — AuthService v2 (JWT, основной)
-auth_interceptor.go        — gRPC Bearer token interceptor
+auth_interceptor.go        — gRPC Bearer token interceptor (unary + streaming)
 auth_jwt.go                — JWT генерация/валидация
 db_auth_devices.go         — CRUD для user_devices + device_auth_log
-db_auth_migrations.go      — миграция таблиц
+db_auth_migrations.go      — миграция таблиц (включая user_settings)
+server_profile_v2.go       — ProfileService v2 (JWT, dev only)
 server_remote.go           — Remote Agent RPC
 hermes_remote_manager.go   — HandleTaskStream
 ai_chat_manager.go         — AI чаты
 owl.go                     — OWL AI
 hermes_orchestrator.go     — Hermes Orchestrator
 http_server.go             — HTTP (/health, /info на 8082/8083)
-messenger.proto            — ChatService, AuthService, AI Chat, Remote Agent RPC
+messenger.proto            — ChatService, AuthService, ProfileService, AI Chat, Remote Agent RPC
 ```
 
 ### Android (/root/msg.client.android)
@@ -158,20 +189,24 @@ ui/
 └── adapter/ChatAdapter.kt          — адаптер чатов (clearAll)
 
 data/
+├── grpc/BearerTokenInterceptor.kt  — ClientInterceptor для JWT Bearer token
 ├── grpc/GrpcClient.kt              — facade
-├── grpc/RealGrpcClient.kt          — реализация gRPC (signInV2, signUpV2, refreshToken)
+├── grpc/RealGrpcClient.kt          — реализация gRPC (connect, getChats, signInV2, refreshToken)
+├── grpc/ProfileClient.kt           — ProfileService v2 client (JWT, dev only)
+├── auth/AuthManager.kt             — JWT token storage, getBearerToken, getAccessToken
 ├── session/CredentialStore.kt      — credentials + server list + last_username
 ├── session/SessionManager.kt       — loginV2 (JWT) + loginV1 (legacy fallback)
 ├── session/UserSession.kt          — accessToken, refreshToken, authMethod
-├── auth/AuthManager.kt             — JWT token storage, getBearerToken, getAccessToken
 └── models/ErrorHandler.kt          — единый обработчик ошибок
 ```
 
 ---
 
-## Статус: v1.2.0.1 — DEV
+## Статус: v1.2.1.0 — DEV / v1.1.3.13 — Android
 
-Сервер v1.2.0.1 работает на dev (порт 50052, HTTP 8083). Android v1.1.3.11+ в разработке.
+Сервер v1.2.1.0 работает на dev (порт 50052, HTTP 8083). ProfileService v2 активен.
+Prod сервер: v1.1.3.10 (без ProfileService v2).
+Android v1.1.3.13 — ProfileClient с fallback на v1.
 
 ---
 
@@ -179,7 +214,7 @@ data/
 
 1. Коммитить и пушить после каждого значимого изменения
 2. Деплоить на dev для тестирования (не на prod!)
-3. Обновлять CHANGELOG.md с каждым релизом
+3. Обновлять CHANGELOG.md с каждым релизе
 4. Не ломать существующий функционал
 5. Версия сервера в `server.go:33`, версия Android в `version.txt`
 6. userId (UUID) — всегда как ключ, НЕ username
@@ -187,6 +222,7 @@ data/
 8. Agent tokens: в БД хранится SHA-256 хеш, не сам токен
 9. JWT секрет: минимум 32 байта, НЕ коммитить
 10. Proto поля: всегда сверять номера полей с messenger.proto
+11. ProfileService v2 — только dev сервер (APP_ENV=dev). Prod использует legacy ChatService.
 
 ---
 
@@ -203,7 +239,7 @@ systemctl stop lavender-server-dev
 cp /tmp/lavender-server-dev /root/LavenderMessenger/run/lavender-server-dev
 systemctl start lavender-server-dev
 
-# Сборка и деплой на prod
+# Сборка и деплой на prod (НЕ делать без тестирования на dev!)
 go build -o /tmp/lavender-server .
 systemctl stop lavender-server
 cp /tmp/lavender-server /root/LavenderMessenger/run/lavender-server
@@ -237,6 +273,7 @@ python3 hermes_remote_agent.py --server host:port --token <jwt>
 | Конфиг | .env.dev | .env |
 | DB | chat_db_dev | chat_db |
 | Systemd | `Environment=APP_ENV=dev` | `Environment=APP_ENV=` (пусто) |
+| ProfileService | v2 (JWT) | v1 (legacy ChatService) |
 
 ---
 
@@ -256,13 +293,14 @@ python3 hermes_remote_agent.py --server host:port --token <jwt>
 
 ## Промпт для следующей сессии
 
-**Версия:** v1.2.0.1 (сервер) / v1.1.3.12 (Android) → следующая v1.2.0.2 / v1.1.3.13
+**Версия:** v1.2.1.0 (сервер dev) / v1.1.3.13 (Android) → следующая v1.2.1.1 / v1.1.3.14
 
 **Приоритеты:**
-1. **UNIQUE constraint на prod БД** — вручную выполнить ALTER TABLE user_devices
-2. **Редеплой prod сервера** — после тестирования на dev
-3. **Выпуск Android клиента** — v1.1.3.12 готова к релизу
-4. **Bearer token в Chat stream** — вместо password в первом сообщении (v1.2.1.x, отложено)
+1. **Редеплой prod сервера** — обновить prod до v1.2.1.0 (после тестирования на dev)
+2. **Выпуск Android клиента** — v1.1.3.13 готов к релизу
+3. **Bearer token в Chat stream** — вместо password в первом сообщении (v1.2.2.x, отложено)
+4. **Тесты для ProfileService v2** — unit-тесты (сервер + Android)
+5. **Qdrant + CLIP** (production RAG) — на стороне сервера
 
 **Правила:**
 - НЕ компилировать на сервере (OOM kill)
@@ -270,3 +308,4 @@ python3 hermes_remote_agent.py --server host:port --token <jwt>
 - getString() правильно по контексту (Activity/Adapter/ViewModel)
 - Коммитить и пушить после каждого значимого изменения
 - НЕ деплоить на prod без тестирования на dev
+- ProfileService v2 регистрировать только на dev (APP_ENV=dev)
