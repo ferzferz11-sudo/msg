@@ -43,7 +43,9 @@ func ConnectDB() (*DB, error) {
 				ALTER TABLE user_devices ADD COLUMN user_id UUID REFERENCES users(id) ON DELETE CASCADE;
 				UPDATE user_devices ud SET user_id = (SELECT id FROM users u WHERE u.username = ud.username);
 			END IF;
-			ALTER TABLE user_devices ALTER COLUMN username DROP NOT NULL;
+			IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='user_devices' AND column_name='username') THEN
+				ALTER TABLE user_devices ALTER COLUMN username DROP NOT NULL;
+			END IF;
 		END $$;`,
 		`CREATE TABLE IF NOT EXISTS messages (id SERIAL PRIMARY KEY, message_id VARCHAR(255) UNIQUE, username VARCHAR(255) NOT NULL, encrypted_text BYTEA NOT NULL, created_at TIMESTAMP NOT NULL)`,
 		`DO $$ BEGIN
