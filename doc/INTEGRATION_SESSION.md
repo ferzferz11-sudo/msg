@@ -1,179 +1,74 @@
 # Lava Messenger — Интеграционная сессия
 
-**Текущая версия:** v1.2.0.1 (сервер dev) / v1.1.3.13 (Android)
-**Обновлено:** 2026-06-15 (сессия 10)
+**Текущая версия:** v1.2.0.1 (сервер dev) / v1.1.3.14 (Android)
+**Обновлено:** 2026-06-16 (сессия 11)
 **Тег:** v1.1.3.10 (stable prod)
-**Ветка:** feat/1.2.0.x
+**Ветка сервера:** feat/1.2.0.x
+**Ветка Android:** feat/1.1.3.x (до релиза)
+
+---
+
+## Сессия 11 — ChatStream v2 + ChatList v2
+
+### Что сделано
+
+#### ChatStream v2 (сервер)
+1. **messenger.proto** — добавлен `jwt_token` (field 26) в Message для ChatStream v2 auth
+2. **server_chat.go** — Chat stream поддерживает оба метода auth:
+   - `jwt_token` (v2): валидация JWT, извлечение user_id/username из claims
+   - `password` (v1): полная обратная совместимость
+3. **ChatServiceVersion** = "2.0" в server.go
+
+#### ChatList v2 (сервер)
+1. **messenger.proto** — добавлены RPC методы: PinChat, UnPinChat, SearchChats, ArchiveChat, UnarchiveChat
+2. **messenger.proto** — добавлены `is_pinned`, `is_muted`, `is_archived`, `pinned_at` в ChatInfo
+3. **messenger.proto** — добавлены `limit`, `offset`, `filter` в GetChatsRequest (пагинация)
+4. **server_chatlist_v2.go** — реализация всех новых RPC методов
+5. **db_chatlist_v2.go** — миграции (user_chat_metadata: pinned/pinned_at/archived), методы DB
+6. **server_chats.go** — GetAllChats включает v2 поля
+
+#### ChatStream v2 + ChatList v2 (Android)
+1. **ProfileClient** — `fetchServerInfo()` парсит все версии сервисов (chat/auth/profile/ai)
+   - Добавлены `isChatV2Supported()`, `isAuthV2Supported()`
+   - Fallback на v1 если /info недоступен
+2. **BearerTokenInterceptor** — убран пропуск Chat stream для v2 серверов
+3. **RealGrpcClient.startChat()** — JWT token для v2, password для v1
+4. **RealGrpcClient** — `pinChat()`, `unpinChat()`, `searchChats()`, `archiveChat()`, `unarchiveChat()`
+5. **GrpcClient** — публичные методы ChatList v2
+6. **MessengerProto.kt** — новые proto classes, обновлён ChatInfoProto
+7. **ChatInfo model** — `isPinned`, `isArchived`, `pinnedAt`
+8. **MessageProtoMarshaller** — сериализация/deserialization jwt_token (field 26), isE2Ee, e2EePayload
+
+### Коммиты (сервер)
+- `0daf87b` — feat: ChatStream v2 (JWT auth) + ChatList v2 (Pin/Search/Archive) + proto updates
+- `840a708` — chore: fix server version to 1.2.0.1
+- `de3d55d` — docs: update version to v1.2.0.1, branch to feat/1.2.0.x
+
+### Коммиты (Android)
+- `cd2294d` — feat: ChatStream v2 + ChatList v2 Android client
+- `cc759b7` — fix: add jwtToken to MessageProto, fix searchChats mapping
+- `a4a29ae` — fix: wrap suspendCancellableCoroutine in try-catch
+- `bfe0412` — fix: use expression body for suspendCancellableCoroutine
+- `f15500f` — fix: use explicit CancellableContinuation type parameter
+- `ff6bba2` — fix: use explicit imports and no generics in lambda
+- `cb1cf84` — fix: use kotlinx.coroutines.suspendCancellableCoroutine
+- `8731367` — fix: add onCancellation parameter to cont.resume()
+- `5bb47b6` — docs: update CHANGELOG, SESSION_NOTES, PATTERNS
+
+### Pitfalls learned (Kotlin 2.3.21)
+- `CancellableContinuation.resume()` требует `onCancellation = {}` параметр
+- `import kotlinx.coroutines.suspendCancellableCoroutine` (не `kotlin.coroutines`)
+- data class с `repeated` proto полем использует `List<T>` напрямую (не `getXxxList()`)
 
 ---
 
 ## Сессия 10 — Документация + ProfileClient fixes
-
-### Что сделано
-
-1. **ProfileClient fixes (Android)** — исправлены все проблемы после первоначального PR
-   - `unaryCall()` — единообразное использование
-   - Inline Marshaller objects (deprecation fix)
-   - Недостающие imports для ProfileV2 proto classes
-   - ProtoMarshaller сделан internal
-
-2. **Документация актуализирована** — TASKS.md, PROMPT.md, PROMPT_ANDROID.md, SESSION_NOTES.md
-   - Версии: сервер v1.2.0.1, Android v1.1.3.13
-   - Индексы обновлены
-
-### Коммиты (Android)
-- `7782993` — fix: ProfileClient — use unaryCall consistently
-- `73da2e1` — fix: use inline Marshaller objects
-- `d707fa8` — fix: add missing imports for ProfileV2 proto classes
-- `1a73dee` — fix: suppress newInstance deprecation warning
+(см. подробности в CHANGELOG)
 
 ---
 
 ## Сессия 9 — ProfileService v2 + Typing/CallSession compat
-
-### Что сделано
-
-1. **ProfileService v2 (сервер)** — отдельный gRPC сервис для управления профилем с JWT Bearer auth
-   - Методы: GetProfile, UpdateProfile, UpdateAvatar, DeleteProfile, GetUserSettings, UpdateUserSettings
-   - Данные: аватар, bio, status, locale (en/ru), isSuperAdmin, theme, push settings
-   - Регистрируется ТОЛЬКО на dev сервере (APP_ENV=dev)
-   - ProfileServiceVersion = "2.0" в /info endpoint
-2. **user_settings таблица** — новая таблица для хранения настроек пользователя (locale, theme_id, push_enabled, custom JSONB)
-3. **Typing/CallSession whitelist** — добавлены в AuthStreamInterceptor как legacy streams (v1 compat)
-   - Теперь v1 клиенты могут вызывать Typing и CallSession без JWT
-4. **ProfileClient (Android)** — клиент для ProfileService v2 с автоопределением версии сервера через /info
-   - Fallback на legacy ChatService методы если profile < "2.0"
-   - Вызывается автоматически при connect() через fetchServerInfo()
-5. **ServerService** — зарегистрирован только на dev сервере (было на всех)
-
-### Деплой
-- Dev сервер: v1.2.0.1 — ProfileService v2 активен
-- Prod сервер: v1.1.3.10 — без изменений (ProfileService v2 не зарегистрирован)
-- Android: v1.1.3.13 — ProfileClient с fallback на v1
-
-### Коммиты (сервер)
-- `a989511` — feat: ProfileService v2 + Typing/CallSession interceptor whitelist
-
-### Коммиты (Android)
-- `dbbf266` — feat: ProfileService v2 client + Typing/CallSession compat
-
----
-
-## Сессия 8 — Bearer Token Interceptor + Token Refresh + Per-server validation
-
-### Что сделано
-
-1. **BearerTokenInterceptor (Android)** — новый `ClientInterceptor`, автоматически подставляющий JWT Bearer token во все gRPC вызовы
-   - Пропускает AuthService (нет токена), Chat stream (legacy auth с password), и вызовы без JWT (legacy v1)
-   - Полная совместимость с prod сервером (v1) — если нет токена, интерцептор является no-op
-2. **Proactive Token Refresh (Android)** — периодическая проверка истечения access token каждые 60с
-   - Refresh через `AuthService/RefreshToken` за 5 минут до истечения
-   - Корректная остановка при logout / FORCE_LOGOUT
-3. **Per-server token validation** — токены привязаны к серверу, который их выдал
-   - `CredentialStore.setJwtServerAddress()` / `getJwtServerAddress()` — отслеживание сервера
-   - При смене сервера — автоматическая очистка старых токенов
-   - При восстановлении сессии — проверка совпадения сервера
-4. **SessionManager.login()** — `clearTokens()` перед новым логином
-5. **AuthManager.clearTokens()** — также очищает `jwt_server_address`
-6. **getChats() error callback** — `callback(emptyList())` при onClose ошибке
-7. **loadChats() timeout** — `withTimeoutOrNull(10с)` предотвращает зависание
-8. **Миграция UNIQUE constraint** на user_devices (db_auth_devices.go)
-
-### Деплой
-- Сервер v1.2.0.1 собран и деплоен на prod
-- Prod: `Listening clients at [::]:50051`, `HTTP server started on port 8082`
-- Android v1.1.3.12 — тестирование на dev и prod пройдено
-
-### Известные проблемы
-- **42P10 на prod БД** — UNIQUE constraint на user_devices не добавлен к существующей таблице
-  - Нужно вручную: `ALTER TABLE user_devices ADD CONSTRAINT ... UNIQUE (user_id, device_id)`
-  - Не критично — аутентификация работает
-- **Первый вход на prod — только Favorites** — проблема в локальном кеше Android, после очистки всё ОК
-
-### Коммиты (Android)
-- `960d55c` — feat: BearerTokenInterceptor + proactive token refresh + per-server validation
-- `55beed2` — fix: CredentialStore edit() + add RefreshTokenResponseProto import
-- `e6049db` — fix: getChats timeout + error callback to prevent hanging
-- `c240ff7` — debug: add logging for loadChats flow investigation
-
-### Коммиты (сервер)
-- `5d35914` — docs: update documentation for v1.1.3.12 (session 8)
-
----
-
-## Сессия 7 — Dev server fix + Android auth cosmetics + code cleanup
-
-### Что сделано
-
-1. **Dev server поднят** — был inactive dead, запущен на порту 50052 (gRPC), 8083 (HTTP)
-2. **Nginx** — `/server-logs-dev` проксирует на :8091, логи доступны
-3. **Systemd dev unit** — упрощён, только `Environment=APP_ENV=dev` (без дублирования переменных)
-4. **Android auth cosmetics:**
-   - `app_version_format`: "client" → "app" (EN), "клиент" → "приложение" (RU)
-   - Status indicator — только кружок (без текста), зелёный/красный, слева от названия сервера
-   - Drag handle добавлен во все шторки входа
-   - Убраны горизонтальные dividers из шторок входа
-5. **Android code cleanup:**
-   - `showAuthChoiceDialog()` — убран `getDefaultServer()`, захардожен дефолт
-   - `onResume()` — убран `justReturnedFromServersActivity` guard
-   - Profile menu — скрыта кнопка `actionServers`
-   - `AppDatabase` — `fallbackToDestructiveMigrationOnDowngrade(dropAllTables = true)`
-   - `ServersActivity` оставлена для управления списком серверов
-6. **БД prod** — UNIQUE constraint на `user_devices(user_id, device_id)` существует, дубликатов нет. Ошибка 42P10 была из-за старого бинарника.
-
-### Коммиты (Android)
-- `c64856b` — cosmetics: auth bottom sheets UI fixes
-- `13d6045` — fix: restore TextView import
-- `36cb2a6` — fix: replace deprecated fallbackToDestructiveMigration
-- `689796e` — fix: auth bottom sheets - drag handle, status indicator, remove dividers
-- `bcf8cf2` — fix: fallbackToDestructiveMigrationOnDowngrade with param
-
-### Коммиты (сервер)
-- `9156054` — docs: update all documentation for v1.2.0.1
-
----
-
-## Сессия 6 — AuthService v2 (JWT) + Server info endpoint + UI fixes
-
-### Что сделано
-
-1. **Server `/info` endpoint** — `GET http://host:8082/info` возвращает версии сервисов для client capability negotiation
-   - `services.auth >= "2.0"` → клиент использует JWT workflow (SignInV2/SignUpV2)
-   - `services.auth < "2.0"` или endpoint недоступен → legacy workflow (Chat stream auth)
-2. **Service version constants** — `AuthServiceVersion`, `ChatServiceVersion`, etc. в server.go
-3. **APP_ENV support** — main.go загружает `.env.<APP_ENV>` (например `.env.dev`) вместо `.env`
-4. **Android AuthV2 integration** — SessionManager.loginV2() с fallback на v1
-5. **ChatListActivity toolbar flickering fix** — единый поток загрузки чатов (isConnecting flag, убран safety-net reconnect)
-6. **Logout сохраняет username** — last_username сохраняется в legacy prefs для предзаполнения
-7. **Убран диалог "Предложить регистрацию"** — вместо AlertDialog показывается Toast с реальной ошибкой
-8. **Cancel в login/register sheets** — закрывает шторку и возвращает к выбору входа/регистрации
-9. **Добавлена секция Dev Server Management в PITFALLS.md**
-
-### Коммиты
-- `cb7437e` — fix: add return after net.Listen error, add SERVER_ADDRESS logging
-- `725d0ad` — fix: .env file loading — use .env.APP_ENV format (.env.dev)
-- `4b9824e` — chore: bump server version to 1.2.0.1-dev
-- `d2ee3b7` — fix: support APP_ENV for .env file selection, add /info endpoint
-- `6c771b7` — feat: add /info endpoint for client capability negotiation
-- `155c0dc` — fix: replace isNullOrEmpty/isNotEmpty with length checks
-- `30ca714` — feat: AuthService v2 (JWT) integration — login/register with token storage
-- `3da8d80` — fix: prevent toolbar flickering after server switch
-- `4470467` — fix: logout keeps username for pre-fill, remove register dialog, show real errors
-- `d2e76e3` — fix: Cancel button in login/register sheets now closes and returns to auth choice
-- `73f801e` — fix: use registerSheet instead of loginSheet in onCancel
-
----
-
-## Сессия 5 — Auth widgets + Server switch fix + Chat flickering fix
-
-### Что сделано
-1. **3 auth виджета** — ServerAuthBottomSheet, LoginBottomSheet, RegisterBottomSheet
-2. **Server switch исправлен** — один вход, правильный сервер, нет мерцания
-3. **Chat flickering исправлен** — isLoadingChats, isTransitioning флаги
-4. **i18n** — server_default_name, app_version_format
-
-### Коммиты
-- `7d9769f`, `bc0e701`, `ee4d44d`, `0382343`, `502154b`, `eba9459`, `f312a62`
+(см. подробности в CHANGELOG)
 
 ---
 
@@ -182,53 +77,57 @@
 ### Сервер (/root/msg)
 ```
 main.go                    — Entry point, gRPC server, graceful shutdown
-server.go                  — ServerVersion = "1.2.1.0", service version constants
+server.go                  — ServerVersion = "1.2.0.1", service version constants
 auth_service.go            — AuthService v1 (deprecated)
 auth_service_v2.go         — AuthService v2 (JWT, основной)
 auth_interceptor.go        — gRPC Bearer token interceptor (unary + streaming)
 auth_jwt.go                — JWT генерация/валидация
 db_auth_devices.go         — CRUD для user_devices + device_auth_log
 db_auth_migrations.go      — миграция таблиц (включая user_settings)
+db_chatlist_v2.go          — ChatList v2 DB methods (PinChat, SearchChats, etc.)
 server_profile_v2.go       — ProfileService v2 (JWT, dev only)
+server_chatlist_v2.go      — ChatList v2 RPC (PinChat, SearchChats, ArchiveChat, etc.)
 server_remote.go           — Remote Agent RPC
 hermes_remote_manager.go   — HandleTaskStream
 ai_chat_manager.go         — AI чаты
 owl.go                     — OWL AI
 hermes_orchestrator.go     — Hermes Orchestrator
 http_server.go             — HTTP (/health, /info на 8082/8083)
-messenger.proto            — ChatService, AuthService, ProfileService, AI Chat, Remote Agent RPC
+messenger.proto            — ChatService v2, AuthService v2, ProfileService v2, AI Chat
 ```
 
 ### Android (/root/msg.client.android)
 ```
 ui/
 ├── widget/
-│   ├── ServerAuthBottomSheet.kt    — шторка выбора входа (лого + сервер + статус)
-│   ├── LoginBottomSheet.kt         — шторка входа (username/password + prefill)
+│   ├── ServerAuthBottomSheet.kt    — шторка выбора входа
+│   ├── LoginBottomSheet.kt         — шторка входа (prefillUsername)
 │   └── RegisterBottomSheet.kt      — шторка регистрации
+├── ServersActivity.kt              — управление списком серверов
 ├── remote/                         — Remote Agent UI
 ├── chat/widget/ChatWidget.kt       — общий виджет чата
 └── adapter/ChatAdapter.kt          — адаптер чатов (clearAll)
 
 data/
-├── grpc/BearerTokenInterceptor.kt  — ClientInterceptor для JWT Bearer token
-├── grpc/GrpcClient.kt              — facade
-├── grpc/RealGrpcClient.kt          — реализация gRPC (connect, getChats, signInV2, refreshToken)
-├── grpc/ProfileClient.kt           — ProfileService v2 client (JWT, dev only)
-├── auth/AuthManager.kt             — JWT token storage, getBearerToken, getAccessToken
+├── grpc/BearerTokenInterceptor.kt  — ClientInterceptor для JWT Bearer token (v2: Chat stream)
+├── grpc/GrpcClient.kt              — facade (pinChat, searchChats, archiveChat, etc.)
+├── grpc/RealGrpcClient.kt          — реализация gRPC (JWT auth, ChatList v2 RPC)
+├── grpc/ProfileClient.kt           — ProfileService v2 client + fetchServerInfo
+├── auth/AuthManager.kt             — JWT token storage, getBearerToken
 ├── session/CredentialStore.kt      — credentials + server list + last_username
 ├── session/SessionManager.kt       — loginV2 (JWT) + loginV1 (legacy fallback)
 ├── session/UserSession.kt          — accessToken, refreshToken, authMethod
-└── models/ErrorHandler.kt          — единый обработчик ошибок
+├── models/ErrorHandler.kt          — единый обработчик ошибок
+└── proto/MessengerProto.kt         — proto data classes (ChatList v2, jwt_token, etc.)
 ```
 
 ---
 
-## Статус: v1.2.0.1 — DEV / v1.1.3.13 — Android
+## Статус: v1.2.0.1 — DEV / v1.1.3.14 — Android
 
-Сервер v1.2.0.1 работает на dev (порт 50052, HTTP 8083). ProfileService v2 активен.
-Prod сервер: v1.1.3.10 (без ProfileService v2).
-Android v1.1.3.13 — ProfileClient с fallback на v1.
+Сервер v1.2.0.1 работает на dev (порт 50052, HTTP 8083). ProfileService v2 активен. ChatStream v2 (JWT auth) + ChatList v2 (Pin/Search/Archive) реализованы.
+Prod сервер: v1.1.3.10 (без ProfileService v2, без ChatStream/ChatList v2).
+Android v1.1.3.14 — ChatStream v2 auth + ChatList v2 API + fetchServerInfo с fallback на v1.
 
 ---
 
@@ -236,7 +135,7 @@ Android v1.1.3.13 — ProfileClient с fallback на v1.
 
 1. Коммитить и пушить после каждого значимого изменения
 2. Деплоить на dev для тестирования (не на prod!)
-3. Обновлять CHANGELOG.md с каждым релизе
+3. Обновлять CHANGELOG.md с каждым релизом
 4. Не ломать существующий функционал
 5. Версия сервера в `server.go:33`, версия Android в `version.txt`
 6. userId (UUID) — всегда как ключ, НЕ username
@@ -245,6 +144,8 @@ Android v1.1.3.13 — ProfileClient с fallback на v1.
 9. JWT секрет: минимум 32 байта, НЕ коммитить
 10. Proto поля: всегда сверять номера полей с messenger.proto
 11. ProfileService v2 — только dev сервер (APP_ENV=dev). Prod использует legacy ChatService.
+12. **Kotlin 2.3.21:** `cont.resume(value, onCancellation = {})` — всегда передавать onCancellation
+13. **fetchServerInfo** — всегда использовать для определения версии сервера. Если /info недоступен → v1 fallback.
 
 ---
 
@@ -275,11 +176,7 @@ go test ./...
 
 # === ANDROID ===
 cd /root/msg.client.android
-# assembleRelease НЕ запускать на сервере — OOM
-
-# === Remote Agent ===
-cd /root/msg.remote.agent
-python3 hermes_remote_agent.py --server host:port --token <jwt>
+# assembleRelease ТОЛЬКО локально!
 ```
 
 ---
@@ -296,6 +193,9 @@ python3 hermes_remote_agent.py --server host:port --token <jwt>
 | DB | chat_db_dev | chat_db |
 | Systemd | `Environment=APP_ENV=dev` | `Environment=APP_ENV=` (пусто) |
 | ProfileService | v2 (JWT) | v1 (legacy ChatService) |
+| ChatStream | v2 (JWT + password) | v1 (password only) |
+| ChatList | v2 (Pin/Search/Archive) | v1 (basic) |
+| Версия | v1.2.0.1 | v1.1.3.10 |
 
 ---
 
@@ -315,18 +215,18 @@ python3 hermes_remote_agent.py --server host:port --token <jwt>
 
 ## Промпт для следующей сессии
 
-**Версия:** v1.2.0.1 (сервер dev) / v1.1.3.13 (Android) → следующая v1.2.1.1 / v1.1.3.14
+**Версия:** v1.2.0.1 (сервер dev) / v1.1.3.14 (Android) → следующая v1.2.0.2 / v1.1.3.15
 
-**Ветки:** сервер — feat/1.2.0.x, Android — feat/1.2.0.x (до релиза)
+**Ветки:** сервер — feat/1.2.0.x, Android — feat/1.1.3.x (до релиза)
 
 **Приоритеты:**
-1. **ChatList v2** — новая версия списка чатов с улучшенным UI/UX
+1. **ChatList v2 UI** — новая ChatListActivity с секциями (Pinned/Favorites/All), табами, search, unread badges
 2. **Тесты для ProfileService v2** — unit-тесты (сервер + Android)
-3. **Bearer token в Chat stream** — вместо password в первом сообщении (v1.2.2.x, отложено)
+3. **Деплой prod сервера** — после завершения Android клиента
 
 **Отложено (не в этой сессии):**
 - Редеплой prod сервера — только после выхода Android клиента
-- Выпуск Android v1.1.3.13 — делается ферзем лично после завершения v2
+- Выпуск Android — делается ферзем лично после завершения v2 UI
 
 **Правила:**
 - НЕ компилировать на сервере (OOM kill) — это касается и Go и Android
@@ -336,5 +236,6 @@ python3 hermes_remote_agent.py --server host:port --token <jwt>
 - Коммитить и пушить после каждого значимого изменения
 - НЕ деплоить на prod без тестирования на dev
 - ProfileService v2 регистрировать только на dev (APP_ENV=dev)
+- fetchServerInfo — всегда использовать для определения версии сервера
 - Серверная ветка версий: 1.2.0.x, Android: 1.1.3.x до релиза
 - Вся разработка на dev сервере, проверка обратной совместимости на prod

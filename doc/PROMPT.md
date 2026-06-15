@@ -1,15 +1,16 @@
 # Промпт для новой сессии — Server v1.2.0.1
 
-**Дата:** 2026-06-15
+**Дата:** 2026-06-16
 **Ветка сервера:** feat/1.2.0.x
-**Ветка Android:** feat/1.2.0.x
+**Ветка Android:** feat/1.1.3.x
 
 ---
 
-## СТАТУС: v1.2.0.1 — DEV / v1.1.3.13 — Android
+## СТАТУС: v1.2.0.1 — DEV / v1.1.3.14 — Android
 
-Сервер: v1.2.0.1 на dev (порт 50052, HTTP 8083). Prod: v1.1.3.10.
-Android: v1.1.3.13 — ProfileService v2 client + Typing/CallSession compat.
+Сервер: v1.2.0.1 на dev (порт 50052, HTTP 8083). ProfileService v2 активен. ChatStream v2 (JWT auth) + ChatList v2 (Pin/Search/Archive) реализованы.
+Prod: v1.1.3.10.
+Android: ChatStream v2 auth + ChatList v2 API + fetchServerInfo с fallback на v1.
 
 ---
 
@@ -18,29 +19,30 @@ Android: v1.1.3.13 — ProfileService v2 client + Typing/CallSession compat.
 ### Сервер (/root/msg)
 ```
 main.go                    — Entry point, gRPC server, graceful shutdown
-server.go                  — ServerVersion = "1.2.1.0", service version constants
+server.go                  — ServerVersion = "1.2.0.1", service version constants
 auth_service.go            — AuthService v1 (deprecated)
 auth_service_v2.go         — AuthService v2 (JWT, основной)
 auth_interceptor.go        — gRPC Bearer token interceptor (unary + streaming)
 auth_jwt.go                — JWT генерация/валидация
 db_auth_devices.go         — CRUD для user_devices + device_auth_log
 db_auth_migrations.go      — миграция таблиц (включая user_settings)
+db_chatlist_v2.go          — ChatList v2 DB methods (PinChat, SearchChats, etc.)
 server_profile_v2.go       — ProfileService v2 (JWT, dev only)
+server_chatlist_v2.go      — ChatList v2 RPC (PinChat, SearchChats, ArchiveChat, etc.)
 server_remote.go           — Remote Agent RPC
 hermes_remote_manager.go   — HandleTaskStream
 ai_chat_manager.go         — AI чаты
 owl.go                     — OWL AI
 hermes_orchestrator.go     — Hermes Orchestrator
 http_server.go             — HTTP (/health, /info на 8082/8083)
-messenger.proto            — ChatService, AuthService, ProfileService, AI Chat, Remote Agent RPC
-hermes_remote.proto        — HermesAgentService
+messenger.proto            — ChatService v2, AuthService v2, ProfileService v2, AI Chat
 ```
 
 ### Android (/root/msg.client.android)
 ```
 ui/
 ├── widget/
-│   ├── ServerAuthBottomSheet.kt    — шторка выбора входа (лого + сервер + статус)
+│   ├── ServerAuthBottomSheet.kt    — шторка выбора входа
 │   ├── LoginBottomSheet.kt         — шторка входа (prefillUsername)
 │   └── RegisterBottomSheet.kt      — шторка регистрации
 ├── ServersActivity.kt              — управление списком серверов
@@ -49,15 +51,15 @@ ui/
 └── adapter/ChatAdapter.kt          — адаптер чатов (clearAll)
 
 data/
-├── grpc/BearerTokenInterceptor.kt  — ClientInterceptor для JWT Bearer token
-├── grpc/GrpcClient.kt              — фасад
-├── grpc/RealGrpcClient.kt          — реализация gRPC
-├── grpc/ProfileClient.kt           — ProfileService v2 client (JWT, dev only)
-├── auth/AuthManager.kt             — JWT token storage, getBearerToken, needsRefresh
-├── session/CredentialStore.kt      — credentials, jwt_server_address, last_username
-├── session/SessionManager.kt       — loginV2 + loginV1 fallback, startTokenRefresh
+├── grpc/BearerTokenInterceptor.kt  — ClientInterceptor для JWT Bearer token (v2: Chat stream)
+├── grpc/GrpcClient.kt              — facade (pinChat, searchChats, archiveChat, etc.)
+├── grpc/RealGrpcClient.kt          — реализация gRPC (JWT auth, ChatList v2 RPC)
+├── grpc/ProfileClient.kt           — ProfileService v2 client + fetchServerInfo
+├── auth/AuthManager.kt             — JWT token storage, getBearerToken
+├── session/CredentialStore.kt      — credentials + server list + last_username
+├── session/SessionManager.kt       — loginV2 (JWT) + loginV1 (legacy fallback)
 ├── session/UserSession.kt          — accessToken, refreshToken, authMethod
-└── models/ErrorHandler.kt          — единый обработчик ошибок
+└── proto/MessengerProto.kt         — proto data classes (ChatList v2, jwt_token, etc.)
 ```
 
 ---
@@ -74,11 +76,13 @@ data/
 - Token rotation с обнаружением reuse
 - **ProfileService v2** — отдельный сервис для профиля (JWT, dev only)
 - **user_settings** — таблица для locale, theme_id, push_enabled
-- **Typing/CallSession** — whitelist в AuthStreamInterceptor (v1 compat)
+- **ChatStream v2** — JWT auth в Chat stream + backward compat с password
+- **ChatList v2** — PinChat/UnPinChat/SearchChats/ArchiveChat/UnarchiveChat
+- **user_chat_metadata** — per-user chat settings (pinned, archived)
 
 ### Android
-- BearerTokenInterceptor — автоматическая подстановка JWT Bearer token
-- Proactive token refresh — каждые 60с, за 5 минут до истечения
+- BearerTokenInterceptor — автоматическая подстановка JWT Bearer token (включая Chat stream на v2)
+- Proactive token refresh — каждые 60с
 - Per-server token validation — токены привязаны к серверу
 - 3 auth виджета: ServerAuthBottomSheet, LoginBottomSheet, RegisterBottomSheet
 - isLoadingChats предотвращает двойную загрузку
@@ -87,8 +91,8 @@ data/
 - Logout сохраняет username для предзаполнения
 - Drag handle во всех шторках входа
 - Status indicator — только кружок слева от названия сервера
-- **ProfileClient** — ProfileService v2 client, fallback на v1
-- **fetchServerInfo()** — определение версии сервера через /info при connect()
+- **ProfileClient** — fetchServerInfo парсит все версии сервисов, fallback на v1
+- **ChatList v2 API** — pinChat, unpinChat, searchChats, archiveChat, unarchiveChat
 
 ### i18n
 - Все строки в values/strings.xml (en) + values-ru/strings.xml
@@ -98,7 +102,7 @@ data/
 
 ## ПРАВИЛА
 
-1. НЕ компилировать на сервере (OOM kill) — это касается и Go и Android (./gradlew убивает всё по памяти, а на сервере крутится prod)
+1. НЕ компилировать на сервере (OOM kill) — это касается и Go и Android
 2. НЕ деплоить новую версию на prod без прямого указания ферзя
 3. Коммитить и пушить после каждого значимого изменения
 4. Версия сервера в server.go:33, версия Android в version.txt
@@ -111,8 +115,10 @@ data/
 11. Форматирование строк: позиционные форматтеры (%1$s, %2$d)
 12. НЕ деплоить на prod без тестирования на dev
 13. **ProfileService v2** — регистрировать только на dev (APP_ENV=dev). Prod использует legacy ChatService.
-14. **Серверная ветка версий: 1.2.0.x**, Android: 1.1.3.x до релиза, потом 1.2.0.x
+14. **Серверная ветка версий: 1.2.0.x**, Android: 1.1.3.x до релиза
 15. Вся разработка на dev сервере, проверка обратной совместимости на prod
+16. **fetchServerInfo** — всегда использовать для определения версии сервера. Если /info недоступен → v1 fallback.
+17. **Kotlin 2.3.21:** `cont.resume(value, onCancellation = {})` — всегда передавать onCancellation
 
 ---
 
@@ -163,6 +169,8 @@ cd /root/msg.client.android
 | DB | chat_db_dev | chat_db |
 | Systemd | `Environment=APP_ENV=dev` | `Environment=APP_ENV=` (пусто) |
 | ProfileService | v2 (JWT) | v1 (legacy ChatService) |
+| ChatStream | v2 (JWT + password) | v1 (password only) |
+| ChatList | v2 (Pin/Search/Archive) | v1 (basic) |
 | Версия | v1.2.0.1 | v1.1.3.10 |
 
 ---
@@ -176,5 +184,4 @@ cd /root/msg.client.android
 - Подводные камни: `/root/msg/doc/PITFALLS.md`
 - Remote Agent: `/root/msg.client.android/doc/REMOTE_AGENT.md`
 - Паттерны: `/root/msg.client.android/doc/PATTERNS.md`
-- Log Monitor: `/root/msg/doc/LOG_MONITOR.md`
 - CHANGELOG: `/root/msg/CHANGELOG.md` (сервер), `/root/msg.client.android/CHANGELOG.md` (Android)
