@@ -307,7 +307,8 @@ python3 hermes_remote_agent.py --server host:port --token <jwt>
 - Выпуск Android v1.1.3.13 — делается ферзем лично после завершения v2
 
 **Правила:**
-- НЕ компилировать на сервере (OOM kill)
+- НЕ компилировать на сервере (OOM kill) — это касаится и Go и Android (./gradlew убивает всё по памяти, а на сервере крутится prod)
+- НЕ деплоить новую версию на prod без прямого указания ферзя
 - Все новые строки ОДНОВРЕМЕННО в values/strings.xml (en) + values-ru/strings.xml
 - getString() правильно по контексту (Activity/Adapter/ViewModel)
 - Коммитить и пушить после каждого значимого изменения
