@@ -1,9 +1,31 @@
 # Lava Messenger — Интеграционная сессия
 
 **Текущая версия:** v1.2.1.0 (сервер dev) / v1.1.3.13 (Android)
-**Обновлено:** 2026-06-14 (сессия 9)
+**Обновлено:** 2026-06-15 (сессия 10)
 **Тег:** v1.1.3.10 (stable prod)
 **Ветка:** feat/1.1.3.x
+
+---
+
+## Сессия 10 — Документация + ProfileClient fixes
+
+### Что сделано
+
+1. **ProfileClient fixes (Android)** — исправлены все проблемы после первоначального PR
+   - `unaryCall()` — единообразное использование
+   - Inline Marshaller objects (deprecation fix)
+   - Недостающие imports для ProfileV2 proto classes
+   - ProtoMarshaller сделан internal
+
+2. **Документация актуализирована** — TASKS.md, PROMPT.md, PROMPT_ANDROID.md, SESSION_NOTES.md
+   - Версии: сервер v1.2.1.0, Android v1.1.3.13
+   - Индексы обновлены
+
+### Коммиты (Android)
+- `7782993` — fix: ProfileClient — use unaryCall consistently
+- `73da2e1` — fix: use inline Marshaller objects
+- `d707fa8` — fix: add missing imports for ProfileV2 proto classes
+- `1a73dee` — fix: suppress newInstance deprecation warning
 
 ---
 
@@ -299,15 +321,15 @@ python3 hermes_remote_agent.py --server host:port --token <jwt>
 
 **Приоритеты:**
 1. **ChatList v2** — новая версия списка чатов с улучшенным UI/UX
-2. **Bearer token в Chat stream** — вместо password в первом сообщении (v1.2.2.x, отложено)
-3. **Тесты для ProfileService v2** — unit-тесты (сервер + Android)
+2. **Тесты для ProfileService v2** — unit-тесты (сервер + Android)
+3. **Bearer token в Chat stream** — вместо password в первом сообщении (v1.2.2.x, отложено)
 
 **Отложено (не в этой сессии):**
 - Редеплой prod сервера — только после выхода Android клиента
 - Выпуск Android v1.1.3.13 — делается ферзем лично после завершения v2
 
 **Правила:**
-- НЕ компилировать на сервере (OOM kill) — это касаится и Go и Android (./gradlew убивает всё по памяти, а на сервере крутится prod)
+- НЕ компилировать на сервере (OOM kill) — это касается и Go и Android
 - НЕ деплоить новую версию на prod без прямого указания ферзя
 - Все новые строки ОДНОВРЕМЕННО в values/strings.xml (en) + values-ru/strings.xml
 - getString() правильно по контексту (Activity/Adapter/ViewModel)
