@@ -299,12 +299,12 @@ python3 hermes_remote_agent.py --server host:port --token <jwt>
 
 **Приоритеты:**
 1. **ChatList v2** — новая версия списка чатов с улучшенным UI/UX
-2. **Выпуск Android клиента** — v1.1.3.13 готов к релизу
-3. **Bearer token в Chat stream** — вместо password в первом сообщении (v1.2.2.x, отложено)
-4. **Тесты для ProfileService v2** — unit-тесты (сервер + Android)
+2. **Bearer token в Chat stream** — вместо password в первом сообщении (v1.2.2.x, отложено)
+3. **Тесты для ProfileService v2** — unit-тесты (сервер + Android)
 
 **Отложено (не в этой сессии):**
 - Редеплой prod сервера — только после выхода Android клиента
+- Выпуск Android v1.1.3.13 — делается ферзем лично после завершения v2
 
 **Правила:**
 - НЕ компилировать на сервере (OOM kill)
