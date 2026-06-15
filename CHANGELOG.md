@@ -2,6 +2,14 @@
 
 ## [1.2.0.1] - 2026-06-16
 
+### Новое: Pin Message
+- **messenger.proto**: добавлены RPC методы PinMessage, UnPinMessage, GetPinnedMessages
+- **messenger.proto**: добавлены сообщения PinMessageRequest/Response, UnPinMessageRequest/Response, GetPinnedMessagesRequest/Response
+- **server_chatlist_v2.go**: реализация PinMessage/UnPinMessage/GetPinnedMessages RPC handlers
+- **db_chatlist_v2.go**: таблица pinned_messages, PinnedMessageRow struct, CRUD методы
+- Все RPC используют только userId (без username)
+- Валидация: пользователь должен быть участником чата, сообщение должно существовать
+
 ### Новое: ChatStream v2 (JWT auth)
 - **messenger.proto**: добавлен `jwt_token` (field 26) в Message для ChatStream v2 auth
 - **server_chat.go**: Chat stream поддерживает `jwt_token` (v2) + `password` (v1 fallback)

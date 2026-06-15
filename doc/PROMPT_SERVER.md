@@ -4,7 +4,7 @@
 
 **Версия:** v1.2.0.1
 **Ветка:** feat/1.2.0.x
-**Тег:** v1.1.3.10 (stable)
+**Тег:** v1.2.0.1
 
 ---
 
@@ -13,97 +13,96 @@
 - Сервер: `/root/msg`, dev порт 50052, prod порт 50051
 - Android: `/root/msg.client.android`
 - Remote Agent: `/root/msg.remote.agent`
-- Оба репозитория на ветке `feat/1.2.0.x`
 
 ---
 
 ## Что сделано (v1.2.0.1)
 
-### Сервер
-- ✅ **AuthService v2 (JWT)** — SignInV2, SignUpV2, RefreshToken, SignOut, RevokeDevice, GetDevices
-- ✅ **AuthInterceptor** — gRPC Bearer token interceptor (streaming + unary)
-- ✅ **/info endpoint** — версии сервисов для client capability negotiation
-- ✅ **APP_ENV support** — загрузка `.env.<APP_ENV>` для dev сервера
-- ✅ **Device management** — user_devices, device_auth_log таблицы
-- ✅ **Token rotation** — обнаружение refresh token reuse
-- ✅ **ServerVersion** = "1.2.0.1" (server.go:33)
-- ✅ Миграция UNIQUE constraint на user_devices (db_auth_devices.go)
+### Pin Message
+- messenger.proto: PinMessage/UnPinMessage/GetPinnedMessages RPC
+- db_chatlist_v2.go: pinned_messages table, PinnedMessageRow, CRUD методы
+- server_chatlist_v2.go: RPC handlers (PinMessage, UnPinMessage, GetPinnedMessages)
+- Все RPC используют только userId (без username)
+- Валидация: пользователь должен быть участником чата
 
-### Android
-- ✅ **BearerTokenInterceptor** — автоматическая подстановка JWT Bearer token в gRPC
-- ✅ **Proactive token refresh** — проверка каждые 60с, refresh за 5 минут до истечения
-- ✅ **Per-server token validation** — токены привязаны к серверу, очистка при смене
-- ✅ **3 auth видьеты** — ServerAuthBottomSheet, LoginBottomSheet, RegisterBottomSheet
-- ✅ **Server switch** — корректная смена prod/dev серверов
-- ✅ **i18n** — values/strings.xml (en) + values-ru/strings.xml
-
----
-
-## Архитектура
-
-```
-┌─────────────┐  gRPC          ┌──────────────┐
-│  Android    │ ──────────────→ │   Server     │
-│  Client     │  Bearer token   │   (Go)       │
-│  v1.1.3.12  │  (JWT v2)       │   v1.2.0.1   │
-└─────────────┘                 └──────────────┘
+**ВАЖНО:** Proto обновлён, требуется protoc генерация:
+```bash
+protoc --go_out=gen --go_opt=paths=source_relative --go-grpc_out=gen --go-grpc_opt=paths=source_relative messenger.proto
 ```
 
-**gRPC сервисы:**
-- `messenger.ChatService` — Chat (streaming), GetChats, GetHistory, SendMessage, etc.
-- `messenger.AuthService` — SignInV2, SignUpV2, RefreshToken, SignOut, RevokeDevice, GetDevices (v2, JWT)
-- `messenger.AuthService` — SignIn, SignUp (v1, deprecated)
-- `hermes_agent.HermesAgentService` — Connect, GenerateAgentToken, etc.
-
-**Auth flow (v2):**
-```
-Client → /info → services.auth >= "2.0" → JWT workflow
-  → SignInV2 → access_token + refresh_token
-  → Bearer token в metadata для всех последующих вызовов
-  → Proactive refresh за 5 минут до истечения
-
-Client → /info = 404 или auth < "2.0" → Legacy workflow
-  → Chat stream с password в первом сообщении
-  → BearerTokenInterceptor = no-op (нет токена)
-```
-
-**Порты:**
-- 50051 — prod
-- 50052 — dev
-
----
-
-## Критические файлы
-
-### Сервер
-- `server.go` — ServerVersion, service version constants, InitDB
-- `auth_service_v2.go` — SignInV2, SignUpV2, RefreshToken, SignOut, RevokeDevice, GetDevices
-- `auth_interceptor.go` — AuthInterceptor (unary), AuthStreamInterceptor (streaming)
-- `auth_jwt.go` — GenerateTokenPair, ValidateToken, ExtractJTI
-- `db_auth_devices.go` — UpsertDevice, ValidateRefreshToken, device management
-- `http_server.go` — /health, /info endpoints
-- `main.go` — entry point, gRPC server interceptors
-
-### Android
-- `data/grpc/BearerTokenInterceptor.kt` — ClientInterceptor для JWT Bearer token
-- `data/grpc/GrpcClient.kt` — фасад
-- `data/grpc/RealGrpcClient.kt` — реализация gRPC (connect, getChats, signInV2, refreshToken)
-- `data/auth/AuthManager.kt` — JWT token storage, getBearerToken, needsRefresh, clearTokens
-- `data/session/SessionManager.kt` — loginV2 + loginV1 fallback, startTokenRefresh, per-server validation
-- `data/session/CredentialStore.kt` — credentials, jwt_server_address tracking
-- `ui/widget/ServerAuthBottomSheet.kt` — шторка выбора входа
+### Предыдущие версии
+- ChatStream v2 (JWT auth)
+- ChatList v2 (PinChat, SearchChats, ArchiveChat)
+- ProfileService v2
+- AuthService v2 (JWT)
 
 ---
 
 ## Правила
 
-- **НЕ** запускать assembleRelease на сервере (OOM)
-- **НЕ** компилировать на сервере без крайней необходимости
-- **НЕ** деплоить на prod без тестирования на dev
-- JWT_SECRET: минимум 32 байта, НЕ коммитить
-- Коммитить и пушить после каждого значимого изменения
-- server.go:33 — версия сервера
-- version.txt — версия Android
+1. НЕ компилировать на сервере (OOM kill)
+2. НЕ деплоить новую версию на prod без прямого указания ферзя
+3. Использовать только userId (UUID), НЕ username в RPC
+4. Все данные о пользователе через ProfileService v2
+5. При смене сервера клиент очищает локальный кэш (CacheUtils.clearAllSync)
+6. Форматирование строк: позиционные форматтеры (%1$s, %2$d)
+7. Все серверы (включая dev) доступны всем пользователям
+
+---
+
+## Структура файлов
+
+```
+main.go                    — Entry point, gRPC server, graceful shutdown
+server.go                  — ServerVersion = "1.2.0.1", service version constants
+auth_service.go            — AuthService v1 (deprecated)
+auth_service_v2.go         — AuthService v2 (JWT, основной)
+auth_interceptor.go        — gRPC Bearer token interceptor
+auth_jwt.go                — JWT генерация/валидация
+db_auth_devices.go         — CRUD для user_devices + device_auth_log
+db_auth_migrations.go      — миграция таблиц
+db_chatlist_v2.go          — ChatList v2 + Pin Message DB methods
+server_profile_v2.go       — ProfileService v2 (JWT, dev only)
+server_chatlist_v2.go      — ChatList v2 + Pin Message RPC handlers
+server_chat.go             — Chat stream v2 (JWT + password)
+server_remote.go           — Remote Agent RPC
+hermes_remote_manager.go   — HandleTaskStream
+ai_chat_manager.go         — AI чаты
+owl.go                     — OWL AI
+hermes_orchestrator.go     — Hermes Orchestrator
+http_server.go             — HTTP (/health, /info)
+messenger.proto            — ChatService v2, AuthService v2, ProfileService v2, Pin Message
+```
+
+---
+
+## Команды
+
+```bash
+cd /root/msg && export PATH=$PATH:/usr/local/go/bin:~/go/bin
+
+# Proto gen (обязательно после изменений!)
+protoc --go_out=gen --go_opt=paths=source_relative --go-grpc_out=gen --go-grpc_opt=paths=source_relative messenger.proto
+
+# Сборка и деплой на dev
+go build -o /tmp/lavender-server-dev .
+systemctl stop lavender-server-dev
+cp /tmp/lavender-server-dev /root/LavenderMessenger/run/lavender-server-dev
+systemctl start lavender-server-dev
+
+# Сборка и деплой на prod (НЕ делать без тестирования на dev!)
+go build -o /tmp/lavender-server .
+systemctl stop lavender-server
+cp /tmp/lavender-server /root/LavenderMessenger/run/lavender-server
+systemctl start lavender-server
+
+# Тесты
+go test ./...
+
+# Логи
+journalctl -u lavender-server-dev -f
+journalctl -u lavender-server -f
+```
 
 ---
 
@@ -113,49 +112,17 @@ Client → /info = 404 или auth < "2.0" → Legacy workflow
 |----------------|-----|------|
 | Порт gRPC | 50052 | 50051 |
 | Порт HTTP | 8083 | 8082 |
+| Имя | Lava Germany dev | Lava Germany |
 | Сервис | lavender-server-dev | lavender-server |
 | Конфиг | .env.dev | .env |
 | DB | chat_db_dev | chat_db |
-| Версия | v1.2.0.1 | v1.2.0.1 (после редеплоя) |
-| JWT | да | да |
-| /info | да | да (после редеплоя) |
+| Версия | v1.2.0.1 | v1.1.3.10 |
 
 ---
 
-## Команды
+## Документация
 
-```bash
-# Сборка
-cd /root/msg && export PATH=$PATH:/usr/local/go/bin:~/go/bin
-go build -o /tmp/lavender-server-dev .   # dev
-go build -o /tmp/lavender-server .        # prod
-
-# Деплой на dev
-systemctl stop lavender-server-dev
-cp /tmp/lavender-server-dev /root/LavenderMessenger/run/lavender-server-dev
-systemctl start lavender-server-dev
-
-# Деплой на prod (после тестирования на dev!)
-systemctl stop lavender-server
-cp /tmp/lavender-server /root/LavenderMessenger/run/lavender-server
-systemctl start lavender-server
-
-# Логи
-journalctl -u lavender-server-dev -f
-journalctl -u lavender-server -f
-```
-
----
-
-## Известные проблемы
-
-### 42P10 на prod БД (НЕ исправлена)
-- `Failed to register device ... pq: there is no unique or exclusion constraint matching the ON CONFLICT specification`
-- Причина: таблица `user_devices` на prod создана до добавления UNIQUE constraint
-- **Решение**: вручную выполнить на prod БД:
-  ```sql
-  ALTER TABLE user_devices 
-  ADD CONSTRAINT user_devices_user_id_device_id_key 
-  UNIQUE (user_id, device_id);
-  ```
-- Не критично — пользователь аутентифицируется, но device registration не проходит
+- Индекс: `/root/msg/doc/INDEX.md`
+- CHANGELOG: `/root/msg/CHANGELOG.md`
+- Android: `/root/msg.client.android/doc/INDEX.md`
+- Android PROMPT: `/root/msg.client.android/doc/PROMPT_ANDROID.md`

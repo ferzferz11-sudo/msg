@@ -1,19 +1,20 @@
-# Лава — Документация
+# Лава — Серверная Документация
 
-Индекс всех документов проекта. Читать при каждом старте новой сессии.
+Индекс всех документов проекта.
 
 **Версия:** v1.2.0.1
-**Обновлено:** 2026-06-16 (сессия 13)
+**Обновлено:** 2026-06-16 (сессия 16)
+**Ветка:** feat/1.2.0.x
+**Тег:** v1.2.0.1
 
 ---
 
 ## Быстрый старт
 
-1. **INTEGRATION_SESSION.md** — текущий контекст интеграции (версии, архитектура, что сделано, что нет)
-2. **TASKS.md** — таск-трекер (сделано/не сделано по приоритетам)
-3. **CHANGELOG.md** (в корне) — история версий сервера
-4. **PROMPT.md** — промпт для любых сессий (общий)
-5. **PROMPT_SERVER.md** — промпт для серверных сессий
+1. **PROMPT_SERVER.md** — промпт для серверных сессий
+2. **TASKS.md** — таск-трекер
+3. **CHANGELOG.md** — история версий сервера
+4. **INTEGRATION_SESSION.md** — интеграционная сессия
 
 ---
 
@@ -23,27 +24,19 @@
 
 | Файл | Назначение | Когда читать |
 |------|-----------|-------------|
-| `INTEGRATION_SESSION.md` | Интеграционная сессия: версии, архитектура, правила, промпт для следующей сессии | **Всегда в начале** |
-| `TASKS.md` | Таск-трекер: сделано по версиям, бэклог по приоритетам | В начале сессии |
+| `PROMPT_SERVER.md` | Промпт для серверных сессий | **Всегда в начале** |
+| `TASKS.md` | Таск-трекер | В начале сессии |
+| `INTEGRATION_SESSION.md` | Интеграционная сессия | В начале сессии |
 
 ### Архитектура и дизайн
 
 | Файл | Назначение | Когда читать |
 |------|-----------|-------------|
-| `AI_SERVICES.md` | AI-сервисы: архитектура, API, потоки данных, proto mapping | **При работе с AI чатами** |
-| `PITFALLS.md` | Подводные камни и известные проблемы | **Перед началом работы** |
-| `AUTHSERVICE_V2.md` | AuthService v2: JWT, device management, миграция | При работе с авторизацией |
-| `HERMES_ORCHESTRATOR_DOC.md` | Документация Hermes Orchestrator | При работе с Hermes |
-| `PROJECT_MEMORY.md` | Проектная память: ключевые решения | Для общего контекста |
-| `PROMPT.md` | Промпт для любых сессий (общий) | **При старте новой сессии** |
-| `PROMPT_SERVER.md` | Промпт для серверных сессий | **При старте новой серверной сессии** |
-
-### DevOps и инфраструктура
-
-| Файл | Назначение | Когда читать |
-|------|-----------|-------------|
-| `LOG_MONITOR.md` | Log Monitor: сборка, деплой, API, web UI | **При проблемах с логами** |
-| `TESTING.md` | Модульные тесты: запуск, покрытие | **При работе с тестами** |
+| `AI_SERVICES.md` | AI-сервисы: архитектура, API | При работе с AI |
+| `PITFALLS.md` | Подводные камни | **Перед началом работы** |
+| `AUTHSERVICE_V2.md` | AuthService v2: JWT | При работе с авторизацией |
+| `HERMES_ORCHESTRATOR_DOC.md` | Hermes Orchestrator | При работе с Hermes |
+| `PROJECT_MEMORY.md` | Проектная память | Для общего контекста |
 
 ### Android клиент
 
@@ -53,7 +46,6 @@
 | `/root/msg.client.android/doc/PROMPT_ANDROID.md` | Промпт для Android-сессий |
 | `/root/msg.client.android/doc/TASKS.md` | Таск-трекер Android |
 | `/root/msg.client.android/doc/PATTERNS.md` | Паттерны разработки Android |
-| `/root/msg.client.android/doc/REMOTE_AGENT.md` | Документация Remote Agent |
 | `/root/msg.client.android/doc/SESSION_NOTES.md` | Заметки сессий Android |
 | `/root/msg.client.android/CHANGELOG.md` | История изменений Android |
 
@@ -61,11 +53,10 @@
 
 ## Правила
 
-- При старте новой сессии: читать цепочку INDEX.md → INTEGRATION_SESSION.md → TASKS.md → PITFALLS.md
-- При работе над тестами: читать doc/TESTING.md
-- При работе над Android: читать /root/msg.client.android/doc/INDEX.md → PROMPT_ANDROID.md → TASKS.md
-- После каждого значимого изменения: обновлять INTEGRATION_SESSION.md + TASKS.md + соответствующие документы
-- При каждом релизе: обновлять CHANGELOG.md (сервер + Android), INTEGRATION_SESSION.md, TASKS.md, PITFALLS.md
-- Промпт для следующей сессии всегда внизу INTEGRATION_SESSION.md
-- Версия сервера в server.go:33, версия Android в version.txt
+- При старте новой сессии: PROMPT_SERVER.md → TASKS.md → PITFALLS.md
+- После каждого значимого изменения: обновлять TASKS.md + CHANGELOG.md
+- При каждом релизе: обновлять CHANGELOG.md, TASKS.md, PITFALLS.md
+- Версия сервера в server.go:33
 - changelog.txt БОЛЬШЕ НЕ ИСПОЛЬЗУЕТСЯ
+- Все серверы (включая dev) доступны всем пользователям
+- Использовать только userId (UUID), НЕ username в RPC
