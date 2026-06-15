@@ -1,9 +1,9 @@
 # Lava Messenger — Интеграционная сессия
 
-**Текущая версия:** v1.2.1.0 (сервер dev) / v1.1.3.13 (Android)
+**Текущая версия:** v1.2.0.1 (сервер dev) / v1.1.3.13 (Android)
 **Обновлено:** 2026-06-15 (сессия 10)
 **Тег:** v1.1.3.10 (stable prod)
-**Ветка:** feat/1.1.3.x
+**Ветка:** feat/1.2.0.x
 
 ---
 
@@ -18,7 +18,7 @@
    - ProtoMarshaller сделан internal
 
 2. **Документация актуализирована** — TASKS.md, PROMPT.md, PROMPT_ANDROID.md, SESSION_NOTES.md
-   - Версии: сервер v1.2.1.0, Android v1.1.3.13
+   - Версии: сервер v1.2.0.1, Android v1.1.3.13
    - Индексы обновлены
 
 ### Коммиты (Android)
@@ -47,7 +47,7 @@
 5. **ServerService** — зарегистрирован только на dev сервере (было на всех)
 
 ### Деплой
-- Dev сервер: v1.2.1.0 — ProfileService v2 активен
+- Dev сервер: v1.2.0.1 — ProfileService v2 активен
 - Prod сервер: v1.1.3.10 — без изменений (ProfileService v2 не зарегистрирован)
 - Android: v1.1.3.13 — ProfileClient с fallback на v1
 
@@ -224,9 +224,9 @@ data/
 
 ---
 
-## Статус: v1.2.1.0 — DEV / v1.1.3.13 — Android
+## Статус: v1.2.0.1 — DEV / v1.1.3.13 — Android
 
-Сервер v1.2.1.0 работает на dev (порт 50052, HTTP 8083). ProfileService v2 активен.
+Сервер v1.2.0.1 работает на dev (порт 50052, HTTP 8083). ProfileService v2 активен.
 Prod сервер: v1.1.3.10 (без ProfileService v2).
 Android v1.1.3.13 — ProfileClient с fallback на v1.
 
@@ -315,9 +315,9 @@ python3 hermes_remote_agent.py --server host:port --token <jwt>
 
 ## Промпт для следующей сессии
 
-**Версия:** v1.2.1.0 (сервер dev) / v1.1.3.13 (Android) → следующая v1.2.1.1 / v1.1.3.14
+**Версия:** v1.2.0.1 (сервер dev) / v1.1.3.13 (Android) → следующая v1.2.1.1 / v1.1.3.14
 
-**Ветки:** сервер — feat/1.2.0.x, Android — feat/1.1.3.x (до релиза)
+**Ветки:** сервер — feat/1.2.0.x, Android — feat/1.2.0.x (до релиза)
 
 **Приоритеты:**
 1. **ChatList v2** — новая версия списка чатов с улучшенным UI/UX

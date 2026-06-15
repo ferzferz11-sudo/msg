@@ -1,15 +1,15 @@
 # Лава — Задачи
 
-**Версия:** v1.2.1.0
+**Версия:** v1.2.0.1
 **Ветка:** feat/1.2.0.x
 **Обновлено:** 2026-06-15 (сессия 10)
 
 ---
 
-## ✅ v1.2.1.0 — ProfileService v2 + Typing/CallSession compat
+## ✅ v1.2.0.1 — ProfileService v2 + Typing/CallSession compat
 
 ### Сервер
-- ✅ **ServerVersion обновлён до v1.2.1.0** (server.go:33)
+- ✅ **ServerVersion обновлён до v1.2.0.1** (server.go:33)
 - ✅ **ProfileService v2** — отдельный gRPC сервис для профиля (JWT, dev only)
   - Методы: GetProfile, UpdateProfile, UpdateAvatar, DeleteProfile, GetUserSettings, UpdateUserSettings
   - Регистрируется ТОЛЬКО на dev (APP_ENV=dev)
@@ -132,6 +132,6 @@ data/
 
 | Репозиторий | URL | Текущая версия |
 |-------------|-----|----------------|
-| msg | https://github.com/ferzferz11-sudo/msg | v1.2.1.0 |
+| msg | https://github.com/ferzferz11-sudo/msg | v1.2.0.1 |
 | msg.client.android | https://github.com/ferzferz11-sudo/msg.client.android | v1.1.3.13 |
 | msg.remote.agent | https://github.com/ferzferz11-sudo/msg.remote.agent | v1.1.3.4 |

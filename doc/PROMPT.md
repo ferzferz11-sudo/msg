@@ -1,14 +1,14 @@
-# Промпт для новой сессии — Server v1.2.1.0
+# Промпт для новой сессии — Server v1.2.0.1
 
 **Дата:** 2026-06-15
 **Ветка сервера:** feat/1.2.0.x
-**Ветка Android:** feat/1.1.3.x
+**Ветка Android:** feat/1.2.0.x
 
 ---
 
-## СТАТУС: v1.2.1.0 — DEV / v1.1.3.13 — Android
+## СТАТУС: v1.2.0.1 — DEV / v1.1.3.13 — Android
 
-Сервер: v1.2.1.0 на dev (порт 50052, HTTP 8083). Prod: v1.1.3.10.
+Сервер: v1.2.0.1 на dev (порт 50052, HTTP 8083). Prod: v1.1.3.10.
 Android: v1.1.3.13 — ProfileService v2 client + Typing/CallSession compat.
 
 ---
@@ -163,7 +163,7 @@ cd /root/msg.client.android
 | DB | chat_db_dev | chat_db |
 | Systemd | `Environment=APP_ENV=dev` | `Environment=APP_ENV=` (пусто) |
 | ProfileService | v2 (JWT) | v1 (legacy ChatService) |
-| Версия | v1.2.1.0 | v1.1.3.10 |
+| Версия | v1.2.0.1 | v1.1.3.10 |
 
 ---
 
