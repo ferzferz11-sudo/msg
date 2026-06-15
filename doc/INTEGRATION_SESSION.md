@@ -1,10 +1,38 @@
 # Lava Messenger — Интеграционная сессия
 
 **Текущая версия:** v1.2.0.1 (сервер dev) / v1.1.3.16 (Android)
-**Обновлено:** 2026-06-16 (сессия 12)
+**Обновлено:** 2026-06-16 (сессия 13)
 **Тег:** v1.1.3.15 (stable prod)
 **Ветка сервера:** feat/1.2.0.x
 **Ветка Android:** feat/1.1.3.x
+
+---
+
+## Сессия 13 — ChatListActivityV2 полная реализация
+
+### Что сделано
+
+#### ChatListActivityV2 (Android)
+1. **Полная переработка** — убрана зависимость от ChatListFragmentV2, всё в одном Activity
+2. **RecyclerView + SwipeRefreshLayout** напрямую в activity_chat_list_v2.xml
+3. **TabLayout** — табы All / AI / Groups с фильтрацией через ViewModel
+4. **Toolbar** — avatar→ProfileActivity, title→ServersAction, search/settings icons
+5. **FABs** — fabAi (TODO), fabAddChat→NewChatActivity
+6. **Навигация** — favorites→NewChat, hermes→HermesChat, owl→OwlChat, other→NewChat
+7. **Connection status** — subtitle с connecting/online/offline
+
+#### SplashActivity (Android)
+- Маршрутизация: v2 server host → ChatListActivityV2, иначе → ChatListActivity
+
+#### ChatAdapterV2 (Android)
+- Исправлено дублирование cachedColors (единый кэш в адаптере)
+
+#### AndroidManifest.xml
+- Зарегистрирован ChatListActivityV2
+- Удалены дубликаты RemoteAgentSettingsActivity и LogViewerActivity
+
+#### Коммиты
+- `bd4e22c` — feat: ChatListActivityV2 — full v2 chat list with tabs, navigation, FABs, theme integration
 
 ---
 
@@ -256,18 +284,20 @@ cd /root/msg.client.android
 
 ## Промпт для следующей сессии
 
-**Версия:** v1.2.0.1 (сервер dev) / v1.1.3.14 (Android) → следующая v1.2.0.2 / v1.1.3.15
+**Версия:** v1.2.0.1 (сервер dev) / v1.1.3.16 (Android) → следующая v1.2.0.2 / v1.1.3.17
 
 **Ветки:** сервер — feat/1.2.0.x, Android — feat/1.1.3.x (до релиза)
 
 **Приоритеты:**
-1. **ChatList v2 UI** — новая ChatListActivity с секциями (Pinned/Favorites/All), табами, search, unread badges
-2. **Тесты для ProfileService v2** — unit-тесты (сервер + Android)
-3. **Деплой prod сервера** — после завершения Android клиента
+1. **Selection Mode** — long press = ActionMode toolbar (Pin/Delete/Archive), короткий тап = вход в чат
+2. **Поиск** — SearchView в toolbar + debounce 300ms + серверный searchChats для v2
+3. **Pin Message** — серверные RPC + клиент + UI
+4. **Тестирование** — на dev и prod серверах
 
 **Отложено (не в этой сессии):**
 - Редеплой prod сервера — только после выхода Android клиента
-- Выпуск Android — делается ферзем лично после завершения v2 UI
+- Выпуск Android — делается ферзем лично
+- FAB AI создание чата — после реализации selection mode
 
 **Правила:**
 - НЕ компилировать на сервере (OOM kill) — это касается и Go и Android
