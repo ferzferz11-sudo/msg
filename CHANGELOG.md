@@ -1,5 +1,28 @@
 # Лава — Server Changelog
 
+## [1.2.2.0] - 2026-06-16
+
+### Новое: ChatStream v2 (JWT auth)
+- **messenger.proto**: добавлен `jwt_token` (field 26) в Message для ChatStream v2 auth
+- **server_chat.go**: Chat stream поддерживает `jwt_token` (v2) + `password` (v1 fallback)
+- При JWT auth: извлекает user_id и username из claims, валидирует токен
+- При password auth: полная обратная совместимость с v1
+- ChatServiceVersion = "2.0"
+
+### Новое: ChatList v2
+- **messenger.proto**: добавлены RPC методы PinChat, UnPinChat, SearchChats, ArchiveChat, UnarchiveChat
+- **messenger.proto**: добавлены `is_pinned`, `is_muted`, `is_archived`, `pinned_at` в ChatInfo
+- **messenger.proto**: добавлены `limit`, `offset`, `filter` в GetChatsRequest (пагинация)
+- **server_chatlist_v2.go**: реализация PinChat/UnPinChat/SearchChats/ArchiveChat/UnarchiveChat
+- **db_chatlist_v2.go**: миграции (user_chat_metadata: pinned/pinned_at/archived), методы DB
+- user_chat_metadata: персальные настройки чатов (pinned, archived) для каждого пользователя
+
+### Backward compatibility
+- v1 клиенты работают без изменений
+- v2 клиенты определяют версию через /info endpoint
+
+---
+
 ## [1.2.1.0] - 2026-06-14
 
 ### Новое: ProfileService v2 (dev only)
