@@ -1,6 +1,6 @@
 # Лава — Server Changelog
 
-## [1.2.2.0] - 2026-06-16
+## [1.2.0.1] - 2026-06-16
 
 ### Новое: ChatStream v2 (JWT auth)
 - **messenger.proto**: добавлен `jwt_token` (field 26) в Message для ChatStream v2 auth
