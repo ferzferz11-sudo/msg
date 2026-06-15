@@ -1,5 +1,24 @@
 # Лава — Server Changelog
 
+## [1.2.1.0] - 2026-06-14
+
+### Новое: ProfileService v2 (dev only)
+- Отдельный gRPC сервис для управления профилем (JWT Bearer auth)
+- Методы: GetProfile, UpdateProfile, UpdateAvatar, DeleteProfile, GetUserSettings, UpdateUserSettings
+- Данные: аватар, bio, status, locale (en/ru), isSuperAdmin, theme, push settings
+- Регистрируется только на dev сервере (APP_ENV=dev)
+- ProfileServiceVersion = "2.0" в /info endpoint
+
+### Новое: user_settings таблица
+- Хранение настроек пользователя: locale, theme_id, push_enabled, custom JSONB
+- Миграция через db_auth_migrations.go
+
+### Исправлено: AuthStreamInterceptor whitelist
+- Добавлены Typing и CallSession streams в whitelist (v1 compat)
+- v1 клиенты теперь могут вызывать Typing/CallSession без JWT
+
+---
+
 ## [1.2.0.1] - 2026-06-14
 
 ### Новое: Server info endpoint

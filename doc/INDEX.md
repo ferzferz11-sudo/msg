@@ -2,7 +2,7 @@
 
 Индекс всех документов проекта. Читать при каждом старте новой сессии.
 
-**Версия:** v1.2.0.1
+**Версия:** v1.2.1.0
 **Обновлено:** 2026-06-14
 
 ---
@@ -54,6 +54,7 @@
 | `/root/msg.client.android/doc/TASKS.md` | Таск-трекер Android |
 | `/root/msg.client.android/doc/PATTERNS.md` | Паттерны разработки Android |
 | `/root/msg.client.android/doc/REMOTE_AGENT.md` | Документация Remote Agent |
+| `/root/msg.client.android/doc/SESSION_NOTES.md` | Заметки сессий Android |
 | `/root/msg.client.android/CHANGELOG.md` | История изменений Android |
 
 ---

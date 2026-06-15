@@ -295,12 +295,15 @@ python3 hermes_remote_agent.py --server host:port --token <jwt>
 
 **Версия:** v1.2.1.0 (сервер dev) / v1.1.3.13 (Android) → следующая v1.2.1.1 / v1.1.3.14
 
+**Ветки:** сервер — feat/1.2.0.x, Android — feat/1.1.3.x (до релиза)
+
 **Приоритеты:**
-1. **Редеплой prod сервера** — обновить prod до v1.2.1.0 (после тестирования на dev)
-2. **Выпуск Android клиента** — v1.1.3.13 готов к релизу
-3. **Bearer token в Chat stream** — вместо password в первом сообщении (v1.2.2.x, отложено)
-4. **Тесты для ProfileService v2** — unit-тесты (сервер + Android)
-5. **Qdrant + CLIP** (production RAG) — на стороне сервера
+1. **ChatList v2** — новая версия списка чатов с улучшенным UI/UX
+2. **Редеплой prod сервера** — обновить prod до v1.2.1.0 (после тестирования на dev)
+3. **Выпуск Android клиента** — v1.1.3.13 готов к релизу
+4. **Bearer token в Chat stream** — вместо password в первом сообщении (v1.2.2.x, отложено)
+5. **Тесты для ProfileService v2** — unit-тесты (сервер + Android)
+6. **Qdrant + CLIP** (production RAG) — на стороне сервера
 
 **Правила:**
 - НЕ компилировать на сервере (OOM kill)
@@ -309,3 +312,4 @@ python3 hermes_remote_agent.py --server host:port --token <jwt>
 - Коммитить и пушить после каждого значимого изменения
 - НЕ деплоить на prod без тестирования на dev
 - ProfileService v2 регистрировать только на dev (APP_ENV=dev)
+- Серверная ветка версий: 1.2.0.x, Android: 1.1.3.x до релиза
