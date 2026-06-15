@@ -23,11 +23,14 @@
 8. **Fallback на v1** — при подключении к prod серверу автоматически запускается ChatListActivity v1
 9. **i18n** — 17 новых строк (en + ru)
 
-#### Архитектура v2 (уточнено)
-- **Pin Chat** — в context menu списка (long press), НЕ в toolbar
-- **Pin Message** — в меню сообщения (long press), нужны новые серверные RPC
-- **Favorites** = Archive — существующий чат "Личное хранилище"
-- **Секции списка**: Pinned / Favorites / All Chats
+#### Архитектура v2 (уточнено, сессия 13)
+- **Long press на чате** = режим выбора (toolbar с действиями: Pin/Delete/Edit)
+- **Короткий тап** = вход в чат/группу
+- **Pin Chat** — в toolbar в режиме выбора (long press)
+- **Pin Message** — в шторке сообщения (bottom sheet)
+- **Archive** — отдельная сущность, заархивированные но не удалённые чаты
+- **Favorites** — существующий чат "Личное хранилище" (не Archive!)
+- **Секции списка**: Pinned / Favorites / All Chats + Archived
 - **Табы**: All / AI / Groups
 
 #### Исправления
