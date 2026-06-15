@@ -706,6 +706,11 @@ service ChatService {
   rpc ArchiveChat(ArchiveChatRequest) returns (ArchiveChatResponse);
   rpc UnarchiveChat(UnarchiveChatRequest) returns (UnarchiveChatResponse);
 
+  // Pin Message
+  rpc PinMessage(PinMessageRequest) returns (PinMessageResponse);
+  rpc UnPinMessage(UnPinMessageRequest) returns (UnPinMessageResponse);
+  rpc GetPinnedMessages(GetPinnedMessagesRequest) returns (GetPinnedMessagesResponse);
+
   // Secret Chats (E2EE)
   rpc CreateSecretChat(CreateSecretChatRequest) returns (CreateSecretChatResponse);
   rpc ExchangeSecretKey(ExchangeSecretKeyRequest) returns (ExchangeSecretKeyResponse);
@@ -833,6 +838,37 @@ message UnarchiveChatRequest {
 
 message UnarchiveChatResponse {
   bool success = 1;
+}
+
+// ======= Pin Message Messages =======
+
+message PinMessageRequest {
+  string user_id = 1;
+  string chat_id = 2;
+  string message_id = 3;
+}
+
+message PinMessageResponse {
+  bool success = 1;
+}
+
+message UnPinMessageRequest {
+  string user_id = 1;
+  string chat_id = 2;
+  string message_id = 3;
+}
+
+message UnPinMessageResponse {
+  bool success = 1;
+}
+
+message GetPinnedMessagesRequest {
+  string user_id = 1;
+  string chat_id = 2;
+}
+
+message GetPinnedMessagesResponse {
+  repeated Message messages = 1;
 }
 
 // ======= Secret Chat Messages =======

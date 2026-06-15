@@ -165,6 +165,7 @@ func ConnectDB() (*DB, error) {
 
 	// ChatList v2 migrations
 	MigrateChatListV2(db)
+	MigratePinnedMessages(db)
 
 	return &DB{db}, nil
 }

@@ -202,3 +202,75 @@ func chatV2RowToProto(c ChatV2Row) *gen.ChatInfo {
 		PinnedAt:            c.PinnedAt,
 	}
 }
+
+// ======= Pin Message: PinMessage / UnPinMessage / GetPinnedMessages =======
+
+func (s *server) PinMessage(ctx context.Context, req *gen.PinMessageRequest) (*gen.PinMessageResponse, error) {
+	userID := req.GetUserId()
+	chatID := req.GetChatId()
+	messageID := req.GetMessageId()
+
+	if userID == "" || chatID == "" || messageID == "" {
+		return &gen.PinMessageResponse{Success: false}, fmt.Errorf("user_id, chat_id, and message_id are required")
+	}
+
+	// Verify user is participant of the chat
+	if !s.isChatParticipant(userID, chatID) {
+		return &gen.PinMessageResponse{Success: false}, fmt.Errorf("user is not a participant of this chat")
+	}
+
+	err := s.db.PinMessage(userID, chatID, messageID)
+	if err != nil {
+		logger.Errorf("Failed to pin message %s in chat %s for user %s: %v", messageID, chatID, userID, err)
+		return &gen.PinMessageResponse{Success: false}, err
+	}
+
+	logger.Infof("Message %s pinned in chat %s by user %s", messageID, chatID, userID)
+	return &gen.PinMessageResponse{Success: true}, nil
+}
+
+func (s *server) UnPinMessage(ctx context.Context, req *gen.UnPinMessageRequest) (*gen.UnPinMessageResponse, error) {
+	userID := req.GetUserId()
+	chatID := req.GetChatId()
+	messageID := req.GetMessageId()
+
+	if userID == "" || chatID == "" || messageID == "" {
+		return &gen.UnPinMessageResponse{Success: false}, fmt.Errorf("user_id, chat_id, and message_id are required")
+	}
+
+	err := s.db.UnPinMessage(userID, chatID, messageID)
+	if err != nil {
+		logger.Errorf("Failed to unpin message %s in chat %s for user %s: %v", messageID, chatID, userID, err)
+		return &gen.UnPinMessageResponse{Success: false}, err
+	}
+
+	logger.Infof("Message %s unpinned in chat %s by user %s", messageID, chatID, userID)
+	return &gen.UnPinMessageResponse{Success: true}, nil
+}
+
+func (s *server) GetPinnedMessages(ctx context.Context, req *gen.GetPinnedMessagesRequest) (*gen.GetPinnedMessagesResponse, error) {
+	userID := req.GetUserId()
+	chatID := req.GetChatId()
+
+	if userID == "" || chatID == "" {
+		return &gen.GetPinnedMessagesResponse{}, fmt.Errorf("user_id and chat_id are required")
+	}
+
+	pinnedRows, err := s.db.GetPinnedMessages(userID, chatID)
+	if err != nil {
+		logger.Errorf("Failed to get pinned messages for user %s in chat %s: %v", userID, chatID, err)
+		return &gen.GetPinnedMessagesResponse{}, err
+	}
+
+	var messages []*gen.Message
+	for _, r := range pinnedRows {
+		messages = append(messages, &gen.Message{
+			Id:        r.MessageID,
+			User:      r.User,
+			Text:      r.Text,
+			CreatedAt: timestamppb.New(r.CreatedAt),
+		})
+	}
+
+	return &gen.GetPinnedMessagesResponse{Messages: messages}, nil
+}
