@@ -54,15 +54,17 @@
 ## 📋 Бэклог
 
 ### Высокий приоритет
-- [ ] **UNIQUE constraint на prod БД** — вручную выполнить ALTER TABLE на prod
-- [ ] **Редеплой prod сервера** — после тестирования на dev
+- [ ] **ChatList v2** — новая версия списка чатов (сервер + Android)
+- [ ] **Выпуск Android v1.1.3.13** — готов к релизу
 
 ### Средний приоритет
+- [ ] **Тесты для ProfileService v2** — unit-тесты (сервер + Android)
 - [ ] **Тесты для /info endpoint** — unit-тесты для http_server.go
-- [ ] **Bearer token в Chat stream** — вместо password в первом сообщении (v1.2.1.x)
+- [ ] **Bearer token в Chat stream** — вместо password в первом сообщении (v1.2.2.x, отложено)
 
-### Низкий приоритет
-- [ ] Qdrant + CLIP (production RAG)
+### Отложено
+- [ ] Редеплой prod сервера — только после выхода Android клиента
+- [ ] Qdrant + CLIP (production RAG) — см. AI_SERVICES.md
 - [ ] Prometheus метрики
 
 ---
