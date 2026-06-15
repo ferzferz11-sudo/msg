@@ -77,6 +77,9 @@ const (
 	ChatService_SearchChats_FullMethodName            = "/messenger.ChatService/SearchChats"
 	ChatService_ArchiveChat_FullMethodName            = "/messenger.ChatService/ArchiveChat"
 	ChatService_UnarchiveChat_FullMethodName          = "/messenger.ChatService/UnarchiveChat"
+	ChatService_PinMessage_FullMethodName             = "/messenger.ChatService/PinMessage"
+	ChatService_UnPinMessage_FullMethodName           = "/messenger.ChatService/UnPinMessage"
+	ChatService_GetPinnedMessages_FullMethodName      = "/messenger.ChatService/GetPinnedMessages"
 	ChatService_CreateSecretChat_FullMethodName       = "/messenger.ChatService/CreateSecretChat"
 	ChatService_ExchangeSecretKey_FullMethodName      = "/messenger.ChatService/ExchangeSecretKey"
 	ChatService_GetSecretChatKey_FullMethodName       = "/messenger.ChatService/GetSecretChatKey"
@@ -184,6 +187,10 @@ type ChatServiceClient interface {
 	SearchChats(ctx context.Context, in *SearchChatsRequest, opts ...grpc.CallOption) (*SearchChatsResponse, error)
 	ArchiveChat(ctx context.Context, in *ArchiveChatRequest, opts ...grpc.CallOption) (*ArchiveChatResponse, error)
 	UnarchiveChat(ctx context.Context, in *UnarchiveChatRequest, opts ...grpc.CallOption) (*UnarchiveChatResponse, error)
+	// Pin Message
+	PinMessage(ctx context.Context, in *PinMessageRequest, opts ...grpc.CallOption) (*PinMessageResponse, error)
+	UnPinMessage(ctx context.Context, in *UnPinMessageRequest, opts ...grpc.CallOption) (*UnPinMessageResponse, error)
+	GetPinnedMessages(ctx context.Context, in *GetPinnedMessagesRequest, opts ...grpc.CallOption) (*GetPinnedMessagesResponse, error)
 	// Secret Chats (E2EE)
 	CreateSecretChat(ctx context.Context, in *CreateSecretChatRequest, opts ...grpc.CallOption) (*CreateSecretChatResponse, error)
 	ExchangeSecretKey(ctx context.Context, in *ExchangeSecretKeyRequest, opts ...grpc.CallOption) (*ExchangeSecretKeyResponse, error)
@@ -835,6 +842,36 @@ func (c *chatServiceClient) UnarchiveChat(ctx context.Context, in *UnarchiveChat
 	return out, nil
 }
 
+func (c *chatServiceClient) PinMessage(ctx context.Context, in *PinMessageRequest, opts ...grpc.CallOption) (*PinMessageResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PinMessageResponse)
+	err := c.cc.Invoke(ctx, ChatService_PinMessage_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) UnPinMessage(ctx context.Context, in *UnPinMessageRequest, opts ...grpc.CallOption) (*UnPinMessageResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UnPinMessageResponse)
+	err := c.cc.Invoke(ctx, ChatService_UnPinMessage_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) GetPinnedMessages(ctx context.Context, in *GetPinnedMessagesRequest, opts ...grpc.CallOption) (*GetPinnedMessagesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetPinnedMessagesResponse)
+	err := c.cc.Invoke(ctx, ChatService_GetPinnedMessages_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *chatServiceClient) CreateSecretChat(ctx context.Context, in *CreateSecretChatRequest, opts ...grpc.CallOption) (*CreateSecretChatResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(CreateSecretChatResponse)
@@ -1372,6 +1409,10 @@ type ChatServiceServer interface {
 	SearchChats(context.Context, *SearchChatsRequest) (*SearchChatsResponse, error)
 	ArchiveChat(context.Context, *ArchiveChatRequest) (*ArchiveChatResponse, error)
 	UnarchiveChat(context.Context, *UnarchiveChatRequest) (*UnarchiveChatResponse, error)
+	// Pin Message
+	PinMessage(context.Context, *PinMessageRequest) (*PinMessageResponse, error)
+	UnPinMessage(context.Context, *UnPinMessageRequest) (*UnPinMessageResponse, error)
+	GetPinnedMessages(context.Context, *GetPinnedMessagesRequest) (*GetPinnedMessagesResponse, error)
 	// Secret Chats (E2EE)
 	CreateSecretChat(context.Context, *CreateSecretChatRequest) (*CreateSecretChatResponse, error)
 	ExchangeSecretKey(context.Context, *ExchangeSecretKeyRequest) (*ExchangeSecretKeyResponse, error)
@@ -1607,6 +1648,15 @@ func (UnimplementedChatServiceServer) ArchiveChat(context.Context, *ArchiveChatR
 }
 func (UnimplementedChatServiceServer) UnarchiveChat(context.Context, *UnarchiveChatRequest) (*UnarchiveChatResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UnarchiveChat not implemented")
+}
+func (UnimplementedChatServiceServer) PinMessage(context.Context, *PinMessageRequest) (*PinMessageResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method PinMessage not implemented")
+}
+func (UnimplementedChatServiceServer) UnPinMessage(context.Context, *UnPinMessageRequest) (*UnPinMessageResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UnPinMessage not implemented")
+}
+func (UnimplementedChatServiceServer) GetPinnedMessages(context.Context, *GetPinnedMessagesRequest) (*GetPinnedMessagesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetPinnedMessages not implemented")
 }
 func (UnimplementedChatServiceServer) CreateSecretChat(context.Context, *CreateSecretChatRequest) (*CreateSecretChatResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateSecretChat not implemented")
@@ -2766,6 +2816,60 @@ func _ChatService_UnarchiveChat_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ChatService_PinMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PinMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).PinMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_PinMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).PinMessage(ctx, req.(*PinMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_UnPinMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UnPinMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).UnPinMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_UnPinMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).UnPinMessage(ctx, req.(*UnPinMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_GetPinnedMessages_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetPinnedMessagesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).GetPinnedMessages(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_GetPinnedMessages_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).GetPinnedMessages(ctx, req.(*GetPinnedMessagesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ChatService_CreateSecretChat_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(CreateSecretChatRequest)
 	if err := dec(in); err != nil {
@@ -3706,6 +3810,18 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UnarchiveChat",
 			Handler:    _ChatService_UnarchiveChat_Handler,
+		},
+		{
+			MethodName: "PinMessage",
+			Handler:    _ChatService_PinMessage_Handler,
+		},
+		{
+			MethodName: "UnPinMessage",
+			Handler:    _ChatService_UnPinMessage_Handler,
+		},
+		{
+			MethodName: "GetPinnedMessages",
+			Handler:    _ChatService_GetPinnedMessages_Handler,
 		},
 		{
 			MethodName: "CreateSecretChat",

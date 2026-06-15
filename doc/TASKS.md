@@ -22,8 +22,7 @@
 - [x] **Pin Message** — серверные RPC PinMessage/UnPinMessage + таблица pinned_messages + клиентская реализация
 
 ### Средний приоритет
-- [ ] **Тестирование** — v1.1.3.16 на dev и prod серверах
-- [ ] **protoc генерация** — перегенерировать Go proto после добавления PinMessage
+- [ ] **Тестирование** — v1.1.3.17 на dev и prod серверах
 
 ### Отложено
 - [ ] Qdrant + CLIP (production RAG) — см. AI_SERVICES.md
