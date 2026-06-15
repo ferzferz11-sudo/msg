@@ -16,13 +16,14 @@
 
 ---
 
-## 📋 Активные задачи (Сессия 14)
+## 📋 Активные задачи (Сессия 16)
 
 ### Высокий приоритет
-- [ ] **Pin Message** — серверные RPC PinMessage/UnPinMessage + таблица pinned_messages + клиентская реализация
+- [x] **Pin Message** — серверные RPC PinMessage/UnPinMessage + таблица pinned_messages + клиентская реализация
 
 ### Средний приоритет
 - [ ] **Тестирование** — v1.1.3.16 на dev и prod серверах
+- [ ] **protoc генерация** — перегенерировать Go proto после добавления PinMessage
 
 ### Отложено
 - [ ] Qdrant + CLIP (production RAG) — см. AI_SERVICES.md
