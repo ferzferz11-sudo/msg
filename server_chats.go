@@ -33,6 +33,10 @@ func (s *server) GetAllChats(ctx context.Context, req *gen.GetAllChatsRequest) (
 			LastMessageUsername: c.LastMessageUsername,
 			LastMessageHasImage: c.LastMessageHasImage,
 			AllowMembersToAdd:   c.AllowMembersToAdd,
+			IsPinned:            false,
+			IsMuted:             false,
+			IsArchived:          false,
+			PinnedAt:            0,
 		})
 	}
 
@@ -81,6 +85,10 @@ func (s *server) GetChats(_ context.Context, req *gen.GetChatsRequest) (*gen.Get
 			LastMessageUsername: c.LastMessageUsername,
 			LastMessageHasImage: c.LastMessageHasImage,
 			AllowMembersToAdd:   c.AllowMembersToAdd,
+			IsPinned:            false,
+			IsMuted:             false,
+			IsArchived:          false,
+			PinnedAt:            0,
 		})
 	}
 

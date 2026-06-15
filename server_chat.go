@@ -27,6 +27,9 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 		logger.Infof("Stream for %s closed", connectedUser)
 	}()
 
+	// Track auth method for this stream
+	authDone := false
+
 	for {
 		// Receive message from client
 		msg, err := stream.Recv()
@@ -37,32 +40,38 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 			return err
 		}
 
-		// Check authentication on first message (when password is provided)
-		if msg.Password != "" && !s.hub.IsAuthenticated(stream) {
-			// Trim username to avoid whitespace issues
-			trimmedUser := strings.TrimSpace(msg.User)
-			msg.User = trimmedUser
-			connectedUser = msg.User
+		// ===== Authentication =====
+		// First message with auth data (password OR jwt_token)
+		if !authDone && (msg.Password != "" || msg.JwtToken != "") {
+			var authSuccess bool
+			var authErr string
 
-			// Check if user exists first
-			userExists, err := s.db.UserExists(msg.User)
-			if err != nil {
-				logger.Errorf("Failed to check user existence: %v", err)
-				return err
-			}
-
-			if userExists {
-				// User exists, verify password
-				storedHash, err := s.db.GetUserPasswordHash(msg.User)
+			if msg.JwtToken != "" {
+				// ChatStream v2: JWT Bearer token auth
+				claims, err := ValidateToken(msg.JwtToken)
 				if err != nil {
-					logger.Errorf("Failed to get password hash: %v", err)
-					return err
+					authErr = fmt.Sprintf("JWT validation failed: %v", err)
+					authSuccess = false
+				} else if claims.Type != "access" {
+					authErr = "expected access token, got refresh token"
+					authSuccess = false
+				} else {
+					// JWT valid — extract user info
+					connectedUserID = claims.UserID
+					connectedUser = claims.Username
+
+					// Update hub
+					trimmedUser := strings.TrimSpace(connectedUser)
+					msg.User = trimmedUser
+					connectedUser = trimmedUser
+					s.hub.UpdateName(stream, trimmedUser)
+					s.hub.SetAuthenticated(stream, true)
+
+					authSuccess = true
 				}
 
-				if !CheckPassword(msg.Password, storedHash) {
-					logger.Errorf("Auth failed: %s", msg.User)
-
-					// Send authentication failure message to the client
+				if !authSuccess {
+					logger.Errorf("ChatStream v2 auth failed: %s", authErr)
 					authFailMsg := &gen.Message{
 						User:      "SYSTEM",
 						Text:      "AUTH_FAILED",
@@ -72,86 +81,126 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 					if err := stream.Send(authFailMsg); err != nil {
 						logger.Errorf("Failed to send auth failed message: %v", err)
 					}
-
-					return fmt.Errorf("authentication failed")
+					return fmt.Errorf("authentication failed: %s", authErr)
 				}
 			} else {
-				// User does not exist. Check if registration is requested.
-				if !msg.Register {
-					logger.Infof("Login attempt for non-existent user: %s", msg.User)
+				// ChatStream v1: legacy password auth
+				trimmedUser := strings.TrimSpace(msg.User)
+				msg.User = trimmedUser
+				connectedUser = trimmedUser
 
-					// Send user not found message to the client
-					notFoundMsg := &gen.Message{
+				// Check if user exists first
+				userExists, err := s.db.UserExists(msg.User)
+				if err != nil {
+					logger.Errorf("Failed to check user existence: %v", err)
+					return err
+				}
+
+				if userExists {
+					// User exists, verify password
+					storedHash, err := s.db.GetUserPasswordHash(msg.User)
+					if err != nil {
+						logger.Errorf("Failed to get password hash: %v", err)
+						return err
+					}
+
+					if !CheckPassword(msg.Password, storedHash) {
+						logger.Errorf("Auth failed: %s", msg.User)
+						authFailMsg := &gen.Message{
+							User:      "SYSTEM",
+							Text:      "AUTH_FAILED",
+							Id:        uuid.New().String(),
+							CreatedAt: timestamppb.Now(),
+						}
+						if err := stream.Send(authFailMsg); err != nil {
+							logger.Errorf("Failed to send auth failed message: %v", err)
+						}
+						return fmt.Errorf("authentication failed")
+					}
+				} else {
+					// User does not exist. Check if registration is requested.
+					if !msg.Register {
+						logger.Infof("Login attempt for non-existent user: %s", msg.User)
+						notFoundMsg := &gen.Message{
+							User:      "SYSTEM",
+							Text:      "USER_NOT_FOUND",
+							Id:        uuid.New().String(),
+							CreatedAt: timestamppb.Now(),
+						}
+						if err := stream.Send(notFoundMsg); err != nil {
+							logger.Errorf("Failed to send user not found message: %v", err)
+						}
+						return fmt.Errorf("user not found")
+					}
+
+					// New user, hash password and create
+					passwordHash, err := HashPassword(msg.Password)
+					if err != nil {
+						logger.Errorf("Failed to hash password: %v", err)
+						return err
+					}
+
+					err = s.db.SaveUser(msg.User, passwordHash)
+					if err != nil {
+						logger.Errorf("Failed to save user: %v", err)
+						return err
+					}
+					logger.Infof("Registered new user: %s", msg.User)
+
+					regMsg := &gen.Message{
 						User:      "SYSTEM",
-						Text:      "USER_NOT_FOUND",
+						Text:      "REGISTRATION_SUCCESS",
 						Id:        uuid.New().String(),
 						CreatedAt: timestamppb.Now(),
 					}
-					if err := stream.Send(notFoundMsg); err != nil {
-						logger.Errorf("Failed to send user not found message: %v", err)
+					if err := stream.Send(regMsg); err != nil {
+						logger.Errorf("Failed to send registration success message: %v", err)
 					}
-					return fmt.Errorf("user not found")
 				}
 
-				// New user, hash password and create
-				passwordHash, err := HashPassword(msg.Password)
-				if err != nil {
-					logger.Errorf("Failed to hash password: %v", err)
-					return err
-				}
+				// v1 auth success
+				s.hub.UpdateName(stream, msg.User)
+				s.hub.SetAuthenticated(stream, true)
+				authSuccess = true
+			}
 
-				err = s.db.SaveUser(msg.User, passwordHash)
-				if err != nil {
-					logger.Errorf("Failed to save user: %v", err)
-					return err
-				}
-				logger.Infof("Registered new user: %s", msg.User)
+			// Common post-auth setup (both v1 and v2)
+			authDone = true
 
-				// Send registration success message to the client
-				regMsg := &gen.Message{
+			// Clear grace period on successful reconnect
+			s.hub.ClearGracePeriod(connectedUser)
+
+			// Fetch and store user ID (for JWT path it's already set)
+			if connectedUserID == "" {
+				uid, _ := s.db.GetUserIdByUsername(connectedUser)
+				connectedUserID = uid
+			}
+
+			// Single unified log for successful auth
+			authMethod := "v2 (JWT)"
+			if msg.JwtToken == "" {
+				authMethod = "v1 (password)"
+			}
+			logger.Infof("Auth success: %s (%s), initial signal: %s", connectedUser, authMethod, msg.RoomId)
+
+			// v1 auth deprecated warning — only for password auth
+			if msg.JwtToken == "" {
+				deprecatedMsg := &gen.Message{
 					User:      "SYSTEM",
-					Text:      "REGISTRATION_SUCCESS",
+					Text:      "DEPRECATED: AuthService v1 is deprecated. Please upgrade to v2 (JWT).",
 					Id:        uuid.New().String(),
 					CreatedAt: timestamppb.Now(),
 				}
-				if err := stream.Send(regMsg); err != nil {
-					logger.Errorf("Failed to send registration success message: %v", err)
+				if err := stream.Send(deprecatedMsg); err != nil {
+					logger.Errorf("Failed to send deprecated warning: %v", err)
 				}
-			}
-
-			// IMPORTANT: Update name in hub BEFORE broadcasting online status
-			// so the list contains the actual username instead of "Anonymous"
-			s.hub.UpdateName(stream, msg.User)
-			s.hub.SetAuthenticated(stream, true)
-			connectedUser = msg.User
-
-			// Clear grace period on successful reconnect
-			s.hub.ClearGracePeriod(msg.User)
-
-			// Fetch and store user ID for session tracking
-			uid, _ := s.db.GetUserIdByUsername(msg.User)
-			connectedUserID = uid
-
-			// Single unified log line for successful auth and initial connection
-			logger.Infof("Auth success: %s (v%s), initial signal: %s", msg.User, msg.ClientVersion, msg.RoomId)
-
-			// v1 auth deprecated warning — client should migrate to AuthService v2 (JWT)
-			deprecatedMsg := &gen.Message{
-				User:      "SYSTEM",
-				Text:      "DEPRECATED: AuthService v1 is deprecated. Please upgrade to v2 (JWT).",
-				Id:        uuid.New().String(),
-				CreatedAt: timestamppb.Now(),
-			}
-			if err := stream.Send(deprecatedMsg); err != nil {
-				logger.Errorf("Failed to send deprecated warning: %v", err)
 			}
 
 			// Update last client version and last seen timestamp in DB
 			if msg.ClientVersion != "" {
-				_ = s.db.UpdateClientVersion(msg.User, msg.ClientVersion)
+				_ = s.db.UpdateClientVersion(connectedUser, msg.ClientVersion)
 			} else {
-				// Old client - still update last seen
-				_ = s.db.UpdateLastSeen(msg.User)
+				_ = s.db.UpdateLastSeen(connectedUser)
 			}
 
 			// Send server info
@@ -161,10 +210,12 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 				Id:        uuid.New().String(),
 				CreatedAt: timestamppb.Now(),
 			}
-			if err := stream.Send(serverInfoMsg); err != nil { logger.Errorf("Failed to send server info: %v", err) }
+			if err := stream.Send(serverInfoMsg); err != nil {
+				logger.Errorf("Failed to send server info: %v", err)
+			}
 
-			// Inform the user about their admin status (check by user_id first, then username)
-			if s.db.IsSuperAdmin(connectedUserID) || s.db.IsSuperAdmin(msg.User) {
+			// Inform the user about their admin status
+			if s.db.IsSuperAdmin(connectedUserID) || s.db.IsSuperAdmin(connectedUser) {
 				statusMsg := &gen.Message{
 					User:         "SYSTEM",
 					Text:         "SET_SUPER_ADMIN",
@@ -185,14 +236,15 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 				}
 				err := s.db.AddUserDevice(connectedUserID, msg.DeviceId, msg.DeviceName, msg.ClientVersion, ip)
 				if err != nil {
-					logger.Errorf("Failed to register device %s for %s (ID: %s): %v", msg.DeviceId, msg.User, connectedUserID, err)
+					logger.Errorf("Failed to register device %s for %s (ID: %s): %v", msg.DeviceId, connectedUser, connectedUserID, err)
 				} else {
-					logger.Infof("Device registered: %s (%s) for %s", msg.DeviceName, msg.DeviceId, msg.User)
+					logger.Infof("Device registered: %s (%s) for %s", msg.DeviceName, msg.DeviceId, connectedUser)
 				}
 			}
 
-			// Clear password from message before broadcasting
+			// Clear sensitive fields from message before broadcasting
 			msg.Password = ""
+			msg.JwtToken = ""
 		}
 
 		// Deduplication logic for identical rapid messages

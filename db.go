@@ -163,6 +163,9 @@ func ConnectDB() (*DB, error) {
 	// Hermes Orchestrator migrations
 	runHermesMigrations(db)
 
+	// ChatList v2 migrations
+	MigrateChatListV2(db)
+
 	return &DB{db}, nil
 }
 

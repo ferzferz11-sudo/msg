@@ -10,7 +10,7 @@ message Message {
   string text = 3;
   google.protobuf.Timestamp created_at = 4;
   repeated Reaction reactions = 5;
-  string password = 6; // Password for authentication (only in first/join message)
+  string password = 6; // Password for authentication (only in first/join message) — v1 legacy
   string replied_to_message_id = 7; // ID of the message being replied to
   string replied_to_user = 8; // Username of the message being replied to
   string replied_to_text = 9; // Text of the message being replied to
@@ -30,6 +30,7 @@ message Message {
   string user_id = 23; // Stable user ID (UUID)
   bool is_e2ee = 24;   // Message is E2EE-encrypted
   string e2ee_payload = 25; // Base64-encoded encrypted data
+  string jwt_token = 26; // JWT Bearer token for ChatStream v2 auth (alternative to password)
 }
 
 message Reaction {
@@ -126,11 +127,18 @@ message ChatInfo {
   bool e2ee_ready = 17;
   string active_agent_id = 20;  // For hermes sessions: current active agent
   string agent_mode = 21;       // For hermes sessions: single/parallel/pipeline
+  bool is_pinned = 22;          // ChatList v2: pinned status
+  bool is_muted = 23;           // ChatList v2: muted status
+  bool is_archived = 24;        // ChatList v2: archived status
+  int64 pinned_at = 25;         // ChatList v2: timestamp when pinned (for sort order)
 }
 
 message GetChatsRequest {
   string username = 1;
   string user_id = 2;
+  int32 limit = 3;    // Pagination: max number of chats to return (0 = default 100)
+  int32 offset = 4;   // Pagination: skip N chats
+  string filter = 5;  // Filter: "all", "pinned", "archived", "muted"
 }
 
 message GetChatsResponse {
@@ -691,6 +699,13 @@ service ChatService {
   rpc RequestPasswordReset(RequestPasswordResetRequest) returns (RequestPasswordResetResponse);
   rpc ResetPassword(ResetPasswordRequest) returns (ResetPasswordResponse);
 
+  // ChatList v2
+  rpc PinChat(PinChatRequest) returns (PinChatResponse);
+  rpc UnPinChat(UnPinChatRequest) returns (UnPinChatResponse);
+  rpc SearchChats(SearchChatsRequest) returns (SearchChatsResponse);
+  rpc ArchiveChat(ArchiveChatRequest) returns (ArchiveChatResponse);
+  rpc UnarchiveChat(UnarchiveChatRequest) returns (UnarchiveChatResponse);
+
   // Secret Chats (E2EE)
   rpc CreateSecretChat(CreateSecretChatRequest) returns (CreateSecretChatResponse);
   rpc ExchangeSecretKey(ExchangeSecretKeyRequest) returns (ExchangeSecretKeyResponse);
@@ -769,6 +784,55 @@ message PipelineResponse {
   bool finished = 2;
   string error = 3;
   bool has_rag_context = 4;  // Indicates if RAG context was used
+}
+
+// ======= ChatList v2 Messages =======
+
+message PinChatRequest {
+  string user_id = 1;
+  string chat_id = 2;
+}
+
+message PinChatResponse {
+  bool success = 1;
+}
+
+message UnPinChatRequest {
+  string user_id = 1;
+  string chat_id = 2;
+}
+
+message UnPinChatResponse {
+  bool success = 1;
+}
+
+message SearchChatsRequest {
+  string user_id = 1;
+  string query = 2;
+  int32 limit = 3;
+  int32 offset = 4;
+}
+
+message SearchChatsResponse {
+  repeated ChatInfo chats = 1;
+}
+
+message ArchiveChatRequest {
+  string user_id = 1;
+  string chat_id = 2;
+}
+
+message ArchiveChatResponse {
+  bool success = 1;
+}
+
+message UnarchiveChatRequest {
+  string user_id = 1;
+  string chat_id = 2;
+}
+
+message UnarchiveChatResponse {
+  bool success = 1;
 }
 
 // ======= Secret Chat Messages =======

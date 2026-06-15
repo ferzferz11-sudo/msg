@@ -72,6 +72,11 @@ const (
 	ChatService_DeleteOtherDevices_FullMethodName     = "/messenger.ChatService/DeleteOtherDevices"
 	ChatService_RequestPasswordReset_FullMethodName   = "/messenger.ChatService/RequestPasswordReset"
 	ChatService_ResetPassword_FullMethodName          = "/messenger.ChatService/ResetPassword"
+	ChatService_PinChat_FullMethodName                = "/messenger.ChatService/PinChat"
+	ChatService_UnPinChat_FullMethodName              = "/messenger.ChatService/UnPinChat"
+	ChatService_SearchChats_FullMethodName            = "/messenger.ChatService/SearchChats"
+	ChatService_ArchiveChat_FullMethodName            = "/messenger.ChatService/ArchiveChat"
+	ChatService_UnarchiveChat_FullMethodName          = "/messenger.ChatService/UnarchiveChat"
 	ChatService_CreateSecretChat_FullMethodName       = "/messenger.ChatService/CreateSecretChat"
 	ChatService_ExchangeSecretKey_FullMethodName      = "/messenger.ChatService/ExchangeSecretKey"
 	ChatService_GetSecretChatKey_FullMethodName       = "/messenger.ChatService/GetSecretChatKey"
@@ -173,6 +178,12 @@ type ChatServiceClient interface {
 	DeleteOtherDevices(ctx context.Context, in *DeleteDeviceRequest, opts ...grpc.CallOption) (*DeleteDeviceResponse, error)
 	RequestPasswordReset(ctx context.Context, in *RequestPasswordResetRequest, opts ...grpc.CallOption) (*RequestPasswordResetResponse, error)
 	ResetPassword(ctx context.Context, in *ResetPasswordRequest, opts ...grpc.CallOption) (*ResetPasswordResponse, error)
+	// ChatList v2
+	PinChat(ctx context.Context, in *PinChatRequest, opts ...grpc.CallOption) (*PinChatResponse, error)
+	UnPinChat(ctx context.Context, in *UnPinChatRequest, opts ...grpc.CallOption) (*UnPinChatResponse, error)
+	SearchChats(ctx context.Context, in *SearchChatsRequest, opts ...grpc.CallOption) (*SearchChatsResponse, error)
+	ArchiveChat(ctx context.Context, in *ArchiveChatRequest, opts ...grpc.CallOption) (*ArchiveChatResponse, error)
+	UnarchiveChat(ctx context.Context, in *UnarchiveChatRequest, opts ...grpc.CallOption) (*UnarchiveChatResponse, error)
 	// Secret Chats (E2EE)
 	CreateSecretChat(ctx context.Context, in *CreateSecretChatRequest, opts ...grpc.CallOption) (*CreateSecretChatResponse, error)
 	ExchangeSecretKey(ctx context.Context, in *ExchangeSecretKeyRequest, opts ...grpc.CallOption) (*ExchangeSecretKeyResponse, error)
@@ -774,6 +785,56 @@ func (c *chatServiceClient) ResetPassword(ctx context.Context, in *ResetPassword
 	return out, nil
 }
 
+func (c *chatServiceClient) PinChat(ctx context.Context, in *PinChatRequest, opts ...grpc.CallOption) (*PinChatResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PinChatResponse)
+	err := c.cc.Invoke(ctx, ChatService_PinChat_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) UnPinChat(ctx context.Context, in *UnPinChatRequest, opts ...grpc.CallOption) (*UnPinChatResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UnPinChatResponse)
+	err := c.cc.Invoke(ctx, ChatService_UnPinChat_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) SearchChats(ctx context.Context, in *SearchChatsRequest, opts ...grpc.CallOption) (*SearchChatsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SearchChatsResponse)
+	err := c.cc.Invoke(ctx, ChatService_SearchChats_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) ArchiveChat(ctx context.Context, in *ArchiveChatRequest, opts ...grpc.CallOption) (*ArchiveChatResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ArchiveChatResponse)
+	err := c.cc.Invoke(ctx, ChatService_ArchiveChat_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) UnarchiveChat(ctx context.Context, in *UnarchiveChatRequest, opts ...grpc.CallOption) (*UnarchiveChatResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UnarchiveChatResponse)
+	err := c.cc.Invoke(ctx, ChatService_UnarchiveChat_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *chatServiceClient) CreateSecretChat(ctx context.Context, in *CreateSecretChatRequest, opts ...grpc.CallOption) (*CreateSecretChatResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(CreateSecretChatResponse)
@@ -1305,6 +1366,12 @@ type ChatServiceServer interface {
 	DeleteOtherDevices(context.Context, *DeleteDeviceRequest) (*DeleteDeviceResponse, error)
 	RequestPasswordReset(context.Context, *RequestPasswordResetRequest) (*RequestPasswordResetResponse, error)
 	ResetPassword(context.Context, *ResetPasswordRequest) (*ResetPasswordResponse, error)
+	// ChatList v2
+	PinChat(context.Context, *PinChatRequest) (*PinChatResponse, error)
+	UnPinChat(context.Context, *UnPinChatRequest) (*UnPinChatResponse, error)
+	SearchChats(context.Context, *SearchChatsRequest) (*SearchChatsResponse, error)
+	ArchiveChat(context.Context, *ArchiveChatRequest) (*ArchiveChatResponse, error)
+	UnarchiveChat(context.Context, *UnarchiveChatRequest) (*UnarchiveChatResponse, error)
 	// Secret Chats (E2EE)
 	CreateSecretChat(context.Context, *CreateSecretChatRequest) (*CreateSecretChatResponse, error)
 	ExchangeSecretKey(context.Context, *ExchangeSecretKeyRequest) (*ExchangeSecretKeyResponse, error)
@@ -1525,6 +1592,21 @@ func (UnimplementedChatServiceServer) RequestPasswordReset(context.Context, *Req
 }
 func (UnimplementedChatServiceServer) ResetPassword(context.Context, *ResetPasswordRequest) (*ResetPasswordResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ResetPassword not implemented")
+}
+func (UnimplementedChatServiceServer) PinChat(context.Context, *PinChatRequest) (*PinChatResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method PinChat not implemented")
+}
+func (UnimplementedChatServiceServer) UnPinChat(context.Context, *UnPinChatRequest) (*UnPinChatResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UnPinChat not implemented")
+}
+func (UnimplementedChatServiceServer) SearchChats(context.Context, *SearchChatsRequest) (*SearchChatsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SearchChats not implemented")
+}
+func (UnimplementedChatServiceServer) ArchiveChat(context.Context, *ArchiveChatRequest) (*ArchiveChatResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ArchiveChat not implemented")
+}
+func (UnimplementedChatServiceServer) UnarchiveChat(context.Context, *UnarchiveChatRequest) (*UnarchiveChatResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UnarchiveChat not implemented")
 }
 func (UnimplementedChatServiceServer) CreateSecretChat(context.Context, *CreateSecretChatRequest) (*CreateSecretChatResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateSecretChat not implemented")
@@ -2594,6 +2676,96 @@ func _ChatService_ResetPassword_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ChatService_PinChat_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PinChatRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).PinChat(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_PinChat_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).PinChat(ctx, req.(*PinChatRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_UnPinChat_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UnPinChatRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).UnPinChat(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_UnPinChat_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).UnPinChat(ctx, req.(*UnPinChatRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_SearchChats_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SearchChatsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).SearchChats(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_SearchChats_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).SearchChats(ctx, req.(*SearchChatsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_ArchiveChat_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ArchiveChatRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).ArchiveChat(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_ArchiveChat_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).ArchiveChat(ctx, req.(*ArchiveChatRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_UnarchiveChat_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UnarchiveChatRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).UnarchiveChat(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_UnarchiveChat_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).UnarchiveChat(ctx, req.(*UnarchiveChatRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ChatService_CreateSecretChat_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(CreateSecretChatRequest)
 	if err := dec(in); err != nil {
@@ -3514,6 +3686,26 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ResetPassword",
 			Handler:    _ChatService_ResetPassword_Handler,
+		},
+		{
+			MethodName: "PinChat",
+			Handler:    _ChatService_PinChat_Handler,
+		},
+		{
+			MethodName: "UnPinChat",
+			Handler:    _ChatService_UnPinChat_Handler,
+		},
+		{
+			MethodName: "SearchChats",
+			Handler:    _ChatService_SearchChats_Handler,
+		},
+		{
+			MethodName: "ArchiveChat",
+			Handler:    _ChatService_ArchiveChat_Handler,
+		},
+		{
+			MethodName: "UnarchiveChat",
+			Handler:    _ChatService_UnarchiveChat_Handler,
 		},
 		{
 			MethodName: "CreateSecretChat",

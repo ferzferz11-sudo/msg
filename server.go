@@ -35,7 +35,7 @@ const ServerVersion = "1.2.1.0"
 // Service versions for client capability negotiation
 const (
 	AuthServiceVersion    = "2.0" // AuthService v2 (JWT) — current
-	ChatServiceVersion    = "1.0"
+	ChatServiceVersion    = "2.0" // ChatService v2: Bearer token in Chat stream + Pin/Mute/Search/Read
 	ProfileServiceVersion = "2.0" // ProfileService v2 (JWT) — dev only, prod uses v1 via ChatService
 	AIServiceVersion      = "1.0"
 	FileServiceVersion    = "1.0"
