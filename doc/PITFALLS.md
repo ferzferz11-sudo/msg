@@ -325,3 +325,28 @@
 - Проблема в локальном кеше Android — после очистки всё ОК
 - Не является багом нового кода
 - `loadChats()` может не вызваться если `connectionStatus` не успел перейти в READY
+
+---
+
+## Сессия 11 — новые подводные камни
+
+### ChatStream v2 — JWT auth в Chat stream
+- На v2 серверах (chat >= "2.0") Chat stream использует `jwt_token` вместо `password`
+- Если у клиента нет JWT токена — fallback на password auth (полная совместимость)
+- BearerTokenInterceptor НЕ пропускает Chat stream на v2 серверах (token в первом сообщении)
+- **Анти-pattern**: не проверять `isChatV2Supported()` перед отправкой jwt_token
+
+### ChatList v2 — per-user chat metadata
+- user_chat_metadata таблица хранит pinned/archived статус для каждого пользователя
+- `pinned_at` — timestamp для сортировки закреплённых чатов
+- **Анти-pattern**: не использовать `chats.is_pinned` напрямую — это per-user поле в user_chat_metadata
+
+### Kotlin 2.3.21 — CancellableContinuation.resume()
+- `CancellableContinuation.resume(value)` требует `onCancellation = {}` параметр
+- **Правило**: всегда `cont.resume(value, onCancellation = {})`
+- **Анти-pattern**: `cont.resume(value)` — deprecated warning, может не компилироваться
+
+### fetchServerInfo fallback
+- Если /info недоступен — все версии пустые → v1 fallback для ВСЕХ сервисов
+- **Правило**: проверять `isXxxSupported()` перед использованием v2 API
+- **Анти-pattern**: использовать v2 API без проверки версии сервера
