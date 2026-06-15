@@ -2,22 +2,34 @@
 
 **Версия:** v1.2.0.1
 **Ветка:** feat/1.2.0.x
-**Обновлено:** 2026-06-16 (сессия 11)
+**Обновлено:** 2026-06-16 (сессия 12)
 
 ---
 
 ## ✅ v1.2.0.1 — ChatStream v2 + ChatList v2
+(Сессия 11 — завершено)
 
-### Сервер
-- ✅ **ChatStream v2** — JWT auth в Chat stream + backward compat с password (server_chat.go)
-- ✅ **ChatList v2** — PinChat/UnPinChat/SearchChats/ArchiveChat/UnarchiveChat (server_chatlist_v2.go)
-- ✅ **ChatList v2 DB** — user_chat_metadata table, PinChat/SearchChats/ArchiveChat methods (db_chatlist_v2.go)
-- ✅ **Proto** — jwt_token (field 26), ChatList v2 RPC, pagination in GetChatsRequest (messenger.proto)
-- ✅ **ChatServiceVersion** = "2.0"
+---
 
-### Коммиты (сервер)
-- `0daf87b` — feat: ChatStream v2 (JWT auth) + ChatList v2 (Pin/Search/Archive) + proto updates
-- `840a708` — chore: fix server version to 1.2.0.1
+## ✅ v1.1.3.16 — ChatList v2 UI (Android)
+(Сессия 12 — завершено)
+
+---
+
+## 📋 Активные задачи (Сессия 13)
+
+### Высокий приоритет
+- [ ] **Pin Message** — серверные RPC PinMessage/UnPinMessage + таблица pinned_messages + клиентская реализация
+- [ ] **TabLayout + ViewPager2** — табы All / AI / Groups в ChatListActivityV2
+- **Переключение v1/v2 при старте** — программный выбор Activity
+
+### Средний приоритет
+- [ ] **Тестирование** — v1.1.3.16 на dev и prod серверах
+
+### Отложено
+- [ ] Qdrant + CLIP (production RAG) — см. AI_SERVICES.md
+- [ ] Prometheus метрики
+- [ ] Read receipts (MarkAsRead)
 - `de3d55d` — docs: update version to v1.2.0.1, branch to feat/1.2.0.x
 
 ---
@@ -82,6 +94,6 @@ messenger.proto            — ChatService v2, AuthService v2, ProfileService v2
 
 | Репозиторий | URL | Текущая версия |
 |-------------|-----|----------------|
-| msg | https://github.com/ferzferz11-sudo/msg | v1.2.0.1 |
-| msg.client.android | https://github.com/ferzferz11-sudo/msg.client.android | v1.1.3.14 |
-| msg.remote.agent | https://github.com/ferzferz11-sudo/msg.remote.agent | v1.1.3.4 |
+|| msg | https://github.com/ferzferz11-sudo/msg | v1.2.0.1 |
+|| msg.client.android | https://github.com/ferzferz11-sudo/msg.client.android | v1.1.3.16 |
+|| msg.remote.agent | https://github.com/ferzferz11-sudo/msg.remote.agent | v1.1.3.4 |

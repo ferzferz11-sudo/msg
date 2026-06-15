@@ -1,10 +1,48 @@
 # Lava Messenger — Интеграционная сессия
 
-**Текущая версия:** v1.2.0.1 (сервер dev) / v1.1.3.14 (Android)
-**Обновлено:** 2026-06-16 (сессия 11)
-**Тег:** v1.1.3.10 (stable prod)
+**Текущая версия:** v1.2.0.1 (сервер dev) / v1.1.3.16 (Android)
+**Обновлено:** 2026-06-16 (сессия 12)
+**Тег:** v1.1.3.15 (stable prod)
 **Ветка сервера:** feat/1.2.0.x
-**Ветка Android:** feat/1.1.3.x (до релиза)
+**Ветка Android:** feat/1.1.3.x
+
+---
+
+## Сессия 12 — ChatList v2 UI + разделение v1/v2
+
+### Что сделано
+
+#### ChatList v2 UI (Android)
+1. **ChatListActivityV2** — новый Activity с определением версии сервера (v1/v2)
+2. **ChatListFragmentV2** — фрагмент с SwipeRefresh + RecyclerView
+3. **ChatAdapterV2** — адаптер с секциями (Pinned/Favorites/All Chats)
+4. **ChatListViewModelV2** — ViewModel: loadChats, pinChat, archiveChat, searchChats
+5. **ChatListSections.kt** — управление секциями
+6. **TabLayout** — табы All / AI / Groups (заглушка)
+7. **v2 context menu** — Pin/Mute/Delete в списке чатов (long press)
+8. **Fallback на v1** — при подключении к prod серверу автоматически запускается ChatListActivity v1
+9. **i18n** — 17 новых строк (en + ru)
+
+#### Архитектура v2 (уточнено)
+- **Pin Chat** — в context menu списка (long press), НЕ в toolbar
+- **Pin Message** — в меню сообщения (long press), нужны новые серверные RPC
+- **Favorites** = Archive — существующий чат "Личное хранилище"
+- **Секции списка**: Pinned / Favorites / All Chats
+- **Табы**: All / AI / Groups
+
+#### Исправления
+- Data binding NPE: `@++id/` → `@+id/`, ConstraintLayout в CoordinatorLayout, несуществующий TextAppearance
+- Компиляция: parseSafeColor defaultColor, ThemeApplier.apply signature, ServerAuthBottomSheet params
+
+#### Коммиты
+- `7d087bc` — v2 scaffold
+- `0f500ce` — fix ConstraintLayout attrs
+- `23a2a79` — fix TextAppearance
+- `6fb3453` — fix @++id/
+- `28c2715` — fix compilation errors
+- `f0b06e1` — restore version.txt to 1.1.3.15
+- `bf00543` — remove unused menu, restore i18n
+- `e338ed4` — docs: session 12 wrap-up
 
 ---
 
