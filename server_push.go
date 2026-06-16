@@ -91,6 +91,14 @@ func (s *server) sendPushNotification(user, title, body, roomID string) {
 			"room_id": roomID,
 			"sender":  title,
 		},
+		Android: &messaging.AndroidConfig{
+			Priority: "high",
+			Notification: &messaging.AndroidNotification{
+				ChannelID: "lavender_messages",
+				Priority:  messaging.PriorityHigh,
+				Sound:     "default",
+			},
+		},
 	}
 
 	_, err = client.Send(ctx, message)
@@ -212,6 +220,9 @@ func (s *server) sendPushInternal(targetUserID, title, body string, data map[str
 			Body:  body,
 		},
 		Data: data,
+		Android: &messaging.AndroidConfig{
+			Priority: "high",
+		},
 	}
 
 	_, err = client.Send(ctx, pushMsg)
