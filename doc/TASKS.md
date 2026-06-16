@@ -1,8 +1,20 @@
 # Лава — Задачи
 
-**Версия:** v1.2.0.1
+**Версия:** v1.2.0.2
 **Ветка:** feat/1.2.0.x
-**Обновлено:** 2026-06-15 (сессия 17)
+**Обновлено:** 2026-06-16 (сессия 26)
+
+---
+
+## ✅ v1.2.0.2 — FCM Push Notifications uplevel (Сессия 26)
+
+### FCM Push
+- ✅ Hub.IsUserOnline(userId, username) — проверка онлайн-статуса
+- ✅ Hub.SetUserId() + clientUserIds map
+- ✅ sendPushNotification — skip online + collapse key + TTL
+- ✅ GetAllUsers() возвращает UserId
+- ✅ server_push_test.go — 7 тестов
+- ✅ Исправлена миграция user_chat_metadata
 
 ---
 
@@ -27,11 +39,11 @@
 
 ---
 
-## 📋 Активные задачи (Сессия 18)
+## 📋 Активные задачи
 
 ### Высокий приоритет
 - [ ] **Тестирование Pin Message** — RPC на dev сервере
-- [ ] **Тестирование Android v1.1.3.17** — FAB AI, AIBottomSheet
+- [ ] **Тестирование FCM push** — проверка на dev/prod
 
 ### Средний приоритет
 - [ ] **Read receipts (MarkAsRead)** — если нужно на сервере
@@ -48,7 +60,7 @@
 ### Сервер (Go)
 ```
 main.go                    — Entry point, gRPC server, graceful shutdown
-server.go                  — ServerVersion = "1.2.0.1", service version constants
+server.go                  — ServerVersion = "1.2.0.2", service version constants
 auth_service.go            — AuthService v1 (deprecated)
 auth_service_v2.go         — AuthService v2 (JWT, основной)
 auth_interceptor.go        — gRPC Bearer token interceptor
@@ -60,6 +72,8 @@ server_profile_v2.go       — ProfileService v2 (JWT, dev only)
 server_chatlist_v2.go      — ChatList v2 + Pin Message RPC handlers
 server_chat.go             — Chat stream v2 (JWT + password)
 server_remote.go           — Remote Agent RPC
+server_push.go             — FCM push notifications (RegisterToken, sendPushNotification)
+server_push_test.go        — тесты для IsUserOnline (7 тестов)
 hermes_remote_manager.go   — HandleTaskStream
 ai_chat_manager.go         — AI чаты
 owl.go                     — OWL AI
@@ -74,6 +88,6 @@ messenger.proto            — ChatService v2, AuthService v2, ProfileService v2
 
 | Репозиторий | URL | Текущая версия |
 |-------------|-----|----------------|
-| msg | https://github.com/ferzferz11-sudo/msg | v1.2.0.1 |
-| msg.client.android | https://github.com/ferzferz11-sudo/msg.client.android | v1.1.3.17 |
+| msg | https://github.com/ferzferz11-sudo/msg | v1.2.0.2 |
+| msg.client.android | https://github.com/ferzferz11-sudo/msg.client.android | v1.1.3.21 |
 | msg.remote.agent | https://github.com/ferzferz11-sudo/msg.remote.agent | v1.1.3.4 |

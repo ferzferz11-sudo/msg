@@ -1,5 +1,24 @@
 # Лава — Server Changelog
 
+## [1.2.0.2] - 2026-06-16
+
+### Новое: FCM Push Notifications uplevel
+- **server_push.go**: `AndroidConfig.Priority = "high"` + `AndroidNotification.PriorityHigh` — push проходит через Doze
+- **server_push.go**: `sendPushNotification(userId, username, ...)` — новая сигнатура с userId
+- **server_push.go**: `CollapseKey = roomID` — заменяет предыдущий push для того же чата
+- **server_push.go**: `TTL = 5 min` — не хранит старые push
+- **hub.go**: `IsUserOnline(userId, username)` — проверка онлайн-статуса по userId (v2) с fallback на username (v1)
+- **hub.go**: `SetUserId()` + `clientUserIds` map — хранение userId по stream
+- **hub.go**: `Unregister()` теперь очищает `clientUserIds`
+- **server_chat.go**: вызов `SetUserId()` при v2 JWT аутентификации
+- **db.go**: `GetAllUsers()` теперь возвращает `UserId` (UUID)
+- **server_push_test.go**: 7 тестов для `IsUserOnline` (все проходят)
+
+### Исправлено
+- **db_chatlist_v2.go**: исправлена миграция `user_chat_metadata` — разделена на шаги, обработка NULL user_id и UUID-as-username
+
+---
+
 ## [1.2.0.1] - 2026-06-15
 
 ### Новое: Pin Message

@@ -2,9 +2,9 @@
 
 ## Текущий статус
 
-**Версия:** v1.2.0.1
+**Версия:** v1.2.0.2
 **Ветка:** feat/1.2.0.x
-**Тег:** v1.2.0.1
+**Тег:** v1.2.0.2
 
 ---
 
@@ -16,7 +16,18 @@
 
 ---
 
-## Что сделано (v1.2.0.1)
+## Что сделано (v1.2.0.2)
+
+### FCM Push Notifications uplevel
+- `Hub.IsUserOnline(userId, username)` — проверка онлайн-статуса по userId (v2) с fallback на username (v1)
+- `Hub.SetUserId()` + `clientUserIds` map — хранение userId по stream
+- `sendPushNotification(userId, username, ...)` — пропускает push если онлайн
+- `CollapseKey = roomID` — заменяет предыдущий push для того же чата
+- `TTL = 5 min` — не хранит старые push
+- `GetAllUsers()` — возвращает UserId (UUID)
+- `server_chat.go` — вызов `SetUserId()` при v2 JWT auth
+- `server_push_test.go` — 7 тестов для IsUserOnline
+- `db_chatlist_v2.go` — исправлена миграция user_chat_metadata (NULL user_id, UUID-as-username)
 
 ### Pin Message
 - messenger.proto: PinMessage/UnPinMessage/GetPinnedMessages RPC
