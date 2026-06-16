@@ -1,6 +1,6 @@
 # Лава — Server Changelog
 
-## [1.2.0.1] - 2026-06-16
+## [1.2.0.1] - 2026-06-15
 
 ### Новое: Pin Message
 - **messenger.proto**: добавлены RPC методы PinMessage, UnPinMessage, GetPinnedMessages
@@ -9,6 +9,7 @@
 - **db_chatlist_v2.go**: таблица pinned_messages, PinnedMessageRow struct, CRUD методы
 - Все RPC используют только userId (без username)
 - Валидация: пользователь должен быть участником чата, сообщение должно существовать
+- protoc генерация выполнена (сессия 17)
 
 ### Новое: ChatStream v2 (JWT auth)
 - **messenger.proto**: добавлен `jwt_token` (field 26) в Message для ChatStream v2 auth

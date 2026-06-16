@@ -377,3 +377,31 @@
 - **Решение**: Activity напрямую содержит RecyclerView+SwipeRefresh, БЕЗ фрагмента
 - **Причина**: Проще, меньше кода, фрагмент не нужен для одного списка
 - **Правило**: v2 Activity — без фрагмента, v1 Activity — без изменений
+
+---
+
+## Сессия 17 — новые подводные камни
+
+### HermesSettingsActivity не существует
+- **Ошибка:** `Unresolved reference: HermesSettingsActivity`
+- **Причина:** класса `HermesSettingsActivity` нет в проекте
+- **Решение:** использовать `OwlSettingsActivity` с `putExtra("isHermes", true)` и `putExtra("sessionId", chatId)`
+- **Анти-pattern:** создавать отдельный класс для Hermes-настроек, если можно переиспользовать OWL
+
+### AIChatInfo — минимальная data class
+- **Ошибка:** `No value passed for parameter 'activeAgentId'` и т.д.
+- **Причина:** `AIChatInfo` содержит только 6 полей (id, name, type, createdAt, isUsingCustomKey, model)
+- **Решение:** передавать только нужные поля: `AIChatInfo(id = chat.id, name = chat.name, type = chat.type)`
+- **Анти-pattern:** пытаться передать все поля из ChatInfo в AIChatInfo
+
+### protoc генерация обязательна после изменения .proto
+- **Ошибка:** `Unresolved reference: PinMessageRequest` в Go коде
+- **Причина:** messenger.proto изменён, но Go-код не перегенерирован
+- **Решение:** всегда запускать protoc после изменений в .proto
+- **Анти-pattern:** изменять .proto и сразу собирать без protoc
+
+### AIBottomSheet уже существует
+- **Файл:** `ui/widget/AIBottomSheet.kt` (267 строк)
+- **Layout:** `res/layout/widget_ai_bottom_sheet.xml`
+- **Правило:** не создавать новый BottomSheet для AI, использовать существующий
+- **Анти-pattern:** дублировать функционал AIBottomSheet в новом классе

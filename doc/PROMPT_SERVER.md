@@ -24,11 +24,7 @@
 - server_chatlist_v2.go: RPC handlers (PinMessage, UnPinMessage, GetPinnedMessages)
 - Все RPC используют только userId (без username)
 - Валидация: пользователь должен быть участником чата
-
-**ВАЖНО:** Proto обновлён, требуется protoc генерация:
-```bash
-protoc --go_out=gen --go_opt=paths=source_relative --go-grpc_out=gen --go-grpc_opt=paths=source_relative messenger.proto
-```
+- protoc генерация выполнена
 
 ### Предыдущие версии
 - ChatStream v2 (JWT auth)
@@ -126,3 +122,19 @@ journalctl -u lavender-server -f
 - CHANGELOG: `/root/msg/CHANGELOG.md`
 - Android: `/root/msg.client.android/doc/INDEX.md`
 - Android PROMPT: `/root/msg.client.android/doc/PROMPT_ANDROID.md`
+
+---
+
+## ПРИОРИТЕТЫ СЛЕДУЮЩЕЙ СЕССИИ
+
+### Высокий приоритет
+1. **Тестирование Pin Message** — RPC на dev сервере
+2. **Тестирование Android v1.1.3.17** — FAB AI, AIBottomSheet
+
+### Средний приоритет
+3. **Read receipts (MarkAsRead)** — если нужно на сервере
+4. **Prometheus метрики** — мониторинг
+
+### Отложено
+- Qdrant + CLIP (production RAG)
+- Редеплой prod сервера — только после выхода Android клиента

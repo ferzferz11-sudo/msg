@@ -2,32 +2,44 @@
 
 **Версия:** v1.2.0.1
 **Ветка:** feat/1.2.0.x
-**Обновлено:** 2026-06-16 (сессия 13)
+**Обновлено:** 2026-06-15 (сессия 17)
 
 ---
 
-## ✅ v1.2.0.1 — ChatStream v2 + ChatList v2
-(Сессия 11 — завершено)
+## ✅ v1.2.0.1 — ChatStream v2 + ChatList v2 + Pin Message
+(Сессии 11, 15, 17 — завершено)
+
+### Pin Message
+- ✅ messenger.proto: PinMessage/UnPinMessage/GetPinnedMessages RPC
+- ✅ db_chatlist_v2.go: pinned_messages table, CRUD методы
+- ✅ server_chatlist_v2.go: RPC handlers
+- ✅ protoc генерация выполнена (сессия 17)
+- ✅ Валидация: пользователь — участник чата, сообщение существует
+
+### ChatStream v2
+- ✅ messenger.proto: jwt_token (field 26) в Message
+- ✅ server_chat.go: JWT auth + password fallback
+
+### ChatList v2
+- ✅ messenger.proto: PinChat, SearchChats, ArchiveChat RPC
+- ✅ server_chatlist_v2.go: реализация RPC
+- ✅ db_chatlist_v2.go: user_chat_metadata таблица
 
 ---
 
-## ✅ v1.1.3.16 — ChatList v2 UI (Android)
-(Сессия 12-13 — завершено)
-
----
-
-## 📋 Активные задачи (Сессия 16)
+## 📋 Активные задачи (Сессия 18)
 
 ### Высокий приоритет
-- [x] **Pin Message** — серверные RPC PinMessage/UnPinMessage + таблица pinned_messages + клиентская реализация
+- [ ] **Тестирование Pin Message** — RPC на dev сервере
+- [ ] **Тестирование Android v1.1.3.17** — FAB AI, AIBottomSheet
 
 ### Средний приоритет
-- [ ] **Тестирование** — v1.1.3.17 на dev и prod серверах
+- [ ] **Read receipts (MarkAsRead)** — если нужно на сервере
+- [ ] **Prometheus метрики** — мониторинг
 
 ### Отложено
 - [ ] Qdrant + CLIP (production RAG) — см. AI_SERVICES.md
-- [ ] Prometheus метрики
-- [ ] Read receipts (MarkAsRead)
+- [ ] Редеплой prod сервера — только после выхода Android клиента
 
 ---
 
@@ -43,18 +55,17 @@ auth_interceptor.go        — gRPC Bearer token interceptor
 auth_jwt.go                — JWT генерация/валидация
 db_auth_devices.go         — CRUD для user_devices + device_auth_log
 db_auth_migrations.go      — миграция таблиц
-db_chatlist_v2.go          — ChatList v2 DB methods
+db_chatlist_v2.go          — ChatList v2 + Pin Message DB methods
 server_profile_v2.go       — ProfileService v2 (JWT, dev only)
-server_chatlist_v2.go      — ChatList v2 RPC
+server_chatlist_v2.go      — ChatList v2 + Pin Message RPC handlers
 server_chat.go             — Chat stream v2 (JWT + password)
-server_chats.go            — GetAllChats, CreateDirectChat, etc.
 server_remote.go           — Remote Agent RPC
 hermes_remote_manager.go   — HandleTaskStream
 ai_chat_manager.go         — AI чаты
 owl.go                     — OWL AI
 hermes_orchestrator.go     — Hermes Orchestrator
 http_server.go             — HTTP (/health, /info)
-messenger.proto            — ChatService v2, AuthService v2, ProfileService v2
+messenger.proto            — ChatService v2, AuthService v2, ProfileService v2, Pin Message
 ```
 
 ---
@@ -64,5 +75,5 @@ messenger.proto            — ChatService v2, AuthService v2, ProfileService v2
 | Репозиторий | URL | Текущая версия |
 |-------------|-----|----------------|
 | msg | https://github.com/ferzferz11-sudo/msg | v1.2.0.1 |
-| msg.client.android | https://github.com/ferzferz11-sudo/msg.client.android | v1.1.3.16 |
+| msg.client.android | https://github.com/ferzferz11-sudo/msg.client.android | v1.1.3.17 |
 | msg.remote.agent | https://github.com/ferzferz11-sudo/msg.remote.agent | v1.1.3.4 |

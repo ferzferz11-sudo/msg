@@ -284,20 +284,25 @@ cd /root/msg.client.android
 
 ## Промпт для следующей сессии
 
-**Версия:** v1.2.0.1 (сервер dev) / v1.1.3.16 (Android) → следующая v1.2.0.2 / v1.1.3.17
+**Версия:** v1.2.0.1 (сервер dev) / v1.1.3.17 (Android) → следующая v1.2.0.2 / v1.1.3.18
 
 **Ветки:** сервер — feat/1.2.0.x, Android — feat/1.1.3.x (до релиза)
 
 **Приоритеты:**
-1. **Selection Mode** — long press = ActionMode toolbar (Pin/Delete/Archive), короткий тап = вход в чат
-2. **Поиск** — SearchView в toolbar + debounce 300ms + серверный searchChats для v2
-3. **Pin Message** — серверные RPC + клиент + UI
-4. **Тестирование** — на dev и prod серверах
+1. **Тестирование v1.1.3.17** — FAB AI, AIBottomSheet, AI навигация
+2. **Тестирование Pin Message** — на dev сервере
+3. **Исправление багов** — по результатам тестирования
+4. **Unread badges** — улучшение счётчика непрочитанных
+5. **Push notifications** — FCM интеграция для v2
 
 **Отложено (не в этой сессии):**
 - Редеплой prod сервера — только после выхода Android клиента
 - Выпуск Android — делается ферзем лично
-- FAB AI создание чата — после реализации selection mode
+- Qdrant + CLIP (production RAG)
+- Shared element transitions
+- Infinite scroll + pagination
+- Read receipts (MarkAsRead)
+- Prometheus метрики
 
 **Правила:**
 - НЕ компилировать на сервере (OOM kill) — это касается и Go и Android
@@ -306,7 +311,6 @@ cd /root/msg.client.android
 - getString() правильно по контексту (Activity/Adapter/ViewModel)
 - Коммитить и пушить после каждого значимого изменения
 - НЕ деплоить на prod без тестирования на dev
-- ProfileService v2 регистрировать только на dev (APP_ENV=dev)
 - fetchServerInfo — всегда использовать для определения версии сервера
 - Серверная ветка версий: 1.2.0.x, Android: 1.1.3.x до релиза
 - Вся разработка на dev сервере, проверка обратной совместимости на prod
