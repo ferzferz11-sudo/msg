@@ -3,7 +3,7 @@
 Индекс всех документов проекта.
 
 **Версия:** v1.2.0.1
-**Обновлено:** 2026-06-15 (сессия 17)
+**Обновлено:** 2026-06-16 (сессия 24)
 **Ветка:** feat/1.2.0.x
 **Тег:** v1.2.0.1
 
@@ -47,7 +47,9 @@
 | `/root/msg.client.android/doc/TASKS.md` | Таск-трекер Android |
 | `/root/msg.client.android/doc/PATTERNS.md` | Паттерны разработки Android |
 | `/root/msg.client.android/doc/SESSION_NOTES.md` | Заметки сессий Android |
-| `/root/msg.client.android/CHANGELOG.md` | История изменений Android |
+| `/root/msg.client.android/doc/CHANGELOG.md` | История изменений Android |
+| `/root/msg.client.android/doc/ARCH_ANALYSIS_V2_V1.md` | Анализ архитектуры v2 vs v1 |
+| `/root/msg.client.android/doc/PLAN_REFACTOR_GRPC.md` | План рефакторинга RealGrpcClient |
 
 ---
 
@@ -56,7 +58,8 @@
 - При старте новой сессии: PROMPT_SERVER.md → TASKS.md → PITFALLS.md
 - После каждого значимого изменения: обновлять TASKS.md + CHANGELOG.md
 - При каждом релизе: обновлять CHANGELOG.md, TASKS.md, PITFALLS.md
-- Версия сервера в server.go:33
+- Версия сервера в server.go:34
 - changelog.txt БОЛЬШЕ НЕ ИСПОЛЬЗУЕТСЯ
 - Все серверы (включая dev) доступны всем пользователям
 - Использовать только userId (UUID), НЕ username в RPC
+- ⚠️ Gradle wrapper удалён с сервера — НЕ компилировать Android на сервере
