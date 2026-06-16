@@ -50,20 +50,33 @@ func MigrateChatListV2(db *sql.DB) {
 		`DO $$ BEGIN
 			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='user_chat_metadata' AND column_name='user_id') THEN
 				ALTER TABLE user_chat_metadata ADD COLUMN user_id UUID;
-				UPDATE user_chat_metadata ucm SET user_id = (SELECT id FROM users u WHERE u.username = ucm.username) WHERE user_id IS NULL;
 			END IF;
-			-- Drop old username column if exists
+		END $$`,
+		// Fill user_id from users table (handle both username and UUID-as-username cases)
+		`UPDATE user_chat_metadata ucm SET user_id = u.id FROM users u WHERE ucm.user_id IS NULL AND ucm.username = u.username`,
+		// For records where username is actually a UUID, try matching by id
+		`UPDATE user_chat_metadata SET user_id = username::uuid WHERE user_id IS NULL AND username ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'`,
+		// Drop old primary key if exists (only if user_id has no nulls)
+		`DO $$ BEGIN
+			IF EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE table_name='user_chat_metadata' AND constraint_name='user_chat_metadata_pkey') THEN
+				IF NOT EXISTS (SELECT 1 FROM user_chat_metadata WHERE user_id IS NULL) THEN
+					ALTER TABLE user_chat_metadata DROP CONSTRAINT user_chat_metadata_pkey;
+				END IF;
+			END IF;
+		END $$`,
+		// Add new primary key with user_id (only if no nulls in user_id)
+		`DO $$ BEGIN
+			IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE table_name='user_chat_metadata' AND constraint_name='user_chat_metadata_pkey') THEN
+				IF NOT EXISTS (SELECT 1 FROM user_chat_metadata WHERE user_id IS NULL) THEN
+					ALTER TABLE user_chat_metadata ADD PRIMARY KEY (user_id, room_id);
+				END IF;
+			END IF;
+		END $$`,
+		// Make username nullable (keep for backward compat)
+		`DO $$ BEGIN
 			IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='user_chat_metadata' AND column_name='username') THEN
 				ALTER TABLE user_chat_metadata ALTER COLUMN username DROP NOT NULL;
 			END IF;
-		END $$`,
-		// Drop old primary key, add new one with user_id
-		`DO $$ BEGIN
-			IF EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE table_name='user_chat_metadata' AND constraint_name='user_chat_metadata_pkey') THEN
-				ALTER TABLE user_chat_metadata DROP CONSTRAINT user_chat_metadata_pkey;
-			END IF;
-			ALTER TABLE user_chat_metadata ADD PRIMARY KEY (user_id, room_id);
-		EXCEPTION WHEN duplicate_object THEN NULL;
 		END $$`,
 		// muted_chats: add user_id column
 		`DO $$ BEGIN
