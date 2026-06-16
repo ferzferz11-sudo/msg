@@ -50,6 +50,12 @@ func (s *server) sendPushNotification(user, title, body, roomID string) {
 		return
 	}
 
+	// Skip push if user is actively connected via gRPC stream
+	if s.hub.IsUserOnline(user) {
+		s.logFCM("INFO", "Skip %s: user is online", user)
+		return
+	}
+
 	// Проверяем, не замьючен ли чат для этого пользователя
 	mutedChats, err := s.db.GetMutedChats(user)
 	if err == nil {
@@ -92,7 +98,9 @@ func (s *server) sendPushNotification(user, title, body, roomID string) {
 			"sender":  title,
 		},
 		Android: &messaging.AndroidConfig{
-			Priority: "high",
+			Priority:    "high",
+			CollapseKey: roomID,
+			TTL:         durationPtr(5 * time.Minute),
 			Notification: &messaging.AndroidNotification{
 				ChannelID: "lavender_messages",
 				Priority:  messaging.PriorityHigh,
@@ -379,4 +387,9 @@ func (s *server) broadcastOnlineUsers() {
 		CreatedAt: timestamppb.Now(),
 	}
 	s.hub.BroadcastGlobal(msg)
+}
+
+// durationPtr returns a pointer to a time.Duration value.
+func durationPtr(d time.Duration) *time.Duration {
+	return &d
 }

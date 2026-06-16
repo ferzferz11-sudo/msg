@@ -236,6 +236,29 @@ func (h *Hub) GetOnlineUsers() []string {
 	return users
 }
 
+// IsUserOnline checks if a user currently has an active gRPC stream.
+// Used by push notification logic to avoid sending push to online users.
+func (h *Hub) IsUserOnline(username string) bool {
+	h.mu.RLock()
+	for _, name := range h.clients {
+		if name == username {
+			h.mu.RUnlock()
+			return true
+		}
+	}
+	h.mu.RUnlock()
+
+	// Also check grace period (user may be reconnecting)
+	h.graceMu.Lock()
+	t, exists := h.gracePeriods[username]
+	h.graceMu.Unlock()
+	if exists && time.Since(t) < gracePeriodDuration {
+		return true
+	}
+
+	return false
+}
+
 // BroadcastGlobal sends a message to all connected and authenticated clients
 func (h *Hub) BroadcastGlobal(msg *gen.Message) {
 	h.mu.RLock()
