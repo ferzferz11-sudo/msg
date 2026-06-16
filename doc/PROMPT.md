@@ -6,7 +6,7 @@
 
 ---
 
-## СТАТУС: v1.2.0.1 — DEV / v1.1.3.16 — Android
+## СТАТУС: v1.2.0.1 — DEV / v1.1.3.25 — Android
 
 Сервер: v1.2.0.1 на dev (порт 50052, HTTP 8083). ProfileService v2 активен. ChatStream v2 (JWT auth) + ChatList v2 (Pin/Search/Archive) реализованы.
 Prod: v1.1.3.10.

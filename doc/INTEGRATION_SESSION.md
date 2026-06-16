@@ -1,10 +1,29 @@
 # Lava Messenger — Интеграционная сессия
 
-**Текущая версия:** v1.2.0.1 (сервер dev) / v1.1.3.17 (Android)
-**Обновлено:** 2026-06-15 (сессия 17)
-**Тег:** v1.1.3.15 (stable prod)
+**Текущая версия:** v1.2.0.2 (сервер dev) / v1.1.3.25 (Android)
+**Обновлено:** 2026-06-17 (сессия 31)
+**Тег:** v1.1.3.25 (не выпущен)
 **Ветка сервера:** feat/1.2.0.x
 **Ветка Android:** feat/1.1.3.x
+
+---
+
+## Сессия 31 — Update System восстановление
+
+### Что сделано
+
+#### Update System (Android)
+1. **Созданы drawable ресурсы:** ic_loading_renew, deployed_code_update_24, ic_checked
+2. **ChatListActivity:** интеграция UpdateManager — init в setupUI(), наблюдение за StateFlow
+3. **Silent update check** — автопроверка при старте + автоскачивание
+4. **Manual update check** — кнопка в user menu → checkManualUpdate() → showUpdateDialog()
+5. **Update indicator** — llUpdateContainer в toolbar (available/downloading/downloaded states)
+6. **Progress dialog** — диалог прогресса скачивания с кнопкой отмены
+7. **APK install** — через FileProvider после скачивания
+8. **onResume/onPause** — регистрация/отписка UpdatePrefs listener
+
+#### Коммиты
+- TBD — feat: restore update system — UpdateManager integration, silent check, manual check, progress dialog
 
 ---
 
