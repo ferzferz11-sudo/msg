@@ -65,6 +65,7 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 					msg.User = trimmedUser
 					connectedUser = trimmedUser
 					s.hub.UpdateName(stream, trimmedUser)
+					s.hub.SetUserId(stream, connectedUserID)
 					s.hub.SetAuthenticated(stream, true)
 
 					authSuccess = true
@@ -471,7 +472,7 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 				if chat.IsSecret {
 					pushText = "New encrypted message"
 				}
-				s.sendPushNotification(user.Username, msg.User, pushText, roomID)
+				s.sendPushNotification(user.UserId, user.Username, msg.User, pushText, roomID)
 			}
 		}
 	}

@@ -325,24 +325,24 @@ func (db *DB) IsSuperAdmin(user string) bool {
 }
 
 func (db *DB) GetAllUsers() ([]struct {
-	Username, AvatarURL, LastClientVersion, Email string
-	LastSeenAt                                    sql.NullTime
+	UserId, Username, AvatarURL, LastClientVersion, Email string
+	LastSeenAt                                            sql.NullTime
 }, error) {
-	rows, err := db.Query(`SELECT username, COALESCE(avatar_url, ''), COALESCE(last_client_version, ''), last_seen_at, COALESCE(email, '') FROM users ORDER BY username`)
+	rows, err := db.Query(`SELECT id, username, COALESCE(avatar_url, ''), COALESCE(last_client_version, ''), last_seen_at, COALESCE(email, '') FROM users ORDER BY username`)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	var res []struct {
-		Username, AvatarURL, LastClientVersion, Email string
-		LastSeenAt                                    sql.NullTime
+		UserId, Username, AvatarURL, LastClientVersion, Email string
+		LastSeenAt                                            sql.NullTime
 	}
 	for rows.Next() {
 		var u struct {
-			Username, AvatarURL, LastClientVersion, Email string
-			LastSeenAt                                    sql.NullTime
+			UserId, Username, AvatarURL, LastClientVersion, Email string
+			LastSeenAt                                            sql.NullTime
 		}
-		rows.Scan(&u.Username, &u.AvatarURL, &u.LastClientVersion, &u.LastSeenAt, &u.Email)
+		rows.Scan(&u.UserId, &u.Username, &u.AvatarURL, &u.LastClientVersion, &u.LastSeenAt, &u.Email)
 		res = append(res, u)
 	}
 	return res, nil

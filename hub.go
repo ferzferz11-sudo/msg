@@ -18,6 +18,7 @@ type Hub struct {
 	// mu protects the clients map from concurrent access from different goroutines
 	mu            sync.RWMutex
 	clients       map[gen.ChatService_ChatServer]string // maps stream to username
+	clientUserIds map[gen.ChatService_ChatServer]string // maps stream to userId (UUID)
 	authenticated map[gen.ChatService_ChatServer]bool   // tracks if stream is authenticated
 	rooms         map[gen.ChatService_ChatServer]string // maps stream to current room ID
 	typingStreams map[gen.ChatService_TypingServer]string
@@ -45,6 +46,7 @@ type Conference struct {
 func NewHub(onStatusChange func()) *Hub {
 	return &Hub{
 		clients:        make(map[gen.ChatService_ChatServer]string),
+		clientUserIds:  make(map[gen.ChatService_ChatServer]string),
 		authenticated:  make(map[gen.ChatService_ChatServer]bool),
 		rooms:          make(map[gen.ChatService_ChatServer]string),
 		typingStreams:  make(map[gen.ChatService_TypingServer]string),
@@ -113,6 +115,14 @@ func (h *Hub) UpdateName(stream gen.ChatService_ChatServer, name string) {
 	if oldName != name && h.onStatusChange != nil {
 		h.onStatusChange()
 	}
+}
+
+// SetUserId sets the userId (UUID) associated with a stream.
+// Used for v2 JWT auth where userId is the primary identifier.
+func (h *Hub) SetUserId(stream gen.ChatService_ChatServer, userId string) {
+	h.mu.Lock()
+	h.clientUserIds[stream] = userId
+	h.mu.Unlock()
 }
 
 // SetAuthenticated marks a stream as authenticated
@@ -193,6 +203,7 @@ func (h *Hub) Unregister(stream gen.ChatService_ChatServer) {
 	h.mu.Lock()
 	username := h.clients[stream]
 	delete(h.clients, stream)
+	delete(h.clientUserIds, stream)
 	delete(h.authenticated, stream)
 	delete(h.rooms, stream)
 	h.mu.Unlock()
@@ -237,9 +248,19 @@ func (h *Hub) GetOnlineUsers() []string {
 }
 
 // IsUserOnline checks if a user currently has an active gRPC stream.
+// userId is the primary identifier (v2 JWT auth).
+// username is used as fallback for legacy v1 clients.
 // Used by push notification logic to avoid sending push to online users.
-func (h *Hub) IsUserOnline(username string) bool {
+func (h *Hub) IsUserOnline(userId, username string) bool {
 	h.mu.RLock()
+	// Check by userId first (v2 clients)
+	for _, uid := range h.clientUserIds {
+		if uid == userId {
+			h.mu.RUnlock()
+			return true
+		}
+	}
+	// Fallback: check by username (v1 clients)
 	for _, name := range h.clients {
 		if name == username {
 			h.mu.RUnlock()

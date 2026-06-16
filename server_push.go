@@ -44,37 +44,37 @@ func (s *server) RegisterToken(_ context.Context, req *gen.TokenRequest) (*gen.T
 	return &gen.TokenResponse{Success: true}, nil
 }
 
-func (s *server) sendPushNotification(user, title, body, roomID string) {
+func (s *server) sendPushNotification(userId, username, title, body, roomID string) {
 	if s.firebaseApp == nil {
-		s.logFCM("WARN", "Skip %s: Firebase not init", user)
+		s.logFCM("WARN", "Skip %s: Firebase not init", username)
 		return
 	}
 
 	// Skip push if user is actively connected via gRPC stream
-	if s.hub.IsUserOnline(user) {
-		s.logFCM("INFO", "Skip %s: user is online", user)
+	if s.hub.IsUserOnline(userId, username) {
+		s.logFCM("INFO", "Skip %s: user is online", username)
 		return
 	}
 
 	// Проверяем, не замьючен ли чат для этого пользователя
-	mutedChats, err := s.db.GetMutedChats(user)
+	mutedChats, err := s.db.GetMutedChats(username)
 	if err == nil {
 		for _, mutedRoomID := range mutedChats {
 			if mutedRoomID == roomID {
-				s.logFCM("INFO", "Skip %s: Chat %s is muted", user, roomID)
+				s.logFCM("INFO", "Skip %s: Chat %s is muted", username, roomID)
 				return
 			}
 		}
 	}
 
-	token, err := s.db.GetUserToken(user)
+	token, err := s.db.GetUserToken(username)
 	if err != nil || token == "" {
-		s.logFCM("WARN", "Skip %s: No token", user)
+		s.logFCM("WARN", "Skip %s: No token", username)
 		return
 	}
 
 	if token == "DISABLED" {
-		s.logFCM("INFO", "Skip %s: User disabled push", user)
+		s.logFCM("INFO", "Skip %s: User disabled push", username)
 		return
 	}
 
@@ -111,11 +111,11 @@ func (s *server) sendPushNotification(user, title, body, roomID string) {
 
 	_, err = client.Send(ctx, message)
 	if err != nil {
-		s.logFCM("ERROR", "Send to %s failed: %v", user, err)
+		s.logFCM("ERROR", "Send to %s failed: %v", username, err)
 		return
 	}
 
-	s.logFCM("SUCCESS", "Sent to %s", user)
+	s.logFCM("SUCCESS", "Sent to %s", username)
 }
 
 func (s *server) saveConferenceSystemMessage(roomID, text, senderName, senderId string) {
