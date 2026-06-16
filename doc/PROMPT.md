@@ -1,16 +1,16 @@
-# Промпт для новой сессии — Server v1.2.0.1
+# Промпт для новой сессии — Server v1.2.0.2
 
-**Дата:** 2026-06-16
+**Дата:** 2026-06-17
 **Ветка сервера:** feat/1.2.0.x
 **Ветка Android:** feat/1.1.3.x
 
 ---
 
-## СТАТУС: v1.2.0.1 — DEV / v1.1.3.25 — Android
+## СТАТУС: v1.2.0.2 — DEV / v1.1.3.25 — Android
 
-Сервер: v1.2.0.1 на dev (порт 50052, HTTP 8083). ProfileService v2 активен. ChatStream v2 (JWT auth) + ChatList v2 (Pin/Search/Archive) реализованы.
+Сервер: v1.2.0.2 на dev (порт 50052, HTTP 8083). ProfileService v2 активен. ChatStream v2 (JWT auth) + ChatList v2 (Pin/Search/Archive) реализованы. FCM Push (HIGH priority, DND bypass, online skip).
 Prod: v1.1.3.10.
-Android: ChatListActivityV2 с табами, навигацией, FABs. ChatStream v2 auth + ChatList v2 API + fetchServerInfo с fallback на v1.
+Android: ChatListActivity (единый v1+v2) с табами, навигацией, FABs. ChatStream v2 auth + ChatList v2 API + fetchServerInfo с fallback на v1. UpdateCoordinator — модульная система обновлений.
 
 ---
 
