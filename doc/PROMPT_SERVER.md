@@ -2,18 +2,18 @@
 
 ## Текущий статус
 
-**Версия:** v1.1.2.6 (prod)
-**Ветка:** feat/1.1.2.x
-**Тег:** v1.1.2.6 (выпущен)
+**Версия:** v1.2.0.2 (dev) / v1.1.3.10 (prod)
+**Ветка:** feat/1.2.0.x
+**Тег:** v1.2.0.2 (dev, не выпущен на prod)
 
 ---
 
 ## Контекст
 
 - Сервер: /root/msg, dev порт 50052, prod порт 50051
-- Android: /root/msg.client.android
-- Оба репозитория на ветке feat/1.1.2.x
-- v1.1.2.6 — prod версия (JWT auth для удалённых агентов)
+- Android: /root/msg.client.android (ветка feat/1.1.3.x)
+- Dev сервер: v1.2.0.2 (ProfileService v2, ChatList v2, ChatStream v2, FCM push)
+- Prod сервер: v1.1.3.10 (стабильная, без v2 фич)
 
 ---
 
