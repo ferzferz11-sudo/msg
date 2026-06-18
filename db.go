@@ -227,6 +227,10 @@ func ConnectDB() (*DB, error) {
 			}
 		}
 	}
+
+	// Backfill last_message_text for chats with placeholder or empty text
+	backfillLastMessageText(db)
+
 	// One-time admin setup: only set if not already admin (idempotent)
 	var isAlreadyAdmin bool
 	_ = db.QueryRow(`SELECT COALESCE(is_super_admin, FALSE) FROM users WHERE username = 'ferz'`).Scan(&isAlreadyAdmin)
@@ -264,6 +268,74 @@ func (db *DB) QueryRow(query string, args ...interface{}) *sql.Row {
 // Exec — прокси к sql.DB.Exec
 func (db *DB) Exec(query string, args ...interface{}) (sql.Result, error) {
 	return db.DB.Exec(query, args...)
+}
+
+// backfillLastMessageText decrypts and fills last_message_text for chats
+// where it's empty or set to the placeholder "Message".
+func backfillLastMessageText(db *sql.DB) {
+	rows, err := db.Query(`
+		SELECT c.id FROM chats c
+		WHERE c.last_message_text IS NULL OR c.last_message_text = '' OR c.last_message_text = 'Message'
+		AND c.type NOT IN ('owl', 'hermes')
+	`)
+	if err != nil {
+		logger.Errorf("Backfill: query error: %v", err)
+		return
+	}
+	defer rows.Close()
+
+	var chatIDs []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err == nil {
+			chatIDs = append(chatIDs, id)
+		}
+	}
+
+	if len(chatIDs) == 0 {
+		return
+	}
+
+	logger.Infof("Backfill: updating last_message_text for %d chats", len(chatIDs))
+
+	for _, chatID := range chatIDs {
+		// Get last message for this chat
+		var enc []byte
+		var msgTime time.Time
+		var username string
+		var hasImage bool
+
+		err := db.QueryRow(`
+			SELECT encrypted_text, created_at, username,
+			       (COALESCE(image_url, '') != '' OR COALESCE(image_urls, '[]') != '[]')
+			FROM messages WHERE room_id = $1
+			ORDER BY created_at DESC LIMIT 1`, chatID).Scan(&enc, &msgTime, &username, &hasImage)
+		if err != nil {
+			continue
+		}
+
+		// Decrypt the text
+		preview, _ := decrypt(enc)
+		if len(preview) > 500 {
+			preview = preview[:500]
+		}
+		if preview == "" {
+			if hasImage {
+				preview = "Image"
+			} else {
+				preview = "Message"
+			}
+		}
+
+		_, _ = db.Exec(`UPDATE chats SET
+			last_message_text = $1,
+			last_message_time = $2,
+			last_message_username = $3,
+			last_message_has_image = $4
+		WHERE id = $5`, preview, msgTime, username, hasImage, chatID)
+	}
+
+	logger.Infof("Backfill: last_message_text updated for %d chats", len(chatIDs))
 }
 
 func (db *DB) SaveMessage(mid, user, uid string, enc []byte, created time.Time, rmid, ruser, rtext, room, img, imgUrls, voice string, dur int32, isE2EE ...bool) error {
