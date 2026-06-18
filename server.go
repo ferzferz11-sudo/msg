@@ -30,7 +30,7 @@ import (
 	firebase "firebase.google.com/go/v4"
 )
 
-const ServerVersion = "1.2.0.4"
+const ServerVersion = "1.2.0.6"
 
 // Service versions for client capability negotiation
 const (
@@ -89,6 +89,27 @@ func (s *server) logFCM(level, format string, v ...interface{}) {
 		s.fcmLogs = s.fcmLogs[1:]
 	}
 	logger.Infof("[FCM %s] %s", level, msg)
+}
+
+// isUUID checks if a string is a valid UUID
+func isUUID(s string) bool {
+	_, err := uuid.Parse(s)
+	return err == nil
+}
+
+// resolveDisplayName resolves a UUID or username to a username for display/logging
+func resolveDisplayName(db *DB, identifier string) string {
+	if identifier == "" {
+		return ""
+	}
+	if isUUID(identifier) {
+		username, err := db.GetUserByID(identifier)
+		if err == nil && username != "" {
+			return username
+		}
+		return identifier
+	}
+	return identifier
 }
 
 // resolveUserId converts a potential username to a user ID if needed

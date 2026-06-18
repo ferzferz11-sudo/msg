@@ -1,8 +1,8 @@
 # Lava Messenger — Интеграционная сессия
 
-**Текущая версия:** v1.2.0.5 (сервер prod/dev) / v1.1.3.37 (Android)
-**Обновлено:** 2026-06-18 (сессия 36)
-**Тег:** v1.2.0.5
+**Текущая версия:** v1.2.0.6 (сервер prod/dev) / v1.1.3.37 (Android)
+**Обновлено:** 2026-06-18 (сессия 37 — userId migration)
+**Тег:** v1.2.0.6
 **Ветка сервера:** feat/1.2.0.x
 **Ветка Android:** feat/1.1.3.x
 
@@ -23,6 +23,48 @@
 | `hub.go` | `BroadcastCall` username matching | Маршрутизация по username | UUID-only маршрутизация |
 | `db_chatlist_v2.go` | `user_chat_metadata.username` | Nullable колонка, была PK | `user_id` (UUID PK) |
 | `server_chat.go` | Chat stream v1 password auth (line 88) | Legacy парольная аутентификация в потоке | JWT в первом сообщении |
+
+---
+
+## Сессия 37 — userId Migration (username → UUID)
+
+### Что сделано
+
+#### DB Migration (Этап 1)
+1. **UUID-колонки** добавлены в `reactions`, `contacts`, `user_tokens`, `user_themes` с `IF NOT EXISTS`
+2. **Данные заполнены**: `UPDATE ... SET user_id = u.id FROM users u WHERE ...`
+3. **Индексы созданы**: `idx_reactions_user_id`, `idx_contacts_user_id`, `idx_contacts_contact_user_id`, `idx_user_tokens_user_id`, `idx_user_themes_user_id`
+4. **`chats.participant_ids UUID[]`** — добавлена колонка + GIN индекс для матчинга по UUID
+5. **`muted_chats.user_id`** — заполнены NULL значения, создан индекс
+6. **SQL миграция**: `migrations/001_userid_migration.sql`
+
+#### UUID-based DB Methods (Этап 2)
+- `SetReactionByUserID`, `RemoveReactionByUserID`
+- `AddContactByUserID`, `RemoveContactByUserID`, `GetContactsByUserID`
+- `GetUserThemesByUserID`, `SaveUserThemeByUserID`, `SetCurrentThemeByUserID`, `DeleteUserThemeByUserID`
+- `SaveUserTokenByUserID`, `GetUserPushStatusByUserID`, `SetUserPushStatusByUserID`
+- `GetUserChatsByUserID`, `IncrementUserChatListVersionByUserID`
+- `UserExistsByID`, `GetUserByID`, `GetUserIDByUsername`
+
+#### Handler Migration (Этап 3)
+- Все handlers переключены с `resolveUsername()` на `resolveDisplayName()` (чистый helper, без DB fallback)
+- `GetUserID(ctx)` используется как primary identifier везде где возможно
+- `server_profile.go`, `server_contacts.go`, `server_themes.go`, `server_users.go`, `server_push.go`, `secret_chat.go`, `server_chat.go`, `server_chats.go` — обновлены
+- Helper функции `isUUID()` и `resolveDisplayName()` добавлены в `server.go`
+
+#### Bug Fix
+- **pinned_messages запрос**: `m.user` → `m.username`, `m.text` → `decrypt(m.encrypted_text)`
+
+#### Коммиты
+- `b148b04` — feat: Phase 1 — DB UUID columns + UUID-based DB methods
+- `3ad8e00` — feat: Phase 2 — handler migration: contacts, themes, profile, push, users, secret_chat
+- `fbb28b2` — feat: Phase 3 — remove resolveUsername from server_chat.go, server_chats.go, server_push.go
+- (fix) — fix: pinned_messages query m.user → m.username + decrypt
+
+### Статус
+- Dev (50052): ✅ работает
+- Prod (50051): ✅ работает
+- Деплой выполнен, ошибок в логах нет
 
 ---
 
