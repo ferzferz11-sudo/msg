@@ -519,7 +519,7 @@ func (s *server) Typing(stream gen.ChatService_TypingServer) error {
 
 		username := req.Username
 		if req.UserId != "" {
-			resolved := s.resolveUsername(req.UserId)
+			resolved := resolveDisplayName(s.db, req.UserId)
 			if resolved != "" {
 				username = resolved
 			}
@@ -528,7 +528,6 @@ func (s *server) Typing(stream gen.ChatService_TypingServer) error {
 		currentTypingUser = username
 		currentRoomID = req.RoomId
 
-		// Broadcast typing signal to others
 		signal := &gen.TypingSignal{
 			RoomId:   req.RoomId,
 			Username: username,
@@ -550,7 +549,7 @@ func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
 	defer func() {
 		s.hub.UnregisterCall(stream)
 		if currentUserId != "" {
-			username := s.resolveUsername(currentUserId)
+			username := resolveDisplayName(s.db, currentUserId)
 			logger.Infof("[CALL] Stream closed: %s (%s)", currentUserId, username)
 			s.handleAbruptDisconnect(currentUserId)
 		}
@@ -562,33 +561,30 @@ func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
 			return nil
 		}
 		if err != nil {
-			// Don't log normal connection closures as errors
 			if err != context.Canceled && !strings.Contains(err.Error(), "transport is closing") {
 				logger.Errorf("[CALL] Error receiving signal: %v", err)
 			}
 			return err
 		}
 
-		// Normalize IDs to UUIDs for stable routing and attach names for display
 		msg.SenderId = s.resolveUserId(msg.SenderId)
 		msg.ReceiverId = s.resolveUserId(msg.ReceiverId)
-		msg.SenderName = s.resolveUsername(msg.SenderId)
-		msg.ReceiverName = s.resolveUsername(msg.ReceiverId)
+		msg.SenderName = resolveDisplayName(s.db, msg.SenderId)
+		msg.ReceiverName = resolveDisplayName(s.db, msg.ReceiverId)
 
 		if currentUserId == "" && msg.SenderId != "" {
 			currentUserId = msg.SenderId
 			s.hub.UpdateCallName(stream, currentUserId)
-			username := s.resolveUsername(currentUserId)
+			username := resolveDisplayName(s.db, currentUserId)
 			logger.Infof("[CALL] Stream identified: %s (%s)", currentUserId, username)
 		}
 
-		// Silence identity signals to reduce log volume
 		if msg.ReceiverId == "" && msg.Payload == "IDENTITY" {
 			continue
 		}
 
-		senderName := s.resolveUsername(msg.SenderId)
-		receiverName := s.resolveUsername(msg.ReceiverId)
+		senderName := resolveDisplayName(s.db, msg.SenderId)
+		receiverName := resolveDisplayName(s.db, msg.ReceiverId)
 		logger.Infof("[CALL] Signal: %s | From: %s (%s) | To: %s (%s) | CallID: %s",
 			msg.Type.String(), msg.SenderId, senderName, msg.ReceiverId, receiverName, msg.CallId)
 

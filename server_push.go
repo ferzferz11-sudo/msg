@@ -294,7 +294,7 @@ func (s *server) handleAbruptDisconnect(userId string) {
 			logger.Infof("[CALL] HANGUP sent to %s for call %s", otherPartyId, call.CallID)
 		}
 
-		otherUsername := s.resolveUsername(otherPartyId)
+		otherUsername := resolveDisplayName(s.db, otherPartyId)
 		if otherUsername != "" {
 			hangupToSender := &gen.CallMessage{
 				CallId:     call.CallID,
@@ -304,7 +304,7 @@ func (s *server) handleAbruptDisconnect(userId string) {
 			}
 			s.hub.BroadcastCall(hangupToSender)
 
-			senderName := s.resolveUsername(resolvedUserId)
+			senderName := resolveDisplayName(s.db, resolvedUserId)
 			duration, _ := s.db.GetCallDuration(call.CallID)
 			durationText := ""
 			if duration > 0 {
@@ -333,7 +333,7 @@ func (s *server) sendCallPushNotification(receiverId, senderName, callId string)
 		return
 	}
 
-	senderUsername := s.resolveUsername(senderName)
+	senderUsername := resolveDisplayName(s.db, senderName)
 
 	message := &messaging.Message{
 		Token: token,

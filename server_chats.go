@@ -103,14 +103,14 @@ func (s *server) GetChats(_ context.Context, req *gen.GetChatsRequest) (*gen.Get
 func (s *server) CreateDirectChat(_ context.Context, req *gen.CreateDirectChatRequest) (*gen.CreateDirectChatResponse, error) {
 	u1 := req.User1
 	if req.User1Id != "" {
-		resolved := s.resolveUsername(req.User1Id)
+		resolved := resolveDisplayName(s.db, req.User1Id)
 		if resolved != "" {
 			u1 = resolved
 		}
 	}
 	u2 := req.User2
 	if req.User2Id != "" {
-		resolved := s.resolveUsername(req.User2Id)
+		resolved := resolveDisplayName(s.db, req.User2Id)
 		if resolved != "" {
 			u2 = resolved
 		}
@@ -130,7 +130,7 @@ func (s *server) CreateDirectChat(_ context.Context, req *gen.CreateDirectChatRe
 func (s *server) CreateGroupChat(_ context.Context, req *gen.CreateGroupChatRequest) (*gen.CreateGroupChatResponse, error) {
 	creator := req.Creator
 	if req.CreatorId != "" {
-		resolved := s.resolveUsername(req.CreatorId)
+		resolved := resolveDisplayName(s.db, req.CreatorId)
 		if resolved != "" {
 			creator = resolved
 		}
@@ -161,7 +161,7 @@ func (s *server) CreateGroupChat(_ context.Context, req *gen.CreateGroupChatRequ
 func (s *server) AddParticipant(_ context.Context, req *gen.AddParticipantRequest) (*gen.AddParticipantResponse, error) {
 	username := req.Username
 	if req.UserId != "" {
-		resolved := s.resolveUsername(req.UserId)
+		resolved := resolveDisplayName(s.db, req.UserId)
 		if resolved != "" {
 			username = resolved
 		}
@@ -212,7 +212,7 @@ func (s *server) AddParticipant(_ context.Context, req *gen.AddParticipantReques
 func (s *server) RemoveParticipant(_ context.Context, req *gen.RemoveParticipantRequest) (*gen.RemoveParticipantResponse, error) {
 	username := req.Username
 	if req.UserId != "" {
-		resolved := s.resolveUsername(req.UserId)
+		resolved := resolveDisplayName(s.db, req.UserId)
 		if resolved != "" {
 			username = resolved
 		}
@@ -274,7 +274,7 @@ func (s *server) DeleteChat(_ context.Context, req *gen.DeleteChatRequest) (*gen
 
 	requesterUsername := req.RequesterUsername
 	if req.RequesterUserId != "" {
-		resolved := s.resolveUsername(req.RequesterUserId)
+		resolved := resolveDisplayName(s.db, req.RequesterUserId)
 		if resolved != "" {
 			requesterUsername = resolved
 		}
@@ -409,7 +409,7 @@ func (s *server) UpdateChatAvatar(_ context.Context, req *gen.UpdateChatAvatarRe
 
 	username := req.Username
 	if req.UserId != "" {
-		resolved := s.resolveUsername(req.UserId)
+		resolved := resolveDisplayName(s.db, req.UserId)
 		if resolved != "" {
 			username = resolved
 		}
@@ -457,7 +457,7 @@ func (s *server) UpdateChatSettings(_ context.Context, req *gen.UpdateChatSettin
 		return &gen.UpdateChatSettingsResponse{Success: false, Message: "Chat not found"}, nil
 	}
 
-	username := s.resolveUsername(req.UserId)
+	username := resolveDisplayName(s.db, req.UserId)
 	if chat.CreatorUsername != username {
 		return &gen.UpdateChatSettingsResponse{Success: false, Message: "Unauthorized: only admin can change settings"}, nil
 	}
