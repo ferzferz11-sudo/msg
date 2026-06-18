@@ -8,10 +8,30 @@
 - **TURN credentials** — `http_server.go` теперь читает `TURN_SERVER_HOST` и `TURN_SHARED_SECRET` из env (было в коде)
 - **Hardcoded admin** — `db.go:ConnectDB` теперь one-time: проверяет `is_super_admin` перед UPDATE (было каждый старт)
 - **MarkReadAndCheck** — исправлена UPSERT логика: UPDATE first → INSERT если нет строк (ON CONFLICT ломался из-за отсутствия unique constraint)
-- **User impersonation** — все 18 AI handlers теперь используют `GetUserID(ctx)` вместо `req.UserId` из запроса
+- **User impersonation** — все 25+ handlers теперь используют `GetUserID(ctx)` вместо `req.UserId` из запроса
 - **Secret chat caller** — `getCallerUsernameSecret` теперь использует `GetUserID(ctx)` вместо перебора hub clients
+- **Secret chat membership** — `ExchangeSecretKey`/`GetSecretChatKey` проверяют участие в чате
+- **Agent token RPC** — `GenerateAgentToken`/`Revoke`/`List` используют `GetUserID(ctx)` вместо `req.AdminUserId`
 - **Firebase credentials** — удалены из git tracking (`.gitignore` уже содержит `*-firebase-adminsdk-*.json`)
 - **auth/user_jwt.go** — удалён неиспользуемый файл (дублировал `auth_jwt.go`)
+- **DeleteProfile** — пароль обязателен (был необязателен при пустой строке)
+
+### Совместимость
+- **AuthInterceptor v1 fallback** — если Bearer token отсутствует, извлекает username из gRPC metadata
+- **GetChatsV2** — fallback на `req.Username` / ctx username для v1 клиентов
+
+### Исправлено
+- **db_chatlist_v2.go** — миграция проверяет наличие PK перед `DROP NOT NULL` на username
+
+### Производительность
+- **owl.go** — shared `http.Client` с connection pooling (было новый клиент на каждый запрос)
+- **db.go** — 5 новых индексов (chats type+creator, owl_messages chat, messages room, contacts, user_tokens)
+- **hermes_orchestrator.go** — `getOrCreateSession` освобождает lock перед DB I/O (double-check pattern)
+
+### Документация
+- **OPTIMIZATION_PLAN.md** — план оптимизации с прогрессом
+- **PROMPT.md** — переписан по этапам реализации
+- **INDEX.md** — обновлён индекс документации
 
 ### Исправлено
 - **db_chatlist_v2.go** — миграция `user_chat_metadata` проверяет наличие PK перед `DROP NOT NULL` на username (fix: column "username" is in a primary key)
