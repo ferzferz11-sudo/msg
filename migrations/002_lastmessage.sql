@@ -1,5 +1,5 @@
 -- Phase 2: Last message columns in chats table
--- Run: psql -U postgres -d chat_db_dev -f migrations/002_lastmessage.sql
+-- Run: cd /tmp && sudo -u postgres psql -d chat_db_dev -f /root/msg/migrations/002_lastmessage.sql
 
 -- 1. Add missing columns
 DO $$ BEGIN
@@ -11,12 +11,10 @@ DO $$ BEGIN
     END IF;
 END $$;
 
--- 2. Backfill from messages for chats that have messages
+-- 2. Backfill last_message_text with placeholder (decrypt is Go-only, not available in SQL)
+--    New messages will populate proper decrypted text via SaveMessage()
 UPDATE chats c SET
-    last_message_text = COALESCE(
-        (SELECT LEFT(decrypt(m.encrypted_text), 500) FROM messages m WHERE m.room_id = c.id ORDER BY m.created_at DESC LIMIT 1),
-        ''
-    ),
+    last_message_text = 'Message',
     last_message_time = (
         SELECT m.created_at FROM messages m WHERE m.room_id = c.id ORDER BY m.created_at DESC LIMIT 1
     ),
@@ -30,4 +28,5 @@ UPDATE chats c SET
         FALSE
     )
 WHERE EXISTS (SELECT 1 FROM messages m WHERE m.room_id = c.id)
-  AND c.type NOT IN ('owl', 'hermes');
+  AND c.type NOT IN ('owl', 'hermes')
+  AND (c.last_message_text IS NULL OR c.last_message_text = '');
