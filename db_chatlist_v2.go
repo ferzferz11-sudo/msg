@@ -72,10 +72,12 @@ func MigrateChatListV2(db *sql.DB) {
 				END IF;
 			END IF;
 		END $$`,
-		// Make username nullable (keep for backward compat)
+		// Make username nullable (keep for backward compat) — only if PK is not on username
 		`DO $$ BEGIN
 			IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='user_chat_metadata' AND column_name='username') THEN
-				ALTER TABLE user_chat_metadata ALTER COLUMN username DROP NOT NULL;
+				IF NOT EXISTS (SELECT 1 FROM information_schema.constraint_column_usage WHERE table_name='user_chat_metadata' AND column_name='username' AND constraint_name LIKE '%pkey%') THEN
+					ALTER TABLE user_chat_metadata ALTER COLUMN username DROP NOT NULL;
+				END IF;
 			END IF;
 		END $$`,
 		// muted_chats: add user_id column
