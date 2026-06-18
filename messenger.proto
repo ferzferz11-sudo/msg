@@ -656,6 +656,7 @@ service ChatService {
   rpc DeleteMessages(DeleteMessagesRequest) returns (DeleteMessagesResponse);
   rpc RegisterToken(TokenRequest) returns (TokenResponse);
   rpc GetChats(GetChatsRequest) returns (GetChatsResponse);
+  rpc GetChatsV2(GetChatsRequest) returns (GetChatsResponse);
   rpc GetChatListVersion(GetChatListVersionRequest) returns (GetChatListVersionResponse);
   rpc CreateDirectChat(CreateDirectChatRequest) returns (CreateDirectChatResponse);
   rpc CreateGroupChat(CreateGroupChatRequest) returns (CreateGroupChatResponse);
