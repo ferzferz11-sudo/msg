@@ -45,12 +45,14 @@ func (s *server) GetAllChats(ctx context.Context, req *gen.GetAllChatsRequest) (
 	}, nil
 }
 
+// Deprecated: v1 chat list endpoint. Clients should use GetChatsV2 instead.
 func (s *server) GetChats(_ context.Context, req *gen.GetChatsRequest) (*gen.GetChatsResponse, error) {
 	// Используем username для логов, а ID для запросов в БД
 	// Убираем спам в логах, так как клиент опрашивает этот эндпоинт каждые 3 секунды
 	// logger.Infof("GetChats requested by user %s (ID: %s)", req.Username, req.UserId)
 
 	// Если ID передан, используем его, иначе ищем по username (для старых клиентов)
+	// Deprecated: username fallback — will be removed when all clients use GetChatsV2 with JWT.
 	queryIdentifier := req.UserId
 	if queryIdentifier == "" {
 		id, err := s.db.GetUserIdByUsername(req.Username)

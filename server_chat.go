@@ -15,6 +15,12 @@ import (
 )
 
 func (s *server) Chat(stream gen.ChatService_ChatServer) error {
+	defer func() {
+		if r := recover(); r != nil {
+			logger.Errorf("panic recovered in Chat stream: %v", r)
+		}
+	}()
+
 	var connectedUser string = "Anonymous"
 	var connectedUserID string = ""
 	var currentRoom string = ""
@@ -85,7 +91,8 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 					return fmt.Errorf("authentication failed: %s", authErr)
 				}
 			} else {
-				// ChatStream v1: legacy password auth
+				// Deprecated: ChatStream v1 legacy password auth.
+				// Will be removed when all clients use v2 JWT auth.
 				trimmedUser := strings.TrimSpace(msg.User)
 				msg.User = trimmedUser
 				connectedUser = trimmedUser
@@ -479,6 +486,12 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 }
 
 func (s *server) Typing(stream gen.ChatService_TypingServer) error {
+	defer func() {
+		if r := recover(); r != nil {
+			logger.Errorf("panic recovered in Typing stream: %v", r)
+		}
+	}()
+
 	var currentTypingUser string
 	var currentRoomID string
 
@@ -526,6 +539,12 @@ func (s *server) Typing(stream gen.ChatService_TypingServer) error {
 }
 
 func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
+	defer func() {
+		if r := recover(); r != nil {
+			logger.Errorf("panic recovered in CallSession stream: %v", r)
+		}
+	}()
+
 	var currentUserId string
 	s.hub.RegisterCall(stream)
 	defer func() {
@@ -667,8 +686,11 @@ func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
 				var data map[string]interface{}
 				json.Unmarshal([]byte(msg.Payload), &data)
 				topic := fmt.Sprintf("%v", data["topic"])
-				startTimeMs := int64(data["start_time"].(float64))
-				startTime := time.UnixMilli(startTimeMs)
+				startTimeMs, ok := data["start_time"].(float64)
+				if !ok {
+					startTimeMs = 0
+				}
+				startTime := time.UnixMilli(int64(startTimeMs))
 
 				s.hub.UpdateConferenceMetadata(msg.RoomId, topic, startTime)
 

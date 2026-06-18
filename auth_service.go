@@ -37,6 +37,7 @@ type authDB interface {
 }
 
 // authServer implements gen.AuthServiceServer
+// Deprecated: v1 auth without JWT. Use authServerV2 (AuthServiceV2) instead.
 type authServer struct {
 	gen.UnimplementedAuthServiceServer
 	db authDB
@@ -46,6 +47,7 @@ func newAuthServer(db *DB) *authServer {
 	return &authServer{db: db}
 }
 
+// Deprecated: v1 sign-in without JWT. Use AuthServiceV2.SignInV2 instead.
 func (a *authServer) SignIn(ctx context.Context, req *gen.SignInRequest) (*gen.AuthResponse, error) {
 	username := req.GetUsername()
 	password := req.GetPassword()
@@ -128,6 +130,7 @@ func (a *authServer) SignIn(ctx context.Context, req *gen.SignInRequest) (*gen.A
 	}, nil
 }
 
+// Deprecated: v1 sign-up without JWT. Use AuthServiceV2.SignUpV2 instead.
 func (a *authServer) SignUp(ctx context.Context, req *gen.SignUpRequest) (*gen.AuthResponse, error) {
 	username := req.GetUsername()
 	password := req.GetPassword()

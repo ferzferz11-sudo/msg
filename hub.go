@@ -249,7 +249,7 @@ func (h *Hub) GetOnlineUsers() []string {
 
 // IsUserOnline checks if a user currently has an active gRPC stream.
 // userId is the primary identifier (v2 JWT auth).
-// username is used as fallback for legacy v1 clients.
+// Deprecated: username is used as fallback for legacy v1 clients. Will be removed when all clients use v2.
 // Used by push notification logic to avoid sending push to online users.
 func (h *Hub) IsUserOnline(userId, username string) bool {
 	h.mu.RLock()
@@ -341,6 +341,7 @@ func (h *Hub) BroadcastCall(signal *gen.CallMessage) bool {
 	delivered := false
 	for stream, username := range h.callStreams {
 		// Match by UUID or username (backward compatibility)
+		// Deprecated: username matching is for v1 clients. Remove when all clients use v2 UUID.
 		if username == signal.ReceiverId || username == signal.ReceiverName {
 			err := stream.Send(signal)
 			if err == nil {

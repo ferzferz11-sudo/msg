@@ -92,6 +92,7 @@ func (s *server) logFCM(level, format string, v ...interface{}) {
 }
 
 // resolveUserId converts a potential username to a user ID if needed
+// Deprecated: v1 username→UUID fallback. Use UUID identifiers directly for v2-only handlers.
 func (s *server) resolveUserId(identifier string) string {
 	if identifier == "" {
 		return ""
@@ -109,6 +110,7 @@ func (s *server) resolveUserId(identifier string) string {
 }
 
 // resolveUsername converts a potential user ID to a username if needed
+// Deprecated: v1 UUID→username fallback. Use UUID identifiers directly for v2-only handlers.
 func (s *server) resolveUsername(identifier string) string {
 	if identifier == "" {
 		return ""

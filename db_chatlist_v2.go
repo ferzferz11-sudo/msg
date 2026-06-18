@@ -72,7 +72,8 @@ func MigrateChatListV2(db *sql.DB) {
 				END IF;
 			END IF;
 		END $$`,
-		// Make username nullable (keep for backward compat) — only if PK is not on username
+		// Deprecated: Make username nullable (keep for backward compat with old queries/data).
+		// The username column is no longer part of PK. Will be removed when all data migrates to user_id.
 		`DO $$ BEGIN
 			IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='user_chat_metadata' AND column_name='username') THEN
 				IF NOT EXISTS (SELECT 1 FROM information_schema.constraint_column_usage WHERE table_name='user_chat_metadata' AND column_name='username' AND constraint_name LIKE '%pkey%') THEN
@@ -297,17 +298,18 @@ func MigratePinnedMessages(db *sql.DB) {
 	queries := []string{
 		`CREATE TABLE IF NOT EXISTS pinned_messages (
 			user_id UUID NOT NULL,
-			room_id UUID NOT NULL,
+			room_id VARCHAR(255) NOT NULL,
 			message_id VARCHAR(255) NOT NULL,
 			pinned_at BIGINT NOT NULL DEFAULT 0,
 			PRIMARY KEY (user_id, room_id, message_id)
 		)`,
+		`DO $$ BEGIN ALTER TABLE pinned_messages ALTER COLUMN room_id TYPE VARCHAR(255) USING room_id::text; EXCEPTION WHEN duplicate_column THEN NULL; END $$`,
 		`CREATE INDEX IF NOT EXISTS idx_pinned_messages_room ON pinned_messages(user_id, room_id)`,
 	}
 
 	for _, q := range queries {
 		if _, err := db.Exec(q); err != nil {
-			if !strings.Contains(err.Error(), "already exists") {
+			if !strings.Contains(err.Error(), "already exists") && !strings.Contains(err.Error(), "already has type") {
 				logger.Errorf("PinnedMessages migration error: %v", err)
 			}
 		}
@@ -333,7 +335,7 @@ func (db *DB) PinMessage(userID, chatID, messageID string) error {
 	err = db.QueryRow(`
 		SELECT EXISTS(
 			SELECT 1 FROM messages
-			WHERE id = $1 AND room_id = $2
+			WHERE message_id = $1 AND room_id = $2
 		)`, messageID, chatID).Scan(&msgExists)
 	if err != nil || !msgExists {
 		return fmt.Errorf("message not found in this chat")
@@ -341,7 +343,7 @@ func (db *DB) PinMessage(userID, chatID, messageID string) error {
 
 	_, err = db.Exec(`
 		INSERT INTO pinned_messages (user_id, room_id, message_id, pinned_at)
-		VALUES ($1::uuid, $2::uuid, $3, $4)
+		VALUES ($1::uuid, $2, $3, $4)
 		ON CONFLICT (user_id, room_id, message_id) DO NOTHING`,
 		userID, chatID, messageID, time.Now().Unix())
 	return err
@@ -351,7 +353,7 @@ func (db *DB) PinMessage(userID, chatID, messageID string) error {
 func (db *DB) UnPinMessage(userID, chatID, messageID string) error {
 	_, err := db.Exec(`
 		DELETE FROM pinned_messages
-		WHERE user_id = $1::uuid AND room_id = $2::uuid AND message_id = $3`,
+		WHERE user_id = $1::uuid AND room_id = $2 AND message_id = $3`,
 		userID, chatID, messageID)
 	return err
 }
@@ -361,8 +363,8 @@ func (db *DB) GetPinnedMessages(userID, chatID string) ([]PinnedMessageRow, erro
 	rows, err := db.Query(`
 		SELECT pm.message_id, pm.pinned_at, m.user, m.text, m.created_at
 		FROM pinned_messages pm
-		JOIN messages m ON m.id = pm.message_id AND m.room_id = pm.room_id
-		WHERE pm.user_id = $1::uuid AND pm.room_id = $2::uuid
+		JOIN messages m ON m.message_id = pm.message_id AND m.room_id = pm.room_id
+		WHERE pm.user_id = $1::uuid AND pm.room_id = $2
 		ORDER BY pm.pinned_at DESC`,
 		userID, chatID)
 	if err != nil {
@@ -389,7 +391,7 @@ func (db *DB) IsMessagePinned(userID, chatID, messageID string) bool {
 	err := db.QueryRow(`
 		SELECT EXISTS(
 			SELECT 1 FROM pinned_messages
-			WHERE user_id = $1::uuid AND room_id = $2::uuid AND message_id = $3
+			WHERE user_id = $1::uuid AND room_id = $2 AND message_id = $3
 		)`, userID, chatID, messageID).Scan(&exists)
 	if err != nil {
 		return false

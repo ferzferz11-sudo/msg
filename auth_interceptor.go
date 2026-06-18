@@ -37,7 +37,8 @@ func AuthInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServe
 		return handler(ctx, req)
 	}
 
-	// Fallback: v1 username-based auth from gRPC metadata
+	// Deprecated fallback: v1 username-based auth from gRPC metadata.
+	// Will be removed when all clients are migrated to v2 JWT.
 	if userID, username := extractUsernameFromMetadata(ctx); userID != "" || username != "" {
 		if userID == "" && username != "" {
 			// Resolve username → UUID
@@ -63,8 +64,9 @@ func AuthStreamInterceptor(srv interface{}, ss grpc.ServerStream, info *grpc.Str
 		return handler(srv, ss)
 	}
 
-	// Legacy streams (v1 clients without JWT): Chat, Typing, CallSession
-	// These streams handle auth internally (password in first message / username-based)
+	// Legacy streams (v1 clients without JWT): Chat, Typing, CallSession.
+	// Deprecated: these streams handle auth internally (password in first message / username-based).
+	// Will be removed when all clients are migrated to v2 JWT.
 	switch info.FullMethod {
 	case "/messenger.ChatService/Chat",
 		"/messenger.ChatService/Typing",
@@ -122,6 +124,7 @@ func GetDeviceID(ctx context.Context) string {
 
 // ResolveUserID returns userID from context, or resolves username via DB if needed.
 // Handlers should call this instead of GetUserID when they need a UUID.
+// Deprecated: v1 username fallback. Use GetUserID() directly for v2-only handlers.
 func ResolveUserID(ctx context.Context, db *DB) string {
 	if uid := GetUserID(ctx); uid != "" {
 		return uid
@@ -166,6 +169,7 @@ func extractAndValidateToken(ctx context.Context) (*authClaims, error) {
 }
 
 // extractUsernameFromMetadata extracts username/user_id from gRPC metadata for v1 clients
+// Deprecated: v1 clients no longer supported. Will be removed when all clients use JWT.
 func extractUsernameFromMetadata(ctx context.Context) (userID, username string) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {

@@ -1,10 +1,28 @@
 # Lava Messenger — Интеграционная сессия
 
-**Текущая версия:** v1.2.0.3 (сервер dev) / v1.1.3.37 (Android)
+**Текущая версия:** v1.2.0.5 (сервер prod/dev) / v1.1.3.37 (Android)
 **Обновлено:** 2026-06-18 (сессия 36)
-**Тег:** v1.2.0.3 (не выпущен)
+**Тег:** v1.2.0.5
 **Ветка сервера:** feat/1.2.0.x
 **Ветка Android:** feat/1.1.3.x
+
+---
+
+## Deprecated v1 compat methods (удалить в v1.3 — много устаревших клиентов)
+
+| Файл | Метод/Код | Описание | Замена |
+|------|-----------|----------|--------|
+| `auth_service.go` | `authServer` (v1 SignIn/SignUp) | V1 авторизация без JWT | `authServerV2` (AuthServiceV2) |
+| `auth_interceptor.go` | `extractUsernameFromMetadata` | V1 fallback по username из gRPC metadata | JWT Bearer token |
+| `auth_interceptor.go` | `AuthInterceptor` v1 fallback (lines 40-54) | Извлечение username/user_id из metadata при отсутствии JWT | Использовать v2 JWT |
+| `auth_interceptor.go` | `AuthStreamInterceptor` bypass (Chat/Typing/CallSession) | V1 аутентификация по паролю внутри потока | JWT в metadata |
+| `auth_interceptor.go` | `ResolveUserID` | Username→UUID fallback через DB | `GetUserID(ctx)` |
+| `server.go` | `resolveUserId` / `resolveUsername` | Нормализаторы v1→v2 | UUID идентификаторы |
+| `server_chats.go` | `GetChats` | V1 эндпоинт чат-листа | `GetChatsV2` |
+| `hub.go` | `IsUserOnline` username fallback | Проверка по username для v1 | UUID-only проверка |
+| `hub.go` | `BroadcastCall` username matching | Маршрутизация по username | UUID-only маршрутизация |
+| `db_chatlist_v2.go` | `user_chat_metadata.username` | Nullable колонка, была PK | `user_id` (UUID PK) |
+| `server_chat.go` | Chat stream v1 password auth (line 88) | Legacy парольная аутентификация в потоке | JWT в первом сообщении |
 
 ---
 

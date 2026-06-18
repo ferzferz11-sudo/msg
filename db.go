@@ -565,34 +565,60 @@ func (db *DB) UpdateUsername(old, new string) error {
 	}
 
 	// 2. Update message history
-	tx.Exec(`UPDATE messages SET username=$1 WHERE username=$2`, new, old)
-	tx.Exec(`UPDATE messages SET replied_to_user=$1 WHERE replied_to_user=$2`, new, old)
+	if _, err = tx.Exec(`UPDATE messages SET username=$1 WHERE username=$2`, new, old); err != nil {
+		return err
+	}
+	if _, err = tx.Exec(`UPDATE messages SET replied_to_user=$1 WHERE replied_to_user=$2`, new, old); err != nil {
+		return err
+	}
 
 	// 3. Update reactions
-	tx.Exec(`UPDATE reactions SET username=$1 WHERE username=$2`, new, old)
+	if _, err = tx.Exec(`UPDATE reactions SET username=$1 WHERE username=$2`, new, old); err != nil {
+		return err
+	}
 
 	// 4. Update chats (creator and participants list)
-	tx.Exec(`UPDATE chats SET creator_username=$1 WHERE creator_username=$2`, new, old)
+	if _, err = tx.Exec(`UPDATE chats SET creator_username=$1 WHERE creator_username=$2`, new, old); err != nil {
+		return err
+	}
 	// Update participants JSON array: replace old username with new one
 	// Using jsonb_set for reliable replacement if the column was jsonb, but it's text.
 	// We'll use string replacement for simplicity as it's stored as ["user1", "user2"]
-	tx.Exec(`UPDATE chats SET participants = REPLACE(participants, '"' || $2 || '"', '"' || $1 || '"') WHERE participants LIKE '%' || '"' || $2 || '"' || '%'`, new, old)
+	if _, err = tx.Exec(`UPDATE chats SET participants = REPLACE(participants, '"' || $2 || '"', '"' || $1 || '"') WHERE participants LIKE '%' || '"' || $2 || '"' || '%'`, new, old); err != nil {
+		return err
+	}
 
 	// 5. Update metadata and tokens
-	tx.Exec(`UPDATE user_chat_metadata SET username=$1 WHERE username=$2`, new, old)
-	tx.Exec(`UPDATE user_tokens SET username=$1 WHERE username=$2`, new, old)
+	if _, err = tx.Exec(`UPDATE user_chat_metadata SET username=$1 WHERE username=$2`, new, old); err != nil {
+		return err
+	}
+	if _, err = tx.Exec(`UPDATE user_tokens SET username=$1 WHERE username=$2`, new, old); err != nil {
+		return err
+	}
 
 	// 6. Update themes
-	tx.Exec(`UPDATE user_themes SET username=$1 WHERE username=$2`, new, old)
+	if _, err = tx.Exec(`UPDATE user_themes SET username=$1 WHERE username=$2`, new, old); err != nil {
+		return err
+	}
 
 	// 7. Update drafts and mutes
-	tx.Exec(`UPDATE draft_messages SET username=$1 WHERE username=$2`, new, old)
-	tx.Exec(`UPDATE draft_messages SET replied_to_user=$1 WHERE replied_to_user=$2`, new, old)
-	tx.Exec(`UPDATE muted_chats SET username=$1 WHERE username=$2`, new, old)
+	if _, err = tx.Exec(`UPDATE draft_messages SET username=$1 WHERE username=$2`, new, old); err != nil {
+		return err
+	}
+	if _, err = tx.Exec(`UPDATE draft_messages SET replied_to_user=$1 WHERE replied_to_user=$2`, new, old); err != nil {
+		return err
+	}
+	if _, err = tx.Exec(`UPDATE muted_chats SET username=$1 WHERE username=$2`, new, old); err != nil {
+		return err
+	}
 
 	// 8. Update contacts (both as owner and as a contact for others)
-	tx.Exec(`UPDATE contacts SET username=$1 WHERE username=$2`, new, old)
-	tx.Exec(`UPDATE contacts SET contact_username=$1 WHERE contact_username=$2`, new, old)
+	if _, err = tx.Exec(`UPDATE contacts SET username=$1 WHERE username=$2`, new, old); err != nil {
+		return err
+	}
+	if _, err = tx.Exec(`UPDATE contacts SET contact_username=$1 WHERE contact_username=$2`, new, old); err != nil {
+		return err
+	}
 
 	return tx.Commit()
 }

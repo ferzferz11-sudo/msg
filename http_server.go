@@ -106,10 +106,87 @@ func StartHTTPServer(port string) {
 		serveFileHandler(w, r, "/audio/", audioPath)
 	})
 
+	srv := &http.Server{
+		Addr:    "0.0.0.0:" + port,
+		Handler: nil,
+	}
+
 	logger.Infof("HTTP server started on port %s", port)
-	if err := http.ListenAndServe("0.0.0.0:"+port, nil); err != nil {
+	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		logger.Errorf("HTTP server error: %v", err)
 	}
+}
+
+func StartHTTPServerAndReturn(port string) *http.Server {
+	// Ensure directories exist
+	os.MkdirAll(avatarsPath, 0755)
+	os.MkdirAll(imagesPath, 0755)
+	os.MkdirAll(filesPath, 0755)
+	os.MkdirAll(backgroundsPath, 0755)
+	os.MkdirAll(audioPath, 0755)
+
+	http.HandleFunc("/upload-avatar", uploadAvatarHandler)
+	http.HandleFunc("/upload-image", uploadImageHandler)
+	http.HandleFunc("/upload-file", uploadFileHandler)
+	http.HandleFunc("/upload-background", uploadBackgroundHandler)
+	http.HandleFunc("/upload-audio", uploadAudioHandler)
+
+	// TURN credentials endpoint
+	http.HandleFunc("/turn-credentials", turnCredentialsHandler)
+
+	// Health check endpoint
+	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintf(w, `{"status":"ok","version":"%s","time":"%s"}`, ServerVersion, time.Now().Format(time.RFC3339))
+	})
+
+	// Server info endpoint — returns service versions for client capability negotiation
+	http.HandleFunc("/info", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		info := map[string]interface{}{
+			"version":  ServerVersion,
+			"time":     time.Now().Format(time.RFC3339),
+			"services": map[string]string{
+				"auth":     AuthServiceVersion,
+				"chat":     ChatServiceVersion,
+				"profile":  ProfileServiceVersion,
+				"ai":       AIServiceVersion,
+				"files":    FileServiceVersion,
+				"push":     PushServiceVersion,
+			},
+		}
+		json.NewEncoder(w).Encode(info)
+	})
+
+	http.HandleFunc("/avatars/", func(w http.ResponseWriter, r *http.Request) {
+		serveFileHandler(w, r, "/avatars/", avatarsPath)
+	})
+	http.HandleFunc("/images/", func(w http.ResponseWriter, r *http.Request) {
+		serveFileHandler(w, r, "/images/", imagesPath)
+	})
+	http.HandleFunc("/files/", func(w http.ResponseWriter, r *http.Request) {
+		serveFileHandler(w, r, "/files/", filesPath)
+	})
+	http.HandleFunc("/background/", func(w http.ResponseWriter, r *http.Request) {
+		serveFileHandler(w, r, "/background/", backgroundsPath)
+	})
+	http.HandleFunc("/audio/", func(w http.ResponseWriter, r *http.Request) {
+		serveFileHandler(w, r, "/audio/", audioPath)
+	})
+
+	srv := &http.Server{
+		Addr:    "0.0.0.0:" + port,
+		Handler: nil,
+	}
+
+	logger.Infof("HTTP server started on port %s", port)
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			logger.Errorf("HTTP server error: %v", err)
+		}
+	}()
+
+	return srv
 }
 
 func StartAPKServer(port string) {

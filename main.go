@@ -82,6 +82,7 @@ func main() {
 	db, err := ConnectDB()
 	if err != nil {
 		logger.Errorf("Failed to connect to database: %v", err)
+		return
 	}
 	// Ensure database connection is closed when the application shuts down
 	defer func() {
@@ -209,12 +210,12 @@ func main() {
 		}
 	}()
 
-	// Start HTTP server for avatar uploads in a goroutine
+	// Start HTTP server for avatar uploads
 	httpPort := os.Getenv("HTTP_PORT")
 	if httpPort == "" {
 		httpPort = "8082"
 	}
-	go StartHTTPServer(httpPort)
+	httpSrv := StartHTTPServerAndReturn(httpPort)
 
 	// Graceful shutdown on SIGINT/SIGTERM
 	go func() {
@@ -222,6 +223,19 @@ func main() {
 		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 		sig := <-sigCh
 		logger.Infof("Received signal %v, shutting down gracefully...", sig)
+
+		// Shutdown HTTP server first (drain in-flight requests)
+		if httpSrv != nil {
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			if err := httpSrv.Shutdown(ctx); err != nil {
+				logger.Warnf("HTTP server shutdown error: %v", err)
+			} else {
+				logger.Info("HTTP server stopped")
+			}
+		}
+
+		// Shutdown gRPC server
 		s.GracefulStop()
 	}()
 

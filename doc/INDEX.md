@@ -42,6 +42,12 @@
 | `TESTING.md` | Модульные тесты |
 | `RELEASE.md` | Процесс релиза |
 
+### Deprecated (v1 compat)
+
+Секция deprecated методов в `INTEGRATION_SESSION.md` (таблица в начале файла).
+Все v1 compat методы помечены `// Deprecated:` в коде.
+Будут удалены в v1.3 (много устаревших клиентов).
+
 ---
 
 ## Правила

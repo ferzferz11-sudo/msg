@@ -1,5 +1,35 @@
 # Лава — Server Changelog
 
+## [1.2.0.5] - 2026-06-18
+
+### Исправления
+- **pinned_messages** — `room_id` тип изменён с `UUID` на `VARCHAR(255)` (реальные chat ID вида `Ebiker_ferz_direct_1781341380`, не UUID)
+- **pinned_messages** — миграция `ALTER COLUMN room_id TYPE VARCHAR(255) USING room_id::text` для существующих данных
+- **GetPinnedMessages** — JOIN исправлен: `m.id = pm.message_id` → `m.message_id = pm.message_id` (`messages.id` — integer PK, `messages.message_id` — varchar)
+- **PinMessage** — проверка существования сообщения по `message_id` вместо `id` (соответствует client UUID)
+- **PinMessage/UnPinMessage/GetPinnedMessages/IsMessagePinned** — убран `::uuid` каст для `room_id`
+
+### Стабильность (critical fixes)
+- **main.go** — сервер останавливается при падении БД (ранее работал с nil DB → паника)
+- **server_chat.go** — type assertion `data["start_time"].(float64)` заменён на safe check с fallback → нет паники при кривом JSON от клиента
+- **db.go** — `UpdateUsername` транзакция: все `tx.Exec()` проверяют ошибки → нет partial updates при сбое
+- **main.go + http_server.go** — HTTP сервер шатдаунится при SIGTERM (added `StartHTTPServerAndReturn` + `httpSrv.Shutdown`)
+- **server_chat.go** — `defer recover()` добавлен в Chat, Typing, CallSession → паники в stream handlers больше не крашат горутины
+
+### Deprecated (v1 compat, будет удалено в 1.3)
+- `authServer` (v1 SignIn/SignUp) — заменён на `authServerV2` (AuthServiceV2)
+- `extractUsernameFromMetadata` — v1 fallback по username из gRPC metadata
+- `AuthInterceptor` v1 fallback — извлечение username/user_id из metadata при отсутствии JWT
+- `AuthStreamInterceptor` bypass для legacy streams (Chat/Typing/CallSession) — v1 аутентификация по паролю внутри потока
+- `ResolveUserID` — username→UUID fallback через DB
+- `resolveUserId` / `resolveUsername` — нормализаторы идентификаторов v1→v2
+- `GetChats` — v1 эндпоинт чат-листа, клиенты должны использовать `GetChatsV2`
+- `Hub.IsUserOnline` username fallback — проверка по username для v1 клиентов
+- `Hub.BroadcastCall` username matching — маршрутизация вызовов по username для v1
+- `user_chat_metadata.username` — nullable колонка, будет удалена после миграции всех данных на `user_id`
+
+---
+
 ## [1.2.0.4] - 2026-06-18
 
 ### Безопасность (второй раунд фиксов)
