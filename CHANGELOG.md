@@ -13,6 +13,9 @@
 - **Firebase credentials** — удалены из git tracking (`.gitignore` уже содержит `*-firebase-adminsdk-*.json`)
 - **auth/user_jwt.go** — удалён неиспользуемый файл (дублировал `auth_jwt.go`)
 
+### Исправлено
+- **db_chatlist_v2.go** — миграция `user_chat_metadata` проверяет наличие PK перед `DROP NOT NULL` на username (fix: column "username" is in a primary key)
+
 ### Документация
 - **OPTIMIZATION_PLAN.md** — план оптимизации с прогрессом по фазам
 - **PROMPT.md** — переписан по этапам реализации
