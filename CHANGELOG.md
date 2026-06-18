@@ -1,5 +1,25 @@
 # Лава — Server Changelog
 
+## [1.2.0.3] - 2026-06-18
+
+### Безопасность (критические фиксы)
+- **Path traversal fix** — `http_server.go:serveFileHandler` защищён от `../` атак через `filepath.Clean` + prefix check
+- **JWT fallback secret** — `auth/jwt.go:getTokenSecret()` теперь `log.Fatal` если `JWT_SECRET` не задан или < 32 байт (убран хардкод)
+- **TURN credentials** — `http_server.go` теперь читает `TURN_SERVER_HOST` и `TURN_SHARED_SECRET` из env (было в коде)
+- **Hardcoded admin** — `db.go:ConnectDB` теперь one-time: проверяет `is_super_admin` перед UPDATE (было каждый старт)
+- **MarkReadAndCheck** — исправлена UPSERT логика: UPDATE first → INSERT если нет строк (ON CONFLICT ломался из-за отсутствия unique constraint)
+- **User impersonation** — все 18 AI handlers теперь используют `GetUserID(ctx)` вместо `req.UserId` из запроса
+- **Secret chat caller** — `getCallerUsernameSecret` теперь использует `GetUserID(ctx)` вместо перебора hub clients
+- **Firebase credentials** — удалены из git tracking (`.gitignore` уже содержит `*-firebase-adminsdk-*.json`)
+- **auth/user_jwt.go** — удалён неиспользуемый файл (дублировал `auth_jwt.go`)
+
+### Документация
+- **OPTIMIZATION_PLAN.md** — план оптимизации с прогрессом по фазам
+- **PROMPT.md** — переписан по этапам реализации
+- **INDEX.md** — обновлён индекс документации
+
+---
+
 ## [1.2.0.2] - 2026-06-16
 
 ### Новое: FCM Push Notifications uplevel
