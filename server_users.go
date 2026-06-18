@@ -9,8 +9,8 @@ import (
 )
 
 func (s *server) GetAllUsers(ctx context.Context, req *gen.GetAllUsersRequest) (*gen.GetAllUsersResponse, error) {
-	_ = ctx // ctx is required by gRPC interface but not used here
-	_ = req // req is required by gRPC interface but not used here
+	_ = ctx
+	_ = req
 	users, err := s.db.GetAllUsers()
 	if err != nil {
 		logger.Errorf("Error fetching all users: %v", err)
@@ -33,7 +33,6 @@ func (s *server) GetAllUsers(ctx context.Context, req *gen.GetAllUsersRequest) (
 		})
 	}
 
-	// Add server time to response for admin panel
 	serverTime := timestamppb.Now()
 
 	return &gen.GetAllUsersResponse{
@@ -42,14 +41,12 @@ func (s *server) GetAllUsers(ctx context.Context, req *gen.GetAllUsersRequest) (
 	}, nil
 }
 
-func (s *server) UpdateProfile(_ context.Context, req *gen.UpdateProfileRequest) (*gen.UpdateProfileResponse, error) {
-	username := req.Username
-	if req.UserId != "" {
-		resolvedUsername := s.resolveUsername(req.UserId)
-		if resolvedUsername != "" {
-			username = resolvedUsername
-		}
+func (s *server) UpdateProfile(ctx context.Context, req *gen.UpdateProfileRequest) (*gen.UpdateProfileResponse, error) {
+	userID := GetUserID(ctx)
+	if userID == "" {
+		userID = req.UserId
 	}
+	username := resolveDisplayName(s.db, userID)
 
 	err := s.db.UpdateProfile(username, req.Bio, req.Status)
 	if err != nil {
@@ -68,7 +65,6 @@ func (s *server) GetUserProfile(_ context.Context, req *gen.GetUserProfileReques
 	}
 	var err error
 
-	// Если передан user_id, используем его, иначе username (для обратной совместимости)
 	if req.UserId != "" {
 		profile, err = s.db.GetUserProfileById(req.UserId)
 		if err != nil {

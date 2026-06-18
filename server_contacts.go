@@ -5,69 +5,94 @@ import (
 	"context"
 )
 
-func (s *server) AddContact(_ context.Context, req *gen.AddContactRequest) (*gen.AddContactResponse, error) {
-	username := req.Username
-	if req.UserId != "" {
-		resolved := s.resolveUsername(req.UserId)
-		if resolved != "" {
-			username = resolved
-		}
+func (s *server) AddContact(ctx context.Context, req *gen.AddContactRequest) (*gen.AddContactResponse, error) {
+	userID := GetUserID(ctx)
+	if userID == "" {
+		userID = req.UserId
+	}
+	contactID := req.UserId
+	if contactID == "" {
+		contactID = req.ContactUsername
 	}
 
-	err := s.db.AddContact(username, req.ContactUsername)
+	var err error
+	if isUUID(userID) && isUUID(contactID) {
+		err = s.db.AddContactByUserID(userID, contactID)
+	} else {
+		username := resolveDisplayName(s.db, userID)
+		err = s.db.AddContact(username, req.ContactUsername)
+	}
+
 	if err != nil {
-		logger.Infof("Failed to add contact %s for %s: %v", req.ContactUsername, username, err)
+		logger.Infof("Failed to add contact %s for %s: %v", contactID, userID, err)
 		return &gen.AddContactResponse{Success: false, Message: err.Error()}, nil
 	}
-	logger.Infof("User %s added contact %s", username, req.ContactUsername)
+	logger.Infof("User %s added contact %s", userID, contactID)
 	return &gen.AddContactResponse{Success: true, Message: "Contact added successfully"}, nil
 }
 
-func (s *server) RemoveContact(_ context.Context, req *gen.RemoveContactRequest) (*gen.RemoveContactResponse, error) {
-	username := req.Username
-	if req.UserId != "" {
-		resolved := s.resolveUsername(req.UserId)
-		if resolved != "" {
-			username = resolved
-		}
+func (s *server) RemoveContact(ctx context.Context, req *gen.RemoveContactRequest) (*gen.RemoveContactResponse, error) {
+	userID := GetUserID(ctx)
+	if userID == "" {
+		userID = req.UserId
+	}
+	contactID := req.UserId
+	if contactID == "" {
+		contactID = req.ContactUsername
 	}
 
-	err := s.db.RemoveContact(username, req.ContactUsername)
+	var err error
+	if isUUID(userID) && isUUID(contactID) {
+		err = s.db.RemoveContactByUserID(userID, contactID)
+	} else {
+		username := resolveDisplayName(s.db, userID)
+		err = s.db.RemoveContact(username, req.ContactUsername)
+	}
+
 	if err != nil {
-		logger.Infof("Failed to remove contact %s for %s: %v", req.ContactUsername, username, err)
+		logger.Infof("Failed to remove contact %s for %s: %v", contactID, userID, err)
 		return &gen.RemoveContactResponse{Success: false, Message: err.Error()}, nil
 	}
-	logger.Infof("User %s removed contact %s", username, req.ContactUsername)
+	logger.Infof("User %s removed contact %s", userID, contactID)
 	return &gen.RemoveContactResponse{Success: true, Message: "Contact removed successfully"}, nil
 }
 
-func (s *server) GetContacts(_ context.Context, req *gen.GetContactsRequest) (*gen.GetContactsResponse, error) {
-	username := req.Username
-	if req.UserId != "" {
-		resolved := s.resolveUsername(req.UserId)
-		if resolved != "" {
-			username = resolved
-		}
+func (s *server) GetContacts(ctx context.Context, req *gen.GetContactsRequest) (*gen.GetContactsResponse, error) {
+	userID := GetUserID(ctx)
+	if userID == "" {
+		userID = req.UserId
 	}
 
-	contacts, err := s.db.GetContacts(username)
+	var contacts []string
+	var err error
+	if isUUID(userID) {
+		contacts, err = s.db.GetContactsByUserID(userID)
+	} else {
+		contacts, err = s.db.GetContacts(userID)
+	}
+
 	if err != nil {
-		logger.Infof("Failed to get contacts for %s: %v", username, err)
+		logger.Infof("Failed to get contacts for %s: %v", userID, err)
 		return &gen.GetContactsResponse{Contacts: nil}, nil
 	}
 	return &gen.GetContactsResponse{Contacts: contacts}, nil
 }
 
-func (s *server) GetChatListVersion(_ context.Context, req *gen.GetChatListVersionRequest) (*gen.GetChatListVersionResponse, error) {
-	username := req.Username
-	if req.UserId != "" {
-		resolved := s.resolveUsername(req.UserId)
-		if resolved != "" {
-			username = resolved
-		}
+func (s *server) GetChatListVersion(ctx context.Context, req *gen.GetChatListVersionRequest) (*gen.GetChatListVersionResponse, error) {
+	userID := GetUserID(ctx)
+	if userID == "" {
+		userID = req.UserId
 	}
 
-	version, err := s.db.GetUserChatListVersion(username)
+	var version int64
+	var err error
+	if isUUID(userID) {
+		username, _ := s.db.GetUserByID(userID)
+		version, err = s.db.GetUserChatListVersion(username)
+	} else {
+		version, err = s.db.GetUserChatListVersion(userID)
+	}
+
 	if err != nil {
 		return &gen.GetChatListVersionResponse{Version: 0}, nil
 	}

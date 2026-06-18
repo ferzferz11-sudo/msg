@@ -10,7 +10,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// getCallerUsernameSecret получает имя вызывающего клиента из auth context
 func (s *server) getCallerUsernameSecret(ctx context.Context) string {
 	userID := GetUserID(ctx)
 	if userID == "" {
@@ -23,8 +22,12 @@ func (s *server) getCallerUsernameSecret(ctx context.Context) string {
 	return userID
 }
 
-// CreateSecretChat создает новый секретный чат (E2EE) между двумя пользователями
 func (s *server) CreateSecretChat(ctx context.Context, req *gen.CreateSecretChatRequest) (*gen.CreateSecretChatResponse, error) {
+	callerUsername := s.getCallerUsernameSecret(ctx)
+	if callerUsername == "" {
+		return &gen.CreateSecretChatResponse{Success: false, Message: "Not authenticated"}, fmt.Errorf("not authenticated")
+	}
+
 	targetUser := req.TargetUsername
 	if req.TargetUserId != "" {
 		if resolved := s.resolveUsername(req.TargetUserId); resolved != "" {
@@ -32,14 +35,7 @@ func (s *server) CreateSecretChat(ctx context.Context, req *gen.CreateSecretChat
 		}
 	}
 
-	callerUsername := s.getCallerUsernameSecret(ctx)
-	if callerUsername == "" {
-		return &gen.CreateSecretChatResponse{Success: false, Message: "Not authenticated"}, fmt.Errorf("not authenticated")
-	}
-
-	// Version check: secret chats require client >= 1.0.7.1
 	if req.ClientVersion != "" && compareVersions(req.ClientVersion, "1.0.7.1") < 0 {
-// 		log.Printf("Secret chat rejected: client %s is too old (need >= 1.0.7.1)", req.ClientVersion)
 		return &gen.CreateSecretChatResponse{Success: false, Message: "Secret chats require client version 1.0.7.1 or higher"}, fmt.Errorf("client version too old")
 	}
 
@@ -47,7 +43,6 @@ func (s *server) CreateSecretChat(ctx context.Context, req *gen.CreateSecretChat
 	participants := []string{callerUsername, targetUser}
 	err := s.db.CreateSecretChat(chatID, callerUsername+" 🔒 "+targetUser, callerUsername, participants)
 	if err != nil {
-// 		log.Printf("Failed to create secret chat: %v", err)
 		return &gen.CreateSecretChatResponse{Success: false, Message: "Failed to create secret chat"}, err
 	}
 
@@ -56,7 +51,6 @@ func (s *server) CreateSecretChat(ctx context.Context, req *gen.CreateSecretChat
 		_ = s.db.StoreSecretChatKey(chatID, userId, req.PublicKey)
 	}
 
-// 	log.Printf("Secret chat created: %s (creator: %s, peer: %s)", chatID, callerUsername, targetUser)
 	return &gen.CreateSecretChatResponse{
 		ChatId:  chatID,
 		Success: true,
@@ -64,14 +58,12 @@ func (s *server) CreateSecretChat(ctx context.Context, req *gen.CreateSecretChat
 	}, nil
 }
 
-// ExchangeSecretKey обменивается публичными ключами для E2EE
 func (s *server) ExchangeSecretKey(ctx context.Context, req *gen.ExchangeSecretKeyRequest) (*gen.ExchangeSecretKeyResponse, error) {
 	callerUsername := s.getCallerUsernameSecret(ctx)
 	if callerUsername == "" {
 		return &gen.ExchangeSecretKeyResponse{Success: false}, fmt.Errorf("not authenticated")
 	}
 
-	// Verify caller is a participant of this secret chat
 	chat, err := s.db.GetChat(req.ChatId)
 	if err != nil {
 		return &gen.ExchangeSecretKeyResponse{Success: false}, fmt.Errorf("chat not found")
@@ -93,7 +85,6 @@ func (s *server) ExchangeSecretKey(ctx context.Context, req *gen.ExchangeSecretK
 	userId, _ := s.db.GetUserIdByUsername(callerUsername)
 	if req.PublicKey != "" && userId != "" {
 		if err := s.db.StoreSecretChatKey(req.ChatId, userId, req.PublicKey); err != nil {
-// 			log.Printf("Failed to store secret chat key: %v", err)
 			return &gen.ExchangeSecretKeyResponse{Success: false}, err
 		}
 	}
@@ -115,10 +106,8 @@ func (s *server) ExchangeSecretKey(ctx context.Context, req *gen.ExchangeSecretK
 
 	if found && len(keys) >= 2 {
 		_ = s.db.SetSecretChatE2EEReady(req.ChatId, true)
-// 		log.Printf("E2EE ready for secret chat: %s", req.ChatId)
 	}
 
-// 	log.Printf("Secret key exchanged for chat: %s (user: %s, peer_found: %v)", req.ChatId, callerUsername, found)
 	return &gen.ExchangeSecretKeyResponse{
 		Success:       true,
 		PeerPublicKey: peerKey,
@@ -126,14 +115,12 @@ func (s *server) ExchangeSecretKey(ctx context.Context, req *gen.ExchangeSecretK
 	}, nil
 }
 
-// GetSecretChatKey получает публичный ключа партнера для E2EE
 func (s *server) GetSecretChatKey(ctx context.Context, req *gen.GetSecretChatKeyRequest) (*gen.GetSecretChatKeyResponse, error) {
 	callerUsername := s.getCallerUsernameSecret(ctx)
 	if callerUsername == "" {
 		return &gen.GetSecretChatKeyResponse{PeerHasKey: false}, fmt.Errorf("not authenticated")
 	}
 
-	// Verify caller is a participant of this secret chat
 	chat, err := s.db.GetChat(req.ChatId)
 	if err != nil {
 		return &gen.GetSecretChatKeyResponse{PeerHasKey: false}, fmt.Errorf("chat not found")
@@ -174,8 +161,6 @@ func (s *server) GetSecretChatKey(ctx context.Context, req *gen.GetSecretChatKey
 	}, nil
 }
 
-// compareVersions compares two semantic version strings (e.g. "1.0.7.1" vs "1.0.6.34")
-// Returns -1 if a < b, 0 if a == b, 1 if a > b
 func compareVersions(a, b string) int {
 	partsA := strings.Split(a, ".")
 	partsB := strings.Split(b, ".")

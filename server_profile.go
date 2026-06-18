@@ -1,48 +1,43 @@
 package main
 
 import (
-	"path/filepath"
-	"fmt"
 	"LavenderMessenger/gen"
 	"context"
+	"fmt"
+	"path/filepath"
 	"strings"
 )
 
-func (s *server) UpdateUsername(_ context.Context, req *gen.UpdateUsernameRequest) (*gen.UpdateUsernameResponse, error) {
-	oldUsername := req.OldUsername
-	if req.UserId != "" {
-		resolved := s.resolveUsername(req.UserId)
-		if resolved != "" {
-			oldUsername = resolved
-		}
+func (s *server) UpdateUsername(ctx context.Context, req *gen.UpdateUsernameRequest) (*gen.UpdateUsernameResponse, error) {
+	userID := GetUserID(ctx)
+	if userID == "" {
+		userID = req.UserId
 	}
+	username := resolveDisplayName(s.db, userID)
 
-	err := s.db.UpdateUsername(oldUsername, req.NewUsername)
+	err := s.db.UpdateUsername(username, req.NewUsername)
 	if err != nil {
-		logger.Infof("Failed to update username from %s to %s: %v", oldUsername, req.NewUsername, err)
+		logger.Infof("Failed to update username from %s to %s: %v", username, req.NewUsername, err)
 		return &gen.UpdateUsernameResponse{
 			Success: false,
 			Message: err.Error(),
 		}, err
 	}
 
-	logger.Infof("Username updated from %s to %s", oldUsername, req.NewUsername)
+	logger.Infof("Username updated from %s to %s", username, req.NewUsername)
 	return &gen.UpdateUsernameResponse{
 		Success: true,
 		Message: "Username updated successfully",
 	}, nil
 }
 
-func (s *server) UpdatePassword(_ context.Context, req *gen.UpdatePasswordRequest) (*gen.UpdatePasswordResponse, error) {
-	username := req.Username
-	if req.UserId != "" {
-		resolved := s.resolveUsername(req.UserId)
-		if resolved != "" {
-			username = resolved
-		}
+func (s *server) UpdatePassword(ctx context.Context, req *gen.UpdatePasswordRequest) (*gen.UpdatePasswordResponse, error) {
+	userID := GetUserID(ctx)
+	if userID == "" {
+		userID = req.UserId
 	}
+	username := resolveDisplayName(s.db, userID)
 
-	// Проверяем старый пароль
 	storedHash, err := s.db.GetUserPasswordHash(username)
 	if err != nil {
 		logger.Infof("Failed to get password hash for %s: %v", username, err)
@@ -60,7 +55,6 @@ func (s *server) UpdatePassword(_ context.Context, req *gen.UpdatePasswordReques
 		}, fmt.Errorf("old password verification failed")
 	}
 
-	// Обновляем пароль
 	err = s.db.UpdatePassword(username, req.NewPassword)
 	if err != nil {
 		logger.Infof("Failed to update password for %s: %v", username, err)
@@ -77,16 +71,13 @@ func (s *server) UpdatePassword(_ context.Context, req *gen.UpdatePasswordReques
 	}, nil
 }
 
-func (s *server) AdminUpdatePassword(_ context.Context, req *gen.AdminUpdatePasswordRequest) (*gen.AdminUpdatePasswordResponse, error) {
-	adminUsername := req.AdminUsername
-	if req.AdminUserId != "" {
-		resolved := s.resolveUsername(req.AdminUserId)
-		if resolved != "" {
-			adminUsername = resolved
-		}
+func (s *server) AdminUpdatePassword(ctx context.Context, req *gen.AdminUpdatePasswordRequest) (*gen.AdminUpdatePasswordResponse, error) {
+	adminUserID := GetUserID(ctx)
+	if adminUserID == "" {
+		adminUserID = req.AdminUserId
 	}
+	adminUsername := resolveDisplayName(s.db, adminUserID)
 
-	// Verify admin status
 	if !s.db.IsSuperAdmin(adminUsername) {
 		logger.Infof("Unauthorized AdminUpdatePassword attempt by %s", adminUsername)
 		return &gen.AdminUpdatePasswordResponse{
@@ -95,7 +86,6 @@ func (s *server) AdminUpdatePassword(_ context.Context, req *gen.AdminUpdatePass
 		}, nil
 	}
 
-	// Update password
 	err := s.db.UpdatePassword(req.TargetUsername, req.NewPassword)
 	if err != nil {
 		logger.Infof("Failed to admin-reset password for %s: %v", req.TargetUsername, err)
@@ -112,18 +102,16 @@ func (s *server) AdminUpdatePassword(_ context.Context, req *gen.AdminUpdatePass
 	}, nil
 }
 
-func (s *server) MarkRead(_ context.Context, req *gen.MarkReadRequest) (*gen.MarkReadResponse, error) {
+func (s *server) MarkRead(ctx context.Context, req *gen.MarkReadRequest) (*gen.MarkReadResponse, error) {
 	if strings.HasPrefix(req.RoomId, "favorites_") {
 		return &gen.MarkReadResponse{Success: true}, nil
 	}
 
-	username := req.Username
-	if req.UserId != "" {
-		resolvedUsername := s.resolveUsername(req.UserId)
-		if resolvedUsername != "" {
-			username = resolvedUsername
-		}
+	userID := GetUserID(ctx)
+	if userID == "" {
+		userID = req.UserId
 	}
+	username := resolveDisplayName(s.db, userID)
 
 	changed, err := s.db.MarkReadAndCheck(req.RoomId, username)
 	if err != nil {
@@ -133,7 +121,6 @@ func (s *server) MarkRead(_ context.Context, req *gen.MarkReadRequest) (*gen.Mar
 
 	if changed {
 		logger.Infof("Marked read for %s in room %s", username, req.RoomId)
-		// Broadcast read signal to the room
 		s.hub.Broadcast(&gen.Message{
 			User:   "SYSTEM",
 			Text:   "READ_ALL:" + username,
@@ -144,20 +131,15 @@ func (s *server) MarkRead(_ context.Context, req *gen.MarkReadRequest) (*gen.Mar
 	return &gen.MarkReadResponse{Success: true}, nil
 }
 
-func (s *server) UpdateAvatar(_ context.Context, req *gen.UpdateAvatarRequest) (*gen.UpdateAvatarResponse, error) {
-	username := req.Username
-	if req.UserId != "" {
-		resolvedUsername := s.resolveUsername(req.UserId)
-		if resolvedUsername != "" {
-			username = resolvedUsername
-		}
+func (s *server) UpdateAvatar(ctx context.Context, req *gen.UpdateAvatarRequest) (*gen.UpdateAvatarResponse, error) {
+	userID := GetUserID(ctx)
+	if userID == "" {
+		userID = req.UserId
 	}
+	username := resolveDisplayName(s.db, userID)
 
-	// 1. Get old avatar URLs for deletion
 	oldThumb, oldFull, err := s.db.GetUserAvatarWithFull(username)
 	if err == nil {
-		// Extract filenames from new URLs to avoid deleting newly uploaded files
-		// (when the same image is re-uploaded, the hash/filename stays the same)
 		newThumb := filepath.Base(req.AvatarUrl)
 		newFull := filepath.Base(req.FullAvatarUrl)
 		go func(t, f, nt, nf string) {
@@ -170,7 +152,6 @@ func (s *server) UpdateAvatar(_ context.Context, req *gen.UpdateAvatarRequest) (
 		}(oldThumb, oldFull, newThumb, newFull)
 	}
 
-	// 2. Save both thumbnail and full avatar URLs
 	err = s.db.UpdateAvatarWithFull(username, req.AvatarUrl, req.FullAvatarUrl)
 	if err != nil {
 		logger.Infof("Failed to update avatar for %s: %v", username, err)
@@ -182,13 +163,11 @@ func (s *server) UpdateAvatar(_ context.Context, req *gen.UpdateAvatarRequest) (
 }
 
 func (s *server) DeleteProfile(ctx context.Context, req *gen.DeleteProfileRequest) (*gen.DeleteProfileResponse, error) {
-	username := req.Username
-	if req.UserId != "" {
-		resolvedUsername := s.resolveUsername(req.UserId)
-		if resolvedUsername != "" {
-			username = resolvedUsername
-		}
+	userID := GetUserID(ctx)
+	if userID == "" {
+		userID = req.UserId
 	}
+	username := resolveDisplayName(s.db, userID)
 
 	if username == "" {
 		return &gen.DeleteProfileResponse{Success: false, Message: "Username or User ID is required"}, nil
@@ -202,7 +181,6 @@ func (s *server) DeleteProfile(ctx context.Context, req *gen.DeleteProfileReques
 		return &gen.DeleteProfileResponse{Success: false, Message: err.Error()}, nil
 	}
 
-	// Force disconnect the user if they are currently online
 	s.hub.BroadcastGlobal(&gen.Message{
 		User: "SYSTEM",
 		Text: "FORCE_DISCONNECT:" + username,

@@ -14,18 +14,21 @@ import (
 	"firebase.google.com/go/v4/messaging"
 )
 
-func (s *server) RegisterToken(_ context.Context, req *gen.TokenRequest) (*gen.TokenResponse, error) {
-	username := req.User
-	if req.UserId != "" {
-		resolved := s.resolveUsername(req.UserId)
-		if resolved != "" {
-			username = resolved
-		}
+func (s *server) RegisterToken(ctx context.Context, req *gen.TokenRequest) (*gen.TokenResponse, error) {
+	userID := GetUserID(ctx)
+	if userID == "" {
+		userID = req.UserId
 	}
 
-	err := s.db.SaveUserToken(username, req.Token, req.PushEnabled)
+	var err error
+	if isUUID(userID) {
+		err = s.db.SaveUserTokenByUserID(userID, req.Token, req.PushEnabled)
+	} else {
+		err = s.db.SaveUserToken(userID, req.Token, req.PushEnabled)
+	}
+
 	if err != nil {
-		logger.Infof("Failed to save token for %s: %v", username, err)
+		logger.Infof("Failed to save token for %s: %v", userID, err)
 		return &gen.TokenResponse{Success: false}, err
 	}
 
@@ -40,7 +43,7 @@ func (s *server) RegisterToken(_ context.Context, req *gen.TokenRequest) (*gen.T
 	}
 
 	s.logFCM("INFO", "Register: %s [%s] (Push for me: %s, Push from me: %v)",
-		username, displayToken, receiveStatus, req.PushEnabled)
+		userID, displayToken, receiveStatus, req.PushEnabled)
 	return &gen.TokenResponse{Success: true}, nil
 }
 
@@ -50,13 +53,11 @@ func (s *server) sendPushNotification(userId, username, title, body, roomID stri
 		return
 	}
 
-	// Skip push if user is actively connected via gRPC stream
 	if s.hub.IsUserOnline(userId, username) {
 		s.logFCM("INFO", "Skip %s: user is online", username)
 		return
 	}
 
-	// Проверяем, не замьючен ли чат для этого пользователя
 	mutedChats, err := s.db.GetMutedChats(username)
 	if err == nil {
 		for _, mutedRoomID := range mutedChats {
@@ -119,11 +120,10 @@ func (s *server) sendPushNotification(userId, username, title, body, roomID stri
 }
 
 func (s *server) saveConferenceSystemMessage(roomID, text, senderName, senderId string) {
-	msgId := "conf_" + roomID // Stable ID for live updates
+	msgId := "conf_" + roomID
 	createdAt := time.Now().UTC()
 	displayText := "📹 " + text
 
-	// Get participant count if active
 	participants := s.hub.GetConferenceParticipants(roomID)
 	if participants != nil && len(participants) > 0 {
 		displayText = fmt.Sprintf("📹 Конференция: %d участников. (Войти)", len(participants))
@@ -131,7 +131,6 @@ func (s *server) saveConferenceSystemMessage(roomID, text, senderName, senderId 
 		displayText = "📹 Конференция завершена"
 	}
 
-	// Save to DB using the performer's name instead of SYSTEM if available
 	user := "SYSTEM"
 	uid := ""
 	if senderName != "" {
@@ -139,17 +138,14 @@ func (s *server) saveConferenceSystemMessage(roomID, text, senderName, senderId 
 		uid = senderId
 	}
 
-	// Encrypt for database
 	encryptedText, _ := encrypt(displayText)
 
-	// Save to DB (now supports ON CONFLICT update)
 	err := s.db.SaveMessage(msgId, user, uid, encryptedText, createdAt, "", "", "", roomID, "", "[]", "", 0)
 	if err != nil {
 		logger.Infof("[CONF] Failed to save call system message: %v", err)
 		return
 	}
 
-	// Broadcast to the room
 	broadcastMsg := &gen.Message{
 		Id:        msgId,
 		User:      user,
@@ -178,7 +174,7 @@ func (s *server) broadcastConferenceStatus(roomID string) {
 	responseJSON, _ := json.Marshal(response)
 
 	msg := &gen.CallMessage{
-		Type:    gen.CallMessage_JOIN_CONFERENCE, // We reuse JOIN_CONFERENCE for status updates
+		Type:    gen.CallMessage_JOIN_CONFERENCE,
 		RoomId:  roomID,
 		Payload: string(responseJSON),
 	}
@@ -192,10 +188,8 @@ func (s *server) broadcastConferenceStatus(roomID string) {
 }
 
 func (s *server) sendConferencePush(targetUserID, text, roomID string, startTime time.Time) {
-	// Implementation for FCM push
 	logger.Infof("[PUSH] Sending conference invitation to %s: %s (at %v)", targetUserID, text, startTime)
 
-	// Construct push data
 	data := map[string]string{
 		"type":          "conference_invite",
 		"room_id":       roomID,
@@ -208,7 +202,6 @@ func (s *server) sendConferencePush(targetUserID, text, roomID string, startTime
 }
 
 func (s *server) sendPushInternal(targetUserID, title, body string, data map[string]string) {
-	// Look up token
 	token, err := s.db.GetUserTokenByUserID(targetUserID)
 	if err != nil || token == "" {
 		return
@@ -247,12 +240,9 @@ func (s *server) saveCallSystemMessage(u1, u2, icon, text, senderName, senderId 
 	}
 
 	msgId := uuid.New().String()
-	// Use UTC for consistent timing across regions
 	createdAt := time.Now().UTC()
 	displayText := icon + " " + text
 
-	// Save to DB using the performer's name instead of SYSTEM
-	// This ensures the message appears as a bubble on the correct side
 	encryptedText, _ := encrypt(displayText)
 	err = s.db.SaveMessage(msgId, senderName, senderId, encryptedText, createdAt, "", "", "", chatID, "", "[]", "", 0)
 	if err != nil {
@@ -260,7 +250,6 @@ func (s *server) saveCallSystemMessage(u1, u2, icon, text, senderName, senderId 
 		return
 	}
 
-	// Broadcast to the room
 	broadcastMsg := &gen.Message{
 		Id:        msgId,
 		User:      senderName,
@@ -275,10 +264,8 @@ func (s *server) saveCallSystemMessage(u1, u2, icon, text, senderName, senderId 
 func (s *server) handleAbruptDisconnect(userId string) {
 	logger.Infof("[CALL] Handling abrupt disconnect for %s", userId)
 
-	// Resolve userId to UUID if it's a username
 	resolvedUserId := s.resolveUserId(userId)
 
-	// Find all active/pending calls for this user
 	activeCalls, err := s.db.GetActiveCallsByUser(resolvedUserId)
 	if err != nil {
 		logger.Infof("[CALL] Failed to get active calls for %s: %v", userId, err)
@@ -286,16 +273,13 @@ func (s *server) handleAbruptDisconnect(userId string) {
 	}
 
 	for _, call := range activeCalls {
-		// Determine the other party
 		otherPartyId := call.CallerID
 		if call.CallerID == resolvedUserId {
 			otherPartyId = call.ReceiverID
 		}
 
-		// Mark call as completed (ended due to disconnect)
 		_ = s.db.UpdateCallStatus(call.CallID, "completed")
 
-		// Send HANGUP signal to the other party via call stream
 		hangupSignal := &gen.CallMessage{
 			CallId:     call.CallID,
 			SenderId:   resolvedUserId,
@@ -303,7 +287,6 @@ func (s *server) handleAbruptDisconnect(userId string) {
 			Type:       gen.CallMessage_HANGUP,
 		}
 
-		// Try to deliver via hub to the receiver's call stream
 		delivered := s.hub.BroadcastCall(hangupSignal)
 		if !delivered {
 			logger.Infof("[CALL] HANGUP not delivered to %s for call %s (receiver offline)", otherPartyId, call.CallID)
@@ -311,10 +294,8 @@ func (s *server) handleAbruptDisconnect(userId string) {
 			logger.Infof("[CALL] HANGUP sent to %s for call %s", otherPartyId, call.CallID)
 		}
 
-		// Also try to resolve username and send via their chat stream as system message
 		otherUsername := s.resolveUsername(otherPartyId)
 		if otherUsername != "" {
-			// Send HANGUP back to the disconnected user too (in case they have multiple streams)
 			hangupToSender := &gen.CallMessage{
 				CallId:     call.CallID,
 				SenderId:   otherPartyId,
@@ -323,7 +304,6 @@ func (s *server) handleAbruptDisconnect(userId string) {
 			}
 			s.hub.BroadcastCall(hangupToSender)
 
-			// Save system message to chat
 			senderName := s.resolveUsername(resolvedUserId)
 			duration, _ := s.db.GetCallDuration(call.CallID)
 			durationText := ""
@@ -342,11 +322,7 @@ func (s *server) sendCallPushNotification(receiverId, senderName, callId string)
 		return
 	}
 
-	// Resolve receiverId to username if it's a UUID
-	username := s.resolveUsername(receiverId)
-	senderUsername := s.resolveUsername(senderName)
-
-	token, err := s.db.GetUserToken(username)
+	token, err := s.db.GetUserTokenByUserID(receiverId)
 	if err != nil || token == "" || token == "DISABLED" {
 		return
 	}
@@ -356,6 +332,8 @@ func (s *server) sendCallPushNotification(receiverId, senderName, callId string)
 	if err != nil {
 		return
 	}
+
+	senderUsername := s.resolveUsername(senderName)
 
 	message := &messaging.Message{
 		Token: token,
@@ -389,7 +367,6 @@ func (s *server) broadcastOnlineUsers() {
 	s.hub.BroadcastGlobal(msg)
 }
 
-// durationPtr returns a pointer to a time.Duration value.
 func durationPtr(d time.Duration) *time.Duration {
 	return &d
 }
