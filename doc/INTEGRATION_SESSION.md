@@ -68,6 +68,36 @@
 
 ---
 
+## Сессия 38 — ChatList V2 Last Message Optimization
+
+### Что сделано
+
+#### Last Message Columns (chats table)
+1. **DB миграция**: `last_message_username VARCHAR(255)`, `last_message_has_image BOOLEAN)` добавлены в `chats`
+2. **Backfill**: SQL миграция `002_lastmessage.sql` заполняет данные из messages
+3. **SaveMessage**: при отправке сообщения обновляет `chats.last_message_text`, `last_message_time`, `last_message_username`, `last_message_has_image`
+
+#### CTE Removal
+1. **GetUserChatsV2** — CTE `WITH last_messages` заменён на прямые колонки `chats`
+2. **GetUserChats** (v1) — CTE заменён на прямые колонки
+3. **GetUserChatsByUserID** — CTE заменён на прямые колонки
+4. **GetAllChats** — CTE заменён на прямые колонки
+
+#### Эффект
+- **Быстрее** — убирает full scan messages, заменяет на индексированный lookup
+- **Превью текста** — клиент получает расшифрованный текст без额外 запросов
+- **Last message username** — показывать "Вы: ..." в списке чатов
+- **Image indicator** — показывать иконку камеры если последнее сообщение с картинкой
+
+#### Коммиты
+- `208db83` — feat: ChatList V2 last message optimization
+
+### Статус
+- Dev (50052): ✅ работает
+- Prod (50051): ✅ работает
+
+---
+
 ## Сессия 31 — Update System восстановление
 
 ### Что сделано
