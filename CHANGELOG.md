@@ -1,5 +1,28 @@
 # Лава — Server Changelog
 
+## [1.2.0.4] - 2026-06-18
+
+### Безопасность (второй раунд фиксов)
+- **ChatList v2** — все 9 handlers используют `GetUserID(ctx)` вместо `req.GetUserId()` (auth bypass)
+- **Bot commands** — `ProcessBotCommand` перезаписывает `req.UserId`/`req.Username` из auth context
+- **Notifications** — 4 handlers (`SubscribeNotifications`, `GetNotificationHistory`, `MarkNotificationsRead`, `GetUnreadCount`) используют `GetUserID(ctx)`
+- **DeleteProfile** — пароль обязателен (был необязателен при пустой строке)
+- **Agent tokens** — `GenerateAgentToken`/`RevokeAgentToken`/`ListAgentTokens` используют `GetUserID(ctx)` вместо `req.AdminUserId`
+- **Secret chat** — `ExchangeSecretKey`/`GetSecretChatKey` проверяют участие в чате (было: любой auth пользователь мог прочитать ключи)
+- **Orchestrator** — `getOrCreateSession` освобождает write lock перед DB I/O (double-check pattern)
+
+### Совместимость
+- **AuthInterceptor v1 fallback** — если Bearer token отсутствует, извлекает username из gRPC metadata (для v1 клиентов)
+- **GetChatsV2** — fallback на `req.Username` / ctx username для v1 клиентов
+- **ResolveUserID helper** — резолвит username→UUID через DB для handlers
+
+### Производительность
+- **owl.go** — shared `http.Client` с connection pooling (было новый клиент на каждый запрос)
+- **db.go** — 5 новых индексов: `chats(type, creator_id)`, `owl_messages(chat_id)`, `messages(room_id)`, `contacts(username)`, `user_tokens(username)`
+- **isChatParticipant** — `json.Unmarshal` вместо `strings.Contains` (fix false positive)
+
+---
+
 ## [1.2.0.3] - 2026-06-18
 
 ### Безопасность (критические фиксы)
