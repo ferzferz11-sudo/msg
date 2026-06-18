@@ -232,12 +232,12 @@ func (db *DB) GetUserChatsV2(userID, username string, limit, offset int, filter 
 		FROM chats c
 		LEFT JOIN user_chat_metadata ucm ON ucm.room_id = c.id AND ucm.user_id = $1::uuid
 		LEFT JOIN muted_chats mc ON mc.room_id = c.id AND mc.user_id = $1::uuid
-		WHERE c.participants LIKE '%%' || $1 || '%%'
+		WHERE c.participants::jsonb @> jsonb_build_array($4::text)
 		%s
 		%s
 		LIMIT $2 OFFSET $3`, whereExtra, orderBy)
 
-	rows, err := db.Query(query, userID, limit, offset)
+	rows, err := db.Query(query, userID, limit, offset, username)
 	if err != nil {
 		return nil, err
 	}
