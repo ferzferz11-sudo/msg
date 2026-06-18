@@ -36,34 +36,14 @@ func ConnectDB() (*DB, error) {
 		return nil, err
 	}
 
+	// ======= CORE MIGRATIONS: users, messages, chats, auth, chat list =======
+
 	queries := []string{
+		// --- Auth ---
 		`CREATE TABLE IF NOT EXISTS user_devices (device_id VARCHAR(255) PRIMARY KEY, user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE, device_name VARCHAR(255), client_version VARCHAR(50), last_seen_at TIMESTAMP NOT NULL DEFAULT NOW(), ip_address VARCHAR(255))`,
-		`DO $$ BEGIN
-			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='user_devices' AND column_name='user_id') THEN
-				ALTER TABLE user_devices ADD COLUMN user_id UUID REFERENCES users(id) ON DELETE CASCADE;
-				UPDATE user_devices ud SET user_id = (SELECT id FROM users u WHERE u.username = ud.username);
-			END IF;
-			IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='user_devices' AND column_name='username') THEN
-				ALTER TABLE user_devices ALTER COLUMN username DROP NOT NULL;
-			END IF;
-		END $$;`,
-		`CREATE TABLE IF NOT EXISTS messages (id SERIAL PRIMARY KEY, message_id VARCHAR(255) UNIQUE, username VARCHAR(255) NOT NULL, encrypted_text BYTEA NOT NULL, created_at TIMESTAMP NOT NULL)`,
-		`DO $$ BEGIN
-			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='replied_to_message_id') THEN ALTER TABLE messages ADD COLUMN replied_to_message_id VARCHAR(255); END IF;
-			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='replied_to_user') THEN ALTER TABLE messages ADD COLUMN replied_to_user VARCHAR(255); END IF;
-			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='replied_to_text') THEN ALTER TABLE messages ADD COLUMN replied_to_text TEXT; END IF;
-			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='room_id') THEN ALTER TABLE messages ADD COLUMN room_id VARCHAR(255) DEFAULT ''; END IF;
-			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='is_read') THEN ALTER TABLE messages ADD COLUMN is_read BOOLEAN DEFAULT FALSE; END IF;
-			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='image_url') THEN ALTER TABLE messages ADD COLUMN image_url VARCHAR(512) DEFAULT ''; END IF;
-			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='image_urls') THEN ALTER TABLE messages ADD COLUMN image_urls TEXT DEFAULT '[]'; END IF;
-			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='edited') THEN ALTER TABLE messages ADD COLUMN edited BOOLEAN DEFAULT FALSE; END IF;
-			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='voice_url') THEN ALTER TABLE messages ADD COLUMN voice_url VARCHAR(512); END IF;
-			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='duration') THEN ALTER TABLE messages ADD COLUMN duration INTEGER DEFAULT 0; END IF;
-			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='user_id') THEN
-				ALTER TABLE messages ADD COLUMN user_id UUID;
-				UPDATE messages m SET user_id = (SELECT id FROM users u WHERE u.username = m.username);
-			END IF;
-		END $$;`,
+		`CREATE TABLE IF NOT EXISTS password_reset_tokens (token VARCHAR(255) PRIMARY KEY, user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE, expires_at TIMESTAMP NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT NOW())`,
+
+		// --- Users ---
 		`CREATE TABLE IF NOT EXISTS users (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), username VARCHAR(255) UNIQUE NOT NULL, password_hash VARCHAR(255) NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT NOW())`,
 		`DO $$ BEGIN
 			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='avatar_url') THEN ALTER TABLE users ADD COLUMN avatar_url VARCHAR(512); END IF;
@@ -71,90 +51,74 @@ func ConnectDB() (*DB, error) {
 			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='bio') THEN ALTER TABLE users ADD COLUMN bio TEXT; END IF;
 			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='status') THEN ALTER TABLE users ADD COLUMN status VARCHAR(255); END IF;
 			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='chat_list_version') THEN ALTER TABLE users ADD COLUMN chat_list_version BIGINT DEFAULT 0; END IF;
-			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='current_theme_id') THEN ALTER TABLE users ADD COLUMN current_theme_id VARCHAR(255) DEFAULT 'dark'; END IF;
 			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='is_super_admin') THEN ALTER TABLE users ADD COLUMN is_super_admin BOOLEAN DEFAULT FALSE; END IF;
-			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='last_client_version') THEN ALTER TABLE users ADD COLUMN last_client_version VARCHAR(50); END IF;
-			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='last_seen_at') THEN ALTER TABLE users ADD COLUMN last_seen_at TIMESTAMP; END IF;
 			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='email') THEN ALTER TABLE users ADD COLUMN email VARCHAR(255); END IF;
+			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='last_seen_at') THEN ALTER TABLE users ADD COLUMN last_seen_at TIMESTAMP; END IF;
+			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='last_client_version') THEN ALTER TABLE users ADD COLUMN last_client_version VARCHAR(50); END IF;
 		END $$;`,
+
+		// --- Messages ---
+		`CREATE TABLE IF NOT EXISTS messages (id SERIAL PRIMARY KEY, message_id VARCHAR(255) UNIQUE, username VARCHAR(255) NOT NULL, encrypted_text BYTEA NOT NULL, created_at TIMESTAMP NOT NULL)`,
+		`DO $$ BEGIN
+			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='room_id') THEN ALTER TABLE messages ADD COLUMN room_id VARCHAR(255) DEFAULT ''; END IF;
+			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='is_read') THEN ALTER TABLE messages ADD COLUMN is_read BOOLEAN DEFAULT FALSE; END IF;
+			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='image_url') THEN ALTER TABLE messages ADD COLUMN image_url VARCHAR(512) DEFAULT ''; END IF;
+			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='image_urls') THEN ALTER TABLE messages ADD COLUMN image_urls TEXT DEFAULT '[]'; END IF;
+			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='edited') THEN ALTER TABLE messages ADD COLUMN edited BOOLEAN DEFAULT FALSE; END IF;
+			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='voice_url') THEN ALTER TABLE messages ADD COLUMN voice_url VARCHAR(512); END IF;
+			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='duration') THEN ALTER TABLE messages ADD COLUMN duration INTEGER DEFAULT 0; END IF;
+			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='replied_to_message_id') THEN ALTER TABLE messages ADD COLUMN replied_to_message_id VARCHAR(255); END IF;
+			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='replied_to_user') THEN ALTER TABLE messages ADD COLUMN replied_to_user VARCHAR(255); END IF;
+			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='replied_to_text') THEN ALTER TABLE messages ADD COLUMN replied_to_text TEXT; END IF;
+			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='user_id') THEN ALTER TABLE messages ADD COLUMN user_id UUID; END IF;
+		END $$;`,
+		`CREATE INDEX IF NOT EXISTS idx_messages_room ON messages(room_id, created_at)`,
+		`CREATE INDEX IF NOT EXISTS idx_messages_user_id ON messages(user_id)`,
+
+		// --- Chats ---
 		`CREATE TABLE IF NOT EXISTS chats (id VARCHAR(255) PRIMARY KEY, name VARCHAR(255) NOT NULL, type VARCHAR(50) NOT NULL, participants TEXT NOT NULL, creator_username VARCHAR(255), created_at TIMESTAMP NOT NULL DEFAULT NOW(), avatar_url TEXT DEFAULT '', full_avatar_url TEXT DEFAULT '')`,
 		`DO $$ BEGIN
-			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='chats' AND column_name='creator_id') THEN
-				ALTER TABLE chats ADD COLUMN creator_id UUID;
-			END IF;
-			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='chats' AND column_name='allow_members_to_add') THEN
-				ALTER TABLE chats ADD COLUMN allow_members_to_add BOOLEAN DEFAULT FALSE;
-			END IF;
-			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='chats' AND column_name='is_secret') THEN
-				ALTER TABLE chats ADD COLUMN is_secret BOOLEAN DEFAULT FALSE;
-			END IF;
-			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='chats' AND column_name='public_key_a') THEN
-				ALTER TABLE chats ADD COLUMN public_key_a TEXT DEFAULT '';
-			END IF;
-			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='chats' AND column_name='public_key_b') THEN
-				ALTER TABLE chats ADD COLUMN public_key_b TEXT DEFAULT '';
-			END IF;
-			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='chats' AND column_name='e2ee_ready') THEN
-				ALTER TABLE chats ADD COLUMN e2ee_ready BOOLEAN DEFAULT FALSE;
-			END IF;
-		END $$;`,
-		`DO $$ BEGIN
+			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='chats' AND column_name='creator_id') THEN ALTER TABLE chats ADD COLUMN creator_id UUID; END IF;
+			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='chats' AND column_name='allow_members_to_add') THEN ALTER TABLE chats ADD COLUMN allow_members_to_add BOOLEAN DEFAULT FALSE; END IF;
+			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='chats' AND column_name='is_secret') THEN ALTER TABLE chats ADD COLUMN is_secret BOOLEAN DEFAULT FALSE; END IF;
+			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='chats' AND column_name='public_key_a') THEN ALTER TABLE chats ADD COLUMN public_key_a TEXT DEFAULT ''; END IF;
+			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='chats' AND column_name='public_key_b') THEN ALTER TABLE chats ADD COLUMN public_key_b TEXT DEFAULT ''; END IF;
+			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='chats' AND column_name='e2ee_ready') THEN ALTER TABLE chats ADD COLUMN e2ee_ready BOOLEAN DEFAULT FALSE; END IF;
 			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='chats' AND column_name='last_message_text') THEN ALTER TABLE chats ADD COLUMN last_message_text TEXT DEFAULT ''; END IF;
 			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='chats' AND column_name='last_message_time') THEN ALTER TABLE chats ADD COLUMN last_message_time TIMESTAMP; END IF;
+			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='chats' AND column_name='last_message_username') THEN ALTER TABLE chats ADD COLUMN last_message_username VARCHAR(255) DEFAULT ''; END IF;
+			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='chats' AND column_name='last_message_has_image') THEN ALTER TABLE chats ADD COLUMN last_message_has_image BOOLEAN DEFAULT FALSE; END IF;
+			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='chats' AND column_name='participant_ids') THEN ALTER TABLE chats ADD COLUMN participant_ids UUID[]; END IF;
 		END $$;`,
+		`CREATE INDEX IF NOT EXISTS idx_chats_type_creator ON chats(type, creator_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_chats_participant_ids ON chats USING GIN(participant_ids)`,
+
+		// --- E2EE ---
 		`CREATE TABLE IF NOT EXISTS secret_chat_keys (chat_id VARCHAR(255) NOT NULL REFERENCES chats(id) ON DELETE CASCADE, user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE, public_key TEXT NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT NOW(), PRIMARY KEY (chat_id, user_id))`,
+
+		// --- Chat list: metadata, muted, contacts, favorites, drafts, reactions ---
+		`CREATE TABLE IF NOT EXISTS user_chat_metadata (username VARCHAR(255) NOT NULL, room_id VARCHAR(255) NOT NULL, last_read_at TIMESTAMP NOT NULL DEFAULT NOW(), PRIMARY KEY (username, room_id))`,
+		`CREATE TABLE IF NOT EXISTS muted_chats (username VARCHAR(255) NOT NULL, room_id VARCHAR(255) NOT NULL, muted BOOLEAN NOT NULL DEFAULT TRUE, updated_at TIMESTAMP NOT NULL DEFAULT NOW(), user_id UUID, PRIMARY KEY (username, room_id))`,
+		`CREATE TABLE IF NOT EXISTS contacts (id SERIAL PRIMARY KEY, username VARCHAR(255) NOT NULL, contact_username VARCHAR(255) NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT NOW())`,
+		`CREATE TABLE IF NOT EXISTS favorites (user_id UUID REFERENCES users(id) ON DELETE CASCADE, message_id VARCHAR(255) REFERENCES messages(message_id) ON DELETE CASCADE, created_at TIMESTAMP NOT NULL DEFAULT NOW(), PRIMARY KEY (user_id, message_id))`,
+		`CREATE TABLE IF NOT EXISTS draft_messages (username VARCHAR(255) NOT NULL, room_id VARCHAR(255) NOT NULL, draft_text TEXT NOT NULL DEFAULT '', updated_at TIMESTAMP NOT NULL DEFAULT NOW(), PRIMARY KEY (username, room_id))`,
 		`CREATE TABLE IF NOT EXISTS reactions (id SERIAL PRIMARY KEY, message_id VARCHAR(255) NOT NULL REFERENCES messages(message_id) ON DELETE CASCADE, username VARCHAR(255) NOT NULL, emoji VARCHAR(50) NOT NULL)`,
 		`DO $$ BEGIN
 			IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE table_name='reactions' AND constraint_name='reactions_message_id_username_key') THEN
 				ALTER TABLE reactions ADD CONSTRAINT reactions_message_id_username_key UNIQUE (message_id, username);
 			END IF;
 		END $$;`,
-		`CREATE TABLE IF NOT EXISTS user_chat_metadata (username VARCHAR(255) NOT NULL, room_id VARCHAR(255) NOT NULL, last_read_at TIMESTAMP NOT NULL DEFAULT NOW(), PRIMARY KEY (username, room_id))`,
 		`CREATE TABLE IF NOT EXISTS user_tokens (username VARCHAR(255) PRIMARY KEY, fcm_token TEXT NOT NULL, updated_at TIMESTAMP NOT NULL, push_enabled BOOLEAN DEFAULT TRUE)`,
-		`CREATE TABLE IF NOT EXISTS contacts (id SERIAL PRIMARY KEY, username VARCHAR(255) NOT NULL, contact_username VARCHAR(255) NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT NOW())`,
-		`CREATE TABLE IF NOT EXISTS user_themes (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), username VARCHAR(255) NOT NULL REFERENCES users(username) ON DELETE CASCADE, theme_id VARCHAR(255) NOT NULL, name VARCHAR(255) NOT NULL, primary_color VARCHAR(10), on_primary_color VARCHAR(10), surface_color VARCHAR(10), on_surface_color VARCHAR(10), background_color VARCHAR(10), text_primary_color VARCHAR(10), text_secondary_color VARCHAR(10), is_dark BOOLEAN DEFAULT FALSE, chat_background_image_url VARCHAR(512), chat_list_background_image_url VARCHAR(512), bottom_panel_color VARCHAR(10), on_bottom_panel_color VARCHAR(10), surface_container VARCHAR(10), outgoing_bubble_color VARCHAR(10), incoming_bubble_color VARCHAR(10), UNIQUE(username, theme_id))`,
-		`CREATE TABLE IF NOT EXISTS draft_messages (username VARCHAR(255) NOT NULL, room_id VARCHAR(255) NOT NULL, draft_text TEXT NOT NULL DEFAULT '', updated_at TIMESTAMP NOT NULL DEFAULT NOW(), PRIMARY KEY (username, room_id))`,
-		`DO $$ BEGIN
-			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='draft_messages' AND column_name='replied_to_message_id') THEN ALTER TABLE draft_messages ADD COLUMN replied_to_message_id VARCHAR(255); END IF;
-			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='draft_messages' AND column_name='replied_to_user') THEN ALTER TABLE draft_messages ADD COLUMN replied_to_user VARCHAR(255); END IF;
-			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='draft_messages' AND column_name='replied_to_text') THEN ALTER TABLE draft_messages ADD COLUMN replied_to_text TEXT; END IF;
-			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='draft_messages' AND column_name='user_id') THEN ALTER TABLE draft_messages ADD COLUMN user_id UUID; END IF;
-		END $$;`,
-		`CREATE TABLE IF NOT EXISTS muted_chats (username VARCHAR(255) NOT NULL, room_id VARCHAR(255) NOT NULL, muted BOOLEAN NOT NULL DEFAULT TRUE, updated_at TIMESTAMP NOT NULL DEFAULT NOW(), user_id UUID, PRIMARY KEY (username, room_id))`,
-		`CREATE TABLE IF NOT EXISTS favorites (user_id UUID REFERENCES users(id) ON DELETE CASCADE, message_id VARCHAR(255) REFERENCES messages(message_id) ON DELETE CASCADE, created_at TIMESTAMP NOT NULL DEFAULT NOW(), PRIMARY KEY (user_id, message_id))`,
-		`CREATE TABLE IF NOT EXISTS password_reset_tokens (token VARCHAR(255) PRIMARY KEY, user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE, expires_at TIMESTAMP NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT NOW())`,
-		`CREATE TABLE IF NOT EXISTS owl_chat_settings (chat_id VARCHAR(255) PRIMARY KEY REFERENCES chats(id) ON DELETE CASCADE, user_api_key TEXT DEFAULT '', model VARCHAR(255) DEFAULT '', updated_at TIMESTAMP NOT NULL DEFAULT NOW())`,
-		`CREATE TABLE IF NOT EXISTS hermes_chat_settings (chat_id VARCHAR(255) PRIMARY KEY REFERENCES chats(id) ON DELETE CASCADE, user_api_key TEXT DEFAULT '', model VARCHAR(255) DEFAULT '', updated_at TIMESTAMP NOT NULL DEFAULT NOW())`,
-		`CREATE TABLE IF NOT EXISTS free_openrouter_models (
-			id SERIAL PRIMARY KEY,
-			model_id VARCHAR(255) UNIQUE NOT NULL,
-			display_name VARCHAR(255) NOT NULL,
-			is_active BOOLEAN DEFAULT TRUE,
-			sort_order INTEGER DEFAULT 0,
-			created_at TIMESTAMP NOT NULL DEFAULT NOW()
-		)`,
-		`CREATE TABLE IF NOT EXISTS owl_messages (id SERIAL PRIMARY KEY, chat_id VARCHAR(255) NOT NULL REFERENCES chats(id) ON DELETE CASCADE, role VARCHAR(20) NOT NULL, content TEXT NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT NOW())`,
-		`CREATE TABLE IF NOT EXISTS calls (
-			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-			caller_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-			receiver_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-			room_id VARCHAR(255),
-			type VARCHAR(50) NOT NULL,
-			status VARCHAR(50) NOT NULL,
-			created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-			started_at TIMESTAMP,
-			ended_at TIMESTAMP
-		)`,
-		`CREATE INDEX IF NOT EXISTS idx_calls_caller ON calls(caller_id)`,
-		`CREATE INDEX IF NOT EXISTS idx_calls_receiver ON calls(receiver_id)`,
-		`CREATE TABLE IF NOT EXISTS servers (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), name VARCHAR(255) NOT NULL, host VARCHAR(255) NOT NULL, port INTEGER NOT NULL DEFAULT 50051, is_default BOOLEAN DEFAULT FALSE, created_at TIMESTAMP NOT NULL DEFAULT NOW())`,
-		// Performance indexes
-		`CREATE INDEX IF NOT EXISTS idx_chats_type_creator ON chats(type, creator_id)`,
-		`CREATE INDEX IF NOT EXISTS idx_owl_messages_chat ON owl_messages(chat_id, created_at)`,
-		`CREATE INDEX IF NOT EXISTS idx_messages_room ON messages(room_id, created_at)`,
 		`CREATE INDEX IF NOT EXISTS idx_contacts_username ON contacts(username)`,
 		`CREATE INDEX IF NOT EXISTS idx_user_tokens_username ON user_tokens(username)`,
-		// userId migration — add UUID columns to tables that still use username as PK
+
+		// --- userId migration: add UUID columns to tables that still use username as PK ---
+		`DO $$ BEGIN
+			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='user_id') THEN
+				ALTER TABLE messages ADD COLUMN user_id UUID;
+				UPDATE messages m SET user_id = (SELECT id FROM users u WHERE u.username = m.username);
+			END IF;
+		END $$;`,
 		`DO $$ BEGIN
 			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='reactions' AND column_name='user_id') THEN
 				ALTER TABLE reactions ADD COLUMN user_id UUID;
@@ -182,15 +146,7 @@ func ConnectDB() (*DB, error) {
 		END $$;`,
 		`CREATE INDEX IF NOT EXISTS idx_user_tokens_user_id ON user_tokens(user_id)`,
 		`DO $$ BEGIN
-			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='user_themes' AND column_name='user_id') THEN
-				ALTER TABLE user_themes ADD COLUMN user_id UUID;
-				UPDATE user_themes ut SET user_id = (SELECT id FROM users u WHERE u.username = ut.username);
-			END IF;
-		END $$;`,
-		`CREATE INDEX IF NOT EXISTS idx_user_themes_user_id ON user_themes(user_id)`,
-		`DO $$ BEGIN
 			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='chats' AND column_name='participant_ids') THEN
-				ALTER TABLE chats ADD COLUMN participant_ids UUID[];
 				UPDATE chats SET participant_ids = (
 					SELECT array_agg(u.id ORDER BY u.username)
 					FROM users u
@@ -198,23 +154,14 @@ func ConnectDB() (*DB, error) {
 				);
 			END IF;
 		END $$;`,
-		`CREATE INDEX IF NOT EXISTS idx_chats_participant_ids ON chats USING GIN(participant_ids)`,
 		`DO $$ BEGIN
 			IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='muted_chats' AND column_name='user_id') THEN
 				UPDATE muted_chats mc SET user_id = (SELECT id FROM users u WHERE u.username = mc.username) WHERE mc.user_id IS NULL;
-				CREATE INDEX IF NOT EXISTS idx_muted_chats_user_id ON muted_chats(user_id);
 			END IF;
 		END $$;`,
-		`UPDATE draft_messages dm SET user_id = (SELECT id FROM users u WHERE u.username = dm.username) WHERE dm.user_id IS NULL`,
-		`UPDATE messages m SET user_id = (SELECT id FROM users u WHERE u.username = m.username) WHERE m.user_id IS NULL`,
-		`CREATE INDEX IF NOT EXISTS idx_messages_user_id ON messages(user_id)`,
-		// Last message columns in chats — for fast ChatList rendering
 		`DO $$ BEGIN
-			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='chats' AND column_name='last_message_username') THEN
-				ALTER TABLE chats ADD COLUMN last_message_username VARCHAR(255) DEFAULT '';
-			END IF;
-			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='chats' AND column_name='last_message_has_image') THEN
-				ALTER TABLE chats ADD COLUMN last_message_has_image BOOLEAN DEFAULT FALSE;
+			IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='draft_messages' AND column_name='user_id') THEN
+				UPDATE draft_messages dm SET user_id = (SELECT id FROM users u WHERE u.username = dm.username) WHERE dm.user_id IS NULL;
 			END IF;
 		END $$;`,
 	}
