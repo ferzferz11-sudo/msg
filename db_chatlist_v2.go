@@ -228,7 +228,9 @@ func (db *DB) GetUserChatsV2(userID, username string, limit, offset int, filter 
 		       COALESCE(c.allow_members_to_add, FALSE), COALESCE(c.is_secret, FALSE),
 		       COALESCE(c.last_message_text, ''), COALESCE(c.last_message_time, c.created_at),
 		       COALESCE(ucm.pinned, FALSE), COALESCE(ucm.archived, FALSE),
-		       COALESCE(ucm.pinned_at, 0)
+		       COALESCE(ucm.pinned_at, 0),
+		       COALESCE(c.last_message_username, ''),
+		       COALESCE(c.last_message_has_image, FALSE)
 		FROM chats c
 		LEFT JOIN user_chat_metadata ucm ON ucm.room_id = c.id AND ucm.user_id = $1::uuid
 		LEFT JOIN muted_chats mc ON mc.room_id = c.id AND mc.user_id = $1::uuid
@@ -255,6 +257,7 @@ func (db *DB) GetUserChatsV2(userID, username string, limit, offset int, filter 
 			&c.AllowMembersToAdd, &isSecret,
 			&c.LastMessageText, &c.LastMessageTime,
 			&c.IsPinned, &c.IsArchived, &c.PinnedAt,
+			&c.LastMessageUsername, &c.LastMessageHasImage,
 		)
 		if err != nil {
 			logger.Errorf("GetUserChatsV2 scan error: %v", err)
@@ -361,7 +364,7 @@ func (db *DB) UnPinMessage(userID, chatID, messageID string) error {
 // GetPinnedMessages returns all pinned messages for a user in a chat.
 func (db *DB) GetPinnedMessages(userID, chatID string) ([]PinnedMessageRow, error) {
 	rows, err := db.Query(`
-		SELECT pm.message_id, pm.pinned_at, m.user, m.text, m.created_at
+		SELECT pm.message_id, pm.pinned_at, m.username, m.encrypted_text, m.created_at
 		FROM pinned_messages pm
 		JOIN messages m ON m.message_id = pm.message_id AND m.room_id = pm.room_id
 		WHERE pm.user_id = $1::uuid AND pm.room_id = $2
@@ -375,11 +378,13 @@ func (db *DB) GetPinnedMessages(userID, chatID string) ([]PinnedMessageRow, erro
 	var result []PinnedMessageRow
 	for rows.Next() {
 		var r PinnedMessageRow
-		err := rows.Scan(&r.MessageID, &r.PinnedAt, &r.User, &r.Text, &r.CreatedAt)
+		var encText []byte
+		err := rows.Scan(&r.MessageID, &r.PinnedAt, &r.User, &encText, &r.CreatedAt)
 		if err != nil {
 			logger.Errorf("GetPinnedMessages scan error: %v", err)
 			continue
 		}
+		r.Text, _ = decrypt(encText)
 		result = append(result, r)
 	}
 	return result, nil
