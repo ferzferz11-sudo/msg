@@ -324,28 +324,26 @@ func (h *hermesAgentServer) isAdmin(userID string) bool {
 }
 
 // GenerateAgentToken — генерация JWT токена для нового агента
-func (h *hermesAgentServer) GenerateAgentToken(_ context.Context, req *hermesagent.GenerateAgentTokenRequest) (*hermesagent.GenerateAgentTokenResponse, error) {
- if os.Getenv("DEBUG") != "" {
-	logger.Infof("[HermesAgentService] GenerateAgentToken: agentId=%s name=%s adminUser=%s", req.AgentId, req.AgentName, req.AdminUserId)
- }
+func (h *hermesAgentServer) GenerateAgentToken(ctx context.Context, req *hermesagent.GenerateAgentTokenRequest) (*hermesagent.GenerateAgentTokenResponse, error) {
+	adminUserID := GetUserID(ctx)
+	if adminUserID == "" {
+		return &hermesagent.GenerateAgentTokenResponse{Success: false, Error: "unauthorized"}, nil
+	}
+	if os.Getenv("DEBUG") != "" {
+		logger.Infof("[HermesAgentService] GenerateAgentToken: agentId=%s name=%s adminUser=%s", req.AgentId, req.AgentName, adminUserID)
+	}
 	if req.AgentId == "" || req.AgentName == "" {
-		return &hermesagent.GenerateAgentTokenResponse{
-			Success: false, Error: "agent_id and agent_name are required",
-		}, nil
+		return &hermesagent.GenerateAgentTokenResponse{Success: false, Error: "agent_id and agent_name are required"}, nil
 	}
 
 	// Rate limit: max 1 token generation per tokenGenRateLimit per user
-	if req.AdminUserId != "" {
-		now := time.Now()
-		if last, ok := h.tokenGenRequests.Load(req.AdminUserId); ok {
-			if now.Sub(last.(time.Time)) < tokenGenRateLimit {
-				return &hermesagent.GenerateAgentTokenResponse{
-					Success: false, Error: "rate limit exceeded, please wait",
-				}, nil
-			}
+	now := time.Now()
+	if last, ok := h.tokenGenRequests.Load(adminUserID); ok {
+		if now.Sub(last.(time.Time)) < tokenGenRateLimit {
+			return &hermesagent.GenerateAgentTokenResponse{Success: false, Error: "rate limit exceeded, please wait"}, nil
 		}
-		h.tokenGenRequests.Store(req.AdminUserId, now)
 	}
+	h.tokenGenRequests.Store(adminUserID, now)
 
 	ttl := time.Duration(req.TtlHours) * time.Hour
 
@@ -375,7 +373,7 @@ func (h *hermesAgentServer) GenerateAgentToken(_ context.Context, req *hermesage
 	}
 	if err := h.server.hermesDB.SaveAgentToken(
 		req.AgentId, req.AgentName, tokenHash,
-		req.Capabilities, expiresAt, req.AdminUserId,
+		req.Capabilities, expiresAt, adminUserID,
 	); err != nil {
 		if os.Getenv("DEBUG") != "" {
 			logger.Infof("[HermesAgentService] failed to save token: %v", err)
@@ -398,31 +396,35 @@ func (h *hermesAgentServer) GenerateAgentToken(_ context.Context, req *hermesage
 }
 
 // RevokeAgentToken — отзыв токена агента
-func (h *hermesAgentServer) RevokeAgentToken(_ context.Context, req *hermesagent.RevokeAgentTokenRequest) (*hermesagent.RevokeAgentTokenResponse, error) {
+func (h *hermesAgentServer) RevokeAgentToken(ctx context.Context, req *hermesagent.RevokeAgentTokenRequest) (*hermesagent.RevokeAgentTokenResponse, error) {
+	adminUserID := GetUserID(ctx)
+	if adminUserID == "" {
+		return &hermesagent.RevokeAgentTokenResponse{Success: false, Error: "unauthorized"}, nil
+	}
 	if req.AgentId == "" {
-		return &hermesagent.RevokeAgentTokenResponse{
-			Success: false, Error: "agent_id is required",
-		}, nil
+		return &hermesagent.RevokeAgentTokenResponse{Success: false, Error: "agent_id is required"}, nil
 	}
 
 	if h.server.hermesDB != nil {
 		if err := h.server.hermesDB.RevokeAgentToken(req.AgentId); err != nil {
-			return &hermesagent.RevokeAgentTokenResponse{
-				Success: false, Error: fmt.Sprintf("revoke: %v", err),
-			}, nil
+			return &hermesagent.RevokeAgentTokenResponse{Success: false, Error: fmt.Sprintf("revoke: %v", err)}, nil
 		}
 	}
 
- if os.Getenv("DEBUG") != "" {
-	logger.Infof("[HermesAgentService] token revoked: agent=%s by=%s", req.AgentId, req.AdminUserId)
- }
+	if os.Getenv("DEBUG") != "" {
+		logger.Infof("[HermesAgentService] token revoked: agent=%s by=%s", req.AgentId, adminUserID)
+	}
 	return &hermesagent.RevokeAgentTokenResponse{Success: true}, nil
 }
 
 // ListAgentTokens — список всех токенов агентов
-func (h *hermesAgentServer) ListAgentTokens(_ context.Context, req *hermesagent.ListAgentTokensRequest) (*hermesagent.ListAgentTokensResponse, error) {
+func (h *hermesAgentServer) ListAgentTokens(ctx context.Context, req *hermesagent.ListAgentTokensRequest) (*hermesagent.ListAgentTokensResponse, error) {
+	adminUserID := GetUserID(ctx)
+	if adminUserID == "" {
+		return &hermesagent.ListAgentTokensResponse{Tokens: nil}, fmt.Errorf("unauthorized")
+	}
 	if os.Getenv("DEBUG") != "" {
-		logger.Infof("[HermesAgentService] ListAgentTokens: adminUser=%s", req.AdminUserId)
+		logger.Infof("[HermesAgentService] ListAgentTokens: adminUser=%s", adminUserID)
 	}
 	if h.server.hermesDB == nil {
 		return &hermesagent.ListAgentTokensResponse{

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -70,6 +71,25 @@ func (s *server) ExchangeSecretKey(ctx context.Context, req *gen.ExchangeSecretK
 		return &gen.ExchangeSecretKeyResponse{Success: false}, fmt.Errorf("not authenticated")
 	}
 
+	// Verify caller is a participant of this secret chat
+	chat, err := s.db.GetChat(req.ChatId)
+	if err != nil {
+		return &gen.ExchangeSecretKeyResponse{Success: false}, fmt.Errorf("chat not found")
+	}
+	var participants []string
+	if err := json.Unmarshal([]byte(chat.Participants), &participants); err == nil {
+		isParticipant := false
+		for _, p := range participants {
+			if p == callerUsername {
+				isParticipant = true
+				break
+			}
+		}
+		if !isParticipant {
+			return &gen.ExchangeSecretKeyResponse{Success: false}, fmt.Errorf("not a participant")
+		}
+	}
+
 	userId, _ := s.db.GetUserIdByUsername(callerUsername)
 	if req.PublicKey != "" && userId != "" {
 		if err := s.db.StoreSecretChatKey(req.ChatId, userId, req.PublicKey); err != nil {
@@ -111,6 +131,25 @@ func (s *server) GetSecretChatKey(ctx context.Context, req *gen.GetSecretChatKey
 	callerUsername := s.getCallerUsernameSecret(ctx)
 	if callerUsername == "" {
 		return &gen.GetSecretChatKeyResponse{PeerHasKey: false}, fmt.Errorf("not authenticated")
+	}
+
+	// Verify caller is a participant of this secret chat
+	chat, err := s.db.GetChat(req.ChatId)
+	if err != nil {
+		return &gen.GetSecretChatKeyResponse{PeerHasKey: false}, fmt.Errorf("chat not found")
+	}
+	var participants []string
+	if err := json.Unmarshal([]byte(chat.Participants), &participants); err == nil {
+		isParticipant := false
+		for _, p := range participants {
+			if p == callerUsername {
+				isParticipant = true
+				break
+			}
+		}
+		if !isParticipant {
+			return &gen.GetSecretChatKeyResponse{PeerHasKey: false}, fmt.Errorf("not a participant")
+		}
 	}
 
 	userId, _ := s.db.GetUserIdByUsername(callerUsername)
