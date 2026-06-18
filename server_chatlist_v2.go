@@ -147,6 +147,8 @@ func (s *server) UnarchiveChat(ctx context.Context, req *gen.UnarchiveChatReques
 func (s *server) GetChatsV2(ctx context.Context, req *gen.GetChatsRequest) (*gen.GetChatsResponse, error) {
 	userID := GetUserID(ctx)
 	username := req.GetUsername()
+	logger.Infof("GetChatsV2 called: userID=%s username=%s", userID, username)
+	logger.Infof("GetChatsV2 called: userID=%s username=%s", userID, username)
 
 	// Resolve user ID from username if needed (v1 fallback)
 	if userID == "" && username != "" {

@@ -2,6 +2,9 @@
 
 ## [1.2.0.5] - 2026-06-18
 
+### Новое
+- **GetChatsV2** — основной эндпоинт чат-листа: фильтры (pinned/archived/muted), пагинация (limit/offset), v2 поля (is_pinned, is_muted, is_archived, pinned_at)
+
 ### Исправления
 - **pinned_messages** — `room_id` тип изменён с `UUID` на `VARCHAR(255)` (реальные chat ID вида `Ebiker_ferz_direct_1781341380`, не UUID)
 - **pinned_messages** — миграция `ALTER COLUMN room_id TYPE VARCHAR(255) USING room_id::text` для существующих данных
@@ -81,18 +84,8 @@
 - **db.go** — 5 новых индексов (chats type+creator, owl_messages chat, messages room, contacts, user_tokens)
 - **hermes_orchestrator.go** — `getOrCreateSession` освобождает lock перед DB I/O (double-check pattern)
 
-### Документация
-- **OPTIMIZATION_PLAN.md** — план оптимизации с прогрессом
-- **PROMPT.md** — переписан по этапам реализации
-- **INDEX.md** — обновлён индекс документации
-
 ### Исправлено
 - **db_chatlist_v2.go** — миграция `user_chat_metadata` проверяет наличие PK перед `DROP NOT NULL` на username (fix: column "username" is in a primary key)
-
-### Документация
-- **OPTIMIZATION_PLAN.md** — план оптимизации с прогрессом по фазам
-- **PROMPT.md** — переписан по этапам реализации
-- **INDEX.md** — обновлён индекс документации
 
 ---
 

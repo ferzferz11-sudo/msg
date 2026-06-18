@@ -2,6 +2,8 @@
 
 Документация по модульным тестам: как запускать, что покрыто, как писать новые тесты.
 
+**Актуально:** v1.2.0.5 (2026-06-18)
+
 ---
 
 ## Быстрый старт
@@ -27,214 +29,295 @@ go test -coverprofile=/tmp/cover.out -count=1 . && go tool cover -func=/tmp/cove
 
 ## Структура тестов
 
-| Файл | Что тестирует | Тестов | Покрытие |
-|------|--------------|--------|----------|
-| `auth_service_test.go` | AuthService (SignIn, SignUp) | 11 | SignIn 85.7%, SignUp 74.2% |
-| `owl_test.go` | OWL rate limiter, mock OpenRouter API | 15+ | rateLimiter 92-100% |
-| `bot_commands_test.go` | Bot commands, rate limiter, notifications | 20+ | ~4% общий |
+| Файл | Что тестирует | Тестов |
+|------|--------------|--------|
+| `auth_jwt_test.go` | JWT generation, validation, expiry, tamper | 2 |
+| `auth_service_test.go` | AuthService v1 (SignIn, SignUp) + v2 (SignInV2, SignUpV2, TokenPair) | 20 |
+| `owl_test.go` | OWL rate limiter, mock OpenRouter API, streaming | 15 |
+| `bot_commands_test.go` | Bot commands, rate limiter, notifications | 20 |
+| `server_push_test.go` | Hub.IsUserOnline (v1+v2, grace period) | 6 |
+| `server_remote_test.go` | Remote agent deployment, stream updates, done filtering | 8 |
+| `server_stability_test.go` | Pinned messages fix, type assertion, graceful shutdown, panic recovery | 13 |
+| `core/rag/memory/memory_test.go` | In-memory RAG: embeddings, vector DB, pipeline | 4 |
+
+**Всего:** ~88 тестов (все проходят)
 
 ---
 
-## auth_service_test.go
-
-### Тесты SignIn (5)
+## auth_jwt_test.go (2 теста)
 
 | Тест | Что проверяет |
 |------|--------------|
-| `TestSignIn_Success` | Успешный вход, токен, user data, email |
+| `TestGenerateAndValidateTokenPair` | Генерация access+refresh tokens, валидация claims, JTI extraction, tamper/wrong secret |
+| `TestValidateTokenExpired` | Свежий токен валиден |
+
+---
+
+## auth_service_test.go (20 тестов)
+
+### V1 Auth (deprecated)
+
+| Тест | Что проверяет |
+|------|--------------|
+| `TestSignIn_Success` | Успешный вход, токен, user data |
 | `TestSignIn_WrongPassword` | Неверный пароль → "invalid password" |
-| `TestSignIn_UserNotFound` | Несуществующий пользователь → "user not found" |
-| `TestSignIn_EmptyUsername` | Пустой username → "required" |
-| `TestSignIn_EmptyPassword` | Пустой password → "required" |
+| `TestSignIn_UserNotFound` | Несуществующий пользователь |
+| `TestSignIn_EmptyUsername` | Пустой username |
+| `TestSignIn_EmptyPassword` | Пустой password |
+| `TestSignUp_Success` | Успешная регистрация |
+| `TestSignUp_WithEmail` | Регистрация с email |
+| `TestSignUp_DuplicateUsername` | Дубль username |
+| `TestSignUp_DuplicateEmail` | Дубль email |
+| `TestSignUp_EmptyUsername` | Пустой username |
+| `TestSignUp_EmptyPassword` | Пустой password |
 
-### Тесты SignUp (6)
+### V2 Auth (JWT)
 
 | Тест | Что проверяет |
 |------|--------------|
-| `TestSignUp_Success` | Успешная регистрация, токен, user data |
-| `TestSignUp_WithEmail` | Регистрация с email |
-| `TestSignUp_DuplicateUsername` | Дубль username → "already taken" |
-| `TestSignUp_DuplicateEmail` | Дубль email → "email already in use" |
-| `TestSignUp_EmptyUsername` | Пустой username → "required" |
-| `TestSignUp_EmptyPassword` | Пустой password → "required" |
-| `TestSignUp_EmptyEmail` | Пустой email — допустимо (опциональное поле) |
+| `TestSignInV2_Success` | V2 вход с JWT + device info |
+| `TestSignInV2_WrongPassword` | Неверный пароль |
+| `TestSignInV2_EmptyCredentials` | Пустые credentials |
+| `TestSignInV2_UserNotFound` | Неуществующий пользователь |
+| `TestSignUpV2_Success` | V2 регистрация с JWT |
+| `TestSignUpV2_DuplicateUsername` | Дубль username |
+| `TestTokenPair_Validation` | Полная валидация access+refresh tokens, tamper check |
 
 ### Бенчмарки
 
 | Бенчмарк | Описание |
 |----------|----------|
 | `BenchmarkSignIn` | Параллельный SignIn с bcrypt |
-| `BenchmarkSignUp` | Последовательный SignUp с уникальными username |
-| `BenchmarkHashPassword` | Скорость bcrypt hashing |
-
-### Mock DB
-
-`mockAuthDB` — in-memory реализация интерфейса `authDB`:
-- Thread-safe (sync.Mutex)
-- Хранит users и emails в map
-- Генерирует UUID-подобные ID
-- Поддерживает все методы интерфейса authDB
+| `BenchmarkSignUp` | Последовательный SignUp |
 
 ---
 
-## owl_test.go
+## owl_test.go (15 тестов)
 
-### Тесты rate limiter (7)
+### Rate Limiter (7)
 
 | Тест | Что проверяет |
 |------|--------------|
 | `TestOwlRateLimiter_AllowExtended` | 10 запросов разрешены, 11-й заблокирован |
-| `TestOwlRateLimiter_Cancel` | Отмена (refund) слота после ошибки |
-| `TestOwlRateLimiter_Remaining` | Правильный счётчик оставшихся запросов |
-| `TestOwlRateLimiter_WindowReset` | Сброс окна после истечения TTL |
+| `TestOwlRateLimiter_Cancel` | Отмена (refund) слота |
+| `TestOwlRateLimiter_Remaining` | Счётчик оставшихся |
+| `TestOwlRateLimiter_WindowReset` | Сброс окна после TTL |
 | `TestOwlRateLimiter_Concurrent` | 100 горутин, race-free |
 
-### Тесты mock OpenRouter API (3)
+### Mock OpenRouter API (3)
 
 | Тест | Что проверяет |
 |------|--------------|
-| `TestMockOpenRouterAPI` | HTTP запрос/ответ, заголовки, тело |
-| `TestMockOpenRouterAPI_Streaming` | SSE streaming (text/event-stream) |
+| `TestMockOpenRouterAPI` | HTTP запрос/ответ, заголовки |
+| `TestMockOpenRouterAPI_Streaming` | SSE streaming |
 | `TestMockOpenRouterAPI_Error` | 429 Too Many Requests |
 
-### Интеграционные тесты OWL (2)
+### Контекст (2)
 
 | Тест | Что проверяет |
 |------|--------------|
-| `TestOwlFullFlow_Success` | Полный флоу: allow → cancel → retry |
-| `TestOwlFullFlow_RateLimitExceeded` | Исчерпание лимита → блокировка |
-
-### Тесты контекста (2)
-
-| Тест | Что проверяет |
-|------|--------------|
-| `TestCallOpenRouterContext_Success` | Мок сервер отвечает корректно |
+| `TestCallOpenRouterContext_Success` | Мок сервер отвечает |
 | `TestCallOpenRouterContext_Cancelled` | Context cancellation |
 
-### Бенчмарки
+### Интеграционные (3)
 
-| Бенчмарк | Описание |
-|----------|----------|
-| `BenchmarkOwlRateLimiter` | Параллельный allow() |
-| `BenchmarkOwlRateLimiter_Remaining` | remaining() после allow() |
+| Тест | Что проверяет |
+|------|--------------|
+| `TestOwlFullFlow_Success` | allow → cancel → retry |
+| `TestOwlFullFlow_RateLimitExceeded` | Исчерпание лимита |
+| `TestStreamOpenRouter_Success` | Rate limiter при стриминге |
+
+---
+
+## bot_commands_test.go (20 тестов)
+
+### Rate Limiter (4)
+
+| Тест | Что проверяет |
+|------|--------------|
+| `TestBotRateLimiter_Allow` | 3 разрешены, 4-й заблокирован |
+| `TestBotRateLimiter_DifferentUsers` | Разные пользователи — отдельные счётчики |
+| `TestBotRateLimiter_WindowReset` | Сброс окна |
+| `TestOwlRateLimiter_Allow` | OWL rate limiter |
+
+### Bot Commands (7)
+
+| Тест | Что проверяет |
+|------|--------------|
+| `TestHandleBotStatus` | /status → "Статус сервера" |
+| `TestHandleBotVersion` | /version → ServerVersion |
+| `TestHandleBotHelp` | /help → "Доступные команды" (7 команд) |
+| `TestHandleBotDeploy_NonAdmin` | SKIP (требует DB) |
+| `TestHandleBotDeploy_InvalidTarget` | SKIP (требует DB) |
+| `TestHandleBotRestart_NonAdmin` | SKIP (требует DB) |
+| `TestHandleBotAI_NoMessage` | /ai без аргументов → ошибка |
+
+### Dispatcher (3)
+
+| Тест | Что проверяет |
+|------|--------------|
+| `TestDispatchBotCommand_UnknownCommand` | Неизвестная команда → ошибка |
+| `TestDispatchBotCommand_KnownCommands` | /status, /version, /help, /logs |
+| `TestDispatchBotCommand_RateLimit` | Rate limit → ошибка |
+
+### Notification Service (3)
+
+| Тест | Что проверяет |
+|------|--------------|
+| `TestNotificationService_Broadcast` | Broadcast → subscriber получает |
+| `TestNotificationService_History` | maxHistory=5, 10 сообщений → 5 в истории |
+| `TestNotificationService_SubscribeUnsubscribe` | subscribe/unsubscribe |
+
+### Utils (3)
+
+| Тест | Что проверяет |
+|------|--------------|
+| `TestFormatDuration` | 30м, 2ч, 25ч, 90м |
+| `TestTruncateString` | Обрезка строк |
+| `TestBotCommandList_AllPresent` | Все 7 команд в реестре |
+
+---
+
+## server_push_test.go (6 тестов)
+
+| Тест | Что проверяет |
+|------|--------------|
+| `TestIsUserOnline_UserPresent` | v2 клиент (userId) онлайн |
+| `TestIsUserOnline_UserNotPresent` | Несуществующий пользователь |
+| `TestIsUserOnline_FallbackToUsername` | v1 клиент (только username) |
+| `TestIsUserOnline_BothUserIdAndUsername` | v2 клиент: userId + username fallback |
+| `TestIsUserOnline_MultipleStreams` | 2 стрима, 2 пользователя |
+| `TestIsUserOnline_AfterUnregister` | Grace period после отключения |
+
+---
+
+## server_remote_test.go (8 тестов)
+
+| Тест | Что проверяет |
+|------|--------------|
+| `TestDeployAgentTaskStream_Unit` | Nil manager → ошибка |
+| `TestDeployAgentTaskStream_EmptyAgentId` | Пустой agent_id → done=true |
+| `TestStreamResponse_Fields` | Поля промежуточных/финальных сообщений |
+| `TestStreamUpdate_DoneTrueFiltering` | Фильтрация done=true (8 под-тестов) |
+| `TestFinalResult_SingleDoneTrue` | done=True ровно один раз |
+| `TestDeployAgentTaskStream_Integration_NilManager` | Graceful degradation |
+| `TestDeployAgentTaskStream_Integration_InvalidAgent` | Несуществующий агент |
+| `TestDeployAgentTaskStream_Integration_WithRegisteredAgent` | Зарегистрированный агент |
+
+---
+
+## server_stability_test.go (13 тестов)
+
+### Pinned Messages Fix (4)
+
+| Тест | Что проверяет |
+|------|--------------|
+| `TestPinMessage_ChatIDIsString` | Chat ID — строка, не UUID |
+| `TestPinMessage_RoomIDTypeVarchar` | SQL не кастят room_id в uuid |
+| `TestGetPinnedMessages_JoinUsesMessageID` | JOIN: `m.message_id` (varchar) ≠ `m.id` (integer) |
+| `TestPinMessage_ValidateMessageExists` | Проверка по `message_id`, не по `id` |
+
+### Type Assertion Safe Check (4)
+
+| Тест | Что проверяет |
+|------|--------------|
+| `TestUpdateConference_PanicOnBadJSON` | Кривой JSON → нет паники |
+| `TestUpdateConference_ValidJSON` | Валидный JSON парсится |
+| `TestUpdateConference_MissingStartTime` | Отсутствие start_time → fallback |
+| `TestUpdateConference_NilPayload` | Пустой payload безопасен |
+
+### Infrastructure (5)
+
+| Тест | Что проверяет |
+|------|--------------|
+| `TestHTTPServer_GracefulShutdown` | HTTP сервер шатдаунится |
+| `TestHTTPServer_HealthEndpoint` | /health → 200 |
+| `TestConnectDB_HaltOnFailure` | Сервер останавливается при падении БД |
+| `TestStreamHandler_PanicRecovery` | Panic recovery в stream handlers |
+| `TestUpdateUsername_TransactionErrorHandling` | Транзакция проверяет ошибки |
+
+---
+
+## core/rag/memory/memory_test.go (4 теста)
+
+| Тест | Что проверяет |
+|------|--------------|
+| `TestInMemoryEmbeddingService` | TF-IDF embeddings, нормализация, детерминированность |
+| `TestInMemoryVectorDB` | Upsert, search (cosine similarity), delete |
+| `TestInMemoryRAGPipeline` | BuildContext: RAG → augmented prompt |
+| `TestCosineSimilarity` | Косинусное сходство: 1.0 (идентичные), 0.0 (ортогональные) |
 
 ---
 
 ## Архитектура тестирования
 
-### Интерфейс authDB
+### Mock DB (auth_service_test.go)
 
-Для тестируемости AuthService введён интерфейс `authDB`:
+`mockAuthDB` — in-memory реализация интерфейса `authDB`:
+- Хранит users и emails в map
+- Генерирует UUID-подобные ID
+- Поддерживает все методы v1 + v2 auth (UpsertDevice, ValidateRefreshToken, LogAuthEvent)
 
-```go
-type authDB interface {
-    UserExists(user string) (bool, error)
-    EmailExists(email string) (bool, error)
-    GetUserPasswordHash(user string) (string, error)
-    SaveUserWithEmail(user, hash, email string) error
-    GetUserIdByUsername(user string) (string, error)
-    GetUserAvatar(user string) (string, error)
-    UpdateLastSeen(user string) error
-    queryUserProfile(username string) (email, bio, status string, createdAt, lastSeenAt time.Time, err error)
-}
-```
+### Mock OpenRouter API (owl_test.go)
 
-`*DB` реализует этот интерфейс автоматически. В тестах используется `mockAuthDB`.
+`httptest.NewServer` для мокирования OpenRouter API:
+- Проверяет HTTP заголовки (Authorization, Content-Type)
+- Тестирует SSE streaming (text/event-stream)
+- Тестирует ошибки (429 Too Many Requests)
 
-### Мок OpenRouter API
+### Mock Streams (server_push_test.go, server_remote_test.go)
 
-Тесты OWL используют `httptest.Server` для мокирования OpenRouter API:
-- Проверяют HTTP заголовки (Authorization, Content-Type)
-- Проверяют тело запроса (model, messages)
-- Тестируют SSE streaming (text/event-stream)
-- Тестируют ошибки (429 Too Many Requests)
+- `mockChatStream` — mock для `gen.ChatService_ChatServer`
+- `mockDeployStream` — mock для `gen.ChatService_DeployAgentTaskStreamServer`
 
 ---
 
 ## Написание новых тестов
 
-### Добавить тест для AuthService
+### Добавить тест для AuthService v2
 
-1. Создайте тестовую функцию в `auth_service_test.go`
-2. Используйте `newMockAuthDB()` для создания мока
-3. При необходимости добавьте пользователей через `db.addUser(username, password, email)`
-4. Вызовите метод `authServer` и проверьте результат
-
-Пример:
 ```go
-func TestSignIn_NewCase(t *testing.T) {
-    t.Parallel()
-    db := newMockAuthDB()
-    db.addUser("testuser", "password123", "")
+func TestMyNewV2Test(t *testing.T) {
+    os.Setenv("JWT_SECRET", "test-secret-key-that-is-32-bytes-long!")
+    defer os.Unsetenv("JWT_SECRET")
 
-    s := &authServer{db: db}
-    resp, err := s.SignIn(context.Background(), &gen.SignInRequest{
+    db := newMockAuthDB()
+    srv := newAuthServerV2(nil)
+    srv.db = db
+
+    resp, err := srv.SignInV2(context.Background(), &gen.SignInRequestV2{
         Username: "testuser",
-        Password: "password123",
+        Password: "pass123",
+        Device: &gen.DeviceInfo{DeviceId: "device-123"},
     })
 
     if err != nil {
-        t.Fatalf("SignIn returned error: %v", err)
+        t.Fatalf("error: %v", err)
     }
     if !resp.Success {
-        t.Fatal("SignIn should succeed")
+        t.Errorf("expected success: %s", resp.Message)
     }
 }
 ```
 
-### Добавить тест для OWL
-
-1. Создайте тестовую функцию в `owl_test.go`
-2. Для тестирования rate limiter используйте `newRateLimiter(limit, window)`
-3. Для тестирования HTTP используйте `httptest.NewServer()`
-4. Для тестирования потоков используйте SSE формат
-
-### Добавить бенчмарк
+### Добавить тест стабильности
 
 ```go
-func BenchmarkNewFunction(b *testing.B) {
-    // Подготовка
-    b.ResetTimer()
-    for i := 0; i < b.N; i++ {
-        // Тестируемый код
+func TestMyFix(t *testing.T) {
+    t.Parallel()
+    // Проверяйте конкретный фикс
+    // Например: safe type assertion
+    var data map[string]interface{}
+    json.Unmarshal([]byte(`{"key": "not-a-number"}`), &data)
+
+    val, ok := data["key"].(float64)
+    if ok {
+        t.Error("should not be a number")
     }
+    // val = 0, no panic
+    _ = val
 }
 ```
-
-Для параллельных бенчмарков:
-```go
-b.RunParallel(func(pb *testing.PB) {
-    for pb.Next() {
-        // Тестируемый код
-    }
-})
-```
-
----
-
-## Покрытие кода
-
-Текущее покрытие (v1.1.2.11):
-
-| Функция | Покрытие |
-|---------|----------|
-| `SignIn` | 85.7% |
-| `SignUp` | 74.2% |
-| `rateLimiter.allow` | 100% |
-| `rateLimiter.cancel` | 100% |
-| `rateLimiter.remaining` | 92.3% |
-| Общее | 4.3% |
-
-Общее покрытие низкое потому что проект большой (30+ файлов), а тесты покрывают только auth и owl части. Для самих тестируемых функций покрытие >80%.
-
----
-
-## Известные ограничения
-
-1. **sqlmock не подключён** — нет зависимости `DATA-DOG/go-sqlmock` в go.mod. Моки реализованы вручную через интерфейсы и map.
-2. **QueryRow нельзя мокать напрямую** — `*sql.Row` имеет приватные поля. Решение: вызов обёрнут в метод `queryUserProfile`.
-3. **OWL HTTP функции используют хардкод URL** — `callOpenRouterContext` и `streamOpenRouter` вызывают `openrouter.ai` напрямую. В тестах мок-сервер проверяет HTTP логику, но не интегрируется с этими функциями напрямую.
-4. **Некоторые тесты bot_commands_test.go пропущены** — требуют реального DB соединения (`t.Skip("Requires DB connection")`).
 
 ---
 
@@ -258,3 +341,12 @@ go test -v -count=1 LavenderMessenger
 go build ./...
 go vet ./...
 ```
+
+---
+
+## Известные ограничения
+
+1. **sqlmock не подключён** — моки через интерфейсы и map
+2. **Некоторые тесты пропущены** — требуют реального DB (`t.Skip("Requires DB connection")`)
+3. **OWL HTTP функции используют хардкод URL** — тесты мокают HTTP логику отдельно
+4. **Нет интеграционных тестов стриминга** — требуют реального gRPC подключения
