@@ -211,23 +211,6 @@ service HermesSessionService {
 }
 ```
 
-## Android UI
-
-### HermesChatActivity
-- Использует Unified Chat Widget
-- Агенты отображаются как участники группового чата (MaterialChip emoji + name)
-- Тап по чипу → переключение на прямой чат с агентом
-- ChatMessageAdapter для отображения сообщений
-
-### NewChatActivity (групповой чат)
-- Отдельный layout (пока не мигрирован на ChatWidget)
-- MessageAdapter + item_message.xml
-
-### Session Management
-- HermesChatViewModel: agents registry, session state
-- HermesRepository: gRPC вызовы к серверу
-- HermesGrpc.kt: обёртки над RealGrpcClient
-
 ## Конфигурация
 
 **Переменные окружения (.env):**
@@ -238,18 +221,12 @@ OPENROUTER_MODEL=openrouter/auto
 
 ## Деплой
 
-**Dev сервер:**
 ```bash
 cd /root/msg && export PATH=$PATH:/usr/local/go/bin:~/go/bin
 go build -o /tmp/lavender-server-dev .
 systemctl stop lavender-server-dev
 cp /tmp/lavender-server-dev /root/LavenderMessenger/run/lavender-server-dev
 systemctl start lavender-server-dev
-```
-
-**Android:**
-```bash
-cd /root/msg.client.android && ./gradlew assembleDebug
 ```
 
 ## Известные проблемы
@@ -260,12 +237,6 @@ cd /root/msg.client.android && ./gradlew assembleDebug
 
 ## Тестирование
 
-**Unit тесты:**
 ```bash
 cd /root/msg && go test ./core/rag/... -v
 ```
-
-**Интеграционные тесты:**
-1. Android → gRPC → Orchestrate → agent selection → streaming response
-2. Tool calling: запрос → RAG → LLM → tool call → result
-3. Remote agent: register → send task → receive result

@@ -1,37 +1,10 @@
 # Lavender Messenger — Архитектура
 
 **Дата:** 2026-06-18
-**Версия сервера:** 1.2.0.5
-**Версия клиента:** 1.1.3.37
+**Версия сервера:** 1.2.0.6
 **Модуль:** `LavenderMessenger` (Go 1.26)
 
 ---
-
-## 1. Общая архитектура
-
-```
-┌─────────────────┐     gRPC (bidirectional)    ┌──────────────────┐
-│                 │◄────────────────────────────►│                  │
-│  Android Client │     gRPC (unary)             │    Go Server     │
-│    (Kotlin)     │◄────────────────────────────►│    (main.go)     │
-│                 │                              │                  │
-└─────────────────┘                              └────────┬─────────┘
-                                                          │
-┌─────────────────┐                                       │
-│  Remote Agent   │     gRPC bidirectional                │
-│    (Python)     │◄────────────────────────────────────►│
-└─────────────────┘                                       │
-                                                          │
-                                                 ┌────────┴────────┐
-                                                 │    PostgreSQL   │
-                                                 │  (chat_db)      │
-                                                 └─────────────────┘
-
-┌─────────────────┐     HTTP                         │
-│ Hermes Agent    │◄────────────────────────────────►│
-│   (Go daemon)   │     gRPC (hermes_agent)          │
-└─────────────────┘                                  │
-```
 
 ## 2. Порты
 
@@ -184,7 +157,6 @@ SIGTERM received
 
 ## 7. Технический стек
 
-### Сервер
 - Go 1.26, gRPC + Protocol Buffers
 - PostgreSQL (database/sql + lib/pq)
 - Firebase Cloud Messaging (push)
@@ -194,11 +166,7 @@ SIGTERM received
 - AES-256-GCM (E2EE encryption)
 - systemd, .env конфигурация
 
-### Клиент (Android)
-- Kotlin, gRPC (protobuf-lite manual)
-- Room Database, Firebase, WebRTC
-- MVVM + StateFlow + ViewBinding
-- Material Design 3
+**Android:** `/root/msg.client.android` — Kotlin, gRPC, Room, Firebase, WebRTC. Сборка ТОЛЬКО локально.
 
 ## 8. Тесты
 

@@ -1,7 +1,7 @@
-# Промпт для серверных сессий — v1.2.0.x
+# Промпт для серверных сессий — v1.2.0.6
 
 **Дата:** 2026-06-18 | **Ветка:** feat/1.2.0.x
-**Статус:** userId migration завершена (Этапы 1-3), deployed на dev+prod
+**Статус:** userId migration завершена, ChatList V2 lastmessage оптимизация завершена. Фокус на стабильности.
 
 ---
 
@@ -11,7 +11,8 @@
 |---|--------|--------|
 | **Сервер prod** | v1.2.0.6 | ✅ Работает на порту 50051 |
 | **Сервер dev** | v1.2.0.6 | ✅ Работает на порту 50052 |
-| **Android** | v1.1.3.37 | Использует JWT (v2 auth) |
+
+**Android:** `/root/msg.client.android` — документация там, сборка ТОЛЬКО локально (нет памяти на сервере).
 
 ---
 
@@ -20,13 +21,13 @@
 ### Сервер (/root/msg)
 ```
 main.go                    — Entry point, gRPC server
-server.go                  — ServerVersion = "1.2.0.3"
+server.go                  — ServerVersion = "1.2.0.6"
 auth_service.go            — AuthService v1 (deprecated)
 auth_service_v2.go         — AuthService v2 (JWT)
 auth_interceptor.go        — gRPC Bearer token + v1 username fallback
 auth_jwt.go                — JWT генерация/валидация (библиотека golang-jwt)
 auth/jwt.go                — JWT для agent tokens (кастомный)
-db.go                      — Database layer (~1433 LOC)
+db.go                      — Database layer (~80+ CRUD методов)
 db_hermes.go               — Hermes DB migrations + CRUD
 db_chatlist_v2.go          — ChatList v2 DB (PinChat, SearchChats, ArchiveChat)
 db_auth_devices.go         — user_devices + device_auth_log
@@ -46,7 +47,7 @@ messenger.proto            — All proto definitions
 
 ---
 
-## ЧТО СДЕЛАНО (v1.2.0.3)
+## ЧТО СДЕЛАНО (v1.2.0.6)
 
 ### Безопасность
 - Path traversal fix — `http_server.go:serveFileHandler`
@@ -65,6 +66,19 @@ messenger.proto            — All proto definitions
 - Orchestrator lock — DB I/O вне lock
 - bot_commands — admin auth через context
 
+### userId Migration (Этапы 1-3)
+- UUID-колонки в `reactions`, `contacts`, `user_tokens`, `user_themes`
+- `chats.participant_ids UUID[]` + GIN индекс
+- UUID-based DB методы (ByUserID варианты)
+- Все handlers переключены с `resolveUsername()` на `GetUserID(ctx)`
+- `resolveDisplayName()` helper для отображения
+
+### ChatList V2 Last Message Optimization
+- DB миграция: `last_message_username`, `last_message_has_image` в `chats`
+- SaveMessage обновляет `chats.last_message_*` при отправке
+- CTE `WITH last_messages` удалён из GetUserChatsV2/GetUserChats/GetAllChats
+- Быстрее GetChatsV2 — убран full scan messages
+
 ### Совместимость
 - AuthInterceptor: v1 clients (без JWT) → username из gRPC metadata
 - GetChatsV2: fallback на req.Username / ctx username
@@ -74,13 +88,13 @@ messenger.proto            — All proto definitions
 
 ## ПРАВИЛА
 
-1. ⚠️ **НЕ компилировать Android на сервере** — OOM kill
+1. ⚠️ **НЕ компилировать Android на сервере** — OOM kill. Android собирается ТОЛЬКО локально.
 2. Версия сервера в `server.go:33`
 3. userId (UUID) — всегда как ключ, НЕ username
 4. Auth context → `GetUserID(ctx)`, NEVER `req.UserId`
 5. DB миграции: `IF NOT EXISTS`, NEVER `DROP`
 6. Коммитить после каждого изменения
-7. Деплой: dev → тест → prod
+7. **Стабильность > фичи** — деплоим сразу на prod, ошибки критичны
 
 ---
 
@@ -120,14 +134,13 @@ go test ./...
 | Порт HTTP | 8083 | 8082 |
 | DB | chat_db_dev | chat_db |
 | Config | .env.dev | .env |
-| Версия | v1.2.0.3 | v1.2.0.3 |
 
 ---
 
 ## ДОКУМЕНТАЦИЯ
 
-- План оптимизации: `/root/msg/doc/OPTIMIZATION_PLAN.md`
 - Интеграция: `/root/msg/doc/INTEGRATION_SESSION.md`
 - Задачи: `/root/msg/doc/TASKS.md`
 - Pitfalls: `/root/msg/doc/PITFALLS.md`
 - Release: `/root/msg/doc/RELEASE.md`
+- Android: `/root/msg.client.android/doc/` (вся документация там)

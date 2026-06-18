@@ -63,3 +63,4 @@ hermes-agent/main.go
 hermes-agent/lavender-server-new
 doc/.env.bak
 doc/.env.dev.bak
+lavender-server-dev

@@ -2,8 +2,8 @@
 
 Документация по AI-сервисам: OWL AI и Hermes Orchestrator.
 
-**Обновлено:** 2026-06-09
-**Ветка:** feat/1.1.2.x
+**Обновлено:** 2026-06-18
+**Ветка:** feat/1.2.0.x
 
 ---
 
@@ -11,20 +11,6 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                        ANDROID CLIENT                       │
-│                                                             │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐  │
-│  │  OwlGrpc.kt  │  │ HermesGrpc.kt│  │  GrpcClient.kt   │  │
-│  │  (OWL API)   │  │ (Hermes API) │  │  (единая точка)  │  │
-│  └──────┬───────┘  └──────┬───────┘  └────────┬─────────┘  │
-│         │                 │                    │            │
-│  ┌──────┴───────┐  ┌──────┴───────┐           │            │
-│  │OwlChatActivity│  │HermesChatActivity│        │            │
-│  │OwlChatViewModel│ │HermesChatViewModel│       │            │
-│  └──────────────┘  └──────────────┘           │            │
-└─────────────────────────┬───────────────────────┘            │
-                          │ gRPC                              │
-┌─────────────────────────┴───────────────────────────────────┐
 │                        SERVER                                │
 │                                                             │
 │  ┌─────────────────────────────────────────────────────┐    │
@@ -203,52 +189,6 @@ Fallback: если ошибка анализа или агент не найде
 
 ---
 
-## Proto field mapping
-
-**ВАЖНО:** при изменении `.proto` файлов всегда сверять номера полей с кодом клиента!
-
-### CreateHermesSessionResponse
-```
-message CreateHermesSessionResponse {
-  bool success = 1;        // field 1 = success (bool)
-  string session_id = 2;   // field 2 = session_id (string)
-  string name = 4;         // field 4 = name (string)
-  string error = 3;        // field 3 = error (string)
-}
-```
-
-### CreateAgentResponse
-```
-message CreateAgentResponse {
-  bool success = 1;        // field 1 = success (bool)
-  string agent_id = 2;     // field 2 = agent_id (string)
-  string error = 3;        // field 3 = error (string)
-}
-```
-
-### AgentInfo
-```
-message AgentInfo {
-  string id = 1;
-  string name = 2;
-  string description = 3;
-  bool is_preset = 4;
-  string system_prompt = 5;
-  string model = 6;
-}
-```
-
-### OrchestratorResponse
-```
-message OrchestratorResponse {
-  string token = 1;
-  bool finished = 2;
-  string error = 3;
-}
-```
-
----
-
 ## Известные проблемы и решения
 
 ### Дублирование Hermes сессий
@@ -352,18 +292,4 @@ go build -o /tmp/lavender-server-dev .
 systemctl stop lavender-server-dev
 cp /tmp/lavender-server-dev /root/LavenderMessenger/run/lavender-server-dev
 systemctl start lavender-server-dev
-
-# Сборка и деплой на prod
-go build -o /tmp/lavender-server .
-systemctl stop lavender-server
-cp /tmp/lavender-server /root/LavenderMessenger/run/lavender-server
-systemctl start lavender-server
-
-# Proto gen
-cd /root/msg && protoc --go_out=./gen --go_opt=paths=source_relative \
-  --go-grpc_out=./gen --go-grpc_opt=paths=source_relative messenger.proto
-
-# Android
-cd /root/msg.client.android
-./gradlew compileDebugKotlin
 ```

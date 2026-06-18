@@ -51,7 +51,7 @@ func TestGetPinnedMessages_JoinUsesMessageID(t *testing.T) {
 	t.Parallel()
 
 	// Verify the JOIN condition uses message_id (varchar) not id (integer)
-	query := `SELECT pm.message_id, pm.pinned_at, m.user, m.text, m.created_at
+	query := `SELECT pm.message_id, pm.pinned_at, m.username, m.encrypted_text, m.created_at
 		FROM pinned_messages pm
 		JOIN messages m ON m.message_id = pm.message_id AND m.room_id = pm.room_id
 		WHERE pm.user_id = $1::uuid AND pm.room_id = $2`

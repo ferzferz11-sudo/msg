@@ -1,28 +1,60 @@
 # Lava Messenger — Интеграционная сессия
 
-**Текущая версия:** v1.2.0.6 (сервер prod/dev) / v1.1.3.37 (Android)
-**Обновлено:** 2026-06-18 (сессия 37 — userId migration)
-**Тег:** v1.2.0.6
+**Текущая версия:** v1.2.0.6 (сервер prod/dev)
+**Обновлено:** 2026-06-18
 **Ветка сервера:** feat/1.2.0.x
-**Ветка Android:** feat/1.1.3.x
+
+**Android:** `/root/msg.client.android` — сборка ТОЛЬКО локально.
 
 ---
 
-## Deprecated v1 compat methods (удалить в v1.3 — много устаревших клиентов)
+## Deprecated v1 compat methods (удалить в v1.3)
 
 | Файл | Метод/Код | Описание | Замена |
 |------|-----------|----------|--------|
 | `auth_service.go` | `authServer` (v1 SignIn/SignUp) | V1 авторизация без JWT | `authServerV2` (AuthServiceV2) |
 | `auth_interceptor.go` | `extractUsernameFromMetadata` | V1 fallback по username из gRPC metadata | JWT Bearer token |
-| `auth_interceptor.go` | `AuthInterceptor` v1 fallback (lines 40-54) | Извлечение username/user_id из metadata при отсутствии JWT | Использовать v2 JWT |
+| `auth_interceptor.go` | `AuthInterceptor` v1 fallback | Извлечение username из metadata при отсутствии JWT | Использовать v2 JWT |
 | `auth_interceptor.go` | `AuthStreamInterceptor` bypass (Chat/Typing/CallSession) | V1 аутентификация по паролю внутри потока | JWT в metadata |
 | `auth_interceptor.go` | `ResolveUserID` | Username→UUID fallback через DB | `GetUserID(ctx)` |
 | `server.go` | `resolveUserId` / `resolveUsername` | Нормализаторы v1→v2 | UUID идентификаторы |
 | `server_chats.go` | `GetChats` | V1 эндпоинт чат-листа | `GetChatsV2` |
 | `hub.go` | `IsUserOnline` username fallback | Проверка по username для v1 | UUID-only проверка |
 | `hub.go` | `BroadcastCall` username matching | Маршрутизация по username | UUID-only маршрутизация |
-| `db_chatlist_v2.go` | `user_chat_metadata.username` | Nullable колонка, была PK | `user_id` (UUID PK) |
-| `server_chat.go` | Chat stream v1 password auth (line 88) | Legacy парольная аутентификация в потоке | JWT в первом сообщении |
+| `db_chatlist_v2.go` | `user_chat_metadata.username` | Nullable колонка | `user_id` (UUID PK) |
+| `server_chat.go` | Chat stream v1 password auth | Legacy парольная аутентификация в потоке | JWT в первом сообщении |
+
+---
+
+## Сессия 38 — ChatList V2 Last Message Optimization
+
+### Что сделано
+
+#### Last Message Columns (chats table)
+1. **DB миграция**: `last_message_username VARCHAR(255)`, `last_message_has_image BOOLEAN` добавлены в `chats`
+2. **Backfill**: SQL миграция `002_lastmessage.sql` заполняет данные из messages
+3. **SaveMessage**: при отправке сообщения обновляет `chats.last_message_text`, `last_message_time`, `last_message_username`, `last_message_has_image`
+
+#### CTE Removal
+1. **GetUserChatsV2** — CTE `WITH last_messages` заменён на прямые колонки `chats`
+2. **GetUserChats** (v1) — CTE заменён на прямые колонки
+3. **GetUserChatsByUserID** — CTE заменён на прямые колонки
+4. **GetAllChats** — CTE заменён на прямые колонки
+
+#### Decrypt for Preview
+- `last_message_text` хранит расшифрованный текст (Go-side decrypt, не SQL)
+- Для E2EE чатов — пустая строка
+
+#### Коммиты
+- `208db83` — feat: ChatList V2 last message optimization
+- `603f731` — fix: SaveMessage decrypts text for last_message_text preview
+- `2001b69` — fix: migration 002_lastmessage — remove decrypt() call
+- `2b62cfb` — feat: backfillLastMessageText — decrypt old chats on startup
+- `35bde10` — refactor: clean up migrations — core only
+
+### Статус
+- Dev (50052): ✅ работает
+- Prod (50051): ✅ работает
 
 ---
 
@@ -36,7 +68,6 @@
 3. **Индексы созданы**: `idx_reactions_user_id`, `idx_contacts_user_id`, `idx_contacts_contact_user_id`, `idx_user_tokens_user_id`, `idx_user_themes_user_id`
 4. **`chats.participant_ids UUID[]`** — добавлена колонка + GIN индекс для матчинга по UUID
 5. **`muted_chats.user_id`** — заполнены NULL значения, создан индекс
-6. **SQL миграция**: `migrations/001_userid_migration.sql`
 
 #### UUID-based DB Methods (Этап 2)
 - `SetReactionByUserID`, `RemoveReactionByUserID`
@@ -49,281 +80,30 @@
 #### Handler Migration (Этап 3)
 - Все handlers переключены с `resolveUsername()` на `resolveDisplayName()` (чистый helper, без DB fallback)
 - `GetUserID(ctx)` используется как primary identifier везде где возможно
-- `server_profile.go`, `server_contacts.go`, `server_themes.go`, `server_users.go`, `server_push.go`, `secret_chat.go`, `server_chat.go`, `server_chats.go` — обновлены
-- Helper функции `isUUID()` и `resolveDisplayName()` добавлены в `server.go`
-
-#### Bug Fix
-- **pinned_messages запрос**: `m.user` → `m.username`, `m.text` → `decrypt(m.encrypted_text)`
 
 #### Коммиты
 - `b148b04` — feat: Phase 1 — DB UUID columns + UUID-based DB methods
 - `3ad8e00` — feat: Phase 2 — handler migration: contacts, themes, profile, push, users, secret_chat
 - `fbb28b2` — feat: Phase 3 — remove resolveUsername from server_chat.go, server_chats.go, server_push.go
-- (fix) — fix: pinned_messages query m.user → m.username + decrypt
 
 ### Статус
 - Dev (50052): ✅ работает
 - Prod (50051): ✅ работает
-- Деплой выполнен, ошибок в логах нет
-
----
-
-## Сессия 38 — ChatList V2 Last Message Optimization
-
-### Что сделано
-
-#### Last Message Columns (chats table)
-1. **DB миграция**: `last_message_username VARCHAR(255)`, `last_message_has_image BOOLEAN)` добавлены в `chats`
-2. **Backfill**: SQL миграция `002_lastmessage.sql` заполняет данные из messages
-3. **SaveMessage**: при отправке сообщения обновляет `chats.last_message_text`, `last_message_time`, `last_message_username`, `last_message_has_image`
-
-#### CTE Removal
-1. **GetUserChatsV2** — CTE `WITH last_messages` заменён на прямые колонки `chats`
-2. **GetUserChats** (v1) — CTE заменён на прямые колонки
-3. **GetUserChatsByUserID** — CTE заменён на прямые колонки
-4. **GetAllChats** — CTE заменён на прямые колонки
-
-#### Эффект
-- **Быстрее** — убирает full scan messages, заменяет на индексированный lookup
-- **Превью текста** — клиент получает расшифрованный текст без额外 запросов
-- **Last message username** — показывать "Вы: ..." в списке чатов
-- **Image indicator** — показывать иконку камеры если последнее сообщение с картинкой
-
-#### Коммиты
-- `208db83` — feat: ChatList V2 last message optimization
-
-### Статус
-- Dev (50052): ✅ работает
-- Prod (50051): ✅ работает
-
----
-
-## Сессия 31 — Update System восстановление
-
-### Что сделано
-
-#### Update System (Android)
-1. **Созданы drawable ресурсы:** ic_loading_renew, deployed_code_update_24, ic_checked
-2. **ChatListActivity:** интеграция UpdateManager — init в setupUI(), наблюдение за StateFlow
-3. **Silent update check** — автопроверка при старте + автоскачивание
-4. **Manual update check** — кнопка в user menu → checkManualUpdate() → showUpdateDialog()
-5. **Update indicator** — llUpdateContainer в toolbar (available/downloading/downloaded states)
-6. **Progress dialog** — диалог прогресса скачивания с кнопкой отмены
-7. **APK install** — через FileProvider после скачивания
-8. **onResume/onPause** — регистрация/отписка UpdatePrefs listener
-
-#### Коммиты
-- TBD — feat: restore update system — UpdateManager integration, silent check, manual check, progress dialog
-
----
-
-## Сессия 13 — ChatListActivityV2 полная реализация
-
-### Что сделано
-
-#### ChatListActivityV2 (Android)
-1. **Полная переработка** — убрана зависимость от ChatListFragmentV2, всё в одном Activity
-2. **RecyclerView + SwipeRefreshLayout** напрямую в activity_chat_list_v2.xml
-3. **TabLayout** — табы All / AI / Groups с фильтрацией через ViewModel
-4. **Toolbar** — avatar→ProfileActivity, title→ServersAction, search/settings icons
-5. **FABs** — fabAi (TODO), fabAddChat→NewChatActivity
-6. **Навигация** — favorites→NewChat, hermes→HermesChat, owl→OwlChat, other→NewChat
-7. **Connection status** — subtitle с connecting/online/offline
-
-#### SplashActivity (Android)
-- Маршрутизация: v2 server host → ChatListActivityV2, иначе → ChatListActivity
-
-#### ChatAdapterV2 (Android)
-- Исправлено дублирование cachedColors (единый кэш в адаптере)
-
-#### AndroidManifest.xml
-- Зарегистрирован ChatListActivityV2
-- Удалены дубликаты RemoteAgentSettingsActivity и LogViewerActivity
-
-#### Коммиты
-- `bd4e22c` — feat: ChatListActivityV2 — full v2 chat list with tabs, navigation, FABs, theme integration
-
----
-
-## Сессия 12 — ChatList v2 UI + разделение v1/v2
-
-### Что сделано
-
-#### ChatList v2 UI (Android)
-1. **ChatListActivityV2** — новый Activity с определением версии сервера (v1/v2)
-2. **ChatListFragmentV2** — фрагмент с SwipeRefresh + RecyclerView
-3. **ChatAdapterV2** — адаптер с секциями (Pinned/Favorites/All Chats)
-4. **ChatListViewModelV2** — ViewModel: loadChats, pinChat, archiveChat, searchChats
-5. **ChatListSections.kt** — управление секциями
-6. **TabLayout** — табы All / AI / Groups (заглушка)
-7. **v2 context menu** — Pin/Mute/Delete в списке чатов (long press)
-8. **Fallback на v1** — при подключении к prod серверу автоматически запускается ChatListActivity v1
-9. **i18n** — 17 новых строк (en + ru)
-
-#### Архитектура v2 (уточнено, сессия 13)
-- **Long press на чате** = режим выбора (toolbar с действиями: Pin/Delete/Edit)
-- **Короткий тап** = вход в чат/группу
-- **Pin Chat** — в toolbar в режиме выбора (long press)
-- **Pin Message** — в шторке сообщения (bottom sheet)
-- **Archive** — отдельная сущность, заархивированные но не удалённые чаты
-- **Favorites** — существующий чат "Личное хранилище" (не Archive!)
-- **Секции списка**: Pinned / Favorites / All Chats + Archived
-- **Табы**: All / AI / Groups
-
-#### Исправления
-- Data binding NPE: `@++id/` → `@+id/`, ConstraintLayout в CoordinatorLayout, несуществующий TextAppearance
-- Компиляция: parseSafeColor defaultColor, ThemeApplier.apply signature, ServerAuthBottomSheet params
-
-#### Коммиты
-- `7d087bc` — v2 scaffold
-- `0f500ce` — fix ConstraintLayout attrs
-- `23a2a79` — fix TextAppearance
-- `6fb3453` — fix @++id/
-- `28c2715` — fix compilation errors
-- `f0b06e1` — restore version.txt to 1.1.3.15
-- `bf00543` — remove unused menu, restore i18n
-- `e338ed4` — docs: session 12 wrap-up
-
----
-
-## Сессия 11 — ChatStream v2 + ChatList v2
-
-### Что сделано
-
-#### ChatStream v2 (сервер)
-1. **messenger.proto** — добавлен `jwt_token` (field 26) в Message для ChatStream v2 auth
-2. **server_chat.go** — Chat stream поддерживает оба метода auth:
-   - `jwt_token` (v2): валидация JWT, извлечение user_id/username из claims
-   - `password` (v1): полная обратная совместимость
-3. **ChatServiceVersion** = "2.0" в server.go
-
-#### ChatList v2 (сервер)
-1. **messenger.proto** — добавлены RPC методы: PinChat, UnPinChat, SearchChats, ArchiveChat, UnarchiveChat
-2. **messenger.proto** — добавлены `is_pinned`, `is_muted`, `is_archived`, `pinned_at` в ChatInfo
-3. **messenger.proto** — добавлены `limit`, `offset`, `filter` в GetChatsRequest (пагинация)
-4. **server_chatlist_v2.go** — реализация всех новых RPC методов
-5. **db_chatlist_v2.go** — миграции (user_chat_metadata: pinned/pinned_at/archived), методы DB
-6. **server_chats.go** — GetAllChats включает v2 поля
-
-#### ChatStream v2 + ChatList v2 (Android)
-1. **ProfileClient** — `fetchServerInfo()` парсит все версии сервисов (chat/auth/profile/ai)
-   - Добавлены `isChatV2Supported()`, `isAuthV2Supported()`
-   - Fallback на v1 если /info недоступен
-2. **BearerTokenInterceptor** — убран пропуск Chat stream для v2 серверов
-3. **RealGrpcClient.startChat()** — JWT token для v2, password для v1
-4. **RealGrpcClient** — `pinChat()`, `unpinChat()`, `searchChats()`, `archiveChat()`, `unarchiveChat()`
-5. **GrpcClient** — публичные методы ChatList v2
-6. **MessengerProto.kt** — новые proto classes, обновлён ChatInfoProto
-7. **ChatInfo model** — `isPinned`, `isArchived`, `pinnedAt`
-8. **MessageProtoMarshaller** — сериализация/deserialization jwt_token (field 26), isE2Ee, e2EePayload
-
-### Коммиты (сервер)
-- `0daf87b` — feat: ChatStream v2 (JWT auth) + ChatList v2 (Pin/Search/Archive) + proto updates
-- `840a708` — chore: fix server version to 1.2.0.1
-- `de3d55d` — docs: update version to v1.2.0.1, branch to feat/1.2.0.x
-
-### Коммиты (Android)
-- `cd2294d` — feat: ChatStream v2 + ChatList v2 Android client
-- `cc759b7` — fix: add jwtToken to MessageProto, fix searchChats mapping
-- `a4a29ae` — fix: wrap suspendCancellableCoroutine in try-catch
-- `bfe0412` — fix: use expression body for suspendCancellableCoroutine
-- `f15500f` — fix: use explicit CancellableContinuation type parameter
-- `ff6bba2` — fix: use explicit imports and no generics in lambda
-- `cb1cf84` — fix: use kotlinx.coroutines.suspendCancellableCoroutine
-- `8731367` — fix: add onCancellation parameter to cont.resume()
-- `5bb47b6` — docs: update CHANGELOG, SESSION_NOTES, PATTERNS
-
-### Pitfalls learned (Kotlin 2.3.21)
-- `CancellableContinuation.resume()` требует `onCancellation = {}` параметр
-- `import kotlinx.coroutines.suspendCancellableCoroutine` (не `kotlin.coroutines`)
-- data class с `repeated` proto полем использует `List<T>` напрямую (не `getXxxList()`)
-
----
-
-## Сессия 10 — Документация + ProfileClient fixes
-(см. подробности в CHANGELOG)
-
----
-
-## Сессия 9 — ProfileService v2 + Typing/CallSession compat
-(см. подробности в CHANGELOG)
-
----
-
-## Архитектура
-
-### Сервер (/root/msg)
-```
-main.go                    — Entry point, gRPC server, graceful shutdown
-server.go                  — ServerVersion = "1.2.0.1", service version constants
-auth_service.go            — AuthService v1 (deprecated)
-auth_service_v2.go         — AuthService v2 (JWT, основной)
-auth_interceptor.go        — gRPC Bearer token interceptor (unary + streaming)
-auth_jwt.go                — JWT генерация/валидация
-db_auth_devices.go         — CRUD для user_devices + device_auth_log
-db_auth_migrations.go      — миграция таблиц (включая user_settings)
-db_chatlist_v2.go          — ChatList v2 DB methods (PinChat, SearchChats, etc.)
-server_profile_v2.go       — ProfileService v2 (JWT, dev only)
-server_chatlist_v2.go      — ChatList v2 RPC (PinChat, SearchChats, ArchiveChat, etc.)
-server_remote.go           — Remote Agent RPC
-hermes_remote_manager.go   — HandleTaskStream
-ai_chat_manager.go         — AI чаты
-owl.go                     — OWL AI
-hermes_orchestrator.go     — Hermes Orchestrator
-http_server.go             — HTTP (/health, /info на 8082/8083)
-messenger.proto            — ChatService v2, AuthService v2, ProfileService v2, AI Chat
-```
-
-### Android (/root/msg.client.android)
-```
-ui/
-├── widget/
-│   ├── ServerAuthBottomSheet.kt    — шторка выбора входа
-│   ├── LoginBottomSheet.kt         — шторка входа (prefillUsername)
-│   └── RegisterBottomSheet.kt      — шторка регистрации
-├── ServersActivity.kt              — управление списком серверов
-├── remote/                         — Remote Agent UI
-├── chat/widget/ChatWidget.kt       — общий виджет чата
-└── adapter/ChatAdapter.kt          — адаптер чатов (clearAll)
-
-data/
-├── grpc/BearerTokenInterceptor.kt  — ClientInterceptor для JWT Bearer token (v2: Chat stream)
-├── grpc/GrpcClient.kt              — facade (pinChat, searchChats, archiveChat, etc.)
-├── grpc/RealGrpcClient.kt          — реализация gRPC (JWT auth, ChatList v2 RPC)
-├── grpc/ProfileClient.kt           — ProfileService v2 client + fetchServerInfo
-├── auth/AuthManager.kt             — JWT token storage, getBearerToken
-├── session/CredentialStore.kt      — credentials + server list + last_username
-├── session/SessionManager.kt       — loginV2 (JWT) + loginV1 (legacy fallback)
-├── session/UserSession.kt          — accessToken, refreshToken, authMethod
-├── models/ErrorHandler.kt          — единый обработчик ошибок
-└── proto/MessengerProto.kt         — proto data classes (ChatList v2, jwt_token, etc.)
-```
-
----
-
-## Статус: v1.2.0.1 — DEV / v1.1.3.14 — Android
-
-Сервер v1.2.0.1 работает на dev (порт 50052, HTTP 8083). ProfileService v2 активен. ChatStream v2 (JWT auth) + ChatList v2 (Pin/Search/Archive) реализованы.
-Prod сервер: v1.1.3.10 (без ProfileService v2, без ChatStream/ChatList v2).
-Android v1.1.3.14 — ChatStream v2 auth + ChatList v2 API + fetchServerInfo с fallback на v1.
 
 ---
 
 ## Правила работы
 
 1. Коммитить и пушить после каждого значимого изменения
-2. Деплоить на dev для тестирования (не на prod!)
-3. Обновлять CHANGELOG.md с каждым релизом
-4. Не ломать существующий функционал
-5. Версия сервера в `server.go:33`, версия Android в `version.txt`
-6. userId (UUID) — всегда как ключ, НЕ username
-7. Для кастомных тем: новые FAB добавлять в ThemeApplier
-8. Agent tokens: в БД хранится SHA-256 хеш, не сам токен
-9. JWT секрет: минимум 32 байта, НЕ коммитить
-10. Proto поля: всегда сверять номера полей с messenger.proto
-11. ProfileService v2 — только dev сервер (APP_ENV=dev). Prod использует legacy ChatService.
-12. **Kotlin 2.3.21:** `cont.resume(value, onCancellation = {})` — всегда передавать onCancellation
-13. **fetchServerInfo** — всегда использовать для определения версии сервера. Если /info недоступен → v1 fallback.
+2. Обновлять CHANGELOG.md с каждым релизом
+3. Не ломать существующий функционал
+4. Версия сервера в `server.go:33`
+5. userId (UUID) — всегда как ключ, НЕ username
+6. Agent tokens: в БД хранится SHA-256 хеш, не сам токен
+7. JWT секрет: минимум 32 байта, НЕ коммитить
+8. Proto поля: всегда сверять номера полей с messenger.proto
+9. **Стабильность > фичи** — деплоим на prod, ошибки критичны
+10. Android собирается ТОЛЬКО локально (нет памяти на сервере)
 
 ---
 
@@ -334,13 +114,13 @@ Android v1.1.3.14 — ChatStream v2 auth + ChatList v2 API + fetchServerInfo с 
 cd /root/msg
 export PATH=$PATH:/usr/local/go/bin:~/go/bin
 
-# Сборка и деплой на dev
+# Сборка и деплой dev
 go build -o /tmp/lavender-server-dev .
 systemctl stop lavender-server-dev
 cp /tmp/lavender-server-dev /root/LavenderMessenger/run/lavender-server-dev
 systemctl start lavender-server-dev
 
-# Сборка и деплой на prod (НЕ делать без тестирования на dev!)
+# Сборка и деплой prod
 go build -o /tmp/lavender-server .
 systemctl stop lavender-server
 cp /tmp/lavender-server /root/LavenderMessenger/run/lavender-server
@@ -351,10 +131,6 @@ protoc --go_out=./gen --go_opt=paths=source_relative --go-grpc_out=./gen --go-gr
 
 # Тесты
 go test ./...
-
-# === ANDROID ===
-cd /root/msg.client.android
-# assembleRelease ТОЛЬКО локально!
 ```
 
 ---
@@ -369,57 +145,14 @@ cd /root/msg.client.android
 | Сервис | lavender-server-dev | lavender-server |
 | Конфиг | .env.dev | .env |
 | DB | chat_db_dev | chat_db |
-| Systemd | `Environment=APP_ENV=dev` | `Environment=APP_ENV=` (пусто) |
-| ProfileService | v2 (JWT) | v1 (legacy ChatService) |
-| ChatStream | v2 (JWT + password) | v1 (password only) |
-| ChatList | v2 (Pin/Search/Archive) | v1 (basic) |
-| Версия | v1.2.0.1 | v1.1.3.10 |
+| Версия | v1.2.0.6 | v1.2.0.6 |
 
 ---
 
-## Документация (читать в начале каждой сессии)
+## Документация
 
 - Индекс: `/root/msg/doc/INDEX.md`
-- Сервер: `/root/msg/doc/INTEGRATION_SESSION.md`, `/root/msg/doc/TASKS.md`
-- Android: `/root/msg.client.android/doc/INDEX.md`, `/root/msg.client.android/doc/PROMPT_ANDROID.md`
-- Android заметки: `/root/msg.client.android/doc/SESSION_NOTES.md`
+- Сервер: `/root/msg/doc/PROMPT.md`, `/root/msg/doc/TASKS.md`
 - AI сервисы: `/root/msg/doc/AI_SERVICES.md`
 - Подводные камни: `/root/msg/doc/PITFALLS.md`
-- Remote Agent: `/root/msg.client.android/doc/REMOTE_AGENT.md`
-- Паттерны: `/root/msg.client.android/doc/PATTERNS.md`
-- CHANGELOG: `/root/msg/CHANGELOG.md` (сервер), `/root/msg.client.android/CHANGELOG.md` (Android)
-
----
-
-## Промпт для следующей сессии
-
-**Версия:** v1.2.0.1 (сервер dev) / v1.1.3.17 (Android) → следующая v1.2.0.2 / v1.1.3.18
-
-**Ветки:** сервер — feat/1.2.0.x, Android — feat/1.1.3.x (до релиза)
-
-**Приоритеты:**
-1. **Тестирование v1.1.3.17** — FAB AI, AIBottomSheet, AI навигация
-2. **Тестирование Pin Message** — на dev сервере
-3. **Исправление багов** — по результатам тестирования
-4. **Unread badges** — улучшение счётчика непрочитанных
-5. **Push notifications** — FCM интеграция для v2
-
-**Отложено (не в этой сессии):**
-- Редеплой prod сервера — только после выхода Android клиента
-- Выпуск Android — делается ферзем лично
-- Qdrant + CLIP (production RAG)
-- Shared element transitions
-- Infinite scroll + pagination
-- Read receipts (MarkAsRead)
-- Prometheus метрики
-
-**Правила:**
-- НЕ компилировать на сервере (OOM kill) — это касается и Go и Android
-- НЕ деплоить новую версию на prod без прямого указания ферзя
-- Все новые строки ОДНОВРЕМЕННО в values/strings.xml (en) + values-ru/strings.xml
-- getString() правильно по контексту (Activity/Adapter/ViewModel)
-- Коммитить и пушить после каждого значимого изменения
-- НЕ деплоить на prod без тестирования на dev
-- fetchServerInfo — всегда использовать для определения версии сервера
-- Серверная ветка версий: 1.2.0.x, Android: 1.1.3.x до релиза
-- Вся разработка на dev сервере, проверка обратной совместимости на prod
+- Android: `/root/msg.client.android/doc/`
