@@ -283,8 +283,17 @@ func (db *DB) SaveMessage(mid, user, uid string, enc []byte, created time.Time, 
 		// Update chats.last_message_* columns for fast ChatList rendering
 		hasImage := img != "" || (imgUrls != "" && imgUrls != "[]")
 		var preview string
-		if !e2ee {
-			preview = string(enc)
+		if e2ee {
+			preview = "Encrypted message"
+		} else if voice != "" {
+			preview = "Voice message"
+		} else if hasImage {
+			preview = "Image"
+		} else {
+			preview, _ = decrypt(enc)
+			if len(preview) > 500 {
+				preview = preview[:500]
+			}
 		}
 		_, _ = db.Exec(`UPDATE chats SET
 			last_message_text = $1,
