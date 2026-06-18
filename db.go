@@ -148,6 +148,12 @@ func ConnectDB() (*DB, error) {
 		`CREATE INDEX IF NOT EXISTS idx_calls_caller ON calls(caller_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_calls_receiver ON calls(receiver_id)`,
 		`CREATE TABLE IF NOT EXISTS servers (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), name VARCHAR(255) NOT NULL, host VARCHAR(255) NOT NULL, port INTEGER NOT NULL DEFAULT 50051, is_default BOOLEAN DEFAULT FALSE, created_at TIMESTAMP NOT NULL DEFAULT NOW())`,
+		// Performance indexes
+		`CREATE INDEX IF NOT EXISTS idx_chats_type_creator ON chats(type, creator_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_owl_messages_chat ON owl_messages(chat_id, created_at)`,
+		`CREATE INDEX IF NOT EXISTS idx_messages_room ON messages(room_id, created_at)`,
+		`CREATE INDEX IF NOT EXISTS idx_contacts_username ON contacts(username)`,
+		`CREATE INDEX IF NOT EXISTS idx_user_tokens_username ON user_tokens(username)`,
 	}
 
 	for _, q := range queries {

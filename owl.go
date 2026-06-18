@@ -15,6 +15,16 @@ import (
 	"time"
 )
 
+// Shared HTTP client for OpenRouter API (connection pooling)
+var openRouterClient = &http.Client{
+	Timeout: 120 * time.Second,
+	Transport: &http.Transport{
+		MaxIdleConns:        20,
+		MaxIdleConnsPerHost: 10,
+		IdleConnTimeout:     90 * time.Second,
+	},
+}
+
 // OpenRouter API response structures
 type oll struct {
 	Choices []struct {
@@ -169,8 +179,7 @@ func callOpenRouterContext(ctx context.Context, apiKey string, model string, sys
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("HTTP-Referer", "https://lavender-messenger.com")
 
-	client := &http.Client{Timeout: 120 * time.Second}
-	resp, err := client.Do(req)
+	resp, err := openRouterClient.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("OpenRouter request failed: %w", err)
 	}
@@ -230,8 +239,7 @@ func streamOpenRouter(ctx context.Context, apiKey string, model string, systemPr
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("HTTP-Referer", "https://lavender-messenger.com")
 
-	client := &http.Client{Timeout: 120 * time.Second}
-	resp, err := client.Do(req)
+	resp, err := openRouterClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("OpenRouter request failed: %w", err)
 	}

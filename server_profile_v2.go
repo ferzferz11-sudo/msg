@@ -170,12 +170,13 @@ func (p *profileServerV2) DeleteProfile(ctx context.Context, req *gen.DeleteProf
 		return &gen.DeleteProfileV2Response{Success: false, Message: "user not found"}, nil
 	}
 
-	// Verify password
-	if req.Password != "" {
-		storedHash, err := p.db.GetUserPasswordHash(username)
-		if err != nil || !CheckPassword(req.Password, storedHash) {
-			return &gen.DeleteProfileV2Response{Success: false, Message: "invalid password"}, nil
-		}
+	// Verify password — required for account deletion
+	if req.Password == "" {
+		return &gen.DeleteProfileV2Response{Success: false, Message: "password required to delete profile"}, nil
+	}
+	storedHash, err := p.db.GetUserPasswordHash(username)
+	if err != nil || !CheckPassword(req.Password, storedHash) {
+		return &gen.DeleteProfileV2Response{Success: false, Message: "invalid password"}, nil
 	}
 
 	if err := p.db.DeleteProfile(username); err != nil {

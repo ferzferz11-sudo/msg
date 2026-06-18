@@ -3,6 +3,7 @@ package main
 import (
 	"LavenderMessenger/gen"
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -12,7 +13,10 @@ import (
 // ======= ChatList v2: PinChat / UnPinChat =======
 
 func (s *server) PinChat(ctx context.Context, req *gen.PinChatRequest) (*gen.PinChatResponse, error) {
-	userID := req.GetUserId()
+	userID := GetUserID(ctx)
+	if userID == "" {
+		return nil, fmt.Errorf("unauthorized")
+	}
 	chatID := req.GetChatId()
 
 	if userID == "" || chatID == "" {
@@ -35,7 +39,10 @@ func (s *server) PinChat(ctx context.Context, req *gen.PinChatRequest) (*gen.Pin
 }
 
 func (s *server) UnPinChat(ctx context.Context, req *gen.UnPinChatRequest) (*gen.UnPinChatResponse, error) {
-	userID := req.GetUserId()
+	userID := GetUserID(ctx)
+	if userID == "" {
+		return nil, fmt.Errorf("unauthorized")
+	}
 	chatID := req.GetChatId()
 
 	if userID == "" || chatID == "" {
@@ -55,7 +62,10 @@ func (s *server) UnPinChat(ctx context.Context, req *gen.UnPinChatRequest) (*gen
 // ======= ChatList v2: SearchChats =======
 
 func (s *server) SearchChats(ctx context.Context, req *gen.SearchChatsRequest) (*gen.SearchChatsResponse, error) {
-	userID := req.GetUserId()
+	userID := GetUserID(ctx)
+	if userID == "" {
+		return nil, fmt.Errorf("unauthorized")
+	}
 	query := strings.TrimSpace(req.GetQuery())
 
 	if userID == "" {
@@ -87,7 +97,10 @@ func (s *server) SearchChats(ctx context.Context, req *gen.SearchChatsRequest) (
 // ======= ChatList v2: ArchiveChat / UnarchiveChat =======
 
 func (s *server) ArchiveChat(ctx context.Context, req *gen.ArchiveChatRequest) (*gen.ArchiveChatResponse, error) {
-	userID := req.GetUserId()
+	userID := GetUserID(ctx)
+	if userID == "" {
+		return nil, fmt.Errorf("unauthorized")
+	}
 	chatID := req.GetChatId()
 
 	if userID == "" || chatID == "" {
@@ -109,7 +122,10 @@ func (s *server) ArchiveChat(ctx context.Context, req *gen.ArchiveChatRequest) (
 }
 
 func (s *server) UnarchiveChat(ctx context.Context, req *gen.UnarchiveChatRequest) (*gen.UnarchiveChatResponse, error) {
-	userID := req.GetUserId()
+	userID := GetUserID(ctx)
+	if userID == "" {
+		return nil, fmt.Errorf("unauthorized")
+	}
 	chatID := req.GetChatId()
 
 	if userID == "" || chatID == "" {
@@ -129,7 +145,10 @@ func (s *server) UnarchiveChat(ctx context.Context, req *gen.UnarchiveChatReques
 // ======= ChatList v2: GetChats with pagination and filters =======
 
 func (s *server) GetChatsV2(ctx context.Context, req *gen.GetChatsRequest) (*gen.GetChatsResponse, error) {
-	userID := req.GetUserId()
+	userID := GetUserID(ctx)
+	if userID == "" {
+		return nil, fmt.Errorf("unauthorized")
+	}
 	username := req.GetUsername()
 
 	// Resolve user ID from username if needed
@@ -175,8 +194,17 @@ func (s *server) isChatParticipant(userID, chatID string) bool {
 	if err != nil {
 		return false
 	}
-	// Check participants JSON array for userID
-	return strings.Contains(chat.Participants, userID)
+	// Parse JSON array properly to avoid false positives
+	var participants []string
+	if err := json.Unmarshal([]byte(chat.Participants), &participants); err != nil {
+		return false
+	}
+	for _, p := range participants {
+		if p == userID {
+			return true
+		}
+	}
+	return false
 }
 
 // chatV2RowToProto converts a ChatV2Row to proto ChatInfo with v2 fields
@@ -206,7 +234,10 @@ func chatV2RowToProto(c ChatV2Row) *gen.ChatInfo {
 // ======= Pin Message: PinMessage / UnPinMessage / GetPinnedMessages =======
 
 func (s *server) PinMessage(ctx context.Context, req *gen.PinMessageRequest) (*gen.PinMessageResponse, error) {
-	userID := req.GetUserId()
+	userID := GetUserID(ctx)
+	if userID == "" {
+		return nil, fmt.Errorf("unauthorized")
+	}
 	chatID := req.GetChatId()
 	messageID := req.GetMessageId()
 
@@ -230,7 +261,10 @@ func (s *server) PinMessage(ctx context.Context, req *gen.PinMessageRequest) (*g
 }
 
 func (s *server) UnPinMessage(ctx context.Context, req *gen.UnPinMessageRequest) (*gen.UnPinMessageResponse, error) {
-	userID := req.GetUserId()
+	userID := GetUserID(ctx)
+	if userID == "" {
+		return nil, fmt.Errorf("unauthorized")
+	}
 	chatID := req.GetChatId()
 	messageID := req.GetMessageId()
 
@@ -249,7 +283,10 @@ func (s *server) UnPinMessage(ctx context.Context, req *gen.UnPinMessageRequest)
 }
 
 func (s *server) GetPinnedMessages(ctx context.Context, req *gen.GetPinnedMessagesRequest) (*gen.GetPinnedMessagesResponse, error) {
-	userID := req.GetUserId()
+	userID := GetUserID(ctx)
+	if userID == "" {
+		return nil, fmt.Errorf("unauthorized")
+	}
 	chatID := req.GetChatId()
 
 	if userID == "" || chatID == "" {

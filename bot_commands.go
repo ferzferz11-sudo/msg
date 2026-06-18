@@ -423,6 +423,9 @@ func dispatchBotCommand(s *server, req *gen.BotCommandRequest) *gen.BotCommandRe
 // ======= Server-side RPC implementations =======
 
 func (s *server) ProcessBotCommand(ctx context.Context, req *gen.BotCommandRequest) (*gen.BotCommandResponse, error) {
+	// Override client-supplied userId/username with authenticated values from JWT
+	req.UserId = GetUserID(ctx)
+	req.Username = GetUsername(ctx)
 	return dispatchBotCommand(s, req), nil
 }
 
@@ -569,9 +572,13 @@ func SendServerNotification(notifType, title, message string, metadata map[strin
 // ======= Notification RPC implementations =======
 
 func (s *server) SubscribeNotifications(req *gen.SubscribeNotificationsRequest, stream gen.ChatService_SubscribeNotificationsServer) error {
+	userID := GetUserID(stream.Context())
+	if userID == "" {
+		return fmt.Errorf("unauthorized")
+	}
 	ch := make(chan *gen.ServerNotification, 10)
-	notifications.subscribe(req.UserId, ch)
-	defer notifications.unsubscribe(req.UserId, ch)
+	notifications.subscribe(userID, ch)
+	defer notifications.unsubscribe(userID, ch)
 
 	for {
 		select {
@@ -586,18 +593,30 @@ func (s *server) SubscribeNotifications(req *gen.SubscribeNotificationsRequest, 
 }
 
 func (s *server) GetNotificationHistory(ctx context.Context, req *gen.GetNotificationHistoryRequest) (*gen.GetNotificationHistoryResponse, error) {
-	history := notifications.getHistory(req.UserId, req.Limit)
+	userID := GetUserID(ctx)
+	if userID == "" {
+		return &gen.GetNotificationHistoryResponse{}, fmt.Errorf("unauthorized")
+	}
+	history := notifications.getHistory(userID, req.Limit)
 	return &gen.GetNotificationHistoryResponse{
 		Notifications: history,
 	}, nil
 }
 
 func (s *server) MarkNotificationsRead(ctx context.Context, req *gen.MarkNotificationReadRequest) (*gen.MarkNotificationReadResponse, error) {
-	notifications.markRead(req.UserId, req.NotificationIds)
+	userID := GetUserID(ctx)
+	if userID == "" {
+		return &gen.MarkNotificationReadResponse{Success: false}, fmt.Errorf("unauthorized")
+	}
+	notifications.markRead(userID, req.NotificationIds)
 	return &gen.MarkNotificationReadResponse{Success: true}, nil
 }
 
 func (s *server) GetUnreadCount(ctx context.Context, req *gen.GetUnreadCountRequest) (*gen.GetUnreadCountResponse, error) {
-	count := notifications.getUnreadCount(req.UserId)
+	userID := GetUserID(ctx)
+	if userID == "" {
+		return &gen.GetUnreadCountResponse{}, fmt.Errorf("unauthorized")
+	}
+	count := notifications.getUnreadCount(userID)
 	return &gen.GetUnreadCountResponse{Count: count}, nil
 }
