@@ -27,12 +27,21 @@ const (
 	backgroundsPath = "./uploads/background"
 	audioPath       = "./uploads/audio"
 	defaultHTTPPort = "8082"
+)
 
-	// TURN server credentials
-	turnServerHost   = "13.140.25.249:3478"
-	turnSharedSecret = "b4fae0***c858"
+var (
+	// TURN server credentials (from env, not hardcoded)
+	turnServerHost   = getEnvOrDefault("TURN_SERVER_HOST", "13.140.25.249:3478")
+	turnSharedSecret = os.Getenv("TURN_SHARED_SECRET")
 	turnTTL          = 86400 // 24 hours
 )
+
+func getEnvOrDefault(key, defaultValue string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return defaultValue
+}
 
 func closeFile(file io.ReadCloser) {
 	if err := file.Close(); err != nil {
@@ -366,7 +375,18 @@ func handleUpload(w http.ResponseWriter, r *http.Request, formKey, saveDir, urlP
 
 func serveFileHandler(w http.ResponseWriter, r *http.Request, prefix, dir string) {
 	filename := strings.TrimPrefix(r.URL.Path, prefix)
+	filename = filepath.Clean(filename)
+	if filename == "." || filename == ".." || strings.Contains(filename, "..") || filepath.IsAbs(filename) {
+		http.Error(w, "Invalid path", http.StatusBadRequest)
+		return
+	}
 	filePath := filepath.Join(dir, filename)
+	absDir, _ := filepath.Abs(dir)
+	absFile, _ := filepath.Abs(filePath)
+	if !strings.HasPrefix(absFile, absDir+string(os.PathSeparator)) && absFile != absDir {
+		http.Error(w, "Invalid path", http.StatusBadRequest)
+		return
+	}
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
 		http.Error(w, "File not found", http.StatusNotFound)
 		return

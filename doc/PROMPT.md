@@ -1,16 +1,17 @@
-# Промпт для новой сессии — Server v1.2.0.2
+# Промпт для серверных сессий — v1.2.0.x
 
-**Дата:** 2026-06-17
-**Ветка сервера:** feat/1.2.0.x
-**Ветка Android:** feat/1.1.3.x
+**Дата:** 2026-06-18 | **Ветка:** feat/1.2.0.x
+**Статус:** Безопасность частично завершена, dev работает
 
 ---
 
-## СТАТУС: v1.2.0.2 — DEV / v1.1.3.25 — Android
+## ТЕКУЩИЙ СТАТУС
 
-Сервер: v1.2.0.2 на dev (порт 50052, HTTP 8083). ProfileService v2 активен. ChatStream v2 (JWT auth) + ChatList v2 (Pin/Search/Archive) реализованы. FCM Push (HIGH priority, DND bypass, online skip).
-Prod: v1.1.3.10.
-Android: ChatListActivity (единый v1+v2) с табами, навигацией, FABs. ChatStream v2 auth + ChatList v2 API + fetchServerInfo с fallback на v1. UpdateCoordinator — модульная система обновлений.
+| | Версия | Статус |
+|---|--------|--------|
+| **Сервер prod** | v1.1.3.0 | Работает на порту 50051 |
+| **Сервер dev** | v1.2.0.2 | Работает на порту 50052 |
+| **Android** | v1.1.3.37 | Использует JWT (v2 auth) |
 
 ---
 
@@ -18,107 +19,105 @@ Android: ChatListActivity (единый v1+v2) с табами, навигаци
 
 ### Сервер (/root/msg)
 ```
-main.go                    — Entry point, gRPC server, graceful shutdown
-server.go                  — ServerVersion = "1.2.0.1", service version constants
+main.go                    — Entry point, gRPC server
+server.go                  — ServerVersion = "1.2.0.2"
 auth_service.go            — AuthService v1 (deprecated)
-auth_service_v2.go         — AuthService v2 (JWT, основной)
-auth_interceptor.go        — gRPC Bearer token interceptor (unary + streaming)
-auth_jwt.go                — JWT генерация/валидация
-db_auth_devices.go         — CRUD для user_devices + device_auth_log
-db_auth_migrations.go      — миграция таблиц (включая user_settings)
-db_chatlist_v2.go          — ChatList v2 DB methods (PinChat, SearchChats, etc.)
-server_profile_v2.go       — ProfileService v2 (JWT, dev only)
-server_chatlist_v2.go      — ChatList v2 RPC (PinChat, SearchChats, ArchiveChat, etc.)
-server_remote.go           — Remote Agent RPC
-hermes_remote_manager.go   — HandleTaskStream
-ai_chat_manager.go         — AI чаты
-owl.go                     — OWL AI
-hermes_orchestrator.go     — Hermes Orchestrator
-http_server.go             — HTTP (/health, /info на 8082/8083)
-messenger.proto            — ChatService v2, AuthService v2, ProfileService v2, AI Chat
+auth_service_v2.go         — AuthService v2 (JWT)
+auth_interceptor.go        — gRPC Bearer token interceptor
+auth_jwt.go                — JWT генерация/валидация (библиотека golang-jwt)
+auth/jwt.go                — JWT для agent tokens (кастомный)
+db.go                      — Database layer (~1428 LOC)
+db_hermes.go               — Hermes DB migrations + CRUD
+db_chatlist_v2.go          — ChatList v2 DB methods
+db_auth_devices.go         — user_devices + device_auth_log
+server_chat.go             — Chat, Typing, CallStream
+server_ai.go               — AI chat (OWL + Hermes)
+server_chatlist_v2.go      — ChatList v2 RPC
+server_profile_v2.go       — ProfileService v2
+hermes_orchestrator.go     — Agent routing + orchestration
+hub.go                     — Connection management
+http_server.go             — HTTP uploads + TURN
+messenger.proto            — All proto definitions
 ```
 
 ### Android (/root/msg.client.android)
 ```
-ui/
-├── widget/
-│   ├── ServerAuthBottomSheet.kt    — шторка выбора входа
-│   ├── LoginBottomSheet.kt         — шторка входа (prefillUsername)
-│   └── RegisterBottomSheet.kt      — шторка регистрации
-├── ServersActivity.kt              — управление списком серверов
-├── remote/                         — Remote Agent UI
-├── chat/widget/ChatWidget.kt       — общий виджет чата
-└── adapter/ChatAdapter.kt          — адаптер чатов (clearAll)
-
-data/
-├── grpc/BearerTokenInterceptor.kt  — ClientInterceptor для JWT Bearer token (v2: Chat stream)
-├── grpc/GrpcClient.kt              — facade (pinChat, searchChats, archiveChat, etc.)
-├── grpc/RealGrpcClient.kt          — реализация gRPC (JWT auth, ChatList v2 RPC)
-├── grpc/ProfileClient.kt           — ProfileService v2 client + fetchServerInfo
-├── auth/AuthManager.kt             — JWT token storage, getBearerToken
-├── session/CredentialStore.kt      — credentials + server list + last_username
-├── session/SessionManager.kt       — loginV2 (JWT) + loginV1 (legacy fallback)
-├── session/UserSession.kt          — accessToken, refreshToken, authMethod
-└── proto/MessengerProto.kt         — proto data classes (ChatList v2, jwt_token, etc.)
+data/grpc/GrpcClient.kt         — Facade
+data/grpc/RealGrpcClient.kt     — gRPC implementation (JWT auth)
+data/grpc/BearerTokenInterceptor.kt — JWT Bearer injection
+data/session/SessionManager.kt  — loginV2 (JWT) + loginV1 (fallback)
+data/auth/AuthManager.kt        — Token storage
+ui/chatlist/ChatListActivity.kt — Chat list with tabs
 ```
 
 ---
 
-## КЛЮЧЕВЫЕ РЕШЕНИЯ
+## ЭТАПЫ РЕАЛИЗАЦИИ
 
-### Сервер
-- AuthService v2 (JWT) — основной метод аутентификации
-- AuthService v1 — deprecated, но работает для совместимости
-- gRPC Bearer token interceptor — валидация JWT на каждом вызове
-- Device management (user_devices, device_auth_log)
-- `/info` endpoint — версии сервисов для client capability negotiation
-- APP_ENV — загрузка `.env.<APP_ENV>` для dev сервера
-- Token rotation с обнаружением reuse
-- **ProfileService v2** — отдельный сервис для профиля (JWT, dev only)
-- **user_settings** — таблица для locale, theme_id, push_enabled
-- **ChatStream v2** — JWT auth в Chat stream + backward compat с password
-- **ChatList v2** — PinChat/UnPinChat/SearchChats/ArchiveChat/UnarchiveChat
-- **user_chat_metadata** — per-user chat settings (pinned, archived)
+### ЭТАП 1: Безопасность (ТЕКУЩИЙ) — v1.2.1.0
 
-### Android
-- BearerTokenInterceptor — автоматическая подстановка JWT Bearer token (включая Chat stream на v2)
-- Proactive token refresh — каждые 60с
-- Per-server token validation — токены привязаны к серверу
-- 3 auth виджета: ServerAuthBottomSheet, LoginBottomSheet, RegisterBottomSheet
-- isLoadingChats предотвращает двойную загрузку
-- startSync() останавливается при смене сервера
-- LoginV2 с fallback на V1 при недоступности JWT
-- Logout сохраняет username для предзаполнения
-- Drag handle во всех шторках входа
-- Status indicator — только кружок слева от названия сервера
-- **ProfileClient** — fetchServerInfo парсит все версии сервисов, fallback на v1
-- **ChatList v2 API** — pinChat, unpinChat, searchChats, archiveChat, unarchiveChat
+**Статус:** 5/9 задач выполнено
 
-### i18n
-- Все строки в values/strings.xml (en) + values-ru/strings.xml
-- app_version_format: "Lava: app Android %s" / "Lava: приложение Android %s"
+#### Выполнено ✅
+1. Path traversal fix — `http_server.go:375`
+2. JWT fallback → log.Fatal — `auth/jwt.go:47`
+3. Hardcoded admin → one-time — `db.go:161`
+4. TURN secret → .env — `http_server.go:32`
+5. MarkReadAndCheck ON CONFLICT bug — `db.go:631`
+
+#### Осталось
+6. **User impersonation fix** — `server_ai.go` (6 мест)
+   - Replace `req.UserId` → `auth.UserID(ctx)` в AI handlers
+   - Файлы: ChatWithOWL, CreateOwlChat, DeleteOwlChat, ChatWithAI, SetFreeModel, RemoveFreeModel
+7. **Auth на uploads** — `http_server.go`
+   - JWT token в query param или header для upload endpoints
+8. **Fix secret_chat caller** — `secret_chat.go:14`
+   - Replace `getCallerUsernameSecret` → `auth.UserID(ctx)`
+9. **Firebase → .gitignore** — добавить `*.json` credentials
+10. **Auth на TURN** — `http_server.go:443`
+    - Ограничить доступ к TURN credentials
+
+---
+
+### ЭТАП 2: Concurrency — v1.2.1.1
+
+1. **stream.Send race** — `hermes_orchestrator.go:402`
+   - Очередь с mutex для parallel agents
+2. **Blocking broadcast** — `hub.go:284-317`
+   - Copy-then-send паттерн
+3. **DB query under lock** — `hermes_orchestrator.go:107`
+   - Unlock before DB call
+4. **IsUserOnline O(n)** — `hub.go:254`
+   - Reverse index userId → streams
+
+---
+
+### ЭТАП 3: DB рефакторинг — v1.2.1.2
+
+1. **MessageRecord type** — убрать 8 дублей в db.go
+2. **Split db.go** → db_users.go, db_chats.go, db_messages.go
+3. **DB indexes** — messages(room_id), contacts(username), user_tokens(username)
+4. **Scan error handling** — 14+ мест в db.go
+
+---
+
+### ЭТАП 4: Code Quality — v1.2.1.3
+
+1. **Unified RateLimiter** — owl.go + bot_commands.go
+2. **Shared http.Client** — owl.go OpenRouter calls
+3. **N+1 fixes** — reactions, AI settings
 
 ---
 
 ## ПРАВИЛА
 
-1. НЕ компилировать на сервере (OOM kill) — это касается и Go и Android
-2. НЕ деплоить новую версию на prod без прямого указания ферзя
-3. Коммитить и пушить после каждого значимого изменения
-4. Версия сервера в server.go:33, версия Android в version.txt
-5. userId (UUID) — всегда как ключ, НЕ username
-6. changelog.txt БОЛЬШЕ НЕ ИСПОЛЬЗУЕТСЯ
-7. JWT секрет: минимум 32 байта, НЕ коммитить
-8. Темы: цвета программно через ThemeUtils.parseSafeColor()
-9. i18n: все новые строки ОДНОВРЕМЕННО в values/strings.xml + values-ru/strings.xml
-10. НЕ инициализировать getString() в полях класса Activity
-11. Форматирование строк: позиционные форматтеры (%1$s, %2$d)
-12. НЕ деплоить на prod без тестирования на dev
-13. **ProfileService v2** — регистрировать только на dev (APP_ENV=dev). Prod использует legacy ChatService.
-14. **Серверная ветка версий: 1.2.0.x**, Android: 1.1.3.x до релиза
-15. Вся разработка на dev сервере, проверка обратной совместимости на prod
-16. **fetchServerInfo** — всегда использовать для определения версии сервера. Если /info недоступен → v1 fallback.
-17. **Kotlin 2.3.21:** `cont.resume(value, onCancellation = {})` — всегда передавать onCancellation
+1. ⚠️ **НЕ компилировать Android на сервере** — OOM kill
+2. Версия сервера в `server.go:33`
+3. userId (UUID) — всегда как ключ, НЕ username
+4. Auth context → `auth.UserID(ctx)`, NEVER `req.UserId`
+5. DB миграции: `IF NOT EXISTS`, NEVER `DROP`
+6. Коммитить после каждого изменения
+7. Деплой: dev → тест → prod
 
 ---
 
@@ -128,60 +127,50 @@ data/
 # === СЕРВЕР ===
 cd /root/msg && export PATH=$PATH:/usr/local/go/bin:~/go/bin
 
-# Сборка и деплой на dev
+# Сборка + деплой dev
 go build -o /tmp/lavender-server-dev .
 systemctl stop lavender-server-dev
 cp /tmp/lavender-server-dev /root/LavenderMessenger/run/lavender-server-dev
 systemctl start lavender-server-dev
 
-# Сборка и деплой на prod (НЕ делать без тестирования на dev!)
+# Сборка + деплой prod
 go build -o /tmp/lavender-server .
 systemctl stop lavender-server
 cp /tmp/lavender-server /root/LavenderMessenger/run/lavender-server
 systemctl start lavender-server
 
 # Proto gen
-protoc --go_out=./gen --go_opt=paths=source_relative --go-grpc_out=./gen --go-grpc_opt=paths=source_relative messenger.proto
+protoc --go_out=./gen --go_opt=paths=source_relative \
+  --go-grpc_out=./gen --go-grpc_opt=paths=source_relative messenger.proto
 
 # Тесты
 go test ./...
 
 # Логи
 journalctl -u lavender-server-dev -f
-journalctl -u lavender-server -f
-
-# === ANDROID ===
-cd /root/msg.client.android
-# assembleRelease ТОЛЬКО локально!
 ```
 
 ---
 
 ## DEV vs PROD
 
-| Характеристика | Dev | Prod |
-|----------------|-----|------|
+| | Dev | Prod |
+|---|-----|------|
 | Порт gRPC | 50052 | 50051 |
 | Порт HTTP | 8083 | 8082 |
-| Имя | Lava Germany dev | Lava Germany |
-| Сервис | lavender-server-dev | lavender-server |
-| Конфиг | .env.dev | .env |
 | DB | chat_db_dev | chat_db |
-| Systemd | `Environment=APP_ENV=dev` | `Environment=APP_ENV=` (пусто) |
-| ProfileService | v2 (JWT) | v1 (legacy ChatService) |
-| ChatStream | v2 (JWT + password) | v1 (password only) |
-| ChatList | v2 (Pin/Search/Archive) | v1 (basic) |
-| Версия | v1.2.0.1 | v1.1.3.10 |
+| Config | .env.dev | .env |
+| ProfileService | v2 (JWT) | v1 (legacy) |
+| ChatStream | v2 (JWT) | v1 (password) |
+| Версия | v1.2.0.2 | v1.1.3.0 |
 
 ---
 
 ## ДОКУМЕНТАЦИЯ
 
-- Индекс: `/root/msg/doc/INDEX.md`
-- Сервер: `/root/msg/doc/INTEGRATION_SESSION.md`, `/root/msg/doc/TASKS.md`
-- Android: `/root/msg.client.android/doc/TASKS.md`, `/root/msg.client.android/doc/PROMPT_ANDROID.md`
+- План оптимизации: `/root/msg/doc/OPTIMIZATION_PLAN.md`
+- Интеграция: `/root/msg/doc/INTEGRATION_SESSION.md`
+- Задачи: `/root/msg/doc/TASKS.md`
+- Pitfalls: `/root/msg/doc/PITFALLS.md`
 - AI сервисы: `/root/msg/doc/AI_SERVICES.md`
-- Подводные камни: `/root/msg/doc/PITFALLS.md`
-- Remote Agent: `/root/msg.client.android/doc/REMOTE_AGENT.md`
-- Паттерны: `/root/msg.client.android/doc/PATTERNS.md`
-- CHANGELOG: `/root/msg/CHANGELOG.md` (сервер), `/root/msg.client.android/CHANGELOG.md` (Android)
+- Архитектура: `/root/msg/doc/ARCHITECTURE.md`

@@ -15,9 +15,9 @@ import (
 )
 
 func (s *server) ChatWithOWL(req *gen.OWLRequest, stream gen.ChatService_ChatWithOWLServer) error {
-	userID := req.UserId
+	userID := GetUserID(stream.Context())
 	if userID == "" {
-		return fmt.Errorf("user_id is required")
+		return fmt.Errorf("unauthorized: user_id required from auth context")
 	}
 
 	chatID := req.SessionId
@@ -147,22 +147,23 @@ func (s *server) getNextChatNumber(userID, chatType string) int {
 	return int(maxNum.Int64) + 1
 }
 
-func (s *server) CreateOwlChat(_ context.Context, req *gen.CreateOwlChatRequest) (*gen.CreateOwlChatResponse, error) {
-	logger.Infof("CreateOwlChat: called user_id=%q name=%q", req.UserId, req.Name)
-	if req.UserId == "" {
+func (s *server) CreateOwlChat(ctx context.Context, req *gen.CreateOwlChatRequest) (*gen.CreateOwlChatResponse, error) {
+	userID := GetUserID(ctx)
+	logger.Infof("CreateOwlChat: called user_id=%q name=%q", userID, req.Name)
+	if userID == "" {
 		logger.Error("CreateOwlChat: ERROR empty user_id")
-		return &gen.CreateOwlChatResponse{Success: false, Message: "user_id is required"}, nil
+		return &gen.CreateOwlChatResponse{Success: false, Message: "unauthorized"}, nil
 	}
 
 	// Look up username from users table by user_id
-	username := req.UserId
-	if uname, err := s.db.GetUsernameByID(req.UserId); err == nil && uname != "" {
+	username := userID
+	if uname, err := s.db.GetUsernameByID(userID); err == nil && uname != "" {
 		username = uname
 	}
-	logger.Infof("CreateOwlChat: resolved username=%q for user_id=%q", username, req.UserId)
+	logger.Infof("CreateOwlChat: resolved username=%q for user_id=%q", username, userID)
 
 	// Generate sequential number for this user's OWL chats
-	num := s.getNextChatNumber(req.UserId, "owl")
+	num := s.getNextChatNumber(userID, "owl")
 	name := req.Name
 	if name == "" {
 		name = generateChatName("owl", num)
@@ -171,10 +172,10 @@ func (s *server) CreateOwlChat(_ context.Context, req *gen.CreateOwlChatRequest)
 	chatID := "owl-" + uuid.New().String()
 	logger.Infof("CreateOwlChat: creating chat %q name=%q for user %q", chatID, name, username)
 
-	participantsJSON, _ := json.Marshal([]string{req.UserId})
+	participantsJSON, _ := json.Marshal([]string{userID})
 	_, err := s.db.Exec(
 		"INSERT INTO chats (id, name, type, participants, creator_username, creator_id) VALUES ($1, $2, 'owl', $3, $4, $5)",
-		chatID, name, string(participantsJSON), username, req.UserId,
+		chatID, name, string(participantsJSON), username, userID,
 	)
 	if err != nil {
 		logger.Errorf("CreateOwlChat: DB error: %v", err)
@@ -190,12 +191,13 @@ func (s *server) CreateOwlChat(_ context.Context, req *gen.CreateOwlChatRequest)
 	}, nil
 }
 
-func (s *server) DeleteOwlChat(_ context.Context, req *gen.DeleteOwlChatRequest) (*gen.DeleteOwlChatResponse, error) {
+func (s *server) DeleteOwlChat(ctx context.Context, req *gen.DeleteOwlChatRequest) (*gen.DeleteOwlChatResponse, error) {
 	if req.ChatId == "" {
 		return &gen.DeleteOwlChatResponse{Success: false, Message: "chat_id is required"}, nil
 	}
-	if req.UserId == "" {
-		return &gen.DeleteOwlChatResponse{Success: false, Message: "user_id is required"}, nil
+	userID := GetUserID(ctx)
+	if userID == "" {
+		return &gen.DeleteOwlChatResponse{Success: false, Message: "unauthorized"}, nil
 	}
 
 	var creatorID string
@@ -203,7 +205,7 @@ func (s *server) DeleteOwlChat(_ context.Context, req *gen.DeleteOwlChatRequest)
 	if err != nil {
 		return &gen.DeleteOwlChatResponse{Success: false, Message: "chat not found"}, nil
 	}
-	if creatorID != req.UserId {
+	if creatorID != userID {
 		return &gen.DeleteOwlChatResponse{Success: false, Message: "not your chat"}, nil
 	}
 
@@ -217,10 +219,12 @@ func (s *server) DeleteOwlChat(_ context.Context, req *gen.DeleteOwlChatRequest)
 	return &gen.DeleteOwlChatResponse{Success: true, Message: "OK"}, nil
 }
 
-func (s *server) GetOwlHistory(_ context.Context, req *gen.GetOwlHistoryRequest) (*gen.GetOwlHistoryResponse, error) {
+func (s *server) GetOwlHistory(ctx context.Context, req *gen.GetOwlHistoryRequest) (*gen.GetOwlHistoryResponse, error) {
 	if req.ChatId == "" {
 		return &gen.GetOwlHistoryResponse{}, nil
 	}
+
+	userID := GetUserID(ctx)
 
 	// Verify ownership — only by creator_id (UUID)
 	var ownerID string
@@ -228,7 +232,7 @@ func (s *server) GetOwlHistory(_ context.Context, req *gen.GetOwlHistoryRequest)
 	if err != nil {
 		return &gen.GetOwlHistoryResponse{}, nil
 	}
-	if req.UserId != "" && ownerID != req.UserId {
+	if userID != "" && ownerID != userID {
 		return &gen.GetOwlHistoryResponse{}, nil
 	}
 
@@ -257,9 +261,13 @@ func (s *server) GetOwlHistory(_ context.Context, req *gen.GetOwlHistoryRequest)
 	return &gen.GetOwlHistoryResponse{Messages: messages}, nil
 }
 
-func (s *server) UpdateOwlSettings(_ context.Context, req *gen.UpdateOwlSettingsRequest) (*gen.UpdateOwlSettingsResponse, error) {
-	if req.ChatId == "" || req.UserId == "" {
-		return &gen.UpdateOwlSettingsResponse{Success: false, Message: "chat_id and user_id required"}, nil
+func (s *server) UpdateOwlSettings(ctx context.Context, req *gen.UpdateOwlSettingsRequest) (*gen.UpdateOwlSettingsResponse, error) {
+	if req.ChatId == "" {
+		return &gen.UpdateOwlSettingsResponse{Success: false, Message: "chat_id required"}, nil
+	}
+	userID := GetUserID(ctx)
+	if userID == "" {
+		return &gen.UpdateOwlSettingsResponse{Success: false, Message: "unauthorized"}, nil
 	}
 
 	// Verify ownership — only by creator_id (UUID). creator_username is unreliable (username can change).
@@ -268,7 +276,7 @@ func (s *server) UpdateOwlSettings(_ context.Context, req *gen.UpdateOwlSettings
 	if err != nil {
 		return &gen.UpdateOwlSettingsResponse{Success: false, Message: "chat not found"}, nil
 	}
-	if ownerID != req.UserId {
+	if ownerID != userID {
 		return &gen.UpdateOwlSettingsResponse{Success: false, Message: "not your chat"}, nil
 	}
 
@@ -276,8 +284,12 @@ func (s *server) UpdateOwlSettings(_ context.Context, req *gen.UpdateOwlSettings
 	return &gen.UpdateOwlSettingsResponse{Success: true, Message: "OK"}, nil
 }
 
-func (s *server) GetOwlSettings(_ context.Context, req *gen.GetOwlSettingsRequest) (*gen.GetOwlSettingsResponse, error) {
-	if req.ChatId == "" || req.UserId == "" {
+func (s *server) GetOwlSettings(ctx context.Context, req *gen.GetOwlSettingsRequest) (*gen.GetOwlSettingsResponse, error) {
+	if req.ChatId == "" {
+		return &gen.GetOwlSettingsResponse{}, nil
+	}
+	userID := GetUserID(ctx)
+	if userID == "" {
 		return &gen.GetOwlSettingsResponse{}, nil
 	}
 
@@ -287,7 +299,7 @@ func (s *server) GetOwlSettings(_ context.Context, req *gen.GetOwlSettingsReques
 	if err != nil {
 		return &gen.GetOwlSettingsResponse{}, nil
 	}
-	if ownerID != req.UserId {
+	if ownerID != userID {
 		return &gen.GetOwlSettingsResponse{}, nil
 	}
 
@@ -303,11 +315,11 @@ func (s *server) GetOwlSettings(_ context.Context, req *gen.GetOwlSettingsReques
 	}
 
 	// Calculate remaining requests
-	remaining := int32(freeTierRateLimiter.remaining(req.UserId))
+	remaining := int32(freeTierRateLimiter.remaining(userID))
 	limit := int32(20)
 	windowSec := int32(3600)
 	if settings.UserAPIKey != "" {
-		remaining = int32(owlRateLimiter.remaining(req.UserId))
+		remaining = int32(owlRateLimiter.remaining(userID))
 		limit = 10
 		windowSec = 60
 	}
@@ -331,9 +343,9 @@ func (s *server) getAIChatManager() *AIChatManager {
 }
 
 func (s *server) ChatWithAI(req *gen.AIChatRequest, stream gen.ChatService_ChatWithAIServer) error {
-	userID := req.UserId
+	userID := GetUserID(stream.Context())
 	if userID == "" {
-		return status.Error(codes.InvalidArgument, "user_id is required")
+		return status.Error(codes.Unauthenticated, "unauthorized")
 	}
 
 	sessionID := req.SessionId
@@ -495,8 +507,12 @@ func (s *server) ChatWithAI(req *gen.AIChatRequest, stream gen.ChatService_ChatW
 	return nil
 }
 
-func (s *server) GetAIChatHistory(_ context.Context, req *gen.GetAIChatHistoryRequest) (*gen.GetAIChatHistoryResponse, error) {
-	if req.SessionId == "" || req.UserId == "" {
+func (s *server) GetAIChatHistory(ctx context.Context, req *gen.GetAIChatHistoryRequest) (*gen.GetAIChatHistoryResponse, error) {
+	if req.SessionId == "" {
+		return &gen.GetAIChatHistoryResponse{}, nil
+	}
+	userID := GetUserID(ctx)
+	if userID == "" {
 		return &gen.GetAIChatHistoryResponse{}, nil
 	}
 
@@ -507,7 +523,7 @@ func (s *server) GetAIChatHistory(_ context.Context, req *gen.GetAIChatHistoryRe
 	if err != nil {
 		return &gen.GetAIChatHistoryResponse{}, nil
 	}
-	if session.UserID != req.UserId {
+	if session.UserID != userID {
 		return &gen.GetAIChatHistoryResponse{}, nil
 	}
 
@@ -534,8 +550,12 @@ func (s *server) GetAIChatHistory(_ context.Context, req *gen.GetAIChatHistoryRe
 	return &gen.GetAIChatHistoryResponse{Messages: pbMessages}, nil
 }
 
-func (s *server) GetAIChatSettings(_ context.Context, req *gen.GetAIChatSettingsRequest) (*gen.AIChatSettings, error) {
-	if req.SessionId == "" || req.UserId == "" {
+func (s *server) GetAIChatSettings(ctx context.Context, req *gen.GetAIChatSettingsRequest) (*gen.AIChatSettings, error) {
+	if req.SessionId == "" {
+		return &gen.AIChatSettings{}, nil
+	}
+	userID := GetUserID(ctx)
+	if userID == "" {
 		return &gen.AIChatSettings{}, nil
 	}
 
@@ -546,18 +566,18 @@ func (s *server) GetAIChatSettings(_ context.Context, req *gen.GetAIChatSettings
 	if err != nil {
 		return &gen.AIChatSettings{}, nil
 	}
-	if session.UserID != req.UserId {
+	if session.UserID != userID {
 		return &gen.AIChatSettings{}, nil
 	}
 
 	settings, _ := manager.GetSettings(req.SessionId)
 
 	// Calculate remaining requests
-	remaining := int32(freeTierRateLimiter.remaining(req.UserId))
+	remaining := int32(freeTierRateLimiter.remaining(userID))
 	limit := int32(20)
 	windowSec := int32(3600)
 	if settings.UserAPIKey != "" {
-		remaining = int32(owlRateLimiter.remaining(req.UserId))
+		remaining = int32(owlRateLimiter.remaining(userID))
 		limit = 10
 		windowSec = 60
 	}
@@ -573,9 +593,13 @@ func (s *server) GetAIChatSettings(_ context.Context, req *gen.GetAIChatSettings
 	}, nil
 }
 
-func (s *server) UpdateAIChatSettings(_ context.Context, req *gen.UpdateAIChatSettingsRequest) (*gen.UpdateAIChatSettingsResponse, error) {
-	if req.SessionId == "" || req.UserId == "" {
-		return &gen.UpdateAIChatSettingsResponse{Success: false, Message: "session_id and user_id required"}, nil
+func (s *server) UpdateAIChatSettings(ctx context.Context, req *gen.UpdateAIChatSettingsRequest) (*gen.UpdateAIChatSettingsResponse, error) {
+	if req.SessionId == "" {
+		return &gen.UpdateAIChatSettingsResponse{Success: false, Message: "session_id required"}, nil
+	}
+	userID := GetUserID(ctx)
+	if userID == "" {
+		return &gen.UpdateAIChatSettingsResponse{Success: false, Message: "unauthorized"}, nil
 	}
 
 	manager := s.getAIChatManager()
@@ -585,7 +609,7 @@ func (s *server) UpdateAIChatSettings(_ context.Context, req *gen.UpdateAIChatSe
 	if err != nil {
 		return &gen.UpdateAIChatSettingsResponse{Success: false, Message: "session not found"}, nil
 	}
-	if session.UserID != req.UserId {
+	if session.UserID != userID {
 		return &gen.UpdateAIChatSettingsResponse{Success: false, Message: "not your session"}, nil
 	}
 
@@ -597,8 +621,12 @@ func (s *server) UpdateAIChatSettings(_ context.Context, req *gen.UpdateAIChatSe
 	return &gen.UpdateAIChatSettingsResponse{Success: true, Message: "OK"}, nil
 }
 
-func (s *server) GetHermesSettings(_ context.Context, req *gen.GetHermesSettingsRequest) (*gen.GetHermesSettingsResponse, error) {
-	if req.SessionId == "" || req.UserId == "" {
+func (s *server) GetHermesSettings(ctx context.Context, req *gen.GetHermesSettingsRequest) (*gen.GetHermesSettingsResponse, error) {
+	if req.SessionId == "" {
+		return &gen.GetHermesSettingsResponse{}, nil
+	}
+	userID := GetUserID(ctx)
+	if userID == "" {
 		return &gen.GetHermesSettingsResponse{}, nil
 	}
 
@@ -608,18 +636,18 @@ func (s *server) GetHermesSettings(_ context.Context, req *gen.GetHermesSettings
 	if err != nil {
 		return &gen.GetHermesSettingsResponse{}, nil
 	}
-	if ownerID != req.UserId {
+	if ownerID != userID {
 		return &gen.GetHermesSettingsResponse{}, nil
 	}
 
 	settings := hermesSettings.getSettings(req.SessionId)
 
 	// Calculate remaining requests
-	remaining := int32(freeTierRateLimiter.remaining(req.UserId))
+	remaining := int32(freeTierRateLimiter.remaining(userID))
 	limit := int32(20)
 	windowSec := int32(3600)
 	if settings.UserAPIKey != "" {
-		remaining = int32(owlRateLimiter.remaining(req.UserId))
+		remaining = int32(owlRateLimiter.remaining(userID))
 		limit = 10
 		windowSec = 60
 	}
@@ -634,9 +662,13 @@ func (s *server) GetHermesSettings(_ context.Context, req *gen.GetHermesSettings
 	}, nil
 }
 
-func (s *server) UpdateHermesSettings(_ context.Context, req *gen.UpdateHermesSettingsRequest) (*gen.UpdateHermesSettingsResponse, error) {
-	if req.SessionId == "" || req.UserId == "" {
-		return &gen.UpdateHermesSettingsResponse{Success: false, Message: "session_id and user_id required"}, nil
+func (s *server) UpdateHermesSettings(ctx context.Context, req *gen.UpdateHermesSettingsRequest) (*gen.UpdateHermesSettingsResponse, error) {
+	if req.SessionId == "" {
+		return &gen.UpdateHermesSettingsResponse{Success: false, Message: "session_id required"}, nil
+	}
+	userID := GetUserID(ctx)
+	if userID == "" {
+		return &gen.UpdateHermesSettingsResponse{Success: false, Message: "unauthorized"}, nil
 	}
 
 	// Verify ownership — only by creator_id (UUID)
@@ -645,8 +677,8 @@ func (s *server) UpdateHermesSettings(_ context.Context, req *gen.UpdateHermesSe
 	if err != nil {
 		return &gen.UpdateHermesSettingsResponse{Success: false, Message: "session not found"}, nil
 	}
-	if ownerID != req.UserId {
-		return &gen.UpdateHermesSettingsResponse{Success: false, Message: "not your session"}, nil
+	if ownerID != userID {
+		return &gen.UpdateHermesSettingsResponse{Success: false, Message: "not your chat"}, nil
 	}
 
 	hermesSettings.saveSettings(req.SessionId, req.ApiKey, req.Model)
@@ -654,9 +686,9 @@ func (s *server) UpdateHermesSettings(_ context.Context, req *gen.UpdateHermesSe
 }
 
 func (s *server) ChatWithOrchestrator(req *gen.OrchestratorRequest, stream gen.ChatService_ChatWithOrchestratorServer) error {
-	userID := req.UserId
+	userID := GetUserID(stream.Context())
 	if userID == "" {
-		return status.Error(codes.InvalidArgument, "user_id is required")
+		return status.Error(codes.Unauthenticated, "unauthorized")
 	}
 
 	chatID := req.SessionId
@@ -757,9 +789,9 @@ func (s *server) ChatWithOrchestrator(req *gen.OrchestratorRequest, stream gen.C
 }
 
 func (s *server) ChatWithPipeline(req *gen.PipelineRequest, stream gen.ChatService_ChatWithPipelineServer) error {
-	userID := req.UserId
+	userID := GetUserID(stream.Context())
 	if userID == "" {
-		return status.Error(codes.InvalidArgument, "user_id is required")
+		return status.Error(codes.Unauthenticated, "unauthorized")
 	}
 
 	// Rate limit check
@@ -828,10 +860,10 @@ func (s *server) buildWelcomeMessage() string {
 	return sb.String()
 }
 
-func (s *server) GetOrchestratorHistory(_ context.Context, req *gen.GetOrchestratorHistoryRequest) (*gen.GetOrchestratorHistoryResponse, error) {
-	userID := req.UserId
+func (s *server) GetOrchestratorHistory(ctx context.Context, req *gen.GetOrchestratorHistoryRequest) (*gen.GetOrchestratorHistoryResponse, error) {
+	userID := GetUserID(ctx)
 	if userID == "" {
-		return nil, status.Error(codes.InvalidArgument, "user_id is required")
+		return nil, status.Error(codes.Unauthenticated, "unauthorized")
 	}
 
 	manager := s.getAIChatManager()
@@ -863,10 +895,10 @@ func (s *server) GetOrchestratorHistory(_ context.Context, req *gen.GetOrchestra
 	return &gen.GetOrchestratorHistoryResponse{Messages: messages}, nil
 }
 
-func (s *server) ListAgents(_ context.Context, req *gen.ListAgentsRequest) (*gen.ListAgentsResponse, error) {
-	userID := req.UserId
+func (s *server) ListAgents(ctx context.Context, req *gen.ListAgentsRequest) (*gen.ListAgentsResponse, error) {
+	userID := GetUserID(ctx)
 	if userID == "" {
-		return nil, status.Error(codes.InvalidArgument, "user_id is required")
+		return nil, status.Error(codes.Unauthenticated, "unauthorized")
 	}
 
 	if s.hermesOrchestrator == nil {
@@ -920,10 +952,10 @@ func (s *server) ListAgentPresets(_ context.Context, _ *gen.ListAgentPresetsRequ
 	return &gen.ListAgentPresetsResponse{Presets: result}, nil
 }
 
-func (s *server) CreateAgent(_ context.Context, req *gen.CreateAgentRequest) (*gen.CreateAgentResponse, error) {
-	userID := req.UserId
+func (s *server) CreateAgent(ctx context.Context, req *gen.CreateAgentRequest) (*gen.CreateAgentResponse, error) {
+	userID := GetUserID(ctx)
 	if userID == "" {
-		return &gen.CreateAgentResponse{Success: false, Error: "user_id is required"}, nil
+		return &gen.CreateAgentResponse{Success: false, Error: "unauthorized"}, nil
 	}
 
 	if s.hermesOrchestrator == nil {
@@ -948,10 +980,10 @@ func (s *server) CreateAgent(_ context.Context, req *gen.CreateAgentRequest) (*g
 	return &gen.CreateAgentResponse{Success: true, AgentId: agentID}, nil
 }
 
-func (s *server) UpdateAgent(_ context.Context, req *gen.UpdateAgentRequest) (*gen.UpdateAgentResponse, error) {
-	userID := req.UserId
+func (s *server) UpdateAgent(ctx context.Context, req *gen.UpdateAgentRequest) (*gen.UpdateAgentResponse, error) {
+	userID := GetUserID(ctx)
 	if userID == "" || req.AgentId == "" {
-		return &gen.UpdateAgentResponse{Success: false, Error: "agent_id and user_id required"}, nil
+		return &gen.UpdateAgentResponse{Success: false, Error: "unauthorized"}, nil
 	}
 
 	// Verify ownership
@@ -977,10 +1009,10 @@ func (s *server) UpdateAgent(_ context.Context, req *gen.UpdateAgentRequest) (*g
 	return &gen.UpdateAgentResponse{Success: true}, nil
 }
 
-func (s *server) DeleteAgent(_ context.Context, req *gen.DeleteAgentRequest) (*gen.DeleteAgentResponse, error) {
-	userID := req.UserId
+func (s *server) DeleteAgent(ctx context.Context, req *gen.DeleteAgentRequest) (*gen.DeleteAgentResponse, error) {
+	userID := GetUserID(ctx)
 	if userID == "" || req.AgentId == "" {
-		return &gen.DeleteAgentResponse{Success: false, Error: "agent_id and user_id required"}, nil
+		return &gen.DeleteAgentResponse{Success: false, Error: "unauthorized"}, nil
 	}
 
 	// Verify ownership
@@ -1003,10 +1035,10 @@ func (s *server) DeleteAgent(_ context.Context, req *gen.DeleteAgentRequest) (*g
 	return &gen.DeleteAgentResponse{Success: true}, nil
 }
 
-func (s *server) ListUserAgents(_ context.Context, req *gen.ListUserAgentsRequest) (*gen.ListUserAgentsResponse, error) {
-	userID := req.UserId
+func (s *server) ListUserAgents(ctx context.Context, req *gen.ListUserAgentsRequest) (*gen.ListUserAgentsResponse, error) {
+	userID := GetUserID(ctx)
 	if userID == "" {
-		return nil, status.Error(codes.InvalidArgument, "user_id is required")
+		return nil, status.Error(codes.Unauthenticated, "unauthorized")
 	}
 
 	if s.hermesOrchestrator == nil {
@@ -1049,12 +1081,12 @@ func (s *server) ListUserAgents(_ context.Context, req *gen.ListUserAgentsReques
 	return &gen.ListUserAgentsResponse{Agents: result}, nil
 }
 
-func (s *server) CreateHermesSession(_ context.Context, req *gen.CreateHermesSessionRequest) (*gen.CreateHermesSessionResponse, error) {
-	userID := req.UserId
+func (s *server) CreateHermesSession(ctx context.Context, req *gen.CreateHermesSessionRequest) (*gen.CreateHermesSessionResponse, error) {
+	userID := GetUserID(ctx)
 	logger.Infof("[Lava] CreateHermesSession: user_id=%q name=%q", userID, req.Name)
 	if userID == "" {
 		logger.Error("[Lava] CreateHermesSession: ERROR empty user_id")
-		return &gen.CreateHermesSessionResponse{Success: false, Error: "user_id is required"}, nil
+		return &gen.CreateHermesSessionResponse{Success: false, Error: "unauthorized"}, nil
 	}
 
 	// Resolve username → UUID if needed (hermes_sessions.user_id is UUID type)
@@ -1103,12 +1135,16 @@ func (s *server) CreateHermesSession(_ context.Context, req *gen.CreateHermesSes
 	return &gen.CreateHermesSessionResponse{Success: true, SessionId: sessionID, Name: name}, nil
 }
 
-func (s *server) DeleteHermesSession(_ context.Context, req *gen.DeleteHermesSessionRequest) (*gen.DeleteHermesSessionResponse, error) {
-	if req.SessionId == "" || req.UserId == "" {
-		return &gen.DeleteHermesSessionResponse{Success: false, Error: "session_id and user_id required"}, nil
+func (s *server) DeleteHermesSession(ctx context.Context, req *gen.DeleteHermesSessionRequest) (*gen.DeleteHermesSessionResponse, error) {
+	if req.SessionId == "" {
+		return &gen.DeleteHermesSessionResponse{Success: false, Error: "session_id required"}, nil
+	}
+	userID := GetUserID(ctx)
+	if userID == "" {
+		return &gen.DeleteHermesSessionResponse{Success: false, Error: "unauthorized"}, nil
 	}
 
-	_, err := s.db.Exec("DELETE FROM hermes_sessions WHERE id = $1 AND user_id = $2", req.SessionId, req.UserId)
+	_, err := s.db.Exec("DELETE FROM hermes_sessions WHERE id = $1 AND user_id = $2", req.SessionId, userID)
 	if err != nil {
 		return &gen.DeleteHermesSessionResponse{Success: false, Error: err.Error()}, nil
 	}
@@ -1116,8 +1152,9 @@ func (s *server) DeleteHermesSession(_ context.Context, req *gen.DeleteHermesSes
 	return &gen.DeleteHermesSessionResponse{Success: true}, nil
 }
 
-func (s *server) GetAIChats(_ context.Context, req *gen.GetAIChatsRequest) (*gen.GetAIChatsResponse, error) {
-	if req.UserId == "" {
+func (s *server) GetAIChats(ctx context.Context, req *gen.GetAIChatsRequest) (*gen.GetAIChatsResponse, error) {
+	userID := GetUserID(ctx)
+	if userID == "" {
 		return &gen.GetAIChatsResponse{}, nil
 	}
 
@@ -1126,7 +1163,7 @@ func (s *server) GetAIChats(_ context.Context, req *gen.GetAIChatsRequest) (*gen
 	// OWL chats from chats table
 	owlRows, err := s.db.Query(
 		"SELECT id, name, type, created_at FROM chats WHERE type = 'owl' AND creator_id = $1 ORDER BY created_at ASC",
-		req.UserId,
+		userID,
 	)
 	if err == nil {
 		for owlRows.Next() {
@@ -1150,7 +1187,7 @@ func (s *server) GetAIChats(_ context.Context, req *gen.GetAIChatsRequest) (*gen
 	// Hermes chats from chats table (unified with OWL)
 	hermesRows, err := s.db.Query(
 		"SELECT id, name, type, created_at FROM chats WHERE type = 'hermes' AND creator_id = $1 ORDER BY created_at ASC",
-		req.UserId,
+		userID,
 	)
 	if err == nil {
 		for hermesRows.Next() {
@@ -1174,15 +1211,19 @@ func (s *server) GetAIChats(_ context.Context, req *gen.GetAIChatsRequest) (*gen
 	return &gen.GetAIChatsResponse{Chats: chats}, nil
 }
 
-func (s *server) RenameAIChat(_ context.Context, req *gen.RenameAIChatRequest) (*gen.RenameAIChatResponse, error) {
-	if req.ChatId == "" || req.UserId == "" || req.NewName == "" {
-		return &gen.RenameAIChatResponse{Success: false, Error: "chat_id, user_id and new_name required"}, nil
+func (s *server) RenameAIChat(ctx context.Context, req *gen.RenameAIChatRequest) (*gen.RenameAIChatResponse, error) {
+	if req.ChatId == "" || req.NewName == "" {
+		return &gen.RenameAIChatResponse{Success: false, Error: "chat_id and new_name required"}, nil
+	}
+	userID := GetUserID(ctx)
+	if userID == "" {
+		return &gen.RenameAIChatResponse{Success: false, Error: "unauthorized"}, nil
 	}
 
 	// Try OWL chat first
 	var creatorID string
 	err := s.db.QueryRow("SELECT creator_id FROM chats WHERE id = $1 AND type = 'owl'", req.ChatId).Scan(&creatorID)
-	if err == nil && creatorID == req.UserId {
+	if err == nil && creatorID == userID {
 		_, err = s.db.Exec("UPDATE chats SET name = $1 WHERE id = $2", req.NewName, req.ChatId)
 		if err != nil {
 			return &gen.RenameAIChatResponse{Success: false, Error: err.Error()}, nil
@@ -1191,9 +1232,9 @@ func (s *server) RenameAIChat(_ context.Context, req *gen.RenameAIChatRequest) (
 	}
 
 	// Try Hermes session
-	var userID string
-	err = s.db.QueryRow("SELECT user_id FROM hermes_sessions WHERE id = $1", req.ChatId).Scan(&userID)
-	if err == nil && userID == req.UserId {
+	var hermesUserID string
+	err = s.db.QueryRow("SELECT user_id FROM hermes_sessions WHERE id = $1", req.ChatId).Scan(&hermesUserID)
+	if err == nil && hermesUserID == userID {
 		_, err = s.db.Exec("UPDATE hermes_sessions SET name = $1 WHERE id = $2", req.NewName, req.ChatId)
 		if err != nil {
 			return &gen.RenameAIChatResponse{Success: false, Error: err.Error()}, nil
@@ -1223,11 +1264,12 @@ func (s *server) GetFreeModels(_ context.Context, _ *gen.GetFreeModelsRequest) (
 	return &gen.GetFreeModelsResponse{Models: result}, nil
 }
 
-func (s *server) SetFreeModel(_ context.Context, req *gen.SetFreeModelRequest) (*gen.SetFreeModelResponse, error) {
-	if req.AdminUserId == "" {
-		return &gen.SetFreeModelResponse{Success: false, Error: "admin_user_id required"}, nil
+func (s *server) SetFreeModel(ctx context.Context, req *gen.SetFreeModelRequest) (*gen.SetFreeModelResponse, error) {
+	userID := GetUserID(ctx)
+	if userID == "" {
+		return &gen.SetFreeModelResponse{Success: false, Error: "unauthorized"}, nil
 	}
-	if !s.db.IsSuperAdmin(req.AdminUserId) {
+	if !s.db.IsSuperAdmin(userID) {
 		return &gen.SetFreeModelResponse{Success: false, Error: "admin only"}, nil
 	}
 	if req.ModelId == "" {
@@ -1239,11 +1281,12 @@ func (s *server) SetFreeModel(_ context.Context, req *gen.SetFreeModelRequest) (
 	return &gen.SetFreeModelResponse{Success: true}, nil
 }
 
-func (s *server) RemoveFreeModel(_ context.Context, req *gen.RemoveFreeModelRequest) (*gen.RemoveFreeModelResponse, error) {
-	if req.AdminUserId == "" {
-		return &gen.RemoveFreeModelResponse{Success: false, Error: "admin_user_id required"}, nil
+func (s *server) RemoveFreeModel(ctx context.Context, req *gen.RemoveFreeModelRequest) (*gen.RemoveFreeModelResponse, error) {
+	userID := GetUserID(ctx)
+	if userID == "" {
+		return &gen.RemoveFreeModelResponse{Success: false, Error: "unauthorized"}, nil
 	}
-	if !s.db.IsSuperAdmin(req.AdminUserId) {
+	if !s.db.IsSuperAdmin(userID) {
 		return &gen.RemoveFreeModelResponse{Success: false, Error: "admin only"}, nil
 	}
 	if err := s.db.RemoveFreeModel(req.ModelId); err != nil {

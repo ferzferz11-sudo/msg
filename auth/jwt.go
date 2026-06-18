@@ -15,6 +15,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 	"time"
@@ -46,8 +47,10 @@ type AgentToken struct {
 func getTokenSecret() []byte {
 	secret := os.Getenv("JWT_SECRET")
 	if secret == "" {
-		// Fallback для разработки — НЕ использовать в prod
-		secret = "lavender-dev-secret-key-change-in-production-32b"
+		log.Fatal("FATAL: JWT_SECRET environment variable is not set. Tokens cannot be generated securely.")
+	}
+	if len(secret) < 32 {
+		log.Fatalf("FATAL: JWT_SECRET must be at least 32 bytes, got %d", len(secret))
 	}
 	return []byte(secret)
 }

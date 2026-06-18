@@ -7,23 +7,19 @@ import (
 
 	"LavenderMessenger/gen"
 	"github.com/google/uuid"
-	"google.golang.org/grpc/peer"
 )
 
-// getCallerUsernameSecret получает имя вызывающего клиента из хаба для secret chat RPC
+// getCallerUsernameSecret получает имя вызывающего клиента из auth context
 func (s *server) getCallerUsernameSecret(ctx context.Context) string {
-	var callerUsername string
-	if _, ok := peer.FromContext(ctx); ok {
-		s.hub.mu.RLock()
-		for _, name := range s.hub.clients {
-			if name != "Anonymous" && name != "" {
-				callerUsername = name
-				break
-			}
-		}
-		s.hub.mu.RUnlock()
+	userID := GetUserID(ctx)
+	if userID == "" {
+		return ""
 	}
-	return callerUsername
+	username, _ := s.db.GetUsernameByID(userID)
+	if username != "" {
+		return username
+	}
+	return userID
 }
 
 // CreateSecretChat создает новый секретный чат (E2EE) между двумя пользователями

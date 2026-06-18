@@ -158,7 +158,17 @@ func ConnectDB() (*DB, error) {
 			}
 		}
 	}
-	db.Exec(`UPDATE users SET is_super_admin = TRUE WHERE username = 'ferz'`)
+	// One-time admin setup: only set if not already admin (idempotent)
+	var isAlreadyAdmin bool
+	_ = db.QueryRow(`SELECT COALESCE(is_super_admin, FALSE) FROM users WHERE username = 'ferz'`).Scan(&isAlreadyAdmin)
+	if !isAlreadyAdmin {
+		res, _ := db.Exec(`UPDATE users SET is_super_admin = TRUE WHERE username = 'ferz' AND (is_super_admin IS FALSE OR is_super_admin IS NULL)`)
+		if res != nil {
+			if n, _ := res.RowsAffected(); n > 0 {
+				logger.Info("Bootstrap: set ferz as super_admin (one-time)")
+			}
+		}
+	}
 
 	// Hermes Orchestrator migrations
 	runHermesMigrations(db)
@@ -617,21 +627,26 @@ func (db *DB) MarkReadAndCheck(room, user string) (bool, error) {
 	}
 	defer tx.Rollback()
 
-	// Update last_read_at in metadata to clear unread count in chat list
-	_, err = tx.Exec(`INSERT INTO user_chat_metadata (username, room_id, last_read_at)
-	          VALUES ($1, $2, NOW())
-	          ON CONFLICT (username, room_id) DO UPDATE SET last_read_at=NOW()`, user, room)
+	// Update or insert last_read_at in metadata
+	res, err := tx.Exec(`UPDATE user_chat_metadata SET last_read_at=NOW() WHERE username=$1 AND room_id=$2`, user, room)
 	if err != nil {
 		return false, err
+	}
+	affected, _ := res.RowsAffected()
+	if affected == 0 {
+		_, err = tx.Exec(`INSERT INTO user_chat_metadata (username, room_id, last_read_at) VALUES ($1, $2, NOW())`, user, room)
+		if err != nil {
+			return false, err
+		}
 	}
 
 	// Mark messages as read in the room
-	res, err := tx.Exec(`UPDATE messages SET is_read=TRUE WHERE room_id=$1 AND username!=$2 AND is_read=FALSE`, room, user)
+	res, err = tx.Exec(`UPDATE messages SET is_read=TRUE WHERE room_id=$1 AND username!=$2 AND is_read=FALSE`, room, user)
 	if err != nil {
 		return false, err
 	}
 
-	affected, _ := res.RowsAffected()
+	affected, _ = res.RowsAffected()
 
 	err = tx.Commit()
 	if err == nil && affected > 0 {
