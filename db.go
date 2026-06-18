@@ -154,6 +154,60 @@ func ConnectDB() (*DB, error) {
 		`CREATE INDEX IF NOT EXISTS idx_messages_room ON messages(room_id, created_at)`,
 		`CREATE INDEX IF NOT EXISTS idx_contacts_username ON contacts(username)`,
 		`CREATE INDEX IF NOT EXISTS idx_user_tokens_username ON user_tokens(username)`,
+		// userId migration — add UUID columns to tables that still use username as PK
+		`DO $$ BEGIN
+			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='reactions' AND column_name='user_id') THEN
+				ALTER TABLE reactions ADD COLUMN user_id UUID;
+				UPDATE reactions r SET user_id = (SELECT id FROM users u WHERE u.username = r.username);
+			END IF;
+		END $$;`,
+		`CREATE INDEX IF NOT EXISTS idx_reactions_user_id ON reactions(user_id)`,
+		`DO $$ BEGIN
+			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='contacts' AND column_name='user_id') THEN
+				ALTER TABLE contacts ADD COLUMN user_id UUID;
+				UPDATE contacts c SET user_id = (SELECT id FROM users u WHERE u.username = c.username);
+			END IF;
+			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='contacts' AND column_name='contact_user_id') THEN
+				ALTER TABLE contacts ADD COLUMN contact_user_id UUID;
+				UPDATE contacts c SET contact_user_id = (SELECT id FROM users u WHERE u.username = c.contact_username);
+			END IF;
+		END $$;`,
+		`CREATE INDEX IF NOT EXISTS idx_contacts_user_id ON contacts(user_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_contacts_contact_user_id ON contacts(contact_user_id)`,
+		`DO $$ BEGIN
+			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='user_tokens' AND column_name='user_id') THEN
+				ALTER TABLE user_tokens ADD COLUMN user_id UUID;
+				UPDATE user_tokens ut SET user_id = (SELECT id FROM users u WHERE u.username = ut.username);
+			END IF;
+		END $$;`,
+		`CREATE INDEX IF NOT EXISTS idx_user_tokens_user_id ON user_tokens(user_id)`,
+		`DO $$ BEGIN
+			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='user_themes' AND column_name='user_id') THEN
+				ALTER TABLE user_themes ADD COLUMN user_id UUID;
+				UPDATE user_themes ut SET user_id = (SELECT id FROM users u WHERE u.username = ut.username);
+			END IF;
+		END $$;`,
+		`CREATE INDEX IF NOT EXISTS idx_user_themes_user_id ON user_themes(user_id)`,
+		`DO $$ BEGIN
+			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='chats' AND column_name='participant_ids') THEN
+				ALTER TABLE chats ADD COLUMN participant_ids UUID[];
+				UPDATE chats SET participant_ids = (
+					SELECT array_agg(u.id ORDER BY u.username)
+					FROM users u
+					WHERE u.username = ANY(SELECT json_array_elements_text(chats.participants::json))
+				);
+			END IF;
+		END $$;`,
+		`CREATE INDEX IF NOT EXISTS idx_chats_participant_ids ON chats USING GIN(participant_ids)`,
+		`DO $$ BEGIN
+			IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='muted_chats' AND column_name='user_id') THEN
+				UPDATE muted_chats mc SET user_id = (SELECT id FROM users u WHERE u.username = mc.username) WHERE mc.user_id IS NULL;
+				CREATE INDEX IF NOT EXISTS idx_muted_chats_user_id ON muted_chats(user_id);
+			END IF;
+		END $$;`,
+		`UPDATE draft_messages dm SET user_id = (SELECT id FROM users u WHERE u.username = dm.username) WHERE dm.user_id IS NULL`,
+		`UPDATE messages m SET user_id = (SELECT id FROM users u WHERE u.username = m.username) WHERE m.user_id IS NULL`,
+		`CREATE INDEX IF NOT EXISTS idx_messages_user_id ON messages(user_id)`,
 	}
 
 	for _, q := range queries {
@@ -285,6 +339,19 @@ func (db *DB) SetReaction(mid, user, emoji string) error {
 	return err
 }
 
+func (db *DB) SetReactionByUserID(mid, userID, emoji string) error {
+	q := `INSERT INTO reactions (message_id, user_id, username, emoji)
+		VALUES ($1, $2::uuid, (SELECT username FROM users WHERE id=$2::uuid), $3)
+		ON CONFLICT (message_id, username) DO UPDATE SET emoji = EXCLUDED.emoji, user_id = EXCLUDED.user_id`
+	_, err := db.Exec(q, mid, userID, emoji)
+	return err
+}
+
+func (db *DB) RemoveReactionByUserID(mid, userID string) error {
+	_, err := db.Exec(`DELETE FROM reactions WHERE message_id=$1 AND (user_id=$2::uuid OR username=$2)`, mid, userID)
+	return err
+}
+
 func (db *DB) GetReactionsForMessage(mid string) ([]struct{ Username, Emoji string }, error) {
 	rows, err := db.Query(`SELECT username, emoji FROM reactions WHERE message_id=$1`, mid)
 	if err != nil {
@@ -304,6 +371,23 @@ func (db *DB) UserExists(user string) (bool, error) {
 	var e bool
 	err := db.QueryRow(`SELECT EXISTS(SELECT 1 FROM users WHERE username=$1)`, user).Scan(&e)
 	return e, err
+}
+
+func (db *DB) UserExistsByID(userID string) (bool, error) {
+	var e bool
+	err := db.QueryRow(`SELECT EXISTS(SELECT 1 FROM users WHERE id=$1::uuid)`, userID).Scan(&e)
+	return e, err
+}
+
+func (db *DB) GetUserByID(userID string) (username string, err error) {
+	err = db.QueryRow(`SELECT username FROM users WHERE id=$1::uuid`, userID).Scan(&username)
+	return
+}
+
+func (db *DB) GetUserIDByUsername(username string) (string, error) {
+	var id string
+	err := db.QueryRow(`SELECT id::text FROM users WHERE username=$1`, username).Scan(&id)
+	return id, err
 }
 
 func (db *DB) EmailExists(email string) (bool, error) {
@@ -551,6 +635,64 @@ func (db *DB) GetUserChats(uid, user string) ([]struct {
 	return res, nil
 }
 
+func (db *DB) GetUserChatsByUserID(userID string) ([]struct {
+	ID, Name, Type, Participants, Creator, LastMessageText, AvatarURL, FullAvatarURL, LastMessageUsername string
+	CreatedAt, LastMessageTime                                                                            time.Time
+	UnreadCount                                                                                           int
+	LastMessageHasImage, AllowMembersToAdd                                                                bool
+}, error) {
+	query := `WITH last_messages AS (SELECT DISTINCT ON (room_id) room_id, created_at, encrypted_text, username, image_url, image_urls FROM messages ORDER BY room_id, created_at DESC),
+		unread_counts AS (SELECT room_id, COUNT(*) as count FROM messages WHERE is_read = FALSE AND user_id = $1::uuid GROUP BY room_id)
+		SELECT c.id, c.name, c.type, c.participants, c.created_at, COALESCE(uc.count, 0), COALESCE(lm.created_at, c.created_at), COALESCE(c.creator_username, ''), COALESCE(lm.encrypted_text, ''::bytea), COALESCE(c.avatar_url, ''), COALESCE(c.full_avatar_url, ''), COALESCE(lm.username, ''), (COALESCE(lm.image_url, '') != '' OR COALESCE(lm.image_urls, '[]') != '[]'), COALESCE(c.allow_members_to_add, FALSE)
+		FROM chats c LEFT JOIN last_messages lm ON c.id = lm.room_id LEFT JOIN unread_counts uc ON c.id = uc.room_id
+		WHERE c.type NOT IN ('owl', 'hermes')
+			AND (c.participant_ids @> ARRAY[$1::uuid] OR c.participants::jsonb @> jsonb_build_array((SELECT username FROM users WHERE id=$1::uuid)))
+		ORDER BY 7 DESC`
+	rows, err := db.Query(query, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var res []struct {
+		ID, Name, Type, Participants, Creator, LastMessageText, AvatarURL, FullAvatarURL, LastMessageUsername string
+		CreatedAt, LastMessageTime                                                                            time.Time
+		UnreadCount                                                                                           int
+		LastMessageHasImage, AllowMembersToAdd                                                                bool
+	}
+	for rows.Next() {
+		var c struct {
+			ID, Name, Type, Participants, Creator, Avatar, FullAvatar, LastUser string
+			CreatedAt, LastTime                                                 time.Time
+			Unread                                                              int
+			Enc                                                                 []byte
+			HasImg, AllowAdd                                                    bool
+		}
+		rows.Scan(&c.ID, &c.Name, &c.Type, &c.Participants, &c.CreatedAt, &c.Unread, &c.LastTime, &c.Creator, &c.Enc, &c.Avatar, &c.FullAvatar, &c.LastUser, &c.HasImg, &c.AllowAdd)
+		txt, _ := decrypt(c.Enc)
+		res = append(res, struct {
+			ID, Name, Type, Participants, Creator, LastMessageText, AvatarURL, FullAvatarURL, LastMessageUsername string
+			CreatedAt, LastMessageTime                                                                            time.Time
+			UnreadCount                                                                                           int
+			LastMessageHasImage, AllowMembersToAdd                                                                bool
+		}{c.ID, c.Name, c.Type, c.Participants, c.Creator, txt, c.Avatar, c.FullAvatar, c.LastUser, c.CreatedAt, c.LastTime, c.Unread, c.HasImg, c.AllowAdd})
+	}
+	return res, nil
+}
+
+func (db *DB) IncrementUserChatListVersionByUserID(userID string) error {
+	_, err := db.Exec(`UPDATE users SET chat_list_version=chat_list_version+1 WHERE id=$1::uuid`, userID)
+	return err
+}
+
+func (db *DB) IncrementParticipantsChatListVersionByChatID(chatID string) error {
+	_, err := db.Exec(`UPDATE users SET chat_list_version=chat_list_version+1 WHERE id IN (
+		SELECT unnest(participant_ids) FROM chats WHERE id=$1
+		UNION
+		SELECT id FROM users WHERE username IN (SELECT json_array_elements_text(participants::json) FROM chats WHERE id=$1)
+	)`, chatID)
+	return err
+}
+
 func (db *DB) UpdateUsername(old, new string) error {
 	tx, err := db.Begin()
 	if err != nil {
@@ -688,7 +830,10 @@ func (db *DB) MarkReadAndCheck(room, user string) (bool, error) {
 }
 
 func (db *DB) CreateChat(id, name, t, p, creatorUsername, creatorId string) error {
-	_, err := db.Exec(`INSERT INTO chats (id, name, type, participants, creator_username, creator_id) VALUES ($1, $2, $3, $4, $5, $6)`, id, name, t, p, creatorUsername, creatorId)
+	_, err := db.Exec(`INSERT INTO chats (id, name, type, participants, creator_username, creator_id, participant_ids)
+		VALUES ($1, $2, $3, $4, $5, $6,
+			(SELECT array_agg(u.id ORDER BY u.username) FROM users u WHERE u.username = ANY(SELECT json_array_elements_text($4::json)))
+		)`, id, name, t, p, creatorUsername, creatorId)
 	if err == nil {
 		_ = db.IncrementParticipantsChatListVersion(id)
 	}
@@ -766,7 +911,9 @@ func (db *DB) UpdateChatSettings(id string, allowAdd bool) error {
 	return err
 }
 func (db *DB) UpdateChatParticipants(id, p string) error {
-	_, err := db.Exec(`UPDATE chats SET participants=$1 WHERE id=$2`, p, id)
+	_, err := db.Exec(`UPDATE chats SET participants=$1,
+		participant_ids=(SELECT array_agg(u.id ORDER BY u.username) FROM users u WHERE u.username = ANY(SELECT json_array_elements_text($1::json)))
+		WHERE id=$2`, p, id)
 	return err
 }
 func (db *DB) DeleteChat(id string) error {
@@ -794,12 +941,46 @@ func (db *DB) AddContact(user, contact string) error {
 	_, err := db.Exec(`INSERT INTO contacts (username, contact_username) VALUES ($1, $2) ON CONFLICT DO NOTHING`, user, contact)
 	return err
 }
+
+func (db *DB) AddContactByUserID(userID, contactID string) error {
+	_, err := db.Exec(`INSERT INTO contacts (user_id, contact_user_id, username, contact_username)
+		VALUES ($1::uuid, $2::uuid,
+			(SELECT username FROM users WHERE id=$1::uuid),
+			(SELECT username FROM users WHERE id=$2::uuid))
+		ON CONFLICT DO NOTHING`, userID, contactID)
+	return err
+}
+
 func (db *DB) RemoveContact(user, contact string) error {
 	_, err := db.Exec(`DELETE FROM contacts WHERE username=$1 AND contact_username=$2`, user, contact)
 	return err
 }
+
+func (db *DB) RemoveContactByUserID(userID, contactID string) error {
+	_, err := db.Exec(`DELETE FROM contacts WHERE (user_id=$1::uuid OR username=$1) AND (contact_user_id=$2::uuid OR contact_username=$2)`, userID, contactID)
+	return err
+}
+
 func (db *DB) GetContacts(user string) ([]string, error) {
 	rows, err := db.Query(`SELECT contact_username FROM contacts WHERE username=$1`, user)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var res []string
+	for rows.Next() {
+		var c string
+		if err := rows.Scan(&c); err == nil {
+			res = append(res, c)
+		}
+	}
+	return res, nil
+}
+
+func (db *DB) GetContactsByUserID(userID string) ([]string, error) {
+	rows, err := db.Query(`SELECT COALESCE(u2.username, c.contact_username)
+		FROM contacts c LEFT JOIN users u2 ON c.contact_user_id = u2.id
+		WHERE c.user_id=$1::uuid OR c.username=(SELECT username FROM users WHERE id=$1::uuid)`, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -871,6 +1052,77 @@ func (db *DB) DeleteUserTheme(user, id string) error {
 	_, err := db.Exec(`DELETE FROM user_themes WHERE username = $1 AND theme_id = $2`, user, id)
 	return err
 }
+
+func (db *DB) GetUserThemesByUserID(userID string) (string, []struct {
+	ThemeID, Name, PrimaryColor, OnPrimaryColor, SurfaceColor, OnSurfaceColor, BackgroundColor, TextPrimaryColor, TextSecondaryColor                     string
+	IsDark                                                                                                                                               bool
+	ChatBackgroundImageUrl, ChatListBackgroundImageUrl, BottomPanelColor, OnBottomPanelColor, SurfaceContainer, OutgoingBubbleColor, IncomingBubbleColor string
+}, error) {
+	var curr string
+	db.QueryRow(`SELECT current_theme_id FROM users WHERE id=$1::uuid`, userID).Scan(&curr)
+	rows, err := db.Query(`SELECT theme_id, name, primary_color, on_primary_color, surface_color, on_surface_color, background_color, text_primary_color, text_secondary_color, is_dark, chat_background_image_url, chat_list_background_image_url, bottom_panel_color, on_bottom_panel_color, surface_container, outgoing_bubble_color, incoming_bubble_color FROM user_themes WHERE user_id = $1::uuid OR username = (SELECT username FROM users WHERE id=$1::uuid)`, userID)
+	if err != nil {
+		return curr, nil, err
+	}
+	defer rows.Close()
+	var res []struct {
+		ThemeID, Name, PrimaryColor, OnPrimaryColor, SurfaceColor, OnSurfaceColor, BackgroundColor, TextPrimaryColor, TextSecondaryColor                     string
+		IsDark                                                                                                                                               bool
+		ChatBackgroundImageUrl, ChatListBackgroundImageUrl, BottomPanelColor, OnBottomPanelColor, SurfaceContainer, OutgoingBubbleColor, IncomingBubbleColor string
+	}
+	for rows.Next() {
+		var t struct {
+			ThemeID, Name, PrimaryColor, OnPrimaryColor, SurfaceColor, OnSurfaceColor, BackgroundColor, TextPrimaryColor, TextSecondaryColor                     string
+			IsDark                                                                                                                                               bool
+			ChatBackgroundImageUrl, ChatListBackgroundImageUrl, BottomPanelColor, OnBottomPanelColor, SurfaceContainer, OutgoingBubbleColor, IncomingBubbleColor string
+		}
+		rows.Scan(&t.ThemeID, &t.Name, &t.PrimaryColor, &t.OnPrimaryColor, &t.SurfaceColor, &t.OnSurfaceColor, &t.BackgroundColor, &t.TextPrimaryColor, &t.TextSecondaryColor, &t.IsDark, &t.ChatBackgroundImageUrl, &t.ChatListBackgroundImageUrl, &t.BottomPanelColor, &t.OnBottomPanelColor, &t.SurfaceContainer, &t.OutgoingBubbleColor, &t.IncomingBubbleColor)
+		res = append(res, t)
+	}
+	return curr, res, nil
+}
+
+func (db *DB) SaveUserThemeByUserID(userID string, t *gen.CustomTheme) error {
+	query := `INSERT INTO user_themes (
+		user_id, username, theme_id, name, primary_color, on_primary_color,
+		surface_color, on_surface_color, background_color,
+		text_primary_color, text_secondary_color, is_dark,
+		chat_background_image_url, chat_list_background_image_url,
+		bottom_panel_color, on_bottom_panel_color, surface_container,
+		outgoing_bubble_color, incoming_bubble_color
+	) VALUES (
+		$1::uuid, (SELECT username FROM users WHERE id=$1::uuid), $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18
+	) ON CONFLICT (username, theme_id) DO UPDATE SET
+		user_id=EXCLUDED.user_id, name=EXCLUDED.name, primary_color=EXCLUDED.primary_color,
+		on_primary_color=EXCLUDED.on_primary_color, surface_color=EXCLUDED.surface_color,
+		on_surface_color=EXCLUDED.on_surface_color, background_color=EXCLUDED.background_color,
+		text_primary_color=EXCLUDED.text_primary_color, text_secondary_color=EXCLUDED.text_secondary_color,
+		is_dark=EXCLUDED.is_dark, chat_background_image_url=EXCLUDED.chat_background_image_url,
+		chat_list_background_image_url=EXCLUDED.chat_list_background_image_url,
+		bottom_panel_color=EXCLUDED.bottom_panel_color, on_bottom_panel_color=EXCLUDED.on_bottom_panel_color,
+		surface_container=EXCLUDED.surface_container, outgoing_bubble_color=EXCLUDED.outgoing_bubble_color,
+		incoming_bubble_color=EXCLUDED.incoming_bubble_color`
+
+	_, err := db.Exec(query,
+		userID, t.Id, t.Name, t.PrimaryColor, t.OnPrimaryColor,
+		t.SurfaceColor, t.OnSurfaceColor, t.BackgroundColor,
+		t.TextPrimaryColor, t.TextSecondaryColor, t.IsDark,
+		t.ChatBackgroundImageUrl, t.ChatListBackgroundImageUrl,
+		t.BottomPanelColor, t.OnBottomPanelColor, t.SurfaceContainer,
+		t.OutgoingBubbleColor, t.IncomingBubbleColor)
+	return err
+}
+
+func (db *DB) SetCurrentThemeByUserID(userID, id string) error {
+	_, err := db.Exec(`UPDATE users SET current_theme_id = $1 WHERE id = $2::uuid`, id, userID)
+	return err
+}
+
+func (db *DB) DeleteUserThemeByUserID(userID, themeID string) error {
+	_, err := db.Exec(`DELETE FROM user_themes WHERE (user_id = $1::uuid OR username = (SELECT username FROM users WHERE id=$1::uuid)) AND theme_id = $2`, userID, themeID)
+	return err
+}
+
 func (db *DB) SaveDraftByUserID(uid, room, text, mid, user, rtext string) error {
 	q := `INSERT INTO draft_messages (user_id, room_id, draft_text, replied_to_message_id, replied_to_user, replied_to_text, username) VALUES ($1::uuid, $2, $3, $4, $5, $6, (SELECT username FROM users WHERE id=$1::uuid)) ON CONFLICT (username, room_id) DO UPDATE SET draft_text=EXCLUDED.draft_text, replied_to_message_id=EXCLUDED.replied_to_message_id, replied_to_user=EXCLUDED.replied_to_user, replied_to_text=EXCLUDED.replied_to_text`
 	_, err := db.Exec(q, uid, room, text, mid, user, rtext)
@@ -980,6 +1232,24 @@ func (db *DB) GetUserTokenByUserID(uid string) (string, error) {
 }
 func (db *DB) SaveUserToken(user, token string, e bool) error {
 	_, err := db.Exec(`INSERT INTO user_tokens (username, fcm_token, push_enabled, updated_at) VALUES ($1, $2, $3, NOW()) ON CONFLICT (username) DO UPDATE SET fcm_token=EXCLUDED.fcm_token, updated_at=NOW()`, user, token, e)
+	return err
+}
+
+func (db *DB) SaveUserTokenByUserID(userID, token string, e bool) error {
+	_, err := db.Exec(`INSERT INTO user_tokens (user_id, username, fcm_token, push_enabled, updated_at)
+		VALUES ($1::uuid, (SELECT username FROM users WHERE id=$1::uuid), $2, $3, NOW())
+		ON CONFLICT (username) DO UPDATE SET user_id=EXCLUDED.user_id, fcm_token=EXCLUDED.fcm_token, updated_at=NOW()`, userID, token, e)
+	return err
+}
+
+func (db *DB) GetUserPushStatusByUserID(userID string) bool {
+	var e bool
+	db.QueryRow(`SELECT push_enabled FROM user_tokens WHERE user_id=$1::uuid OR username=(SELECT username FROM users WHERE id=$1::uuid)`, userID).Scan(&e)
+	return e
+}
+
+func (db *DB) SetUserPushStatusByUserID(userID string, enabled bool) error {
+	_, err := db.Exec(`UPDATE user_tokens SET push_enabled=$1 WHERE user_id=$2::uuid OR username=(SELECT username FROM users WHERE id=$2::uuid)`, enabled, userID)
 	return err
 }
 func (db *DB) GetMessageImageURL(mid string) (string, error) {
