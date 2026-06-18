@@ -21,23 +21,39 @@ const (
 
 // AuthInterceptor validates JWT Bearer tokens on every gRPC call (except AuthService).
 // On success it injects user_id, username, device_id into the context.
+// For v1 clients (no JWT), falls back to username-based auth from metadata.
 func AuthInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 	// Skip auth for AuthService — sign in/up/refresh don't have tokens yet
 	if strings.HasPrefix(info.FullMethod, "/messenger.AuthService/") {
 		return handler(ctx, req)
 	}
 
+	// Try v2 JWT auth first
 	claims, err := extractAndValidateToken(ctx)
-	if err != nil {
-		return nil, status.Errorf(codes.Unauthenticated, "unauthenticated: %v", err)
+	if err == nil && claims != nil {
+		ctx = context.WithValue(ctx, userIDKey, claims.UserID)
+		ctx = context.WithValue(ctx, usernameKey, claims.Username)
+		ctx = context.WithValue(ctx, deviceIDKey, claims.DeviceID)
+		return handler(ctx, req)
 	}
 
-	// Inject auth info into context
-	ctx = context.WithValue(ctx, userIDKey, claims.UserID)
-	ctx = context.WithValue(ctx, usernameKey, claims.Username)
-	ctx = context.WithValue(ctx, deviceIDKey, claims.DeviceID)
+	// Fallback: v1 username-based auth from gRPC metadata
+	if userID, username := extractUsernameFromMetadata(ctx); userID != "" || username != "" {
+		if userID == "" && username != "" {
+			// Resolve username → UUID
+			// Note: we can't call DB here directly, so we store username
+			// and let handlers resolve it if needed
+		}
+		if userID != "" {
+			ctx = context.WithValue(ctx, userIDKey, userID)
+		}
+		if username != "" {
+			ctx = context.WithValue(ctx, usernameKey, username)
+		}
+		return handler(ctx, req)
+	}
 
-	return handler(ctx, req)
+	return nil, status.Errorf(codes.Unauthenticated, "unauthenticated: no valid token or credentials")
 }
 
 // AuthStreamInterceptor is the streaming variant of AuthInterceptor
@@ -104,6 +120,21 @@ func GetDeviceID(ctx context.Context) string {
 	return ""
 }
 
+// ResolveUserID returns userID from context, or resolves username via DB if needed.
+// Handlers should call this instead of GetUserID when they need a UUID.
+func ResolveUserID(ctx context.Context, db *DB) string {
+	if uid := GetUserID(ctx); uid != "" {
+		return uid
+	}
+	// Fallback: resolve username from context
+	if username := GetUsername(ctx); username != "" {
+		if uid, err := db.GetUserIdByUsername(username); err == nil && uid != "" {
+			return uid
+		}
+	}
+	return ""
+}
+
 // extractAndValidateToken reads the Bearer token from gRPC metadata and validates it
 func extractAndValidateToken(ctx context.Context) (*authClaims, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
@@ -132,4 +163,23 @@ func extractAndValidateToken(ctx context.Context) (*authClaims, error) {
 	}
 
 	return claims, nil
+}
+
+// extractUsernameFromMetadata extracts username/user_id from gRPC metadata for v1 clients
+func extractUsernameFromMetadata(ctx context.Context) (userID, username string) {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return "", ""
+	}
+
+	// v1 clients send "username" in metadata
+	if vals := md.Get("username"); len(vals) > 0 && vals[0] != "" {
+		username = vals[0]
+	}
+	// Some v1 clients may also send "user_id"
+	if vals := md.Get("user_id"); len(vals) > 0 && vals[0] != "" {
+		userID = vals[0]
+	}
+
+	return userID, username
 }

@@ -146,16 +146,24 @@ func (s *server) UnarchiveChat(ctx context.Context, req *gen.UnarchiveChatReques
 
 func (s *server) GetChatsV2(ctx context.Context, req *gen.GetChatsRequest) (*gen.GetChatsResponse, error) {
 	userID := GetUserID(ctx)
-	if userID == "" {
-		return nil, fmt.Errorf("unauthorized")
-	}
 	username := req.GetUsername()
 
-	// Resolve user ID from username if needed
+	// Resolve user ID from username if needed (v1 fallback)
 	if userID == "" && username != "" {
 		id, err := s.db.GetUserIdByUsername(username)
 		if err == nil && id != "" {
 			userID = id
+		}
+	}
+
+	// Also try username from context (v1 interceptor fallback)
+	if userID == "" {
+		if ctxUsername := GetUsername(ctx); ctxUsername != "" {
+			id, err := s.db.GetUserIdByUsername(ctxUsername)
+			if err == nil && id != "" {
+				userID = id
+				username = ctxUsername
+			}
 		}
 	}
 
