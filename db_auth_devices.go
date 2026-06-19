@@ -15,7 +15,7 @@ type UserDevice struct {
 	IPAddress            string    `json:"ip_address"`
 	UserAgent            string    `json:"user_agent"`
 	RefreshTokenJTI      string    `json:"refresh_token_jti"`
-	RefreshTokenExpiresAt time.Time `json:"refresh_token_expires_at"`
+	RefreshTokenExpiresAt *time.Time `json:"refresh_token_expires_at"`
 	IsActive             bool      `json:"is_active"`
 	CreatedAt            time.Time `json:"created_at"`
 	LastSeenAt           time.Time `json:"last_seen_at"`

@@ -222,6 +222,10 @@ func (s *server) sendMulticastWithRetry(client *messaging.Client, tokens, userID
 		if err == nil {
 			break
 		}
+		if s.isFirebaseCredentialError(err) {
+			s.logErrorOnce("fcm_creds", "CRITICAL: Firebase credentials invalid — push disabled until fixed. Replace credentials and restart.")
+			return
+		}
 		st, ok := status.FromError(err)
 		if !ok || (st.Code() != codes.Unavailable && st.Code() != codes.ResourceExhausted) {
 			s.logFCM("ERROR", "Batch push fatal error: %v", err)
@@ -234,11 +238,29 @@ func (s *server) sendMulticastWithRetry(client *messaging.Client, tokens, userID
 		return
 	}
 
-	s.logFCM("SUCCESS", "Batch push sent: %d success, %d failure out of %d",
-		len(tokens)-resp.FailureCount, resp.FailureCount, len(tokens))
+	credentialErrors := 0
+	for _, r := range resp.Responses {
+		if r.Error != nil && s.isFirebaseCredentialError(r.Error) {
+			credentialErrors++
+		}
+	}
+	if credentialErrors == len(resp.Responses) && len(resp.Responses) > 0 {
+		s.logErrorOnce("fcm_creds_batch", "CRITICAL: All push failed — Firebase credentials invalid. Push disabled until fixed.")
+		return
+	}
+
+	if resp.FailureCount == 0 {
+		s.logFCM("SUCCESS", "Batch push sent: %d success", len(tokens))
+	} else {
+		s.logFCM("WARN", "Batch push: %d success, %d failure out of %d",
+			len(tokens)-resp.FailureCount, resp.FailureCount, len(tokens))
+	}
 
 	for i, r := range resp.Responses {
 		if r.Error != nil {
+			if s.isFirebaseCredentialError(r.Error) {
+				continue
+			}
 			s.logFCM("WARN", "Push to %s failed: %v", userIDs[i], r.Error)
 			if s.isInvalidTokenError(r.Error) {
 				_ = s.db.DeleteUserTokenByUserID(userIDs[i])
@@ -255,6 +277,16 @@ func (s *server) isInvalidTokenError(err error) bool {
 	return strings.Contains(errStr, "UNREGISTERED") ||
 		strings.Contains(errStr, "INVALID_ARGUMENT") ||
 		strings.Contains(errStr, "registration token not registered")
+}
+
+func (s *server) isFirebaseCredentialError(err error) bool {
+	if err == nil {
+		return false
+	}
+	errStr := err.Error()
+	return strings.Contains(errStr, "Invalid JWT Signature") ||
+		strings.Contains(errStr, "invalid_grant") ||
+		strings.Contains(errStr, "cannot fetch token")
 }
 
 func (s *server) saveConferenceSystemMessage(roomID, text, senderName, senderId string) {

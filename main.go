@@ -67,6 +67,16 @@ func main() {
 		logger.Warnf("Warning: Failed to initialize Firebase: %v (Push notifications will not work)", err)
 	} else {
 		logger.Info("Firebase Admin SDK initialized successfully")
+		if ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second); cancel != nil {
+			defer cancel()
+			if client, err := firebaseApp.Messaging(ctx); err != nil {
+				logger.Errorf("CRITICAL: Firebase credentials invalid: %v — push notifications will NOT work!", err)
+				logger.Errorf("Fix: replace %s with a valid service account key from Firebase Console", firebaseCredentials)
+			} else {
+				_ = client
+				logger.Info("Firebase credentials validated successfully")
+			}
+		}
 	}
 
 	// Read server address from environment variables
