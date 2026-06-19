@@ -1,6 +1,6 @@
 # Лава — Задачи
 
-**Версия:** v1.2.0.8
+**Версия:** v1.2.0.9
 **Ветка:** feat/1.2.0.x
 **Обновлено:** 2026-06-19
 
@@ -81,11 +81,23 @@
 
 ### P1 оптимизации (следующий приоритет)
 - [ ] FCM batching + retry
-- [ ] Rate limiter cleanup
-- [ ] device_auth_log TTL
-- [ ] ResolveUserID cache
-- [ ] backfillLastMessageText SQL fixes
-- [ ] Stream interceptor username/device_id injection
-- [ ] getAIChatManager sync.Once
-- [ ] PinMessage LIKE → UUID[]
-- [ ] IncrementParticipantsChatListVersion → UUID[]
+- [x] Rate limiter cleanup ✅
+- [x] device_auth_log TTL ✅
+- [x] ResolveUserID cache ✅
+- [x] backfillLastMessageText SQL fixes ✅
+- [x] Stream interceptor username/device_id injection ✅
+- [x] getAIChatManager sync.Once ✅
+- [x] PinMessage LIKE → UUID[] ✅ (уже реализовано в `db_chatlist_v2.go:238`)
+- [x] IncrementParticipantsChatListVersion → UUID[] ✅
+
+### P2 оптимизации
+- [ ] Duplicated MessageRow struct (5 копий)
+- [ ] SaveMessage 3 DB round-trips → транзакция
+- [ ] MarkReadAndCheck → UPSERT
+- [x] owl.go context cancellation ✅
+- [x] goroutine leak в main.go ✅
+- [x] DB MaxIdleConns=15 + ConnMaxIdleTime ✅
+- [ ] Index messages(username, created_at)
+- [ ] PinMessage пагинация
+- [ ] Proto reserved fields
+- [x] IsUserOnline O(N) → O(1) reverse map ✅

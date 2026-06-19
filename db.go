@@ -29,8 +29,9 @@ func ConnectDB() (*DB, error) {
 		return nil, err
 	}
 	db.SetMaxOpenConns(25)
-	db.SetMaxIdleConns(5)
+	db.SetMaxIdleConns(15)
 	db.SetConnMaxLifetime(time.Hour)
+	db.SetConnMaxIdleTime(5 * time.Minute)
 	if err = db.Ping(); err != nil {
 		db.Close()
 		return nil, err
@@ -222,7 +223,7 @@ func (db *DB) Exec(query string, args ...interface{}) (sql.Result, error) {
 func backfillLastMessageText(db *sql.DB) {
 	rows, err := db.Query(`
 		SELECT c.id FROM chats c
-		WHERE c.last_message_text IS NULL OR c.last_message_text = '' OR c.last_message_text = 'Message'
+		WHERE (c.last_message_text IS NULL OR c.last_message_text = '' OR c.last_message_text = 'Message')
 		AND c.type NOT IN ('owl', 'hermes')
 	`)
 	if err != nil {
@@ -1093,7 +1094,7 @@ func (db *DB) IncrementUserChatListVersion(user string) error {
 	return err
 }
 func (db *DB) IncrementParticipantsChatListVersion(id string) error {
-	_, err := db.Exec(`UPDATE users SET chat_list_version=chat_list_version+1 WHERE username IN (SELECT json_array_elements_text(participants::json) FROM chats WHERE id=$1)`, id)
+	_, err := db.Exec(`UPDATE users SET chat_list_version=chat_list_version+1 WHERE id IN (SELECT unnest(participant_ids) FROM chats WHERE id=$1)`, id)
 	return err
 }
 func (db *DB) SaveUserTheme(user string, t *gen.CustomTheme) error {

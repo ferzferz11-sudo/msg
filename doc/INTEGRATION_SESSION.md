@@ -1,6 +1,6 @@
 # Lava Messenger — Интеграционная сессия
 
-**Текущая версия:** v1.2.0.8 (сервер prod/dev)
+**Текущая версия:** v1.2.0.9 (сервер prod/dev)
 **Обновлено:** 2026-06-19
 **Ветка сервера:** feat/1.2.0.x
 
@@ -92,7 +92,29 @@
 
 ---
 
-## Сессия 40 — P0 Performance Optimizations
+## Сессия 41 — P1 + P2 Performance Optimizations
+
+### Что сделано
+
+#### P1 Оптимизации (7 штук)
+1. **getAIChatManager sync.Once** — thread-safe lazy initialization
+2. **backfillLastMessageText SQL fix** — operator precedence: добавлены скобки `(last_message_text IS NULL OR ... AND type NOT IN ...)`
+3. **Stream interceptor injection** — `usernameKey` и `deviceIDKey` добавлены в stream context
+4. **device_auth_log TTL** — `CleanupDeviceAuthLog()`: DELETE >90 дней + deactivate expired devices, cron каждые 24ч
+5. **IncrementParticipantsChatListVersion → UUID[]** — `unnest(participant_ids)` вместо `json_array_elements_text(participants::json)`
+6. **Rate limiter cleanup** — `cleanup()` метод + periodic goroutine каждые 10мин
+7. **ResolveUserID cache** — in-memory cache с TTL 5мин для username→UUID
+
+#### P2 Оптимизации (4 штуки)
+1. **IsUserOnline O(1)** — reverse-lookup sets `userIdSet` + `usernameSet` вместо O(N) scan
+2. **DB pool tuning** — `MaxIdleConns=15`, `ConnMaxIdleTime=5min`
+3. **owl.go context cancellation** — `ctx.Err()` check в SSE read loop
+4. **main.go goroutine leak fix** — `context.WithCancel` + ticker для всех periodic goroutines, cancel при shutdown
+
+### Статус
+- Go build: ✅
+- Tests: 92/92 PASS
+- Race detector: ✅ clean
 
 ### Что сделано
 
@@ -219,7 +241,7 @@ go test ./...
 | Сервис | lavender-server-dev | lavender-server |
 | Конфиг | .env.dev | .env |
 | DB | chat_db_dev | chat_db |
-| Версия | v1.2.0.8 | v1.2.0.8 |
+| Версия | v1.2.0.9 | v1.2.0.9 |
 
 ---
 

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/base64"
 	"LavenderMessenger/gen"
 	"context"
 	"encoding/json"
@@ -88,6 +87,13 @@ func (s *server) GetHistory(_ context.Context, req *gen.GetHistoryRequest) (*gen
 			json.Unmarshal([]byte(m.ImageURLs), &imageURLs)
 		}
 
+		e2eePayload := ""
+		if msgIsE2EE {
+			// For E2EE messages, encrypted_text already contains the client's base64-encoded payload
+			// Return it as-is — do NOT double-encode
+			e2eePayload = string(m.Encrypted)
+		}
+
 		messages = append(messages, &gen.Message{
 			Id:                 m.MessageID,
 			User:               m.Username,
@@ -106,7 +112,7 @@ func (s *server) GetHistory(_ context.Context, req *gen.GetHistoryRequest) (*gen
 			VoiceUrl:           m.VoiceURL,
 			Duration:           m.Duration,
 			IsE2Ee:             msgIsE2EE,
-			E2EePayload:        base64.StdEncoding.EncodeToString(m.Encrypted),
+			E2EePayload:        e2eePayload,
 		})
 	}
 

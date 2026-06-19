@@ -1,7 +1,7 @@
-# Промпт для серверных сессий — v1.2.0.8
+# Промпт для серверных сессий — v1.2.0.9
 
 **Дата:** 2026-06-19 | **Ветка:** feat/1.2.0.x
-**Статус:** P0 оптимизации задеплоены. Фокус на P1 оптимизации и стабильности.
+**Статус:** P0+P1+P2 оптимизации задеплоены. Фокус на FCM batching и стабильности.
 
 ---
 
@@ -9,8 +9,8 @@
 
 | | Версия | Статус |
 |---|--------|--------|
-| **Сервер prod** | v1.2.0.8 | ✅ Работает на порту 50051 |
-| **Сервер dev** | v1.2.0.8 | ✅ Работает на порту 50052 |
+| **Сервер prod** | v1.2.0.9 | ✅ Работает на порту 50051 |
+| **Сервер dev** | v1.2.0.9 | ✅ Работает на порту 50052 |
 
 **Android:** `/root/msg.client.android` — документация там, сборка ТОЛЬКО локально.
 
@@ -48,6 +48,19 @@ messenger.proto            — All proto definitions
 ---
 
 ## ЧТО СДЕЛАНО (v1.2.0.8)
+
+### P1+P2 Оптимизации (Сессия 41)
+- **getAIChatManager sync.Once** — thread-safe lazy init
+- **backfillLastMessageText SQL fix** — operator precedence скобки
+- **Stream interceptor injection** — usernameKey + deviceIDKey в stream context
+- **device_auth_log TTL** — CleanupDeviceAuthLog(), cron 24ч
+- **IncrementParticipantsChatListVersion → UUID[]** — unnest(participant_ids)
+- **Rate limiter cleanup** — cleanup() + periodic goroutine 10мин
+- **ResolveUserID cache** — in-memory cache TTL 5мин
+- **IsUserOnline O(1)** — reverse-lookup sets
+- **DB pool tuning** — MaxIdleConns=15, ConnMaxIdleTime=5min
+- **owl.go ctx cancellation** — ctx.Err() в SSE loop
+- **main.go goroutine leak** — context.WithCancel + ticker
 
 ### P0 Оптимизации (Сессия 40)
 - **Broadcast deadlock fix** — snapshot streams под RLock, отправка без лока

@@ -13,9 +13,9 @@ import (
 )
 
 func (s *server) getAIChatManager() *AIChatManager {
-	if s.aiChatManager == nil {
+	s.aiChatManagerOnce.Do(func() {
 		s.aiChatManager = NewAIChatManager(s.db.DB)
-	}
+	})
 	return s.aiChatManager
 }
 

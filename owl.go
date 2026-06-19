@@ -252,6 +252,9 @@ func streamOpenRouter(ctx context.Context, apiKey string, model string, systemPr
 
 	reader := bufio.NewReader(resp.Body)
 	for {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
 		line, err := reader.ReadString('\n')
 		if err != nil {
 			if err == io.EOF {
@@ -360,6 +363,28 @@ func (rl *rateLimiter) remaining(userID string) int {
 		return 0
 	}
 	return left
+}
+
+// cleanup removes stale user entries that have no valid timestamps
+func (rl *rateLimiter) cleanup() {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+
+	now := time.Now()
+	cutoff := now.Add(-rl.window)
+	for userID, timestamps := range rl.requests {
+		var valid []time.Time
+		for _, t := range timestamps {
+			if t.After(cutoff) {
+				valid = append(valid, t)
+			}
+		}
+		if len(valid) == 0 {
+			delete(rl.requests, userID)
+		} else {
+			rl.requests[userID] = valid
+		}
+	}
 }
 
 // ======= Hermes Chat Settings (per-session API key + model) =======

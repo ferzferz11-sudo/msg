@@ -202,12 +202,50 @@ func main() {
 	// Log server startup information
 	logger.Infof("Listening clients at %v", lis.Addr())
 
+	// Background goroutines with cancellation on shutdown
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// Periodic online users broadcast (every 60 seconds as a heartbeat)
 	go func() {
+		ticker := time.NewTicker(60 * time.Second)
+		defer ticker.Stop()
 		for {
-			time.Sleep(60 * time.Second)
-			srv.broadcastOnlineUsers()
-			srv.cleanupRecentMsgs()
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				srv.broadcastOnlineUsers()
+				srv.cleanupRecentMsgs()
+			}
+		}
+	}()
+
+	// Periodic device auth log cleanup (every 24 hours)
+	go func() {
+		ticker := time.NewTicker(24 * time.Hour)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				srv.db.CleanupDeviceAuthLog()
+			}
+		}
+	}()
+
+	// Periodic rate limiter cleanup (every 10 minutes)
+	go func() {
+		ticker := time.NewTicker(10 * time.Minute)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				owlRateLimiter.cleanup()
+			}
 		}
 	}()
 
@@ -224,6 +262,9 @@ func main() {
 		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 		sig := <-sigCh
 		logger.Infof("Received signal %v, shutting down gracefully...", sig)
+
+		// Cancel background goroutines
+		cancel()
 
 		// Shutdown HTTP server first (drain in-flight requests)
 		if httpSrv != nil {

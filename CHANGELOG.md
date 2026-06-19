@@ -1,5 +1,32 @@
 # Лава — Server Changelog
 
+## [1.2.0.9] - 2026-06-19
+
+### Производительность (P1 + P2 оптимизации)
+- **server_ai.go** — `getAIChatManager()` thread-safe lazy init через `sync.Once`
+- **db.go** — `backfillLastMessageText` SQL fix: скобки для корректного приоритета операторов (AND > OR)
+- **auth_interceptor.go** — Stream interceptor: `usernameKey` + `deviceIDKey` добавлены в stream context
+- **db_auth_devices.go** — `CleanupDeviceAuthLog()`: DELETE >90 дней + deactivate expired devices, cron каждые 24ч
+- **db.go** — `IncrementParticipantsChatListVersion` → UUID[]: `unnest(participant_ids)` вместо JSON
+- **owl.go** — Rate limiter `cleanup()` + periodic goroutine каждые 10мин (prevents memory leak)
+- **auth_interceptor.go** — ResolveUserID cache: in-memory cache TTL 5мин для username→UUID
+- **hub.go** — `IsUserOnline` O(1): reverse-lookup sets `userIdSet` + `usernameSet` вместо O(N) scan
+- **db.go** — DB pool tuning: `MaxIdleConns=15`, `ConnMaxIdleTime=5min`
+- **owl.go** — Context cancellation check в SSE read loop
+- **main.go** — Goroutine leak fix: `context.WithCancel` + ticker для всех periodic goroutines
+
+### Исправления
+- **server_messages.go** — E2EE payload: возвращаем `encrypted_text` как есть для E2EE (fix double-encode)
+
+### Инфраструктура
+- **scripts/db_maintenance.sh** — Оптимизирован: исправлен баг delete_orphans, batch файловая очистка, VACUUM/ANALYZE
+- **scripts/run-db-maintenance.sh** — Новый скрипт для удалённого запуска maintenance
+
+### Документация
+- Обновлены все doc файлы до v1.2.0.9
+
+---
+
 ## [1.2.0.8] - 2026-06-19
 
 ### Производительность (P0 оптимизации)

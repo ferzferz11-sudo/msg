@@ -217,3 +217,9 @@ func (db *DB) LogAuthEvent(userID, deviceID, action, ipAddress, clientVersion st
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
 	`, userID, deviceID, action, ipAddress, clientVersion, success, errorMessage)
 }
+
+// CleanupDeviceAuthLog deletes old auth log entries and deactivates expired devices
+func (db *DB) CleanupDeviceAuthLog() {
+	_, _ = db.Exec(`DELETE FROM device_auth_log WHERE created_at < NOW() - INTERVAL '90 days'`)
+	_, _ = db.Exec(`UPDATE user_devices SET is_active = FALSE WHERE refresh_token_expires_at < NOW() AND is_active = TRUE`)
+}

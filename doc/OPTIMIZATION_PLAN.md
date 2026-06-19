@@ -1,6 +1,6 @@
 # Lavender Messenger — План оптимизации v1.2.0.7
 
-**Дата:** 2026-06-19 | **Версия сервера:** 1.2.0.7 | **Ветка:** feat/1.2.0.x
+**Дата:** 2026-06-19 | **Версия сервера:** 1.2.0.9 | **Ветка:** feat/1.2.0.x
 
 Анализ текущей кодовой базы с учётом обратной совместимости со старыми клиентами.
 
@@ -151,59 +151,35 @@ s.recentMsgs.Range(func(k, v) bool {
 
 ---
 
-### 10. Rate limiter — утечка памяти + restart сбрасывает
+### 10. ✅ Rate limiter cleanup (РЕАЛИЗОВАНО)
 
-**Файл:** `owl.go:294-363`
+**Файл:** `owl.go`
 
-**Проблема:** In-memory map растёт. При рестарте все лимиты сбрасываются.
-
-**Решение:** Периодическая очистка stale entries (каждые 10 минут). Для multi-instance — Redis.
-
-**Совместимость:** ✅
+**Решение:** Периодическая очистка stale entries каждые 10 минут через `cleanup()` метод.
 
 ---
 
-### 11. device_auth_log растёт бесконечно
+### 11. ✅ device_auth_log TTL (РЕАЛИЗОВАНО)
 
-**Файл:** `db_auth_devices.go:60-70`
+**Файл:** `db_auth_devices.go`
 
-**Проблема:** Каждый login/logout/refresh = INSERT. Нет TTL, нет cleanup.
-
-**Решение:** Cron-задача:
-```sql
-DELETE FROM device_auth_log WHERE created_at < NOW() - INTERVAL '90 days';
-UPDATE user_devices SET is_active = FALSE WHERE refresh_token_expires_at < NOW() AND is_active = TRUE;
-```
-
-**Совместимость:** ✅
+**Решение:** `CleanupDeviceAuthLog()` — удаление записей >90 дней + деактивация истёкших устройств. Cron каждые 24ч.
 
 ---
 
-### 12. ResolveUserID — DB-запрос на каждый v1 запрос
+### 12. ✅ ResolveUserID cache (РЕАЛИЗОВАНО)
 
-**Файл:** `auth_interceptor.go:128-139`
+**Файл:** `auth_interceptor.go`
 
-**Проблема:** v1 клиент без JWT → `ResolveUserID` делает `GetUserIdByUsername` (SELECT) на каждый запрос.
-
-**Решение:** In-memory LRU-кэш для `username → UUID`.
-
-**Совместимость:** ✅
+**Решение:** In-memory cache с TTL 5 минут для `username → UUID`.
 
 ---
 
-### 13. backfillLastMessageText — SQL баг приоритета операторов
+### 13. ✅ backfillLastMessageText SQL fix (РЕАЛИЗОВАНО)
 
-**Файл:** `db.go:225-226`
+**Файл:** `db.go:223-227`
 
-**Проблема:** `AND` bind tighter чем `OR` — owl/hermes чаты=backfill без проверки типа.
-
-**Решение:** Добавить скобки:
-```sql
-WHERE (last_message_text IS NULL OR last_message_text = '' OR last_message_text = 'Message')
-  AND type NOT IN ('owl', 'hermes')
-```
-
-**Совместимость:** ✅ (исправление бага)
+**Решение:** Добавлены скобки для корректного приоритета операторов.
 
 ---
 
@@ -219,55 +195,35 @@ WHERE (last_message_text IS NULL OR last_message_text = '' OR last_message_text 
 
 ---
 
-### 15. IncrementParticipantsChatListVersion — JSON вместо UUID[]
+### 15. ✅ IncrementParticipantsChatListVersion → UUID[] (РЕАЛИЗОВАНО)
 
 **Файл:** `db.go:1095-1098`
 
-**Проблема:** Парсит JSON `participants::json` вместо использования `participant_ids UUID[]`.
-
-**Решение:**
-```sql
-UPDATE users SET chat_list_version=chat_list_version+1
-WHERE id = ANY(SELECT unnest(participant_ids) FROM chats WHERE id=$1)
-```
-
-**Совместимость:** ✅
+**Решение:** `WHERE id IN (SELECT unnest(participant_ids) FROM chats WHERE id=$1)`
 
 ---
 
-### 16. Stream interceptor неinjectит username/device_id
+### 16. ✅ Stream interceptor username/device_id injection (РЕАЛИЗОВАНО)
 
 **Файл:** `auth_interceptor.go:82-88`
 
-**Проблема:** Unary interceptor ставит `userIDKey + usernameKey + deviceIDKey`. Stream — только `userIDKey`.
-
-**Решение:** Добавить `usernameKey` и `deviceIDKey` в stream context.
-
-**Совместимость:** ✅
+**Решение:** `usernameKey` и `deviceIDKey` добавлены в stream context.
 
 ---
 
-### 17. getAIChatManager() — race condition
+### 17. ✅ getAIChatManager sync.Once (РЕАЛИЗОВАНО)
 
 **Файл:** `server_ai.go:15-20`
 
-**Проблема:** Check-then-act без синхронизации. Два goroutine могут создать два экземпляра.
-
-**Решение:** `sync.Once` или инициализация в `NewServer()`.
-
-**Совместимость:** ✅
+**Решение:** `sync.Once` для thread-safe lazy initialization.
 
 ---
 
-### 18. PinMessage — LIKE для проверки участников
+### 18. ✅ PinMessage — LIKE → UUID[] (РЕАЛИЗОВАНО)
 
-**Файл:** `db_chatlist_v2.go:330-331`
-
-**Проблема:** `LIKE '%' || $2 || '%'` — медленно + риск substring match.
+**Файл:** `db_chatlist_v2.go:238`
 
 **Решение:** `participant_ids @> ARRAY[$1::uuid]` (GIN индекс уже есть).
-
-**Совместимость:** ✅
 
 ---
 
@@ -309,51 +265,35 @@ WHERE id = ANY(SELECT unnest(participant_ids) FROM chats WHERE id=$1)
 
 ---
 
-### 22. owl.go — context cancellation в стриме
+### 22. ✅ owl.go — context cancellation в стриме (РЕАЛИЗОВАНО)
 
-**Файл:** `owl.go:208-292`
+**Файл:** `owl.go`
 
-**Проблема:** SSE reader не проверяет `ctx.Err()` при ошибке чтения.
-
-**Решение:** Добавить `ctx.Err()` check в read loop.
-
-**Совместимость:** ✅
+**Решение:** `ctx.Err()` check в read loop SSE reader.
 
 ---
 
-### 23. main.go — goroutine leak при shutdown
+### 23. ✅ main.go — goroutine leak при shutdown (РЕАЛИЗОВАНО)
 
-**Файл:** `main.go:206-211`
+**Файл:** `main.go`
 
-**Проблема:** Broadcast goroutine без cancellation.
-
-**Решение:** `context.WithCancel` + `cancel()` в shutdown handler.
-
-**Совместимость:** ✅
+**Решение:** `context.WithCancel` + `cancel()` в shutdown handler. Все periodic goroutines используют ticker + select с ctx.Done().
 
 ---
 
-### 24. main.go — gRPC GracefulStop без таймаута
+### 24. ✅ main.go — gRPC GracefulStop 30s timeout (РЕАЛИЗОВАНО)
 
-**Файл:** `main.go:239`
-
-**Проблема:** `GracefulStop()` блокируется до завершения всех стримов.
+**Файл:** `main.go:240-245`
 
 **Решение:** Timeout goroutine → `s.Stop()` через 30 секунд.
 
-**Совместимость:** ✅
-
 ---
 
-### 25. DB connection pool — MaxIdleConns=5 при MaxOpenConns=25
+### 25. ✅ DB connection pool (РЕАЛИЗОВАНО)
 
 **Файл:** `db.go:31-33`
 
-**Проблема:** Соединения постоянно создаются/уничтожаются.
-
-**Решение:** `MaxIdleConns=15`, добавить `ConnMaxIdleTime=5*time.Minute`.
-
-**Совместимость:** ✅
+**Решение:** `MaxIdleConns=15`, `ConnMaxIdleTime=5*time.Minute`.
 
 ---
 
@@ -393,15 +333,11 @@ WHERE id = ANY(SELECT unnest(participant_ids) FROM chats WHERE id=$1)
 
 ---
 
-### 29. IsUserOnline — O(N) scan
+### 29. ✅ IsUserOnline — O(1) reverse map (РЕАЛИЗОВАНО)
 
-**Файл:** `hub.go:254-281`
+**Файл:** `hub.go`
 
-**Проблема:** Линейный перебор всех map.
-
-**Решение:** Reverse-lookup map `userIdToStream`.
-
-**Совместимость:** ✅
+**Решение:** `userIdSet` и `usernameSet` map для O(1) lookup. Поддерживаются при Register/Unregister/SetUserId/UpdateName.
 
 ---
 
@@ -418,14 +354,14 @@ WHERE id = ANY(SELECT unnest(participant_ids) FROM chats WHERE id=$1)
 
 ---
 
-## Итого: 29 оптимизаций
+## Итого: 35 оптимизаций
 
-| Приоритет | Кол-во | Время (оценка) |
-|-----------|--------|----------------|
-| **P0** | 8 | 2-3 дня |
-| **P1** | 10 | 3-4 дня |
-| **P2** | 11 | 2-3 дня |
+| Приоритет | Кол-во | Статус |
+|-----------|--------|--------|
+| **P0** | 8 | ✅ Все сделаны (v1.2.0.8) |
+| **P1** | 10 | 7 сделано, 3 осталось |
+| **P2** | 11 | 4 сделано, 7 осталось |
 | **P3** | 6 | Отложено |
-| **Итого** | **35** | **7-10 дней** |
+| **Итого** | **35** | **19 сделано, 16 осталось** |
 
 Все P0-P2 оптимизации обратно совместимы — старые клиенты продолжат работать без изменений.

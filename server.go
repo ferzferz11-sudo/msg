@@ -30,7 +30,7 @@ import (
 	firebase "firebase.google.com/go/v4"
 )
 
-const ServerVersion = "1.2.0.8"
+const ServerVersion = "1.2.0.9"
 
 // Service versions for client capability negotiation
 const (
@@ -60,7 +60,8 @@ type server struct {
 	hermesDB           *HermesDB
 
 	// AI Chat Manager (unified for OWL + Hermes)
-	aiChatManager *AIChatManager
+	aiChatManager     *AIChatManager
+	aiChatManagerOnce sync.Once
 }
 
 func (s *server) logErrorOnce(key string, format string, v ...interface{}) {

@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"strings"
+	"sync"
+	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -18,6 +20,42 @@ const (
 	usernameKey authContextKey = "username"
 	deviceIDKey authContextKey = "device_id"
 )
+
+// ResolveUserID cache for username → UUID lookups (v1 fallback)
+type resolveUserIDCache struct {
+	mu      sync.RWMutex
+	entries map[string]cacheEntry
+	ttl     time.Duration
+}
+
+type cacheEntry struct {
+	userID    string
+	expiresAt time.Time
+}
+
+var userIDCache = &resolveUserIDCache{
+	entries: make(map[string]cacheEntry),
+	ttl:     5 * time.Minute,
+}
+
+func (c *resolveUserIDCache) get(username string) (string, bool) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	entry, ok := c.entries[username]
+	if !ok || time.Now().After(entry.expiresAt) {
+		return "", false
+	}
+	return entry.userID, true
+}
+
+func (c *resolveUserIDCache) set(username, userID string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.entries[username] = cacheEntry{
+		userID:    userID,
+		expiresAt: time.Now().Add(c.ttl),
+	}
+}
 
 // AuthInterceptor validates JWT Bearer tokens on every gRPC call (except AuthService).
 // On success it injects user_id, username, device_id into the context.
@@ -80,11 +118,16 @@ func AuthStreamInterceptor(srv interface{}, ss grpc.ServerStream, info *grpc.Str
 	}
 
 	// Wrap the stream to inject auth context
- wrapped := &authServerStream{
-		ServerStream:     ss,
-		ctx: context.WithValue(ss.Context(), userIDKey, claims.UserID),
+	wrapped := &authServerStream{
+		ServerStream: ss,
+		ctx: context.WithValue(
+			context.WithValue(
+				context.WithValue(ss.Context(), userIDKey, claims.UserID),
+				usernameKey, claims.Username,
+			),
+			deviceIDKey, claims.DeviceID,
+		),
 	}
-	_ = claims
 	return handler(srv, wrapped)
 }
 
@@ -131,7 +174,12 @@ func ResolveUserID(ctx context.Context, db *DB) string {
 	}
 	// Fallback: resolve username from context
 	if username := GetUsername(ctx); username != "" {
+		// Check cache first
+		if uid, ok := userIDCache.get(username); ok {
+			return uid
+		}
 		if uid, err := db.GetUserIdByUsername(username); err == nil && uid != "" {
+			userIDCache.set(username, uid)
 			return uid
 		}
 	}

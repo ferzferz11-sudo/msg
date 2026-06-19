@@ -24,6 +24,10 @@ type Hub struct {
 	typingStreams map[gen.ChatService_TypingServer]string
 	callStreams   map[gen.ChatService_CallSessionServer]string
 
+	// Reverse-lookup sets for O(1) IsUserOnline
+	userIdSet    map[string]bool // userId → online (v2 clients)
+	usernameSet  map[string]bool // username → online (v1 clients)
+
 	onStatusChange func()
 
 	// Conferences: roomID -> participants list
@@ -51,6 +55,8 @@ func NewHub(onStatusChange func()) *Hub {
 		rooms:          make(map[gen.ChatService_ChatServer]string),
 		typingStreams:  make(map[gen.ChatService_TypingServer]string),
 		callStreams:    make(map[gen.ChatService_CallSessionServer]string),
+		userIdSet:      make(map[string]bool),
+		usernameSet:    make(map[string]bool),
 		conferences:    make(map[string]*Conference),
 		onStatusChange: onStatusChange,
 		gracePeriods:   make(map[string]time.Time),
@@ -109,6 +115,13 @@ func (h *Hub) UpdateName(stream gen.ChatService_ChatServer, name string) {
 	h.mu.Lock()
 	oldName := h.clients[stream]
 	h.clients[stream] = name
+	if oldName != "" && oldName != "Anonymous" {
+		h.usernameSet[oldName] = false
+		delete(h.usernameSet, oldName)
+	}
+	if name != "" && name != "Anonymous" {
+		h.usernameSet[name] = true
+	}
 	h.mu.Unlock()
 
 	// Only trigger status change if the name actually changed from Anonymous
@@ -121,7 +134,15 @@ func (h *Hub) UpdateName(stream gen.ChatService_ChatServer, name string) {
 // Used for v2 JWT auth where userId is the primary identifier.
 func (h *Hub) SetUserId(stream gen.ChatService_ChatServer, userId string) {
 	h.mu.Lock()
+	oldId := h.clientUserIds[stream]
 	h.clientUserIds[stream] = userId
+	if oldId != "" {
+		h.userIdSet[oldId] = false
+		delete(h.userIdSet, oldId)
+	}
+	if userId != "" {
+		h.userIdSet[userId] = true
+	}
 	h.mu.Unlock()
 }
 
@@ -202,10 +223,19 @@ func (h *Hub) GetGracePeriodRemaining(username string) time.Duration {
 func (h *Hub) Unregister(stream gen.ChatService_ChatServer) {
 	h.mu.Lock()
 	username := h.clients[stream]
+	userId := h.clientUserIds[stream]
 	delete(h.clients, stream)
 	delete(h.clientUserIds, stream)
 	delete(h.authenticated, stream)
 	delete(h.rooms, stream)
+	if userId != "" {
+		h.userIdSet[userId] = false
+		delete(h.userIdSet, userId)
+	}
+	if username != "" && username != "Anonymous" {
+		h.usernameSet[username] = false
+		delete(h.usernameSet, username)
+	}
 	h.mu.Unlock()
 
 	// If user was authenticated, start grace period for reconnect
@@ -225,7 +255,9 @@ func (h *Hub) GetOnlineUsers() []string {
 	h.mu.RLock()
 	userMap := make(map[string]struct{})
 	for _, name := range h.clients {
-		userMap[name] = struct{}{}
+		if name != "" && name != "Anonymous" {
+			userMap[name] = struct{}{}
+		}
 	}
 	h.mu.RUnlock()
 
@@ -253,19 +285,15 @@ func (h *Hub) GetOnlineUsers() []string {
 // Used by push notification logic to avoid sending push to online users.
 func (h *Hub) IsUserOnline(userId, username string) bool {
 	h.mu.RLock()
-	// Check by userId first (v2 clients)
-	for _, uid := range h.clientUserIds {
-		if uid == userId {
-			h.mu.RUnlock()
-			return true
-		}
+	// O(1) check by userId (v2 clients)
+	if userId != "" && h.userIdSet[userId] {
+		h.mu.RUnlock()
+		return true
 	}
-	// Fallback: check by username (v1 clients)
-	for _, name := range h.clients {
-		if name == username {
-			h.mu.RUnlock()
-			return true
-		}
+	// O(1) fallback: check by username (v1 clients)
+	if username != "" && h.usernameSet[username] {
+		h.mu.RUnlock()
+		return true
 	}
 	h.mu.RUnlock()
 
