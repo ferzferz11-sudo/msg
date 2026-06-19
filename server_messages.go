@@ -376,7 +376,13 @@ func (s *server) EditMessage(_ context.Context, req *gen.EditMessageRequest) (*g
 		// Increment chat list version for all participants to trigger cache refresh
 		_ = s.db.IncrementParticipantsChatListVersion(m.RoomID)
 
-		decryptedText, _ := decrypt(m.Encrypted)
+		decryptedText := ""
+		e2eePayload := ""
+		if m.IsE2EE {
+			e2eePayload = string(m.Encrypted)
+		} else {
+			decryptedText, _ = decrypt(m.Encrypted)
+		}
 		rawReactions, _ := s.db.GetReactionsForMessage(m.MessageID)
 		var reactions []*gen.Reaction
 		for _, r := range rawReactions {
@@ -406,6 +412,8 @@ func (s *server) EditMessage(_ context.Context, req *gen.EditMessageRequest) (*g
 			Edited:             m.Edited,
 			VoiceUrl:           m.VoiceURL,
 			Duration:           m.Duration,
+			IsE2Ee:             m.IsE2EE,
+			E2EePayload:        e2eePayload,
 		})
 	}
 

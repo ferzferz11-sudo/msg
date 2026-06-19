@@ -55,9 +55,17 @@ func (s *server) GetFavorites(ctx context.Context, req *gen.GetFavoritesRequest)
 
 	var messages []*gen.Message
 	for _, m := range favs {
-		decryptedText, err := decrypt(m.Encrypted)
-		if err != nil {
-			decryptedText = "не удалось расшифровать"
+		var decryptedText string
+		var e2eePayload string
+		isE2EE := m.IsE2EE
+		if isE2EE {
+			e2eePayload = string(m.Encrypted)
+		} else {
+			var err error
+			decryptedText, err = decrypt(m.Encrypted)
+			if err != nil {
+				decryptedText = "не удалось расшифровать"
+			}
 		}
 
 		// Получаем реакции для сообщения
@@ -93,8 +101,8 @@ func (s *server) GetFavorites(ctx context.Context, req *gen.GetFavoritesRequest)
 			Edited:             m.Edited,
 			VoiceUrl:           m.VoiceURL,
 			Duration:           m.Duration,
-			IsE2Ee:             false,
-			E2EePayload:        "",
+			IsE2Ee:             isE2EE,
+			E2EePayload:        e2eePayload,
 		})
 	}
 

@@ -1,5 +1,16 @@
 # Лава — Server Changelog
 
+## [1.2.0.10] - 2026-06-19
+
+### Исправления (E2EE)
+- **server_messages.go** — GetHistory: `e2ee_payload` возвращается как ONE base64 слой (fix double-encode)
+- **server_messages.go** — EditMessage: добавлена проверка `IsE2EE` при декодировании и broadcast
+- **server_favorites.go** — GetFavorites: добавлена проверка `IsE2EE` — E2EE сообщения возвращают `e2ee_payload` вместо расшифрованного текста
+- **db.go** — backfillLastMessageText: исключены секретные чаты (`is_secret=TRUE`) — предотвращает утечку расшифрованного текста
+- **server_chat.go** — Логирование: добавлены client version и device_id
+
+---
+
 ## [1.2.0.9] - 2026-06-19
 
 ### Производительность (P1 + P2 оптимизации)

@@ -225,6 +225,7 @@ func backfillLastMessageText(db *sql.DB) {
 		SELECT c.id FROM chats c
 		WHERE (c.last_message_text IS NULL OR c.last_message_text = '' OR c.last_message_text = 'Message')
 		AND c.type NOT IN ('owl', 'hermes')
+		AND COALESCE(c.is_secret, FALSE) = FALSE
 	`)
 	if err != nil {
 		logger.Errorf("Backfill: query error: %v", err)
