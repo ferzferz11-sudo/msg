@@ -30,6 +30,8 @@ func (s *server) GetAllUsers(ctx context.Context, req *gen.GetAllUsersRequest) (
 			LastClientVersion: u.LastClientVersion,
 			LastSeenAt:        lastSeen,
 			Email:             u.Email,
+			UserId:            u.UserId,
+			IsSuperAdmin:      u.IsSuperAdmin,
 		})
 	}
 

@@ -475,8 +475,9 @@ func (db *DB) IsSuperAdmin(user string) bool {
 func (db *DB) GetAllUsers() ([]struct {
 	UserId, Username, AvatarURL, LastClientVersion, Email string
 	LastSeenAt                                            sql.NullTime
+	IsSuperAdmin                                          bool
 }, error) {
-	rows, err := db.Query(`SELECT id, username, COALESCE(avatar_url, ''), COALESCE(last_client_version, ''), last_seen_at, COALESCE(email, '') FROM users ORDER BY username`)
+	rows, err := db.Query(`SELECT id, username, COALESCE(avatar_url, ''), COALESCE(last_client_version, ''), last_seen_at, COALESCE(email, ''), COALESCE(is_super_admin, FALSE) FROM users ORDER BY username`)
 	if err != nil {
 		return nil, err
 	}
@@ -484,13 +485,15 @@ func (db *DB) GetAllUsers() ([]struct {
 	var res []struct {
 		UserId, Username, AvatarURL, LastClientVersion, Email string
 		LastSeenAt                                            sql.NullTime
+		IsSuperAdmin                                          bool
 	}
 	for rows.Next() {
 		var u struct {
 			UserId, Username, AvatarURL, LastClientVersion, Email string
 			LastSeenAt                                            sql.NullTime
+			IsSuperAdmin                                          bool
 		}
-		rows.Scan(&u.UserId, &u.Username, &u.AvatarURL, &u.LastClientVersion, &u.LastSeenAt, &u.Email)
+		rows.Scan(&u.UserId, &u.Username, &u.AvatarURL, &u.LastClientVersion, &u.LastSeenAt, &u.Email, &u.IsSuperAdmin)
 		res = append(res, u)
 	}
 	return res, nil

@@ -61,6 +61,8 @@ message UserInfo {
   string last_client_version = 3;
   google.protobuf.Timestamp last_seen_at = 4;
   string email = 5;
+  string user_id = 6;
+  bool is_super_admin = 7;
 }
 
 message GetAllUsersResponse {

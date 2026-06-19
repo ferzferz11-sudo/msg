@@ -1,5 +1,22 @@
 # Лава — Server Changelog
 
+## [1.2.0.7] - 2026-06-19
+
+### Новое
+- **UserInfo** — добавлены поля `user_id` (UUID) и `is_super_admin` (bool) в `GetAllUsers` ответ
+- **deploy-dev-local.sh** — скрипт деплоя dev сервера с локальной машины (cross-compile + SCP)
+
+---
+
+## [1.2.0.6] - 2026-06-18
+
+### ChatList V2 Last Message Optimization
+- DB миграция: `last_message_username`, `last_message_has_image` в `chats`
+- SaveMessage обновляет `chats.last_message_*` при отправке
+- CTE `WITH last_messages` удалён из GetUserChatsV2/GetUserChats/GetAllChats
+
+---
+
 ## [1.2.0.5] - 2026-06-18
 
 ### Новое

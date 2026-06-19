@@ -56,7 +56,8 @@ journalctl -u lavender-server --no-pager -n 20
 | `scripts/release.sh <ver> --deploy` | Полный цикл: тег + GitHub Release + деплой |
 | `scripts/release.sh <ver>` | Только тег + GitHub Release |
 | `scripts/build-server.sh` | Быстрая пересборка на сервере |
-| `scripts/deploy-dev.sh` | Деплой dev сервера (порт 50052) |
+| `scripts/deploy-dev.sh` | Деплой dev сервера (запуск на сервере) |
+| `scripts/deploy-dev-local.sh` | Деплой dev с локальной машины (cross-compile + SCP) |
 
 ---
 

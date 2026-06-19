@@ -1,8 +1,17 @@
 # Лава — Задачи
 
-**Версия:** v1.2.0.6
+**Версия:** v1.2.0.7
 **Ветка:** feat/1.2.0.x
 **Обновлено:** 2026-06-18
+
+---
+
+## ✅ v1.2.0.7 — UserInfo fields + deploy script (Сессия 39)
+
+- ✅ UserInfo: `user_id` (UUID) + `is_super_admin` (bool) в GetAllUsers
+- ✅ GetAllUsers SQL: возвращает `is_super_admin`
+- ✅ deploy-dev-local.sh — кросс-компиляция с Mac → SCP → рестарт
+- ✅ CHANGELOG, doc обновлены
 
 ---
 

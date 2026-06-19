@@ -2,7 +2,7 @@
 
 Индекс всех документов проекта. Читать при каждом старте новой сессии.
 
-**Модуль:** `LavenderMessenger` | **Go:** 1.26 | **Сервер:** v1.2.0.6
+**Модуль:** `LavenderMessenger` | **Go:** 1.26 | **Сервер:** v1.2.0.7
 
 ---
 
@@ -126,7 +126,7 @@
 
 ---
 
-## Файлы документации (12 файлов)
+## Файлы документации (10 файлов)
 
 | Файл | Назначение |
 |------|-----------|
@@ -134,10 +134,9 @@
 | `INTEGRATION_SESSION.md` | Интеграционная сессия: коммиты, статус, deprecated таблица |
 | `TASKS.md` | Таск-трекер: сделано/не сделано |
 | `ARCHITECTURE.md` | Общая архитектура сервера |
+| `CLIENT_INTEGRATION.md` | **Интеграция клиента** — все gRPC методы, HTTP endpoints, auth workflow |
 | `AI_SERVICES.md` | AI-сервисы: OWL AI, Hermes Orchestrator |
 | `PITFALLS.md` | Подводные камни и известные проблемы (сервер) |
-| `AUTHSERVICE_V2.md` | AuthService v2 (JWT) документация |
-| `HERMES_ORCHESTRATOR_DOC.md` | Документация Hermes Orchestrator |
 | `LOG_MONITOR.md` | Log Monitor: сборка, деплой, API |
 | `TESTING.md` | Модульные тесты |
 | `RELEASE.md` | Процесс релиза |
@@ -147,6 +146,7 @@
 ## Правила
 
 - При старте сессии: читать `PROMPT.md` → `INTEGRATION_SESSION.md`
+- При интеграции нового клиента: `CLIENT_INTEGRATION.md` (все методы)
 - При работе с AI: читать `AI_SERVICES.md`
 - При деплое: читать `RELEASE.md`
 - После изменений: обновлять `INTEGRATION_SESSION.md` + `TASKS.md`
