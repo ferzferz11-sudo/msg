@@ -27,6 +27,7 @@ type Hub struct {
 	// Reverse-lookup sets for O(1) IsUserOnline
 	userIdSet    map[string]bool // userId → online (v2 clients)
 	usernameSet  map[string]bool // username → online (v1 clients)
+	clientVersions map[string]string // userId → client version
 
 	onStatusChange func()
 
@@ -57,6 +58,7 @@ func NewHub(onStatusChange func()) *Hub {
 		callStreams:    make(map[gen.ChatService_CallSessionServer]string),
 		userIdSet:      make(map[string]bool),
 		usernameSet:    make(map[string]bool),
+		clientVersions: make(map[string]string),
 		conferences:    make(map[string]*Conference),
 		onStatusChange: onStatusChange,
 		gracePeriods:   make(map[string]time.Time),
@@ -146,6 +148,23 @@ func (h *Hub) SetUserId(stream gen.ChatService_ChatServer, userId string) {
 	h.mu.Unlock()
 }
 
+// SetClientVersion stores the client version for a user
+func (h *Hub) SetClientVersion(userId, version string) {
+	if userId == "" || version == "" {
+		return
+	}
+	h.mu.Lock()
+	h.clientVersions[userId] = version
+	h.mu.Unlock()
+}
+
+// GetClientVersion returns the client version for a user
+func (h *Hub) GetClientVersion(userId string) string {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	return h.clientVersions[userId]
+}
+
 // SetAuthenticated marks a stream as authenticated
 func (h *Hub) SetAuthenticated(stream gen.ChatService_ChatServer, auth bool) {
 	h.mu.Lock()
@@ -231,6 +250,7 @@ func (h *Hub) Unregister(stream gen.ChatService_ChatServer) {
 	if userId != "" {
 		h.userIdSet[userId] = false
 		delete(h.userIdSet, userId)
+		delete(h.clientVersions, userId)
 	}
 	if username != "" && username != "Anonymous" {
 		h.usernameSet[username] = false

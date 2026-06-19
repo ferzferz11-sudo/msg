@@ -189,7 +189,11 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 			if msg.JwtToken == "" {
 				authMethod = "v1 (password)"
 			}
-			logger.Infof("Auth success: %s (%s), initial signal: %s", connectedUser, authMethod, msg.RoomId)
+			clientVer := msg.ClientVersion
+			if clientVer == "" {
+				clientVer = s.hub.GetClientVersion(connectedUserID)
+			}
+			logger.Infof("Auth success: %s (%s) v=%s device=%s signal=%s", connectedUser, authMethod, clientVer, msg.DeviceId, msg.RoomId)
 
 			// v1 auth deprecated warning — only for password auth
 			if msg.JwtToken == "" {
@@ -207,6 +211,7 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 			// Update last client version and last seen timestamp in DB
 			if msg.ClientVersion != "" {
 				_ = s.db.UpdateClientVersion(connectedUser, msg.ClientVersion)
+				s.hub.SetClientVersion(connectedUserID, msg.ClientVersion)
 			} else {
 				_ = s.db.UpdateLastSeen(connectedUser)
 			}
