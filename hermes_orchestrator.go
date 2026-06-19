@@ -36,6 +36,15 @@ type OrchestratorMessage struct {
 	Content string `json:"content"`
 }
 
+const maxSessionMessages = 50
+
+func (s *OrchestratorSession) appendMessage(msg OrchestratorMessage) {
+	s.Messages = append(s.Messages, msg)
+	if len(s.Messages) > maxSessionMessages {
+		s.Messages = s.Messages[len(s.Messages)-maxSessionMessages:]
+	}
+}
+
 // Orchestrator — центральный оркестратор
 type Orchestrator struct {
 	registry *HermesAgentRegistry
@@ -98,6 +107,21 @@ func NewOrchestrator(registry *HermesAgentRegistry, db *sql.DB, apiKey, model st
 	logger.Infof("[Orchestrator] LLM Router initialized with OpenRouter provider (model=%s)", model)
 	logger.Info("[Orchestrator] RAG Pipeline initialized (in-memory, TF-IDF embeddings, dim=384)")
 	logger.Info("[Orchestrator] Tool Executor initialized (search_messages, search_users, web_search, get_chat_info)")
+
+	// Session cleanup goroutine — evict sessions inactive for >30 minutes
+	go func() {
+		ticker := time.NewTicker(5 * time.Minute)
+		defer ticker.Stop()
+		for range ticker.C {
+			o.mu.Lock()
+			for id, s := range o.sessions {
+				if time.Since(s.LastActivity) > 30*time.Minute {
+					delete(o.sessions, id)
+				}
+			}
+			o.mu.Unlock()
+		}
+	}()
 
 	return o
 }
@@ -194,7 +218,7 @@ func (o *Orchestrator) Orchestrate(ctx context.Context, userID, chatID, userMess
 
 	// Сохраняем сообщение пользователя
 	session.mu.Lock()
-	session.Messages = append(session.Messages, OrchestratorMessage{Role: "user", Content: userMessage})
+	session.appendMessage(OrchestratorMessage{Role: "user", Content: userMessage})
 	session.mu.Unlock()
 
 	// Шаг 1: Анализ запроса — выбираем агента(ов)
@@ -561,7 +585,7 @@ func (o *Orchestrator) saveAgentMessage(session *OrchestratorSession, agentID, c
 	session.mu.Lock()
 	defer session.mu.Unlock()
 
-	session.Messages = append(session.Messages, OrchestratorMessage{
+	session.appendMessage(OrchestratorMessage{
 		Role:    "assistant",
 		Content: fmt.Sprintf("[%s] %s", agentID, content),
 	})
@@ -596,7 +620,7 @@ func (o *Orchestrator) ProcessWithPipeline(
 
 	// Сохраняем сообщение пользователя
 	session.mu.Lock()
-	session.Messages = append(session.Messages, OrchestratorMessage{Role: "user", Content: userMessage})
+	session.appendMessage(OrchestratorMessage{Role: "user", Content: userMessage})
 	session.mu.Unlock()
 
 	// Запускаем пайплайн
@@ -615,7 +639,7 @@ func (o *Orchestrator) ProcessWithPipeline(
 	// Сохраняем ответ ассистента
 	if fullResponse.Len() > 0 {
 		session.mu.Lock()
-		session.Messages = append(session.Messages, OrchestratorMessage{
+		session.appendMessage(OrchestratorMessage{
 			Role:    "assistant",
 			Content: fullResponse.String(),
 		})
@@ -687,7 +711,7 @@ func (o *Orchestrator) runRemoteAgent(
 		output = fmt.Sprintf("[remote:%s] error: %s", agent.ID, result.Error)
 	}
 	session.mu.Lock()
-	session.Messages = append(session.Messages, OrchestratorMessage{
+	session.appendMessage(OrchestratorMessage{
 		Role:    "assistant",
 		Content: output,
 	})

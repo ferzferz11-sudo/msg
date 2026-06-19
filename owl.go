@@ -185,7 +185,7 @@ func callOpenRouterContext(ctx context.Context, apiKey string, model string, sys
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 10*1024*1024))
 	if err != nil {
 		return "", fmt.Errorf("failed to read response: %w", err)
 	}

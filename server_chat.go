@@ -438,48 +438,43 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 
 		// CRITICAL: Check if sender wants to notify others
 		senderNotifiesOthers := s.db.GetUserPushStatus(msg.User)
-
-		allUsers, err := s.db.GetAllUsers()
-		if err != nil {
-			logger.Errorf("Failed to get all users for push notifications: %v", err)
+		if !senderNotifiesOthers {
+			logger.Infof("Push skip: %s has disabled outgoing notifications", msg.User)
 		} else {
-			for _, user := range allUsers {
-				// Skip the sender
-				if user.Username == msg.User {
-					continue
+			// Get chat participants ONCE (not per user)
+			chat, err := s.db.GetChat(roomID)
+			if err != nil {
+				logger.Errorf("Failed to get chat for push: %v", err)
+			} else {
+				var participants []string
+				json.Unmarshal([]byte(chat.Participants), &participants)
+
+				// Build participant set for O(1) lookup
+				participantSet := make(map[string]bool, len(participants))
+				for _, p := range participants {
+					participantSet[p] = true
 				}
 
-				if !senderNotifiesOthers {
-					logger.Infof("Push skip: %s has disabled outgoing notifications", msg.User)
-					break // No need to check other participants if sender disabled it
-				}
-
-				// Check if user is a participant in the room
-				userInRoom := false
-				chat, err := s.db.GetChat(roomID)
-				if err == nil {
-					var participants []string
-					json.Unmarshal([]byte(chat.Participants), &participants)
-					for _, p := range participants {
-						if p == user.Username {
-							userInRoom = true
-							break
+				// Get all users, but only send to participants
+				allUsers, err := s.db.GetAllUsers()
+				if err != nil {
+					logger.Errorf("Failed to get all users for push notifications: %v", err)
+				} else {
+					for _, user := range allUsers {
+						if user.Username == msg.User {
+							continue
 						}
+						if !participantSet[user.Username] {
+							continue
+						}
+
+						pushText := msg.Text
+						if chat.IsSecret {
+							pushText = "New encrypted message"
+						}
+						s.sendPushNotification(user.UserId, user.Username, msg.User, pushText, roomID)
 					}
 				}
-
-				if !userInRoom {
-					continue
-				}
-
-				// Send push notification to all users in the room
-				logger.Infof("Push sent: %s", user.Username)
-				// For secret chats, don't leak message content in push
-				pushText := msg.Text
-				if chat.IsSecret {
-					pushText = "New encrypted message"
-				}
-				s.sendPushNotification(user.UserId, user.Username, msg.User, pushText, roomID)
 			}
 		}
 	}
@@ -731,4 +726,14 @@ func (s *server) GetClients(ctx context.Context, req *gen.ClientListRequest) (*g
 	return &gen.ClientListResponse{
 		Clients: users,
 	}, nil
+}
+
+// cleanupRecentMsgs removes dedup cache entries older than 10 seconds
+func (s *server) cleanupRecentMsgs() {
+	s.recentMsgs.Range(func(key, value interface{}) bool {
+		if time.Since(value.(time.Time)) > 10*time.Second {
+			s.recentMsgs.Delete(key)
+		}
+		return true
+	})
 }

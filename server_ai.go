@@ -153,9 +153,13 @@ func (s *server) ChatWithAI(req *gen.AIChatRequest, stream gen.ChatService_ChatW
 			apiKey = s.owlApiKey
 		}
 
-		// Stream via OpenRouter
+		// Stream via OpenRouter — collect response for DB saving
+		var fullResponse strings.Builder
 		err = streamOpenRouter(stream.Context(), apiKey, model, systemPrompt, orHistory,
 			func(token string, finished bool) error {
+				if !finished && token != "" {
+					fullResponse.WriteString(token)
+				}
 				return stream.Send(&gen.AIChatResponse{
 					Token:    token,
 					Finished: finished,
@@ -172,9 +176,11 @@ func (s *server) ChatWithAI(req *gen.AIChatRequest, stream gen.ChatService_ChatW
 			stream.Send(&gen.AIChatResponse{Finished: true, Error: err.Error()})
 		}
 
-		// Save assistant response (collect from stream)
-		// For simplicity, we save after streaming completes
-		// TODO: collect tokens if needed for DB saving
+		// Save assistant response
+		assistantResponse := fullResponse.String()
+		if assistantResponse != "" {
+			manager.AddMessage(sessionID, "assistant", assistantResponse, "")
+		}
 	}
 
 	// Update chat last message

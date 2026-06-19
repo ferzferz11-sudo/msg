@@ -92,6 +92,41 @@
 
 ---
 
+## Сессия 39 — UserInfo + Deploy + CreateChat fix
+
+### Что сделано
+
+#### UserInfo fields (v1.2.0.7)
+1. **messenger.proto** — `UserInfo`: добавлены `user_id = 6` (string) и `is_super_admin = 7` (bool)
+2. **db.go** — `GetAllUsers()`: SQL выбирает `COALESCE(is_super_admin, FALSE)`
+3. **server_users.go** — handler заполняет `UserId` и `IsSuperAdmin`
+
+#### Deploy Scripts
+1. **deploy-dev-local.sh** — cross-compile GOOS=linux + SCP + systemctl restart dev
+2. **deploy-prod-local.sh** — cross-compile + SCP + backup + restart prod + rollback
+3. Оба скрипта перезапускают log-monitor
+
+#### CreateChat Fix
+1. **db.go** — `CreateChat()`: CTE `WITH parts` вместо дублирования `$4` параметра (pq: inconsistent types deduced)
+2. Dev + prod задеплоены
+
+#### Documentation
+1. **CLIENT_INTEGRATION.md** — единый документ интеграции (127 gRPC методов)
+2. Удалены AUTHSERVICE_V2.md, HERMES_ORCHESTRATOR_DOC.md
+3. Все doc файлы обновлены до v1.2.0.7
+
+#### Commits
+- `c243a74` — release: v1.2.0.7
+- `cbd1328` — fix: add log monitor restart to deploy scripts
+- `e1169bc` — fix: CreateChat — use CTE to avoid PostgreSQL parameter type conflict
+
+### Статус
+- Dev (50052): ✅ работает
+- Prod (50051): ✅ работает
+- Тесты: 92/92 PASS
+
+---
+
 ## Правила работы
 
 1. Коммитить и пушить после каждого значимого изменения

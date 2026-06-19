@@ -140,6 +140,7 @@
 | `LOG_MONITOR.md` | Log Monitor: сборка, деплой, API |
 | `TESTING.md` | Модульные тесты |
 | `RELEASE.md` | Процесс релиза |
+| `OPTIMIZATION_PLAN.md` | План оптимизации — 35 пунктов, P0-P3 |
 
 ---
 

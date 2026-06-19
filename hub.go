@@ -283,52 +283,58 @@ func (h *Hub) IsUserOnline(userId, username string) bool {
 // BroadcastGlobal sends a message to all connected and authenticated clients
 func (h *Hub) BroadcastGlobal(msg *gen.Message) {
 	h.mu.RLock()
-	defer h.mu.RUnlock()
-
+	var targets []gen.ChatService_ChatServer
 	for stream, auth := range h.authenticated {
 		if auth {
-			_ = stream.Send(msg)
+			targets = append(targets, stream)
 		}
+	}
+	h.mu.RUnlock()
+
+	for _, stream := range targets {
+		_ = stream.Send(msg)
 	}
 }
 
 // Broadcast sends a message to all connected clients in the same room
 func (h *Hub) Broadcast(msg *gen.Message) {
-	h.mu.RLock()
-	// Release the read lock at the end of the function
-	defer h.mu.RUnlock()
-
 	roomID := msg.RoomId
 	if roomID == "" {
 		return
 	}
 
+	// Snapshot streams under lock, then send without lock
+	h.mu.RLock()
+	var targets []gen.ChatService_ChatServer
 	for stream := range h.clients {
-		// Only send to clients in the same room
 		if h.rooms[stream] == roomID {
-			err := stream.Send(msg)
-			if err != nil {
-				// If sending failed (client disconnected),
-				// the removal logic is better handled by defer in the server's Chat method
-				continue
-			}
+			targets = append(targets, stream)
+		}
+	}
+	h.mu.RUnlock()
+
+	for _, stream := range targets {
+		if err := stream.Send(msg); err != nil {
+			continue
 		}
 	}
 }
 
 // BroadcastTyping sends a typing signal to all clients in the same room
 func (h *Hub) BroadcastTyping(signal *gen.TypingSignal) {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
-
 	roomID := signal.RoomId
 	if roomID == "" {
 		return
 	}
 
+	h.mu.RLock()
+	var targets []gen.ChatService_TypingServer
 	for stream := range h.typingStreams {
-		// In BIDI stream we don't have a direct way to know the room without a map
-		// For now we broadcast to all, and client will filter by roomId
+		targets = append(targets, stream)
+	}
+	h.mu.RUnlock()
+
+	for _, stream := range targets {
 		_ = stream.Send(signal)
 	}
 }
@@ -336,17 +342,18 @@ func (h *Hub) BroadcastTyping(signal *gen.TypingSignal) {
 // BroadcastCall sends a call signal to the specific receiver. Returns true if delivered to at least one stream.
 func (h *Hub) BroadcastCall(signal *gen.CallMessage) bool {
 	h.mu.RLock()
-	defer h.mu.RUnlock()
+	var targets []gen.ChatService_CallSessionServer
+	for stream, username := range h.callStreams {
+		if username == signal.ReceiverId || username == signal.ReceiverName {
+			targets = append(targets, stream)
+		}
+	}
+	h.mu.RUnlock()
 
 	delivered := false
-	for stream, username := range h.callStreams {
-		// Match by UUID or username (backward compatibility)
-		// Deprecated: username matching is for v1 clients. Remove when all clients use v2 UUID.
-		if username == signal.ReceiverId || username == signal.ReceiverName {
-			err := stream.Send(signal)
-			if err == nil {
-				delivered = true
-			}
+	for _, stream := range targets {
+		if err := stream.Send(signal); err == nil {
+			delivered = true
 		}
 	}
 	return delivered
@@ -354,20 +361,22 @@ func (h *Hub) BroadcastCall(signal *gen.CallMessage) bool {
 
 // BroadcastConference sends a signal to all members of a group room
 func (h *Hub) BroadcastConference(signal *gen.CallMessage, roomMembers []string) {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
-
-	// Create a map for fast lookup
 	memberMap := make(map[string]bool)
 	for _, m := range roomMembers {
 		memberMap[m] = true
 	}
 
+	h.mu.RLock()
+	var targets []gen.ChatService_CallSessionServer
 	for stream, username := range h.callStreams {
-		// If the user is a member of the room (and not the sender, optional)
 		if memberMap[username] {
-			_ = stream.Send(signal)
+			targets = append(targets, stream)
 		}
+	}
+	h.mu.RUnlock()
+
+	for _, stream := range targets {
+		_ = stream.Send(signal)
 	}
 }
 

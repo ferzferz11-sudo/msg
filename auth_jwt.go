@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -23,13 +24,27 @@ type authClaims struct {
 	jwt.RegisteredClaims
 }
 
-// getJWTSecret returns the JWT signing secret from env
+// getJWTSecret returns the JWT signing secret from env (cached, re-reads if env changes)
+var (
+	cachedJWTSecret     []byte
+	cachedJWTSecretEnv  string
+	jwtSecretMu         sync.Mutex
+)
+
 func getJWTSecret() ([]byte, error) {
+	jwtSecretMu.Lock()
+	defer jwtSecretMu.Unlock()
+
 	secret := os.Getenv("JWT_SECRET")
+	if secret == cachedJWTSecretEnv && cachedJWTSecret != nil {
+		return cachedJWTSecret, nil
+	}
 	if len(secret) < 32 {
 		return nil, fmt.Errorf("JWT_SECRET must be at least 32 bytes, got %d", len(secret))
 	}
-	return []byte(secret), nil
+	cachedJWTSecret = []byte(secret)
+	cachedJWTSecretEnv = secret
+	return cachedJWTSecret, nil
 }
 
 // GenerateTokenPair creates a new access + refresh token pair for a user+device

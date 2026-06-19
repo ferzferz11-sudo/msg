@@ -207,6 +207,7 @@ func main() {
 		for {
 			time.Sleep(60 * time.Second)
 			srv.broadcastOnlineUsers()
+			srv.cleanupRecentMsgs()
 		}
 	}()
 

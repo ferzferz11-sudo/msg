@@ -156,6 +156,7 @@ func (db *DB) SearchChats(userID, query string, limit, offset int) ([]ChatV2Row,
 	defer rows.Close()
 
 	var result []ChatV2Row
+	mutedSet := db.getMutedRoomsSet(userID)
 	for rows.Next() {
 		var c ChatV2Row
 		var creatorId string
@@ -171,7 +172,7 @@ func (db *DB) SearchChats(userID, query string, limit, offset int) ([]ChatV2Row,
 			logger.Errorf("SearchChats scan error: %v", err)
 			continue
 		}
-		c.IsMuted = db.isChatMuted(userID, c.ID)
+		c.IsMuted = mutedSet[c.ID]
 		result = append(result, c)
 	}
 
@@ -246,6 +247,7 @@ func (db *DB) GetUserChatsV2(userID, username string, limit, offset int, filter 
 	defer rows.Close()
 
 	var result []ChatV2Row
+	mutedSet := db.getMutedRoomsSet(userID)
 	for rows.Next() {
 		var c ChatV2Row
 		var creatorId string
@@ -263,7 +265,7 @@ func (db *DB) GetUserChatsV2(userID, username string, limit, offset int, filter 
 			logger.Errorf("GetUserChatsV2 scan error: %v", err)
 			continue
 		}
-		c.IsMuted = db.isChatMuted(userID, c.ID)
+		c.IsMuted = mutedSet[c.ID]
 		result = append(result, c)
 	}
 
@@ -281,6 +283,26 @@ func (db *DB) isChatMuted(userID, chatID string) bool {
 		return false
 	}
 	return muted
+}
+
+// getMutedRoomsSet returns all muted room IDs for a user in one query
+func (db *DB) getMutedRoomsSet(userID string) map[string]bool {
+	set := make(map[string]bool)
+	rows, err := db.Query(`
+		SELECT room_id FROM muted_chats
+		WHERE user_id = $1::uuid AND muted = TRUE`,
+		userID)
+	if err != nil {
+		return set
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var roomID string
+		if err := rows.Scan(&roomID); err == nil {
+			set[roomID] = true
+		}
+	}
+	return set
 }
 
 // EnsureUserChatMetadata creates or updates user_chat_metadata entry
