@@ -913,10 +913,11 @@ func (db *DB) MarkReadAndCheck(room, user string) (bool, error) {
 }
 
 func (db *DB) CreateChat(id, name, t, p, creatorUsername, creatorId string) error {
-	_, err := db.Exec(`INSERT INTO chats (id, name, type, participants, creator_username, creator_id, participant_ids)
-		VALUES ($1, $2, $3, $4, $5, $6,
-			(SELECT array_agg(u.id ORDER BY u.username) FROM users u WHERE u.username = ANY(SELECT json_array_elements_text($4::json)))
-		)`, id, name, t, p, creatorUsername, creatorId)
+	_, err := db.Exec(`WITH parts AS (SELECT json_array_elements_text($1::json) AS username)
+		INSERT INTO chats (id, name, type, participants, creator_username, creator_id, participant_ids)
+		VALUES ($2, $3, $4, $1, $5, $6,
+			(SELECT array_agg(u.id ORDER BY u.username) FROM users u JOIN parts p ON p.username = u.username)
+		)`, p, id, name, t, creatorUsername, creatorId)
 	if err == nil {
 		_ = db.IncrementParticipantsChatListVersion(id)
 	}
