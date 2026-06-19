@@ -1,7 +1,7 @@
-# Промпт для серверных сессий — v1.3.0.0
+# Промпт для серверных сессий — v1.3.0.1
 
-**Дата:** 2026-06-19 | **Ветка:** feat/1.2.0.x
-**Статус:** AI Services v2 задеплоены на dev. Фокус на тестировании и доработке.
+**Дата:** 2026-06-20 | **Ветка:** feat/1.2.0.x
+**Статус:** AI Services v2 полностью готовы. Готово к Android интеграции.
 
 ---
 
@@ -10,7 +10,7 @@
 | | Версия | Статус |
 |---|--------|--------|
 | **Сервер prod** | v1.2.0.11 | ✅ Работает на порту 50051 |
-| **Сервер dev** | v1.3.0.0 | ✅ Работает на порту 50052 |
+| **Сервер dev** | v1.3.0.1 | ✅ Работает на порту 50052 |
 
 **Android:** `/root/msg.client.android` — документация там, сборка ТОЛЬКО локально.
 
@@ -21,52 +21,53 @@
 ### Сервер (/root/msg)
 ```
 main.go                    — Entry point, gRPC server, GracefulStop 30s timeout
-server.go                  — ServerVersion = "1.3.0.0"
+server.go                  — ServerVersion = "1.3.0.1"
 
-=== AI Services v2 (НОВОЕ) ===
+=== AI Services v2 (ПОЛНОСТЬЮ ГОТОВО) ===
 db_ai_v2.go                — DB layer: agents_v2, ai_chats_v2, ai_messages_v2
 ai_v2.go                   — AI Gateway: session mgmt, streaming, chat flow
 ai_router.go               — Hybrid router (keyword + LLM fallback)
 ai_agent_executor.go       — Agent execution + tool calling loop
 ai_provider.go             — AgentProvider interface
-ai_provider_registry.go    — Provider factory registry (7 types)
+ai_provider_registry.go    — Provider factory registry (7 типов)
 ai_provider_openrouter.go  — OpenRouter provider (SSE streaming)
 ai_provider_local.go       — Local Hermes provider (subprocess)
-ai_provider_mimo.go        — MiMo provider (HTTP API)
+ai_provider_mimo.go        — MiMo provider (HTTP API + deep integration)
 ai_provider_webhook.go     — Webhook provider (HTTP POST)
-ai_provider_websocket.go   — WebSocket provider
+ai_provider_websocket.go   — WebSocket provider (gorilla/websocket) ✅
 ai_provider_subprocess.go  — Subprocess provider (stdin/stdout)
 ai_provider_mcp.go         — MCP provider (stdio, JSON-RPC 2.0)
 ai_tool.go                 — Tool interface
-ai_tool_registry.go        — Tool registry + built-in tools
+ai_tool_registry.go        — Tool registry + 6 built-in tools
 ai_tool_search_messages.go — Search messages tool
 ai_tool_search_users.go    — Search users tool
 ai_tool_web_search.go      — Web search tool (DuckDuckGo)
 ai_tool_web_fetch.go       — URL fetch tool
 ai_tool_get_chat_info.go   — Chat info tool
+ai_tool_query_db.go        — DB query tool (SELECT only, admin) ✅
 server_ai_v2.go            — gRPC handlers (8 RPCs)
 rate_limiter.go            — Rate limiter + callOpenRouterContext
 hermes_stubs.go            — Stubs for hermes_agent_service.go
 
-=== Core (unchanged) ===
-auth_service_v2.go         — AuthService v2 (JWT)
-auth_interceptor.go        — gRPC Bearer token
-db.go                      — Database layer (~80+ CRUD методов)
+=== Core (DB split) ===
+db.go                      — Ядро: типы, подключение, миграции (223 строки)
+db_messages.go             — Message операции (245 строк)
+db_users.go                — User операции (552 строки)
+db_chats.go                — Chat операции (710 строк)
+db_chatlist_v2.go          — ChatList v2
+db_ai_v2.go                — AI v2 DB layer
+db_auth_devices.go         — Auth devices
+db_hermes.go               — Hermes DB
 hub.go                     — Connection management
 http_server.go             — HTTP uploads + TURN
 secret_chat.go             — E2EE secret chats
 bot_commands.go            — Bot commands
 messenger.proto            — All proto definitions
-
-=== Remote Agent (unchanged) ===
-hermes_agent_service.go    — Agent token management
-hermes_remote_manager.go   — Remote agent management
-server_remote.go           — Remote agent RPC
 ```
 
 ---
 
-## AI SERVICES v2 — КЛЮЧЕВЫЕ КОНЦЕПЦИИ
+## AI SERVICES v2 — СТАТУС ВСЕХ КОМПОНЕНТОВ
 
 ### 3 типа чатов
 | Тип | Описание | RPC |
@@ -80,9 +81,9 @@ server_remote.go           — Remote agent RPC
 |-----|----------|--------|
 | `openrouter` | OpenRouter API | ✅ Работает |
 | `local` | Локальный LLM (hermes binary) | ✅ Работает |
-| `mimo` | MiMo API | ✅ Работает |
+| `mimo` | MiMo API (HTTP + deep integration) | ✅ Работает |
 | `webhook` | HTTP webhook | ✅ Работает |
-| `websocket` | WebSocket | 🔨 Placeholder |
+| `websocket` | WebSocket (gorilla/websocket) | ✅ Работает |
 | `subprocess` | Subprocess (Python, Node) | ✅ Работает |
 | `mcp` | MCP (stdio, JSON-RPC 2.0) | ✅ Работает |
 
@@ -98,12 +99,13 @@ server_remote.go           — Remote agent RPC
 | `analyst` | Analyst | openrouter | ✅ | ✅ |
 | `translator` | Translator | openrouter | ❌ | ❌ |
 
-### 5 встроенных инструментов
+### 6 встроенных инструментов
 - `search_messages` — поиск сообщений
 - `search_users` — поиск пользователей
 - `web_search` — веб-поиск (DuckDuckGo)
 - `web_fetch` — загрузка URL
 - `get_chat_info` — метаданные чата
+- `query_database` — SQL запросы (SELECT only, admin) ✅
 
 ---
 
@@ -116,6 +118,7 @@ server_remote.go           — Remote agent RPC
 5. DB миграции: `IF NOT EXISTS`, NEVER `DROP`
 6. Коммитить после каждого изменения
 7. **Стабильность > фичи** — деплоим сразу на prod, ошибки критичны
+8. **НЕ удалять v1 compat код** (auth interceptor, SignIn/SignUp v1, GetChats v1) пока все клиенты не мигрируют на v2 JWT
 
 ---
 
@@ -157,10 +160,33 @@ go test ./...
 
 ## ДОКУМЕНТАЦИЯ
 
-- Интеграция: `/root/msg/doc/CLIENT_INTEGRATION.md`
+- Интеграция AI v2: `/root/msg/doc/AI_V2_CLIENT_INTEGRATION.md` (523 строки)
+- План реализации AI v2: `/root/msg/doc/AI_V2_IMPLEMENTATION_PLAN.md` (784 строки, все фазы ✅)
+- Интеграция клиентов: `/root/msg/doc/CLIENT_INTEGRATION.md`
 - Индекс: `/root/msg/doc/INDEX.md`
 - Задачи: `/root/msg/doc/TASKS.md`
 - Оптимизации: `/root/msg/doc/OPTIMIZATION_PLAN.md`
-- AI Services v2 план: `/root/msg/doc/AI_SERVICES_V2_PLAN.md`
 - Pitfalls: `/root/msg/doc/PITFALLS.md`
-- Android: `/root/msg.client.android/doc/` (вся документация там)
+- Android: `/root/msg.client.android/doc/`
+
+---
+
+## ОСТАЛОСЬ (4 задачи)
+
+| # | Задача | Блокер |
+|---|--------|--------|
+| 30/48 | Qdrant + CLIP (production RAG) | Нужна инфраструктура |
+| 33 | Unified RateLimiter (Redis) | Нужен Redis |
+| 49 | Usage stats + billing | Нужно UI |
+| 50 | Agent marketplace | Нужно UI + модерация |
+
+**Прогресс: 46/50 задач выполнено (92%)**
+
+---
+
+## КЛЮЧЕВЫЕ ФАЙЛЫ ДЛЯ НОВОЙ СЕССИИ
+
+- `doc/AI_V2_CLIENT_INTEGRATION.md` — передать Android разработчику
+- `doc/AI_V2_IMPLEMENTATION_PLAN.md` — полный план с отметками ✅
+- `doc/TASKS.md` — список задач
+- `doc/OPTIMIZATION_PLAN.md` — план оптимизаций
