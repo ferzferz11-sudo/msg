@@ -383,15 +383,19 @@ func (db *DB) UnPinMessage(userID, chatID, messageID string) error {
 	return err
 }
 
-// GetPinnedMessages returns all pinned messages for a user in a chat.
-func (db *DB) GetPinnedMessages(userID, chatID string) ([]PinnedMessageRow, error) {
+// GetPinnedMessages returns pinned messages for a user in a chat with pagination.
+func (db *DB) GetPinnedMessages(userID, chatID string, limit, offset int) ([]PinnedMessageRow, error) {
+	if limit <= 0 {
+		limit = 100
+	}
 	rows, err := db.Query(`
 		SELECT pm.message_id, pm.pinned_at, m.username, m.encrypted_text, m.created_at
 		FROM pinned_messages pm
 		JOIN messages m ON m.message_id = pm.message_id AND m.room_id = pm.room_id
 		WHERE pm.user_id = $1::uuid AND pm.room_id = $2
-		ORDER BY pm.pinned_at DESC`,
-		userID, chatID)
+		ORDER BY pm.pinned_at DESC
+		LIMIT $3 OFFSET $4`,
+		userID, chatID, limit, offset)
 	if err != nil {
 		return nil, err
 	}

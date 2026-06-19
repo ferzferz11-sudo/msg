@@ -10,7 +10,7 @@ message Message {
   string text = 3;
   google.protobuf.Timestamp created_at = 4;
   repeated Reaction reactions = 5;
-  string password = 6; // Password for authentication (only in first/join message) — v1 legacy
+  string password = 6; // v1 legacy auth (deprecated, use JWT)
   string replied_to_message_id = 7; // ID of the message being replied to
   string replied_to_user = 8; // Username of the message being replied to
   string replied_to_text = 9; // Text of the message being replied to
@@ -24,7 +24,7 @@ message Message {
   bool is_super_admin = 16; // Whether the user is a super admin
   string voice_url = 17; // URL of the voice message audio file
   int32 duration = 18; // Duration of voice message in seconds
-  bool register = 19; // Flag to register a new user
+  bool register = 19; // v1 legacy registration flag (deprecated, use AuthServiceV2)
   string device_id = 21; // Device ID for tracking active sessions
   string device_name = 22; // Device name for displaying in settings
   string user_id = 23; // Stable user ID (UUID)
@@ -868,6 +868,8 @@ message UnPinMessageResponse {
 message GetPinnedMessagesRequest {
   string user_id = 1;
   string chat_id = 2;
+  int32 limit = 3;
+  int32 offset = 4;
 }
 
 message GetPinnedMessagesResponse {

@@ -158,7 +158,7 @@ type Message struct {
 	Text               string                 `protobuf:"bytes,3,opt,name=text,proto3" json:"text,omitempty"`
 	CreatedAt          *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	Reactions          []*Reaction            `protobuf:"bytes,5,rep,name=reactions,proto3" json:"reactions,omitempty"`
-	Password           string                 `protobuf:"bytes,6,opt,name=password,proto3" json:"password,omitempty"`                                                   // Password for authentication (only in first/join message) — v1 legacy
+	Password           string                 `protobuf:"bytes,6,opt,name=password,proto3" json:"password,omitempty"`                                                   // v1 legacy auth (deprecated, use JWT)
 	RepliedToMessageId string                 `protobuf:"bytes,7,opt,name=replied_to_message_id,json=repliedToMessageId,proto3" json:"replied_to_message_id,omitempty"` // ID of the message being replied to
 	RepliedToUser      string                 `protobuf:"bytes,8,opt,name=replied_to_user,json=repliedToUser,proto3" json:"replied_to_user,omitempty"`                  // Username of the message being replied to
 	RepliedToText      string                 `protobuf:"bytes,9,opt,name=replied_to_text,json=repliedToText,proto3" json:"replied_to_text,omitempty"`                  // Text of the message being replied to
@@ -172,7 +172,7 @@ type Message struct {
 	IsSuperAdmin       bool                   `protobuf:"varint,16,opt,name=is_super_admin,json=isSuperAdmin,proto3" json:"is_super_admin,omitempty"` // Whether the user is a super admin
 	VoiceUrl           string                 `protobuf:"bytes,17,opt,name=voice_url,json=voiceUrl,proto3" json:"voice_url,omitempty"`                // URL of the voice message audio file
 	Duration           int32                  `protobuf:"varint,18,opt,name=duration,proto3" json:"duration,omitempty"`                               // Duration of voice message in seconds
-	Register           bool                   `protobuf:"varint,19,opt,name=register,proto3" json:"register,omitempty"`                               // Flag to register a new user
+	Register           bool                   `protobuf:"varint,19,opt,name=register,proto3" json:"register,omitempty"`                               // v1 legacy registration flag (deprecated, use AuthServiceV2)
 	DeviceId           string                 `protobuf:"bytes,21,opt,name=device_id,json=deviceId,proto3" json:"device_id,omitempty"`                // Device ID for tracking active sessions
 	DeviceName         string                 `protobuf:"bytes,22,opt,name=device_name,json=deviceName,proto3" json:"device_name,omitempty"`          // Device name for displaying in settings
 	UserId             string                 `protobuf:"bytes,23,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`                      // Stable user ID (UUID)
@@ -7295,6 +7295,8 @@ type GetPinnedMessagesRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	ChatId        string                 `protobuf:"bytes,2,opt,name=chat_id,json=chatId,proto3" json:"chat_id,omitempty"`
+	Limit         int32                  `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
+	Offset        int32                  `protobuf:"varint,4,opt,name=offset,proto3" json:"offset,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -7341,6 +7343,20 @@ func (x *GetPinnedMessagesRequest) GetChatId() string {
 		return x.ChatId
 	}
 	return ""
+}
+
+func (x *GetPinnedMessagesRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+func (x *GetPinnedMessagesRequest) GetOffset() int32 {
+	if x != nil {
+		return x.Offset
+	}
+	return 0
 }
 
 type GetPinnedMessagesResponse struct {
@@ -14762,10 +14778,12 @@ const file_messenger_proto_rawDesc = "" +
 	"\n" +
 	"message_id\x18\x03 \x01(\tR\tmessageId\"0\n" +
 	"\x14UnPinMessageResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess\"L\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\"z\n" +
 	"\x18GetPinnedMessagesRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x17\n" +
-	"\achat_id\x18\x02 \x01(\tR\x06chatId\"K\n" +
+	"\achat_id\x18\x02 \x01(\tR\x06chatId\x12\x14\n" +
+	"\x05limit\x18\x03 \x01(\x05R\x05limit\x12\x16\n" +
+	"\x06offset\x18\x04 \x01(\x05R\x06offset\"K\n" +
 	"\x19GetPinnedMessagesResponse\x12.\n" +
 	"\bmessages\x18\x01 \x03(\v2\x12.messenger.MessageR\bmessages\"\xae\x01\n" +
 	"\x17CreateSecretChatRequest\x12'\n" +

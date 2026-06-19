@@ -9,6 +9,18 @@
 - **db.go** — backfillLastMessageText: исключены секретные чаты (`is_secret=TRUE`) — предотвращает утечку расшифрованного текста
 - **server_chat.go** — Логирование: добавлены client version и device_id
 
+### Производительность (P1 + P2 оптимизации)
+- **server_push.go** — FCM batching: `sendBatchPushNotifications()` через `SendEachForMulticast` (до 500 токенов за вызов)
+- **server_push.go** — Exponential backoff retry (до 3 попыток) для UNAVAILABLE/RESOURCE_EXHAUSTED
+- **server_push.go** — Автоудаление невалидных FCM токенов (UNREGISTERED/INVALID_ARGUMENT)
+- **db.go** — `MessageRow` struct: вынесен один раз вместо 10 анонимных копий
+- **db.go** — `SaveMessage`: INSERT + version increment + last_message update объединены в транзакцию
+- **db.go** — `backfillLastMessageText`: оптимизирован — JOIN LATERAL вместо N+1 запросов, batch UPDATE в транзакции
+- **db.go** — Добавлен индекс `idx_messages_username_time ON messages(username, created_at)`
+- **db_chatlist_v2.go** — `GetPinnedMessages`: добавлена пагинация (limit/offset)
+- **messenger.proto** — `GetPinnedMessagesRequest`: добавлены поля `limit` (field 3) и `offset` (field 4)
+- **server_chatlist_v2.go** — `GetChatsV2` лог понижен до Debug (убран спам в логах)
+
 ---
 
 ## [1.2.0.9] - 2026-06-19

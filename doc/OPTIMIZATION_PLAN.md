@@ -136,16 +136,14 @@ s.recentMsgs.Range(func(k, v) bool {
 
 ## P1 — Важные (производительность / долгосрочные утечки)
 
-### 9. FCM без batching и retry
+### 9. ✅ FCM batching + retry (РЕАЛИЗОВАНО)
 
-**Файл:** `server_push.go:50-120`
-
-**Проблема:** Каждый пуш — отдельный FCM API-вызов. Группа на 100 человек = 100 вызовов. Нет retry при transient ошибках.
+**Файл:** `server_push.go`, `server_chat.go`
 
 **Решение:**
-- Batch через `SendEachForMulticast` (до 500 токенов)
-- Exponential backoff retry (1-3 попытки) для UNAVAILABLE/RESOURCE_EXHAUSTED
-- Удаление невалидных токенов из БД
+- `sendBatchPushNotifications()` — батчинг через `SendEachForMulticast` (до 500 токенов)
+- Exponential backoff retry (до 3 попыток) для UNAVAILABLE/RESOURCE_EXHAUSTED
+- Автоудаление невалидных токенов (`UNREGISTERED`/`INVALID_ARGUMENT`)
 
 **Совместимость:** ✅
 
@@ -229,27 +227,19 @@ s.recentMsgs.Range(func(k, v) bool {
 
 ## P2 — Улучшения (код / надёжность)
 
-### 19. Duplicated MessageRow struct — 5 копий
+### 19. ✅ Duplicated MessageRow struct (РЕАЛИЗОВАНО)
 
-**Файл:** `db.go:327-525`
+**Файл:** `db.go`
 
-**Проблема:** Один и тот же struct скопирован 5 раз.
-
-**Решение:** Вынести `type MessageRow struct` один раз.
-
-**Совместимость:** ✅
+**Решение:** Вынесен `type MessageRow struct` один раз, все 10 анонимных копий заменены.
 
 ---
 
-### 20. SaveMessage — 3 DB round-trips
+### 20. ✅ SaveMessage — 3 DB round-trips → транзакция (РЕАЛИЗОВАНО)
 
-**Файл:** `db.go:288-325`
+**Файл:** `db.go`
 
-**Проблема:** INSERT + IncrementParticipantsChatListVersion + UPDATE chats.
-
-**Решение:** Объединить в транзакцию или async increment.
-
-**Совместимость:** ✅
+**Решение:** INSERT + IncrementParticipantsChatListVersion + UPDATE chats объединены в одну транзакцию.
 
 ---
 
@@ -262,6 +252,8 @@ s.recentMsgs.Range(func(k, v) bool {
 **Решение:** `INSERT ... ON CONFLICT DO UPDATE`.
 
 **Совместимость:** ✅
+
+**Примечание:** Отложено — PK таблицы `user_chat_metadata` мигрирован на `(user_id, room_id)`, но MarkReadAndCheck работает с `username`. Требует миграции на user_id перед UPSERT.
 
 ---
 
@@ -297,37 +289,31 @@ s.recentMsgs.Range(func(k, v) bool {
 
 ---
 
-### 26. Нет индекса messages(username, created_at)
+### 26. ✅ messages(username, created_at) index (РЕАЛИЗОВАНО)
 
-**Файл:** `db.go:545`
+**Файл:** `db.go`
 
-**Проблема:** `GetMessagesByUserAndTime` — seq scan.
-
-**Решение:** `CREATE INDEX idx_messages_username_time ON messages(username, created_at)`.
-
-**Совместимость:** ✅
+**Решение:** `CREATE INDEX idx_messages_username_time ON messages(username, created_at)` добавлен в миграции.
 
 ---
 
-### 27. PinMessage — нет пагинации
+### 27. ✅ PinMessage — пагинация (РЕАЛИЗОВАНО)
 
-**Файл:** `db_chatlist_v2.go:365-391`
+**Файл:** `db_chatlist_v2.go`, `messenger.proto`
 
-**Проблема:** Все закреплённые сообщения без лимита.
-
-**Решение:** Добавить `limit`/`offset` в `GetPinnedMessagesRequest`.
+**Решение:** Добавлены `limit`/`offset` в `GetPinnedMessagesRequest`, SQL использует `LIMIT/OFFSET`.
 
 **Совместимость:** ✅ (старые клиенты игнорируют новые optional поля)
 
 ---
 
-### 28. Proto — нет reserved полей
+### 28. Proto — reserved поля
 
 **Файл:** `messenger.proto`
 
-**Проблема:** При удалении deprecated полей (password=6, register=19) номера могут быть переназначены.
+**Проблема:** При удалении deprecated полей номера могут быть переназначены.
 
-**Решение:** Добавить `reserved 6, 19; reserved "password", "register";` в Message.
+**Решение:** Отложено — `password` и `register` поля всё ещё используются в v1 legacy auth. Добавлены комментарии `deprecated` вместо `reserved`.
 
 **Совместимость:** ✅
 
@@ -359,9 +345,9 @@ s.recentMsgs.Range(func(k, v) bool {
 | Приоритет | Кол-во | Статус |
 |-----------|--------|--------|
 | **P0** | 8 | ✅ Все сделаны (v1.2.0.8) |
-| **P1** | 10 | 7 сделано, 3 осталось |
-| **P2** | 11 | 4 сделано, 7 осталось |
+| **P1** | 10 | ✅ Все сделаны (v1.2.0.10) |
+| **P2** | 11 | 8 сделано, 3 осталось |
 | **P3** | 6 | Отложено |
-| **Итого** | **35** | **19 сделано, 16 осталось** |
+| **Итого** | **35** | **26 сделано, 9 осталось** |
 
 Все P0-P2 оптимизации обратно совместимы — старые клиенты продолжат работать без изменений.

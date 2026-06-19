@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"firebase.google.com/go/v4/messaging"
@@ -117,6 +119,142 @@ func (s *server) sendPushNotification(userId, username, title, body, roomID stri
 	}
 
 	s.logFCM("SUCCESS", "Sent to %s", username)
+}
+
+type pushTarget struct {
+	UserId   string
+	Username string
+}
+
+func (s *server) sendBatchPushNotifications(targets []pushTarget, title, body, roomID string) {
+	if s.firebaseApp == nil || len(targets) == 0 {
+		return
+	}
+
+	mutedSet := make(map[string]bool)
+	for _, t := range targets {
+		chats, err := s.db.GetMutedChats(t.Username)
+		if err == nil {
+			for _, c := range chats {
+				if c == roomID {
+					mutedSet[t.UserId] = true
+				}
+			}
+		}
+	}
+
+	var tokens []string
+	var tokenUserIDs []string
+	for _, t := range targets {
+		if s.hub.IsUserOnline(t.UserId, t.Username) {
+			continue
+		}
+		if mutedSet[t.UserId] {
+			continue
+		}
+		token, err := s.db.GetUserTokenByUserID(t.UserId)
+		if err != nil || token == "" || token == "DISABLED" {
+			continue
+		}
+		tokens = append(tokens, token)
+		tokenUserIDs = append(tokenUserIDs, t.UserId)
+	}
+
+	if len(tokens) == 0 {
+		return
+	}
+
+	ctx := context.Background()
+	client, err := s.firebaseApp.Messaging(ctx)
+	if err != nil {
+		s.logFCM("ERROR", "Batch push client err: %v", err)
+		return
+	}
+
+	const chunkSize = 500
+	for i := 0; i < len(tokens); i += chunkSize {
+		end := i + chunkSize
+		if end > len(tokens) {
+			end = len(tokens)
+		}
+		chunk := tokens[i:end]
+		chunkIDs := tokenUserIDs[i:end]
+
+		s.sendMulticastWithRetry(client, chunk, chunkIDs, title, body, roomID)
+	}
+}
+
+func (s *server) sendMulticastWithRetry(client *messaging.Client, tokens, userIDs []string, title, body, roomID string) {
+	ctx := context.Background()
+	msg := &messaging.MulticastMessage{
+		Tokens: tokens,
+		Notification: &messaging.Notification{
+			Title: title,
+			Body:  body,
+		},
+		Data: map[string]string{
+			"title":   title,
+			"body":    body,
+			"room_id": roomID,
+			"sender":  title,
+		},
+		Android: &messaging.AndroidConfig{
+			Priority:    "high",
+			CollapseKey: roomID,
+			TTL:         durationPtr(5 * time.Minute),
+			Notification: &messaging.AndroidNotification{
+				ChannelID: "lavender_messages",
+				Priority:  messaging.PriorityHigh,
+				Sound:     "default",
+			},
+		},
+	}
+
+	const maxRetries = 3
+	var resp *messaging.BatchResponse
+	var err error
+
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		if attempt > 0 {
+			time.Sleep(time.Duration(1<<(attempt-1)) * time.Second)
+		}
+		resp, err = client.SendEachForMulticast(ctx, msg)
+		if err == nil {
+			break
+		}
+		st, ok := status.FromError(err)
+		if !ok || (st.Code() != codes.Unavailable && st.Code() != codes.ResourceExhausted) {
+			s.logFCM("ERROR", "Batch push fatal error: %v", err)
+			return
+		}
+	}
+
+	if err != nil {
+		s.logFCM("ERROR", "Batch push failed after retries: %v", err)
+		return
+	}
+
+	s.logFCM("SUCCESS", "Batch push sent: %d success, %d failure out of %d",
+		len(tokens)-resp.FailureCount, resp.FailureCount, len(tokens))
+
+	for i, r := range resp.Responses {
+		if r.Error != nil {
+			s.logFCM("WARN", "Push to %s failed: %v", userIDs[i], r.Error)
+			if s.isInvalidTokenError(r.Error) {
+				_ = s.db.DeleteUserTokenByUserID(userIDs[i])
+			}
+		}
+	}
+}
+
+func (s *server) isInvalidTokenError(err error) bool {
+	if err == nil {
+		return false
+	}
+	errStr := err.Error()
+	return strings.Contains(errStr, "UNREGISTERED") ||
+		strings.Contains(errStr, "INVALID_ARGUMENT") ||
+		strings.Contains(errStr, "registration token not registered")
 }
 
 func (s *server) saveConferenceSystemMessage(roomID, text, senderName, senderId string) {

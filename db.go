@@ -19,6 +19,19 @@ type DB struct {
 	*sql.DB
 }
 
+type MessageRow struct {
+	MessageID, Username                                      string
+	Encrypted                                                []byte
+	CreatedAt                                                time.Time
+	RepliedToMessageID, RepliedToUser, RepliedToText, RoomID string
+	IsRead                                                   bool
+	AvatarURL, ImageURL, ImageURLs                           string
+	Edited                                                   bool
+	VoiceURL                                                 string
+	Duration                                                 int32
+	IsE2EE                                                   bool
+}
+
 func ConnectDB() (*DB, error) {
 	dbUrl := os.Getenv("DATABASE_URL")
 	if dbUrl == "" {
@@ -75,6 +88,7 @@ func ConnectDB() (*DB, error) {
 		END $$;`,
 		`CREATE INDEX IF NOT EXISTS idx_messages_room ON messages(room_id, created_at)`,
 		`CREATE INDEX IF NOT EXISTS idx_messages_user_id ON messages(user_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_messages_username_time ON messages(username, created_at)`,
 
 		// --- Chats ---
 		`CREATE TABLE IF NOT EXISTS chats (id VARCHAR(255) PRIMARY KEY, name VARCHAR(255) NOT NULL, type VARCHAR(50) NOT NULL, participants TEXT NOT NULL, creator_username VARCHAR(255), created_at TIMESTAMP NOT NULL DEFAULT NOW(), avatar_url TEXT DEFAULT '', full_avatar_url TEXT DEFAULT '')`,
@@ -221,70 +235,79 @@ func (db *DB) Exec(query string, args ...interface{}) (sql.Result, error) {
 // backfillLastMessageText decrypts and fills last_message_text for chats
 // where it's empty or set to the placeholder "Message".
 func backfillLastMessageText(db *sql.DB) {
+	type chatPreview struct {
+		id       string
+		enc      []byte
+		msgTime  time.Time
+		username string
+		hasImage bool
+	}
+
 	rows, err := db.Query(`
-		SELECT c.id FROM chats c
+		SELECT c.id, m.encrypted_text, m.created_at, m.username,
+		       (COALESCE(m.image_url, '') != '' OR COALESCE(m.image_urls, '[]') != '[]')
+		FROM chats c
+		JOIN LATERAL (
+			SELECT encrypted_text, created_at, username, image_url, image_urls
+			FROM messages WHERE room_id = c.id
+			ORDER BY created_at DESC LIMIT 1
+		) m ON TRUE
 		WHERE (c.last_message_text IS NULL OR c.last_message_text = '' OR c.last_message_text = 'Message')
 		AND c.type NOT IN ('owl', 'hermes')
-		AND COALESCE(c.is_secret, FALSE) = FALSE
-	`)
+		AND COALESCE(c.is_secret, FALSE) = FALSE`)
 	if err != nil {
 		logger.Errorf("Backfill: query error: %v", err)
 		return
 	}
 	defer rows.Close()
 
-	var chatIDs []string
+	var previews []chatPreview
 	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err == nil {
-			chatIDs = append(chatIDs, id)
+		var p chatPreview
+		if err := rows.Scan(&p.id, &p.enc, &p.msgTime, &p.username, &p.hasImage); err == nil {
+			previews = append(previews, p)
 		}
 	}
 
-	if len(chatIDs) == 0 {
+	if len(previews) == 0 {
 		return
 	}
 
-	logger.Infof("Backfill: updating last_message_text for %d chats", len(chatIDs))
+	logger.Infof("Backfill: updating last_message_text for %d chats", len(previews))
 
-	for _, chatID := range chatIDs {
-		// Get last message for this chat
-		var enc []byte
-		var msgTime time.Time
-		var username string
-		var hasImage bool
+	tx, err := db.Begin()
+	if err != nil {
+		logger.Errorf("Backfill: begin tx error: %v", err)
+		return
+	}
+	defer tx.Rollback()
 
-		err := db.QueryRow(`
-			SELECT encrypted_text, created_at, username,
-			       (COALESCE(image_url, '') != '' OR COALESCE(image_urls, '[]') != '[]')
-			FROM messages WHERE room_id = $1
-			ORDER BY created_at DESC LIMIT 1`, chatID).Scan(&enc, &msgTime, &username, &hasImage)
-		if err != nil {
-			continue
-		}
-
-		// Decrypt the text
-		preview, _ := decrypt(enc)
+	for _, p := range previews {
+		preview, _ := decrypt(p.enc)
 		if len(preview) > 500 {
 			preview = preview[:500]
 		}
 		if preview == "" {
-			if hasImage {
+			if p.hasImage {
 				preview = "Image"
 			} else {
 				preview = "Message"
 			}
 		}
-
-		_, _ = db.Exec(`UPDATE chats SET
+		_, _ = tx.Exec(`UPDATE chats SET
 			last_message_text = $1,
 			last_message_time = $2,
 			last_message_username = $3,
 			last_message_has_image = $4
-		WHERE id = $5`, preview, msgTime, username, hasImage, chatID)
+		WHERE id = $5`, preview, p.msgTime, p.username, p.hasImage, p.id)
 	}
 
-	logger.Infof("Backfill: last_message_text updated for %d chats", len(chatIDs))
+	if err := tx.Commit(); err != nil {
+		logger.Errorf("Backfill: commit error: %v", err)
+		return
+	}
+
+	logger.Infof("Backfill: last_message_text updated for %d chats", len(previews))
 }
 
 func (db *DB) SaveMessage(mid, user, uid string, enc []byte, created time.Time, rmid, ruser, rtext, room, img, imgUrls, voice string, dur int32, isE2EE ...bool) error {
@@ -293,15 +316,27 @@ func (db *DB) SaveMessage(mid, user, uid string, enc []byte, created time.Time, 
 	if len(isE2EE) > 0 && isE2EE[0] {
 		e2ee = true
 	}
-	q := `INSERT INTO messages (message_id, username, user_id, encrypted_text, created_at, replied_to_message_id, replied_to_user, replied_to_text, room_id, is_read, image_url, image_urls, voice_url, duration, is_e2ee)
+
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	_, err = tx.Exec(`INSERT INTO messages (message_id, username, user_id, encrypted_text, created_at, replied_to_message_id, replied_to_user, replied_to_text, room_id, is_read, image_url, image_urls, voice_url, duration, is_e2ee)
 	      VALUES ($1, $2::text, $3::uuid, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
 		  ON CONFLICT (message_id) DO UPDATE SET
 		  encrypted_text = EXCLUDED.encrypted_text,
-		  edited = TRUE`
-	_, err := db.Exec(q, mid, user, uid, enc, created, rmid, ruser, rtext, room, isRead, img, imgUrls, voice, dur, e2ee)
-	if err == nil && room != "" && !isRead {
-		db.IncrementParticipantsChatListVersion(room)
-		// Update chats.last_message_* columns for fast ChatList rendering
+		  edited = TRUE`,
+		mid, user, uid, enc, created, rmid, ruser, rtext, room, isRead, img, imgUrls, voice, dur, e2ee)
+	if err != nil {
+		return err
+	}
+
+	if room != "" && !isRead {
+		_, _ = tx.Exec(`UPDATE users SET chat_list_version=chat_list_version+1
+			WHERE id IN (SELECT unnest(participant_ids) FROM chats WHERE id=$1)`, room)
+
 		hasImage := img != "" || (imgUrls != "" && imgUrls != "[]")
 		var preview string
 		if e2ee {
@@ -316,28 +351,18 @@ func (db *DB) SaveMessage(mid, user, uid string, enc []byte, created time.Time, 
 				preview = preview[:500]
 			}
 		}
-		_, _ = db.Exec(`UPDATE chats SET
+		_, _ = tx.Exec(`UPDATE chats SET
 			last_message_text = $1,
 			last_message_time = $2,
 			last_message_username = $3,
 			last_message_has_image = $4
 		WHERE id = $5`, preview, created, user, hasImage, room)
 	}
-	return err
+
+	return tx.Commit()
 }
 
-func (db *DB) GetMessages(limit int, room string) ([]struct {
-	MessageID, Username                                      string
-	Encrypted                                                []byte
-	CreatedAt                                                time.Time
-	RepliedToMessageID, RepliedToUser, RepliedToText, RoomID string
-	IsRead                                                   bool
-	AvatarURL, ImageURL, ImageURLs                           string
-	Edited                                                   bool
-	VoiceURL                                                 string
-	Duration                                                 int32
-	IsE2EE                                                   bool
-}, error) {
+func (db *DB) GetMessages(limit int, room string) ([]MessageRow, error) {
 	var rows *sql.Rows
 	var err error
 	if strings.HasPrefix(room, "favorites_") {
@@ -352,31 +377,9 @@ func (db *DB) GetMessages(limit int, room string) ([]struct {
 		return nil, err
 	}
 	defer rows.Close()
-	var res []struct {
-		MessageID, Username                                      string
-		Encrypted                                                []byte
-		CreatedAt                                                time.Time
-		RepliedToMessageID, RepliedToUser, RepliedToText, RoomID string
-		IsRead                                                   bool
-		AvatarURL, ImageURL, ImageURLs                           string
-		Edited                                                   bool
-		VoiceURL                                                 string
-		Duration                                                 int32
-		IsE2EE                                                   bool
-	}
+	var res []MessageRow
 	for rows.Next() {
-		var r struct {
-			MessageID, Username                                      string
-			Encrypted                                                []byte
-			CreatedAt                                                time.Time
-			RepliedToMessageID, RepliedToUser, RepliedToText, RoomID string
-			IsRead                                                   bool
-			AvatarURL, ImageURL, ImageURLs                           string
-			Edited                                                   bool
-			VoiceURL                                                 string
-			Duration                                                 int32
-			IsE2EE                                                   bool
-		}
+		var r MessageRow
 		rows.Scan(&r.MessageID, &r.Username, &r.Encrypted, &r.CreatedAt, &r.RepliedToMessageID, &r.RepliedToUser, &r.RepliedToText, &r.RoomID, &r.IsRead, &r.AvatarURL, &r.ImageURL, &r.ImageURLs, &r.Edited, &r.VoiceURL, &r.Duration, &r.IsE2EE)
 		res = append(res, r)
 	}
@@ -501,30 +504,8 @@ func (db *DB) GetAllUsers() ([]struct {
 	return res, nil
 }
 
-func (db *DB) GetMessageByUUID(id string) (struct {
-	MessageID, Username                                      string
-	Encrypted                                                []byte
-	CreatedAt                                                time.Time
-	RepliedToMessageID, RepliedToUser, RepliedToText, RoomID string
-	IsRead                                                   bool
-	AvatarURL, ImageURL, ImageURLs                           string
-	Edited                                                   bool
-	VoiceURL                                                 string
-	Duration                                                 int32
-	IsE2EE                                                   bool
-}, error) {
-	var r struct {
-		MessageID, Username                                      string
-		Encrypted                                                []byte
-		CreatedAt                                                time.Time
-		RepliedToMessageID, RepliedToUser, RepliedToText, RoomID string
-		IsRead                                                   bool
-		AvatarURL, ImageURL, ImageURLs                           string
-		Edited                                                   bool
-		VoiceURL                                                 string
-		Duration                                                 int32
-		IsE2EE                                                   bool
-	}
+func (db *DB) GetMessageByUUID(id string) (MessageRow, error) {
+	var r MessageRow
 	err := db.QueryRow(`SELECT COALESCE(m.message_id, ''), m.username, m.encrypted_text, m.created_at, COALESCE(m.replied_to_message_id, ''), COALESCE(m.replied_to_user, ''), COALESCE(m.replied_to_text, ''), COALESCE(m.room_id, ''), COALESCE(m.is_read, FALSE) as is_read, COALESCE(u.avatar_url, ''), COALESCE(m.image_url, ''), COALESCE(m.image_urls, '[]'), COALESCE(m.edited, false), COALESCE(m.voice_url, ''), COALESCE(m.duration, 0), COALESCE(m.is_e2ee, false) FROM messages m LEFT JOIN users u ON m.user_id = u.id WHERE m.message_id = $1`, id).Scan(&r.MessageID, &r.Username, &r.Encrypted, &r.CreatedAt, &r.RepliedToMessageID, &r.RepliedToUser, &r.RepliedToText, &r.RoomID, &r.IsRead, &r.AvatarURL, &r.ImageURL, &r.ImageURLs, &r.Edited, &r.VoiceURL, &r.Duration, &r.IsE2EE)
 	return r, err
 }
@@ -1316,6 +1297,11 @@ func (db *DB) GetUserTokenByUserID(uid string) (string, error) {
 	err := db.QueryRow(`SELECT fcm_token FROM user_tokens ut JOIN users u ON ut.username = u.username WHERE u.id = $1::uuid`, uid).Scan(&t)
 	return t, err
 }
+
+func (db *DB) DeleteUserTokenByUserID(uid string) error {
+	_, err := db.Exec(`DELETE FROM user_tokens WHERE username = (SELECT username FROM users WHERE id = $1::uuid)`, uid)
+	return err
+}
 func (db *DB) SaveUserToken(user, token string, e bool) error {
 	_, err := db.Exec(`INSERT INTO user_tokens (username, fcm_token, push_enabled, updated_at) VALUES ($1, $2, $3, NOW()) ON CONFLICT (username) DO UPDATE SET fcm_token=EXCLUDED.fcm_token, updated_at=NOW()`, user, token, e)
 	return err
@@ -1356,18 +1342,7 @@ func (db *DB) GetChatMessagesImageURLs(room string) ([]string, error) {
 	}
 	return res, nil
 }
-func (db *DB) GetFavorites(uid string) ([]struct {
-	MessageID, Username                                      string
-	Encrypted                                                []byte
-	CreatedAt                                                time.Time
-	RepliedToMessageID, RepliedToUser, RepliedToText, RoomID string
-	IsRead                                                   bool
-	AvatarURL, ImageURL, ImageURLs                           string
-	Edited                                                   bool
-	VoiceURL                                                 string
-	Duration                                                 int32
-	IsE2EE                                                   bool
-}, error) {
+func (db *DB) GetFavorites(uid string) ([]MessageRow, error) {
 	// Try to resolve username from UUID if uid looks like a UUID
 	username := uid
 	if len(uid) > 20 {
@@ -1385,31 +1360,9 @@ func (db *DB) GetFavorites(uid string) ([]struct {
 		return nil, err
 	}
 	defer rows.Close()
-	var res []struct {
-		MessageID, Username                                      string
-		Encrypted                                                []byte
-		CreatedAt                                                time.Time
-		RepliedToMessageID, RepliedToUser, RepliedToText, RoomID string
-		IsRead                                                   bool
-		AvatarURL, ImageURL, ImageURLs                           string
-		Edited                                                   bool
-		VoiceURL                                                 string
-		Duration                                                 int32
-		IsE2EE                                                   bool
-	}
+	var res []MessageRow
 	for rows.Next() {
-		var r struct {
-			MessageID, Username                                      string
-			Encrypted                                                []byte
-			CreatedAt                                                time.Time
-			RepliedToMessageID, RepliedToUser, RepliedToText, RoomID string
-			IsRead                                                   bool
-			AvatarURL, ImageURL, ImageURLs                           string
-			Edited                                                   bool
-			VoiceURL                                                 string
-			Duration                                                 int32
-			IsE2EE                                                   bool
-		}
+		var r MessageRow
 		rows.Scan(&r.MessageID, &r.Username, &r.Encrypted, &r.CreatedAt, &r.RepliedToMessageID, &r.RepliedToUser, &r.RepliedToText, &r.RoomID, &r.IsRead, &r.AvatarURL, &r.ImageURL, &r.ImageURLs, &r.Edited, &r.VoiceURL, &r.Duration, &r.IsE2EE)
 		res = append(res, r)
 	}
@@ -1439,32 +1392,10 @@ func (db *DB) CleanupEmptyMessages() (int64, error) {
 	}
 	return res.RowsAffected()
 }
-func (db *DB) GetChatMessages(room string) ([]struct {
-	MessageID, Username                                      string
-	Encrypted                                                []byte
-	CreatedAt                                                time.Time
-	RepliedToMessageID, RepliedToUser, RepliedToText, RoomID string
-	IsRead                                                   bool
-	AvatarURL, ImageURL, ImageURLs                           string
-	Edited                                                   bool
-	VoiceURL                                                 string
-	Duration                                                 int32
-	IsE2EE                                                   bool
-}, error) {
+func (db *DB) GetChatMessages(room string) ([]MessageRow, error) {
 	return db.GetMessages(100, room)
 }
-func (db *DB) GetFavoritesMessages(uid string) ([]struct {
-	MessageID, Username                                      string
-	Encrypted                                                []byte
-	CreatedAt                                                time.Time
-	RepliedToMessageID, RepliedToUser, RepliedToText, RoomID string
-	IsRead                                                   bool
-	AvatarURL, ImageURL, ImageURLs                           string
-	Edited                                                   bool
-	VoiceURL                                                 string
-	Duration                                                 int32
-	IsE2EE                                                   bool
-}, error) {
+func (db *DB) GetFavoritesMessages(uid string) ([]MessageRow, error) {
 	return db.GetFavorites(uid)
 }
 func (db *DB) GetUserAvatarWithFullURL(user string) (string, string, error) {

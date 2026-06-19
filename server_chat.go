@@ -464,22 +464,30 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 				allUsers, err := s.db.GetAllUsers()
 				if err != nil {
 					logger.Errorf("Failed to get all users for push notifications: %v", err)
-				} else {
-					for _, user := range allUsers {
-						if user.Username == msg.User {
-							continue
-						}
-						if !participantSet[user.Username] {
-							continue
-						}
-
-						pushText := msg.Text
-						if chat.IsSecret {
-							pushText = "New encrypted message"
-						}
-						s.sendPushNotification(user.UserId, user.Username, msg.User, pushText, roomID)
+			} else {
+				var targets []pushTarget
+				for _, user := range allUsers {
+					if user.Username == msg.User {
+						continue
 					}
+					if !participantSet[user.Username] {
+						continue
+					}
+
+					targets = append(targets, pushTarget{
+						UserId:   user.UserId,
+						Username: user.Username,
+					})
 				}
+
+				if len(targets) > 0 {
+					pushText := msg.Text
+					if chat.IsSecret {
+						pushText = "New encrypted message"
+					}
+					s.sendBatchPushNotifications(targets, msg.User, pushText, roomID)
+				}
+			}
 			}
 		}
 	}

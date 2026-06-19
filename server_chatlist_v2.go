@@ -146,7 +146,7 @@ func (s *server) GetChatsV2(ctx context.Context, req *gen.GetChatsRequest) (*gen
 	username := req.GetUsername()
 	deviceID := GetDeviceID(ctx)
 	clientVer := s.hub.GetClientVersion(userID)
-	logger.Infof("GetChatsV2: user=%s v=%s device=%s", userID, clientVer, deviceID)
+	logger.Debugf("GetChatsV2: user=%s v=%s device=%s", userID, clientVer, deviceID)
 
 	// Resolve user ID from username if needed (v1 fallback)
 	if userID == "" && username != "" {
@@ -301,7 +301,7 @@ func (s *server) GetPinnedMessages(ctx context.Context, req *gen.GetPinnedMessag
 		return &gen.GetPinnedMessagesResponse{}, fmt.Errorf("user_id and chat_id are required")
 	}
 
-	pinnedRows, err := s.db.GetPinnedMessages(userID, chatID)
+	pinnedRows, err := s.db.GetPinnedMessages(userID, chatID, int(req.GetLimit()), int(req.GetOffset()))
 	if err != nil {
 		logger.Errorf("Failed to get pinned messages for user %s in chat %s: %v", userID, chatID, err)
 		return &gen.GetPinnedMessagesResponse{}, err

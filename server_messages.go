@@ -3,6 +3,7 @@ package main
 import (
 	"LavenderMessenger/gen"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -89,9 +90,9 @@ func (s *server) GetHistory(_ context.Context, req *gen.GetHistoryRequest) (*gen
 
 		e2eePayload := ""
 		if msgIsE2EE {
-			// For E2EE messages, encrypted_text already contains the client's base64-encoded payload
-			// Return it as-is — do NOT double-encode
-			e2eePayload = string(m.Encrypted)
+			// Server stores raw bytes of the base64-encoded ciphertext.
+			// Base64-encode on read to guarantee valid UTF-8 for proto string field.
+			e2eePayload = base64.StdEncoding.EncodeToString(m.Encrypted)
 		}
 
 		messages = append(messages, &gen.Message{
