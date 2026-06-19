@@ -47,132 +47,50 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 		}
 
 		// ===== Authentication =====
-		// First message with auth data (password OR jwt_token)
-		if !authDone && (msg.Password != "" || msg.JwtToken != "") {
+		// First message with JWT token (v2 auth only)
+		if !authDone && msg.JwtToken != "" {
 			var authSuccess bool
 			var authErr string
 
-			if msg.JwtToken != "" {
-				// ChatStream v2: JWT Bearer token auth
-				claims, err := ValidateToken(msg.JwtToken)
-				if err != nil {
-					authErr = fmt.Sprintf("JWT validation failed: %v", err)
-					authSuccess = false
-				} else if claims.Type != "access" {
-					authErr = "expected access token, got refresh token"
-					authSuccess = false
-				} else {
-					// JWT valid — extract user info
-					connectedUserID = claims.UserID
-					connectedUser = claims.Username
-
-					// Update hub
-					trimmedUser := strings.TrimSpace(connectedUser)
-					msg.User = trimmedUser
-					connectedUser = trimmedUser
-					s.hub.UpdateName(stream, trimmedUser)
-					s.hub.SetUserId(stream, connectedUserID)
-					s.hub.SetAuthenticated(stream, true)
-
-					authSuccess = true
-				}
-
-				if !authSuccess {
-					logger.Errorf("ChatStream v2 auth failed: %s", authErr)
-					authFailMsg := &gen.Message{
-						User:      "SYSTEM",
-						Text:      "AUTH_FAILED",
-						Id:        uuid.New().String(),
-						CreatedAt: timestamppb.Now(),
-					}
-					if err := stream.Send(authFailMsg); err != nil {
-						logger.Errorf("Failed to send auth failed message: %v", err)
-					}
-					return fmt.Errorf("authentication failed: %s", authErr)
-				}
+			// ChatStream v2: JWT Bearer token auth
+			claims, err := ValidateToken(msg.JwtToken)
+			if err != nil {
+				authErr = fmt.Sprintf("JWT validation failed: %v", err)
+				authSuccess = false
+			} else if claims.Type != "access" {
+				authErr = "expected access token, got refresh token"
+				authSuccess = false
 			} else {
-				// Deprecated: ChatStream v1 legacy password auth.
-				// Will be removed when all clients use v2 JWT auth.
-				trimmedUser := strings.TrimSpace(msg.User)
+				// JWT valid — extract user info
+				connectedUserID = claims.UserID
+				connectedUser = claims.Username
+
+				// Update hub
+				trimmedUser := strings.TrimSpace(connectedUser)
 				msg.User = trimmedUser
 				connectedUser = trimmedUser
-
-				// Check if user exists first
-				userExists, err := s.db.UserExists(msg.User)
-				if err != nil {
-					logger.Errorf("Failed to check user existence: %v", err)
-					return err
-				}
-
-				if userExists {
-					// User exists, verify password
-					storedHash, err := s.db.GetUserPasswordHash(msg.User)
-					if err != nil {
-						logger.Errorf("Failed to get password hash: %v", err)
-						return err
-					}
-
-					if !CheckPassword(msg.Password, storedHash) {
-						logger.Errorf("Auth failed: %s", msg.User)
-						authFailMsg := &gen.Message{
-							User:      "SYSTEM",
-							Text:      "AUTH_FAILED",
-							Id:        uuid.New().String(),
-							CreatedAt: timestamppb.Now(),
-						}
-						if err := stream.Send(authFailMsg); err != nil {
-							logger.Errorf("Failed to send auth failed message: %v", err)
-						}
-						return fmt.Errorf("authentication failed")
-					}
-				} else {
-					// User does not exist. Check if registration is requested.
-					if !msg.Register {
-						logger.Infof("Login attempt for non-existent user: %s", msg.User)
-						notFoundMsg := &gen.Message{
-							User:      "SYSTEM",
-							Text:      "USER_NOT_FOUND",
-							Id:        uuid.New().String(),
-							CreatedAt: timestamppb.Now(),
-						}
-						if err := stream.Send(notFoundMsg); err != nil {
-							logger.Errorf("Failed to send user not found message: %v", err)
-						}
-						return fmt.Errorf("user not found")
-					}
-
-					// New user, hash password and create
-					passwordHash, err := HashPassword(msg.Password)
-					if err != nil {
-						logger.Errorf("Failed to hash password: %v", err)
-						return err
-					}
-
-					err = s.db.SaveUser(msg.User, passwordHash)
-					if err != nil {
-						logger.Errorf("Failed to save user: %v", err)
-						return err
-					}
-					logger.Infof("Registered new user: %s", msg.User)
-
-					regMsg := &gen.Message{
-						User:      "SYSTEM",
-						Text:      "REGISTRATION_SUCCESS",
-						Id:        uuid.New().String(),
-						CreatedAt: timestamppb.Now(),
-					}
-					if err := stream.Send(regMsg); err != nil {
-						logger.Errorf("Failed to send registration success message: %v", err)
-					}
-				}
-
-				// v1 auth success
-				s.hub.UpdateName(stream, msg.User)
+				s.hub.UpdateName(stream, trimmedUser)
+				s.hub.SetUserId(stream, connectedUserID)
 				s.hub.SetAuthenticated(stream, true)
+
 				authSuccess = true
 			}
 
-			// Common post-auth setup (both v1 and v2)
+			if !authSuccess {
+				logger.Errorf("ChatStream auth failed: %s", authErr)
+				authFailMsg := &gen.Message{
+					User:      "SYSTEM",
+					Text:      "AUTH_FAILED",
+					Id:        uuid.New().String(),
+					CreatedAt: timestamppb.Now(),
+				}
+				if err := stream.Send(authFailMsg); err != nil {
+					logger.Errorf("Failed to send auth failed message: %v", err)
+				}
+				return fmt.Errorf("authentication failed: %s", authErr)
+			}
+
+			// Post-auth setup
 			authDone = true
 
 			// Clear grace period on successful reconnect
@@ -184,29 +102,12 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 				connectedUserID = uid
 			}
 
-			// Single unified log for successful auth
-			authMethod := "v2 (JWT)"
-			if msg.JwtToken == "" {
-				authMethod = "v1 (password)"
-			}
+			// Log successful auth
 			clientVer := msg.ClientVersion
 			if clientVer == "" {
 				clientVer = s.hub.GetClientVersion(connectedUserID)
 			}
-			logger.Infof("Auth success: %s (%s) v=%s device=%s signal=%s", connectedUser, authMethod, clientVer, msg.DeviceId, msg.RoomId)
-
-			// v1 auth deprecated warning — only for password auth
-			if msg.JwtToken == "" {
-				deprecatedMsg := &gen.Message{
-					User:      "SYSTEM",
-					Text:      "DEPRECATED: AuthService v1 is deprecated. Please upgrade to v2 (JWT).",
-					Id:        uuid.New().String(),
-					CreatedAt: timestamppb.Now(),
-				}
-				if err := stream.Send(deprecatedMsg); err != nil {
-					logger.Errorf("Failed to send deprecated warning: %v", err)
-				}
-			}
+			logger.Infof("Auth success: %s (JWT) v=%s device=%s signal=%s", connectedUser, clientVer, msg.DeviceId, msg.RoomId)
 
 			// Update last client version and last seen timestamp in DB
 			if msg.ClientVersion != "" {

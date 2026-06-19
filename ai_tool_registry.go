@@ -26,6 +26,7 @@ func NewToolRegistry(db *sql.DB) *ToolRegistry {
 	r.Register(&webSearchTool{})
 	r.Register(&webFetchTool{})
 	r.Register(&getChatInfoTool{db: db})
+	r.Register(&queryDatabaseTool{db: db})
 	return r
 }
 

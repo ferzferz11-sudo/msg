@@ -178,7 +178,7 @@ func main() {
 	// Register our chat service with the gRPC server
 	gen.RegisterChatServiceServer(s, srv)
 
-	// Register Auth Service (v1 legacy + v2 JWT)
+	// Register Auth Service (v2 JWT)
 	authServer := newAuthServerV2(db)
 	gen.RegisterAuthServiceServer(s, authServer)
 

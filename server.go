@@ -33,17 +33,13 @@ import (
 const ServerVersion = "1.3.0.0"
 
 // Service versions for client capability negotiation.
-// ProfileServiceVersion is set dynamically in main() based on appEnv:
-//
-//	dev  → "2.0" (ProfileService v2 registered)
-//	prod → "1.0" (no ProfileService v2, profile ops via ChatService)
+// Service versions for client capability negotiation.
 const (
-	AuthServiceVersion    = "2.0" // AuthService v2 (JWT) — current
-	ChatServiceVersion    = "2.0" // ChatService v2: Bearer token in Chat stream + Pin/Mute/Search/Read
-	ProfileServiceVersion = "2.0" // ProfileService v2 (JWT) — dev only, prod uses v1 via ChatService
-	AIServiceVersion      = "2.0"
-	FileServiceVersion    = "1.0"
-	PushServiceVersion    = "1.0"
+	AuthServiceVersion = "2.0" // AuthService v2 (JWT) — current
+	ChatServiceVersion = "2.0" // ChatService v2: Bearer token in Chat stream + Pin/Mute/Search/Read
+	AIServiceVersion   = "2.0"
+	FileServiceVersion = "1.0"
+	PushServiceVersion = "1.0"
 )
 
 // ProfileServiceVersion is set in main() — "2.0" on dev, "1.0" on prod.

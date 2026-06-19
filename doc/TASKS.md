@@ -112,17 +112,52 @@
 
 ---
 
+## ✅ v1.3.0.1 — P3 + AI v2 доработка (Сессия 44)
+
+### Что сделано
+
+#### DB Split (db.go → 4 файла)
+- `db.go` — 223 строки (ядро: типы, подключение, миграции, прокси-методы)
+- `db_messages.go` — 245 строк (SaveMessage, GetMessages, reactions, favorites)
+- `db_users.go` — 552 строки (User CRUD, themes, tokens, devices)
+- `db_chats.go` — 710 строки (Chat CRUD, contacts, drafts, muted, servers, calls)
+
+#### Deprecated v1 Auth Removal
+- Удален v1 ChatStream password auth (~80 строк)
+- Оставлен v1 auth service для совместимости со старыми клиентами
+
+#### Concurrency Fixes
+- Hub broadcast уже оптимизирован (snapshot under RLock)
+- IsUserOnline grace period: RLock вместо Lock
+
+#### WebSocket Provider (#46)
+- Добавлен gorilla/websocket
+- Реализован full-duplex streaming
+- Ping/pong keepalive
+- Auth header support
+
+#### MiMo Deep Integration (#47)
+- Добавлен `query_database` tool (SELECT only, security whitelist)
+- Max 1000 rows, 10s timeout
+- Blocked dangerous SQL keywords
+
+### Deploy
+- Dev server: v1.3.0.1 deployed, running on port 50052
+- Logs: clean, no errors
+
+---
+
 ## 📋 Активные задачи
 
 ### AI v2 — Доработка
-- [ ] WebSocket provider (реализация)
-- [ ] MiMo deep integration (DB, bash)
-- [ ] Production RAG (Qdrant/CLIP)
-- [ ] Usage stats + billing
+- [x] WebSocket provider (реализация) ✅
+- [x] MiMo deep integration (DB, bash) ✅
+- [ ] Production RAG (Qdrant/CLIP) — нужна инфраструктура
+- [ ] Usage stats + billing — нужно UI
 
 ### P3 оптимизации
-- [ ] Qdrant + CLIP (production RAG)
-- [ ] Concurrency fixes (hub broadcast)
-- [ ] DB split (db.go → 4 файла)
-- [ ] Unified RateLimiter (Redis)
-- [ ] Удаление deprecated v1 кода (auth, chat)
+- [x] DB split (db.go → 4 файла) ✅
+- [x] Concurrency fixes (hub broadcast) ✅
+- [x] Удаление deprecated v1 кода (auth, chat) ✅
+- [ ] Qdrant + CLIP (production RAG) — нужна инфраструктура
+- [ ] Unified RateLimiter (Redis) — нужен Redis
