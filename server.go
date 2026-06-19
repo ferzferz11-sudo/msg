@@ -16,7 +16,7 @@
 //   server_drafts.go    — GetFCMLogs, SaveDraft, GetDraft, DeleteDraft
 //   server_muted.go     — GetMutedChats, SetMutedChat
 //   server_favorites.go — GetUserId, AddFavorite, RemoveFavorite, GetFavorites
-//   server_ai.go        — ChatWithOWL, ChatWithAI, ChatWithOrchestrator, Hermes sessions, etc.
+//   server_ai_v2.go     — AI Services v2: ChatWithAIV2, Agent CRUD, ListTools
 
 package main
 
@@ -32,7 +32,11 @@ import (
 
 const ServerVersion = "1.3.0.0"
 
-// Service versions for client capability negotiation
+// Service versions for client capability negotiation.
+// ProfileServiceVersion is set dynamically in main() based on appEnv:
+//
+//	dev  → "2.0" (ProfileService v2 registered)
+//	prod → "1.0" (no ProfileService v2, profile ops via ChatService)
 const (
 	AuthServiceVersion    = "2.0" // AuthService v2 (JWT) — current
 	ChatServiceVersion    = "2.0" // ChatService v2: Bearer token in Chat stream + Pin/Mute/Search/Read
@@ -41,6 +45,9 @@ const (
 	FileServiceVersion    = "1.0"
 	PushServiceVersion    = "1.0"
 )
+
+// ProfileServiceVersion is set in main() — "2.0" on dev, "1.0" on prod.
+var ProfileServiceVersion = "1.0"
 
 // server implements the gRPC ChatService interface
 type server struct {
