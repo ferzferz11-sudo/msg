@@ -1,353 +1,90 @@
-# Lavender Messenger — План оптимизации v1.2.0.7
+# Lavender Messenger — План оптимизации
 
-**Дата:** 2026-06-19 | **Версия сервера:** 1.2.0.9 | **Ветка:** feat/1.2.0.x
-
-Анализ текущей кодовой базы с учётом обратной совместимости со старыми клиентами.
-
-**Принцип:** все оптимизации обратно совместимы — ни один gRPC метод, ни одно поле proto не меняются. Изменения только на уровне серверной реализации.
+**Версия сервера:** 1.2.0.11 | **Дата:** 2026-06-19 | **Ветка:** feat/1.2.0.x
 
 ---
 
-## P0 — Критические (латентность / утечки памяти)
+## Выполнено (29/35)
 
-### 1. Push notification N+1 петля — O(N) запросов на сообщение
+### P0 — Критические ✅ 8/8 (v1.2.0.8)
 
-**Файл:** `server_chat.go:440-484`
+| # | Что | Файл |
+|---|-----|------|
+| 1 | Push N+1 → batch `SendEachForMulticast` | `server_push.go` |
+| 2 | Broadcast deadlock → snapshot under lock | `hub.go` |
+| 3 | isChatMuted N+1 → `getMutedRoomsSet()` batch | `db_chatlist_v2.go` |
+| 4 | Hermes sessions TTL cleanup + 50 msg cap | `hermes_orchestrator.go` |
+| 5 | recentMsgs cleanup goroutine | `server_chat.go` |
+| 6 | OWL response saved to DB | `server_ai.go` |
+| 7 | `io.LimitReader(10MB)` for OpenRouter | `owl.go` |
+| 8 | JWT secret cached via `sync.Once` | `auth_jwt.go` |
 
-**Проблема:** При каждом отправленном сообщении:
-1. `GetAllUsers()` — загружает ВСЕХ пользователей из БД
-2. Для каждого — `GetChat(roomID)` — один и тот же чат N раз
-3. Для каждого участника — `sendPushNotification` с DB-запросом
+### P1 — Важные ✅ 10/10 (v1.2.0.10)
 
-**Решение:**
-- Запрашивать участников чата ОДИН раз: `SELECT user_id FROM ... WHERE room_id = $1`
-- `GetChat(roomID)` вынести ДО цикла
-- Пакетная отправка через FCM `SendEachForMulticast` (до 500 токенов за вызов)
+| # | Что | Файл |
+|---|-----|------|
+| 9 | FCM batching + retry + invalid token cleanup | `server_push.go` |
+| 10 | Rate limiter cleanup goroutine | `owl.go` |
+| 11 | device_auth_log TTL (90d) | `db_auth_devices.go` |
+| 12 | ResolveUserID cache (TTL 5min) | `auth_interceptor.go` |
+| 13 | backfillLastMessageText SQL parentheses fix | `db.go` |
+| 14 | backfillLastMessageText N+1 → JOIN LATERAL | `db.go` |
+| 15 | IncrementParticipantsChatListVersion → UUID[] unnest | `db.go` |
+| 16 | Stream interceptor username/device_id injection | `auth_interceptor.go` |
+| 17 | getAIChatManager sync.Once | `server_ai.go` |
+| 18 | PinMessage LIKE → UUID[] | `db_chatlist_v2.go` |
 
-**Совместимость:** ✅ Нет изменений API
+### P2 — Улучшения ✅ 9/11 (v1.2.0.11)
 
----
+| # | Что | Файл |
+|---|-----|------|
+| 19 | MessageRow: 10 anonymous copies → 1 named type | `db.go` |
+| 20 | SaveMessage: 3 round-trips → 1 transaction | `db.go` |
+| 21 | MarkReadAndCheck: UPDATE+INSERT (PK migration pending) | `db.go` |
+| 22 | owl.go ctx.Err() check | `owl.go` |
+| 23 | main.go goroutine leak fix | `main.go` |
+| 24 | gRPC GracefulStop 30s timeout | `main.go` |
+| 25 | DB pool MaxIdleConns=15, ConnMaxIdleTime=5m | `db.go` |
+| 26 | messages(username, created_at) index | `db.go` |
+| 27 | PinMessage pagination (limit/offset) | `db_chatlist_v2.go` |
+| 29 | IsUserOnline O(1) reverse map | `hub.go` |
 
-### 2. Broadcast блокирует все потоки при медленном клиенте
+### P3 — Частично ✅ 2/6
 
-**Файл:** `hub.go:296-317`
-
-**Проблема:** `Broadcast` держит `RLock` во время `stream.Send()`. Если один клиент медленный — блокируются ВСЕ остальные в комнате + любой `Register/Unregister` ждёт.
-
-**Решение:** Snapshot под локом → релиз лока → отправка без лока:
-```go
-h.mu.RLock()
-var targets []gen.ChatService_ChatServer
-for s, room := range h.rooms {
-    if room == roomID { targets = append(targets, s) }
-}
-h.mu.RUnlock()
-for _, s := range targets { go s.Send(msg) }
-```
-
-**Совместимость:** ✅
-
----
-
-### 3. isChatMuted N+1 — 100 запросов на загрузку чатов
-
-**Файл:** `db_chatlist_v2.go:174, 266`
-
-**Проблема:** `isChatMuted()` вызывается для каждого чата в цикле — отдельный SELECT на каждый. При 100 чатах = 100 запросов.
-
-**Решение:** Batch-загрузка перед циклом:
-```go
-mutedSet := db.getMutedRoomsSet(userID) // один SELECT
-// в цикле: c.IsMuted = mutedSet[c.ID]
-```
-
-**Совместимость:** ✅
+| # | Что | Статус |
+|---|-----|--------|
+| 35 | Пагинация GetAllUsers/GetAllChats/GetContacts/GetFavorites | ✅ Done (v1.2.0.11) |
 
 ---
 
-### 4. Unbounded сессии Hermes — утечка памяти
+## Осталось (6/35)
 
-**Файл:** `hermes_orchestrator.go:42, 107`
+### P2
 
-**Проблема:** `o.sessions map` растёт бесконечно. Каждый пользователь = навсегда в памяти. `Messages` тоже растёт без лимита.
+| # | Что | Сложность | Блокировка |
+|---|-----|-----------|------------|
+| 28 | Proto reserved fields (password, register) | Низкая | v1 auth ещё используется клиентами |
 
-**Решение:**
-- TTL-очистка: каждые 5 минут удалять сессии с `LastActivity` > 30 минут
-- Лимит `Messages`: хранить последние 50 сообщений
-- Периодический cleanup goroutine
+### P3
 
-**Совместимость:** ✅
-
----
-
-### 5. recentMsgs sync.Map — утечка памяти
-
-**Файл:** `server_chat.go:262-270`
-
-**Проблема:** `recentMsgs.Store()` без удаления. Карта растёт бесконечно.
-
-**Решение:** Cleanup в broadcast goroutine:
-```go
-s.recentMsgs.Range(func(k, v) bool {
-    if time.Since(v.(time.Time)) > 10*time.Second { s.recentMsgs.Delete(k) }
-    return true
-})
-```
-
-**Совместимость:** ✅
+| # | Что | Сложность | Причина |
+|---|-----|-----------|---------|
+| 30 | Qdrant + CLIP (production RAG) | Высокая | Нужна инфраструктура |
+| 31 | Concurrency fixes (hermes lock, hub broadcast) | Средняя | Требует анализа contention |
+| 32 | DB split (db.go → 4 файла) | Низкая | Читаемость (~1800 строк) |
+| 33 | Unified RateLimiter (Redis) | Средняя | Нужен Redis |
+| 34 | Удаление deprecated v1 кода | Низкая | ~500 строк, клиенты не обновились |
 
 ---
 
-### 6. OWL ответ не сохраняется — сломана история
-
-**Файл:** `server_ai.go:175-177`
-
-**Проблема:** TODO не реализован. User-сообщения сохраняются, ответы OWL — нет. `GetAIChatHistory` показывает только входящие.
-
-**Решение:** Собирать токены из стрима и сохранять после завершения.
-
-**Совместимость:** ✅
-
----
-
-### 7. io.ReadAll без лимита — OOM risk
-
-**Файл:** `owl.go:188-191`
-
-**Проблема:** `io.ReadAll(resp.Body)` читает весь ответ без ограничения. Ошибка OpenRouter может вернуть гигантский HTML.
-
-**Решение:** `io.ReadAll(io.LimitReader(resp.Body, 10*1024*1024))`
-
-**Совместимость:** ✅
-
----
-
-### 8. getJWTSecret() вызывает os.Getenv на каждый запрос
-
-**Файл:** `auth_jwt.go:28`
-
-**Проблема:** `os.Getenv` — lock-protected map lookup + copy на КАЖДОЙ валидации токена.
-
-**Решение:** Кэшировать через `sync.Once` при старте.
-
-**Совместимость:** ✅
-
----
-
-## P1 — Важные (производительность / долгосрочные утечки)
-
-### 9. ✅ FCM batching + retry (РЕАЛИЗОВАНО)
-
-**Файл:** `server_push.go`, `server_chat.go`
-
-**Решение:**
-- `sendBatchPushNotifications()` — батчинг через `SendEachForMulticast` (до 500 токенов)
-- Exponential backoff retry (до 3 попыток) для UNAVAILABLE/RESOURCE_EXHAUSTED
-- Автоудаление невалидных токенов (`UNREGISTERED`/`INVALID_ARGUMENT`)
-
-**Совместимость:** ✅
-
----
-
-### 10. ✅ Rate limiter cleanup (РЕАЛИЗОВАНО)
-
-**Файл:** `owl.go`
-
-**Решение:** Периодическая очистка stale entries каждые 10 минут через `cleanup()` метод.
-
----
-
-### 11. ✅ device_auth_log TTL (РЕАЛИЗОВАНО)
-
-**Файл:** `db_auth_devices.go`
-
-**Решение:** `CleanupDeviceAuthLog()` — удаление записей >90 дней + деактивация истёкших устройств. Cron каждые 24ч.
-
----
-
-### 12. ✅ ResolveUserID cache (РЕАЛИЗОВАНО)
-
-**Файл:** `auth_interceptor.go`
-
-**Решение:** In-memory cache с TTL 5 минут для `username → UUID`.
-
----
-
-### 13. ✅ backfillLastMessageText SQL fix (РЕАЛИЗОВАНО)
-
-**Файл:** `db.go:223-227`
-
-**Решение:** Добавлены скобки для корректного приоритета операторов.
-
----
-
-### 14. backfillLastMessageText — N+1 при старте
-
-**Файл:** `db.go:220-286`
-
-**Проблема:** На каждый старт — цикл с SELECT + UPDATE на каждый чат.
-
-**Решение:** Один SQL через CTE/DISTINCT ON.
-
-**Совместимость:** ✅
-
----
-
-### 15. ✅ IncrementParticipantsChatListVersion → UUID[] (РЕАЛИЗОВАНО)
-
-**Файл:** `db.go:1095-1098`
-
-**Решение:** `WHERE id IN (SELECT unnest(participant_ids) FROM chats WHERE id=$1)`
-
----
-
-### 16. ✅ Stream interceptor username/device_id injection (РЕАЛИЗОВАНО)
-
-**Файл:** `auth_interceptor.go:82-88`
-
-**Решение:** `usernameKey` и `deviceIDKey` добавлены в stream context.
-
----
-
-### 17. ✅ getAIChatManager sync.Once (РЕАЛИЗОВАНО)
-
-**Файл:** `server_ai.go:15-20`
-
-**Решение:** `sync.Once` для thread-safe lazy initialization.
-
----
-
-### 18. ✅ PinMessage — LIKE → UUID[] (РЕАЛИЗОВАНО)
-
-**Файл:** `db_chatlist_v2.go:238`
-
-**Решение:** `participant_ids @> ARRAY[$1::uuid]` (GIN индекс уже есть).
-
----
-
-## P2 — Улучшения (код / надёжность)
-
-### 19. ✅ Duplicated MessageRow struct (РЕАЛИЗОВАНО)
-
-**Файл:** `db.go`
-
-**Решение:** Вынесен `type MessageRow struct` один раз, все 10 анонимных копий заменены.
-
----
-
-### 20. ✅ SaveMessage — 3 DB round-trips → транзакция (РЕАЛИЗОВАНО)
-
-**Файл:** `db.go`
-
-**Решение:** INSERT + IncrementParticipantsChatListVersion + UPDATE chats объединены в одну транзакцию.
-
----
-
-### 21. MarkReadAndCheck — UPDATE + conditional INSERT
-
-**Файл:** `db.go:880-913`
-
-**Проблема:** READ-then-WRITE вместо UPSERT.
-
-**Решение:** `INSERT ... ON CONFLICT DO UPDATE`.
-
-**Совместимость:** ✅
-
-**Примечание:** Отложено — PK таблицы `user_chat_metadata` мигрирован на `(user_id, room_id)`, но MarkReadAndCheck работает с `username`. Требует миграции на user_id перед UPSERT.
-
----
-
-### 22. ✅ owl.go — context cancellation в стриме (РЕАЛИЗОВАНО)
-
-**Файл:** `owl.go`
-
-**Решение:** `ctx.Err()` check в read loop SSE reader.
-
----
-
-### 23. ✅ main.go — goroutine leak при shutdown (РЕАЛИЗОВАНО)
-
-**Файл:** `main.go`
-
-**Решение:** `context.WithCancel` + `cancel()` в shutdown handler. Все periodic goroutines используют ticker + select с ctx.Done().
-
----
-
-### 24. ✅ main.go — gRPC GracefulStop 30s timeout (РЕАЛИЗОВАНО)
-
-**Файл:** `main.go:240-245`
-
-**Решение:** Timeout goroutine → `s.Stop()` через 30 секунд.
-
----
-
-### 25. ✅ DB connection pool (РЕАЛИЗОВАНО)
-
-**Файл:** `db.go:31-33`
-
-**Решение:** `MaxIdleConns=15`, `ConnMaxIdleTime=5*time.Minute`.
-
----
-
-### 26. ✅ messages(username, created_at) index (РЕАЛИЗОВАНО)
-
-**Файл:** `db.go`
-
-**Решение:** `CREATE INDEX idx_messages_username_time ON messages(username, created_at)` добавлен в миграции.
-
----
-
-### 27. ✅ PinMessage — пагинация (РЕАЛИЗОВАНО)
-
-**Файл:** `db_chatlist_v2.go`, `messenger.proto`
-
-**Решение:** Добавлены `limit`/`offset` в `GetPinnedMessagesRequest`, SQL использует `LIMIT/OFFSET`.
-
-**Совместимость:** ✅ (старые клиенты игнорируют новые optional поля)
-
----
-
-### 28. Proto — reserved поля
-
-**Файл:** `messenger.proto`
-
-**Проблема:** При удалении deprecated полей номера могут быть переназначены.
-
-**Решение:** Отложено — `password` и `register` поля всё ещё используются в v1 legacy auth. Добавлены комментарии `deprecated` вместо `reserved`.
-
-**Совместимость:** ✅
-
----
-
-### 29. ✅ IsUserOnline — O(1) reverse map (РЕАЛИЗОВАНО)
-
-**Файл:** `hub.go`
-
-**Решение:** `userIdSet` и `usernameSet` map для O(1) lookup. Поддерживаются при Register/Unregister/SetUserId/UpdateName.
-
----
-
-## P3 — Отложено (крупные изменения)
-
-| # | Что | Сложность | Зачем |
-|---|-----|-----------|-------|
-| 30 | Qdrant + CLIP (production RAG) | Высокая | Мультимодальные эмбеддинги вместо in-memory TF-IDF |
-| 31 | Concurrency fixes (hermes_orchestrator lock, hub broadcast) | Средняя | Сократить contention |
-| 32 | DB split (db.go → 4 файла) | Низкая | Читаемость (1819 строк) |
-| 33 | Unified RateLimiter (Redis) | Средняя | Multi-instance, persistence |
-| 34 | Удаление deprecated v1 кода | Низкая | ~500 строк мёртвого кода |
-| 35 | Пагинация GetAllUsers/GetAllChats/GetContacts/GetFavorites | Низкая | Масштабируемость |
-
----
-
-## Итого: 35 оптимизаций
+## Итого
 
 | Приоритет | Кол-во | Статус |
 |-----------|--------|--------|
-| **P0** | 8 | ✅ Все сделаны (v1.2.0.8) |
-| **P1** | 10 | ✅ Все сделаны (v1.2.0.10) |
-| **P2** | 11 | 8 сделано, 3 осталось |
-| **P3** | 6 | Отложено |
-| **Итого** | **35** | **26 сделано, 9 осталось** |
+| **P0** | 8 | ✅ 8/8 |
+| **P1** | 10 | ✅ 10/10 |
+| **P2** | 11 | ✅ 9/11 |
+| **P3** | 6 | 1/6 |
+| **Итого** | **35** | **29/35** |
 
-Все P0-P2 оптимизации обратно совместимы — старые клиенты продолжат работать без изменений.
+Все реализованные оптимизации обратно совместимы — старые клиенты продолжат работать.
