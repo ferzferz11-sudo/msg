@@ -199,6 +199,7 @@ func main() {
 	if appEnv == "dev" {
 		profileServer := newProfileServerV2(db)
 		gen.RegisterProfileServiceServer(s, profileServer)
+		ProfileServiceVersion = "2.0"
 		logger.Info("ProfileService v2 registered (dev)")
 	}
 
