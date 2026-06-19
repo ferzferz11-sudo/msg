@@ -236,7 +236,12 @@ func main() {
 			}
 		}
 
-		// Shutdown gRPC server
+		// Shutdown gRPC server with timeout
+		go func() {
+			time.Sleep(30 * time.Second)
+			logger.Warn("Forcing gRPC shutdown after 30s timeout")
+			s.Stop()
+		}()
 		s.GracefulStop()
 	}()
 
