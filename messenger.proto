@@ -5,6 +5,9 @@ option go_package = "./gen";
 import "google/protobuf/timestamp.proto";
 
 message Message {
+  reserved 6, 19;
+  reserved "password", "register";
+
   string id = 1;
   string user = 2;
   string text = 3;

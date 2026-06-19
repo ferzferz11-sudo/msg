@@ -1,5 +1,15 @@
 # Лава — Server Changelog
 
+## [1.2.0.11] - 2026-06-19
+
+### Оптимизация
+- **db.go** — добавлен индекс `idx_messages_username_time ON messages(username, created_at)` для ускорения запросов по пользователю и времени
+
+### Безопасность
+- **messenger.proto** — добавлены `reserved 6, 19; reserved "password", "register"` в Message для предотвращения повторного использования удалённых deprecated полей
+
+---
+
 ## [1.2.0.10] - 2026-06-19
 
 ### Исправления (E2EE)

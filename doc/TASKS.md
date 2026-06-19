@@ -1,12 +1,21 @@
 # Лава — Задачи
 
-**Версия:** v1.2.0.9
+**Версия:** v1.2.0.11
 **Ветка:** feat/1.2.0.x
 **Обновлено:** 2026-06-19
 
 ---
 
-## ✅ v1.2.0.7 — UserInfo fields + deploy script (Сессия 39)
+## ✅ v1.2.0.11 — DB Index + Proto Reserved (Cron session)
+
+- ✅ ServerVersion: 1.2.0.10 → 1.2.0.11
+- ✅ db.go: добавлен индекс `idx_messages_username_time ON messages(username, created_at)`
+- ✅ messenger.proto: добавлены reserved поля (6, 19, "password", "register") в Message
+- ✅ CHANGELOG.md обновлён
+
+---
+
+## ✅ v1.2.0.10 — E2EE Secret Chat Fixes (Сессия 42)
 
 - ✅ UserInfo: `user_id` (UUID) + `is_super_admin` (bool) в GetAllUsers
 - ✅ GetAllUsers SQL: возвращает `is_super_admin`
