@@ -29,13 +29,6 @@ import (
 
 var firebaseApp *firebase.App
 
-// OWL AI assistant globals
-var (
-	owlRateLimiter   *rateLimiter
-	owlSessions      *owlSessionManager
-	hermesSettings   *hermesSettingsManager
-)
-
 // main is the entry point of the Lavender messaging server application
 // It initializes all necessary components: environment variables, database connection,
 // gRPC server, and starts listening for client connections
@@ -156,26 +149,24 @@ func main() {
 	}
 	srv.hub = NewHub(srv.broadcastOnlineUsers) // Hub manages all active client connections
 
-	// Initialize OWL (AI assistant)
-	owlRateLimiter = newRateLimiter(10, time.Minute)
-	owlSessions = newOwlSessionManager(db.DB, 50)
-	hermesSettings = newHermesSettingsManager(db.DB)
-	logger.Info("OWL AI assistant initialized (rate limit: 10 req/min, history: 50 msgs, DB-backed)")
-
-	// Initialize AI Chat Manager (unified for OWL + Hermes)
-	aiChatManager := NewAIChatManager(db.DB)
-	srv.aiChatManager = aiChatManager
-	logger.Info("AI Chat Manager initialized (unified sessions, messages, settings)")
-
-	// Initialize Hermes Multi-Agent Orchestrator
-	hermesRegistry := NewAgentRegistry(db.DB)
+	// Initialize Hermes DB
 	srv.hermesDB = NewHermesDB(db.DB)
-	orchestrator := NewOrchestrator(hermesRegistry, db.DB, os.Getenv("OPENROUTER_API_KEY"), os.Getenv("OPENROUTER_MODEL"))
-	srv.hermesOrchestrator = orchestrator
-	logger.Infof("Hermes Orchestrator initialized with %d agents", len(hermesRegistry.GetAll()))
+	srv.remoteAgentManager = &RemoteAgentManager{agents: make(map[string]*RemoteAgent)}
+
+	// Initialize AI Gateway v2
+	srv.aiGateway = NewAIGateway(db.DB)
+	logger.Info("AI Gateway v2 initialized")
 
 	// Run Hermes DB migrations
 	runHermesMigrations(db.DB)
+
+	// Drop old AI v1 tables and create v2 tables
+	DropOldAIV1(db.DB)
+	if err := MigrateAIV2(db.DB); err != nil {
+		logger.Errorf("Failed to migrate AI v2 tables: %v", err)
+	} else {
+		logger.Info("AI v2 tables ready")
+	}
 
 	// Create/migrate auth v2 tables (user_devices, device_auth_log)
 	if err := db.MigrateDeviceTables(); err != nil {
@@ -192,7 +183,7 @@ func main() {
 	gen.RegisterAuthServiceServer(s, authServer)
 
 	// Register Hermes Agent Service (for hermes-agent daemon connections)
-	hermesAgentServer := newHermesAgentServer(srv, orchestrator)
+	hermesAgentServer := newHermesAgentServer(srv, &Orchestrator{remoteManager: srv.remoteAgentManager})
 	hermesagent.RegisterHermesAgentServiceServer(s, hermesAgentServer)
 
 	// Register ProfileService v2 (JWT-only, dev server only)
@@ -241,20 +232,6 @@ func main() {
 				return
 			case <-ticker.C:
 				srv.db.CleanupDeviceAuthLog()
-			}
-		}
-	}()
-
-	// Periodic rate limiter cleanup (every 10 minutes)
-	go func() {
-		ticker := time.NewTicker(10 * time.Minute)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-ticker.C:
-				owlRateLimiter.cleanup()
 			}
 		}
 	}()

@@ -25,12 +25,9 @@ import (
 // 3. Логирование: каждая операция логируется с контекстом (taskID, agentID)
 // ============================================================================
 
-// remoteManager возвращает RemoteAgentManager из оркестратора.
+// remoteManager возвращает RemoteAgentManager из сервера.
 func (s *server) remoteManager() *RemoteAgentManager {
-	if s.hermesOrchestrator == nil {
-		return nil
-	}
-	return s.hermesOrchestrator.remoteManager
+	return s.remoteAgentManager
 }
 
 // ----------------------------------------------------------------------------

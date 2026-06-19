@@ -5,9 +5,6 @@ option go_package = "./gen";
 import "google/protobuf/timestamp.proto";
 
 message Message {
-  reserved 6, 19;
-  reserved "password", "register";
-
   string id = 1;
   string user = 2;
   string text = 3;
@@ -778,6 +775,16 @@ service ChatService {
   rpc GetFreeModels(GetFreeModelsRequest) returns (GetFreeModelsResponse);
   rpc SetFreeModel(SetFreeModelRequest) returns (SetFreeModelResponse);
   rpc RemoveFreeModel(RemoveFreeModelRequest) returns (RemoveFreeModelResponse);
+
+  // === AI Services v2 ===
+  rpc ChatWithAIV2(ChatWithAIV2Request) returns (stream ChatWithAIV2Response);
+  rpc CreateAIAgent(CreateAIAgentRequest) returns (CreateAIAgentResponse);
+  rpc UpdateAIAgent(UpdateAIAgentRequest) returns (UpdateAIAgentResponse);
+  rpc DeleteAIAgent(DeleteAIAgentRequest) returns (DeleteAIAgentResponse);
+  rpc GetAIAgent(GetAIAgentRequest) returns (GetAIAgentResponse);
+  rpc ListAIAgents(ListAIAgentsRequest) returns (ListAIAgentsResponse);
+  rpc CloneAIAgent(CloneAIAgentRequest) returns (CloneAIAgentResponse);
+  rpc ListAITools(ListAIToolsRequest) returns (ListAIToolsResponse);
 }
 
 // ======= AI Pipeline Messages =======
@@ -1608,6 +1615,159 @@ message UpdateUserSettingsRequest {
 message UpdateUserSettingsResponse {
   bool success = 1;
   string message = 2;
+}
+
+// ======= AI Services v2 Messages =======
+
+message ChatWithAIV2Request {
+  string session_id = 1;                // empty = create new chat
+  string message = 2;
+  repeated bytes images = 3;            // base64 images for multimodal
+  string agent_id = 4;                  // force specific agent
+  repeated ToolCallV2 tool_calls = 5;   // client-side tool results (for agentic loop)
+}
+
+message ChatWithAIV2Response {
+  string token = 1;
+  bool finished = 2;
+  string error = 3;
+  string agent_id = 4;                  // which agent answered
+  string agent_name = 5;                // display name
+  repeated ToolCallRequestV2 tool_calls = 6;  // tool execution requests
+  bool has_rag_context = 7;
+  string model_used = 8;
+  int32 token_count = 9;
+}
+
+message ToolCallV2 {
+  string id = 1;
+  string name = 2;
+  string arguments = 3;     // JSON string
+  string result = 4;
+}
+
+message ToolCallRequestV2 {
+  string id = 1;
+  string name = 2;
+  string arguments = 3;     // JSON Schema
+}
+
+message CreateAIAgentRequest {
+  string name = 1;
+  string description = 2;
+  string provider_type = 3;    // openrouter, mimo, webhook, websocket, subprocess, mcp
+  string provider_config = 4;  // JSON string
+  string system_prompt = 5;
+  string model = 6;
+  int32 max_tokens = 7;
+  float temperature = 8;
+  bool tools_enabled = 9;
+  repeated string tool_whitelist = 10;
+  bool rag_enabled = 11;
+  string rag_config = 12;      // JSON string
+  int32 rate_limit = 13;
+  bool is_public = 14;
+}
+
+message CreateAIAgentResponse {
+  bool success = 1;
+  string agent_id = 2;
+  string error = 3;
+}
+
+message UpdateAIAgentRequest {
+  string agent_id = 1;
+  string name = 2;
+  string description = 3;
+  string provider_config = 4;
+  string system_prompt = 5;
+  string model = 6;
+  int32 max_tokens = 7;
+  float temperature = 8;
+  bool tools_enabled = 9;
+  repeated string tool_whitelist = 10;
+  bool rag_enabled = 11;
+  string rag_config = 12;
+  int32 rate_limit = 13;
+  bool is_public = 14;
+}
+
+message UpdateAIAgentResponse {
+  bool success = 1;
+  string error = 2;
+}
+
+message DeleteAIAgentRequest {
+  string agent_id = 1;
+}
+
+message DeleteAIAgentResponse {
+  bool success = 1;
+  string error = 2;
+}
+
+message GetAIAgentRequest {
+  string agent_id = 1;
+}
+
+message GetAIAgentResponse {
+  AgentInfoV2 agent = 1;
+}
+
+message AgentInfoV2 {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  string provider_type = 4;
+  string model = 5;
+  string system_prompt = 6;
+  bool tools_enabled = 7;
+  bool rag_enabled = 8;
+  bool is_preset = 9;
+  bool is_public = 10;
+  int32 max_tokens = 11;
+  float temperature = 12;
+  string created_by = 13;
+  AgentCapabilitiesV2 capabilities = 14;
+}
+
+message AgentCapabilitiesV2 {
+  bool supports_images = 1;
+  bool supports_tools = 2;
+  bool supports_streaming = 3;
+  int32 max_tokens = 4;
+}
+
+message ListAIAgentsRequest {
+  bool include_public = 1;
+}
+
+message ListAIAgentsResponse {
+  repeated AgentInfoV2 agents = 1;
+}
+
+message CloneAIAgentRequest {
+  string agent_id = 1;
+  string new_name = 2;
+}
+
+message CloneAIAgentResponse {
+  bool success = 1;
+  string agent_id = 2;
+  string error = 3;
+}
+
+message ListAIToolsRequest {}
+
+message ListAIToolsResponse {
+  repeated ToolInfoV2 tools = 1;
+}
+
+message ToolInfoV2 {
+  string name = 1;
+  string description = 2;
+  string parameters_schema = 3;   // JSON Schema
+  string required_role = 4;
 }
 
 service ProfileService {

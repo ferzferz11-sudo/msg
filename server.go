@@ -30,14 +30,14 @@ import (
 	firebase "firebase.google.com/go/v4"
 )
 
-const ServerVersion = "1.2.0.11"
+const ServerVersion = "1.3.0.0"
 
 // Service versions for client capability negotiation
 const (
 	AuthServiceVersion    = "2.0" // AuthService v2 (JWT) — current
 	ChatServiceVersion    = "2.0" // ChatService v2: Bearer token in Chat stream + Pin/Mute/Search/Read
 	ProfileServiceVersion = "2.0" // ProfileService v2 (JWT) — dev only, prod uses v1 via ChatService
-	AIServiceVersion      = "1.0"
+	AIServiceVersion      = "2.0"
 	FileServiceVersion    = "1.0"
 	PushServiceVersion    = "1.0"
 )
@@ -55,13 +55,14 @@ type server struct {
 	owlModel     string        // Default OWL model
 	owlApiKey    string        // Default OpenRouter API key
 
-	// Hermes Orchestrator
-	hermesOrchestrator *Orchestrator
-	hermesDB           *HermesDB
+	// Hermes DB (for hermes-agent service)
+	hermesDB *HermesDB
 
-	// AI Chat Manager (unified for OWL + Hermes)
-	aiChatManager     *AIChatManager
-	aiChatManagerOnce sync.Once
+	// Remote Agent Manager
+	remoteAgentManager *RemoteAgentManager
+
+	// AI Gateway v2
+	aiGateway *AIGateway
 }
 
 func (s *server) logErrorOnce(key string, format string, v ...interface{}) {

@@ -321,7 +321,7 @@ func TestDeployAgentTaskStream_Integration_InvalidAgent(t *testing.T) {
 	t.Parallel()
 
 	mgr := NewRemoteAgentManager()
-	s := &server{hermesOrchestrator: &Orchestrator{remoteManager: mgr}}
+	s := &server{remoteAgentManager: mgr}
 
 	mockStream := &mockDeployStream{ctx: context.Background()}
 
@@ -369,7 +369,7 @@ func TestDeployAgentTaskStream_Integration_WithRegisteredAgent(t *testing.T) {
 	// Проще: просто проверим что DeployAgentTaskStream не возвращает ошибку для зарегистрированного агента
 	// и что клиент получает running статус
 
-	s := &server{hermesOrchestrator: &Orchestrator{remoteManager: mgr}}
+	s := &server{remoteAgentManager: mgr}
 
 	mockStream := &mockDeployStream{ctx: context.Background()}
 
@@ -418,7 +418,7 @@ func TestDeployAgentTaskStream_Integration_MultipleChunks(t *testing.T) {
 		Name: "Chunks Agent",
 	})
 
-	s := &server{hermesOrchestrator: &Orchestrator{remoteManager: mgr}}
+	s := &server{remoteAgentManager: mgr}
 
 	mockStream := &mockDeployStream{ctx: context.Background()}
 

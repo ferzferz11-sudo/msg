@@ -293,24 +293,6 @@ func TestOwlRateLimiter_Concurrent(t *testing.T) {
 	}
 }
 
-// ======= owlSessionManager Tests =======
-
-func TestOwlSessionManager_GetHistory(t *testing.T) {
-	t.Parallel()
-
-	// Test with nil DB (should return nil, not panic)
-	sm := &owlSessionManager{db: nil, maxHist: 50}
-	_ = sm
-}
-
-func TestOwlSessionManager_Clear(t *testing.T) {
-	t.Parallel()
-
-	// Test that clear doesn't panic with nil DB
-	sm := &owlSessionManager{db: nil, maxHist: 50}
-	_ = sm
-}
-
 // ======= Integration-style Tests =======
 
 func TestOwlFullFlow_Success(t *testing.T) {

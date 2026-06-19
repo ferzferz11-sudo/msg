@@ -123,6 +123,14 @@ const (
 	ChatService_GetFreeModels_FullMethodName          = "/messenger.ChatService/GetFreeModels"
 	ChatService_SetFreeModel_FullMethodName           = "/messenger.ChatService/SetFreeModel"
 	ChatService_RemoveFreeModel_FullMethodName        = "/messenger.ChatService/RemoveFreeModel"
+	ChatService_ChatWithAIV2_FullMethodName           = "/messenger.ChatService/ChatWithAIV2"
+	ChatService_CreateAIAgent_FullMethodName          = "/messenger.ChatService/CreateAIAgent"
+	ChatService_UpdateAIAgent_FullMethodName          = "/messenger.ChatService/UpdateAIAgent"
+	ChatService_DeleteAIAgent_FullMethodName          = "/messenger.ChatService/DeleteAIAgent"
+	ChatService_GetAIAgent_FullMethodName             = "/messenger.ChatService/GetAIAgent"
+	ChatService_ListAIAgents_FullMethodName           = "/messenger.ChatService/ListAIAgents"
+	ChatService_CloneAIAgent_FullMethodName           = "/messenger.ChatService/CloneAIAgent"
+	ChatService_ListAITools_FullMethodName            = "/messenger.ChatService/ListAITools"
 )
 
 // ChatServiceClient is the client API for ChatService service.
@@ -245,6 +253,15 @@ type ChatServiceClient interface {
 	GetFreeModels(ctx context.Context, in *GetFreeModelsRequest, opts ...grpc.CallOption) (*GetFreeModelsResponse, error)
 	SetFreeModel(ctx context.Context, in *SetFreeModelRequest, opts ...grpc.CallOption) (*SetFreeModelResponse, error)
 	RemoveFreeModel(ctx context.Context, in *RemoveFreeModelRequest, opts ...grpc.CallOption) (*RemoveFreeModelResponse, error)
+	// === AI Services v2 ===
+	ChatWithAIV2(ctx context.Context, in *ChatWithAIV2Request, opts ...grpc.CallOption) (grpc.ServerStreamingClient[ChatWithAIV2Response], error)
+	CreateAIAgent(ctx context.Context, in *CreateAIAgentRequest, opts ...grpc.CallOption) (*CreateAIAgentResponse, error)
+	UpdateAIAgent(ctx context.Context, in *UpdateAIAgentRequest, opts ...grpc.CallOption) (*UpdateAIAgentResponse, error)
+	DeleteAIAgent(ctx context.Context, in *DeleteAIAgentRequest, opts ...grpc.CallOption) (*DeleteAIAgentResponse, error)
+	GetAIAgent(ctx context.Context, in *GetAIAgentRequest, opts ...grpc.CallOption) (*GetAIAgentResponse, error)
+	ListAIAgents(ctx context.Context, in *ListAIAgentsRequest, opts ...grpc.CallOption) (*ListAIAgentsResponse, error)
+	CloneAIAgent(ctx context.Context, in *CloneAIAgentRequest, opts ...grpc.CallOption) (*CloneAIAgentResponse, error)
+	ListAITools(ctx context.Context, in *ListAIToolsRequest, opts ...grpc.CallOption) (*ListAIToolsResponse, error)
 }
 
 type chatServiceClient struct {
@@ -1358,6 +1375,95 @@ func (c *chatServiceClient) RemoveFreeModel(ctx context.Context, in *RemoveFreeM
 	return out, nil
 }
 
+func (c *chatServiceClient) ChatWithAIV2(ctx context.Context, in *ChatWithAIV2Request, opts ...grpc.CallOption) (grpc.ServerStreamingClient[ChatWithAIV2Response], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &ChatService_ServiceDesc.Streams[9], ChatService_ChatWithAIV2_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[ChatWithAIV2Request, ChatWithAIV2Response]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type ChatService_ChatWithAIV2Client = grpc.ServerStreamingClient[ChatWithAIV2Response]
+
+func (c *chatServiceClient) CreateAIAgent(ctx context.Context, in *CreateAIAgentRequest, opts ...grpc.CallOption) (*CreateAIAgentResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateAIAgentResponse)
+	err := c.cc.Invoke(ctx, ChatService_CreateAIAgent_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) UpdateAIAgent(ctx context.Context, in *UpdateAIAgentRequest, opts ...grpc.CallOption) (*UpdateAIAgentResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateAIAgentResponse)
+	err := c.cc.Invoke(ctx, ChatService_UpdateAIAgent_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) DeleteAIAgent(ctx context.Context, in *DeleteAIAgentRequest, opts ...grpc.CallOption) (*DeleteAIAgentResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteAIAgentResponse)
+	err := c.cc.Invoke(ctx, ChatService_DeleteAIAgent_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) GetAIAgent(ctx context.Context, in *GetAIAgentRequest, opts ...grpc.CallOption) (*GetAIAgentResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetAIAgentResponse)
+	err := c.cc.Invoke(ctx, ChatService_GetAIAgent_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) ListAIAgents(ctx context.Context, in *ListAIAgentsRequest, opts ...grpc.CallOption) (*ListAIAgentsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListAIAgentsResponse)
+	err := c.cc.Invoke(ctx, ChatService_ListAIAgents_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) CloneAIAgent(ctx context.Context, in *CloneAIAgentRequest, opts ...grpc.CallOption) (*CloneAIAgentResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CloneAIAgentResponse)
+	err := c.cc.Invoke(ctx, ChatService_CloneAIAgent_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) ListAITools(ctx context.Context, in *ListAIToolsRequest, opts ...grpc.CallOption) (*ListAIToolsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListAIToolsResponse)
+	err := c.cc.Invoke(ctx, ChatService_ListAITools_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ChatServiceServer is the server API for ChatService service.
 // All implementations must embed UnimplementedChatServiceServer
 // for forward compatibility.
@@ -1478,6 +1584,15 @@ type ChatServiceServer interface {
 	GetFreeModels(context.Context, *GetFreeModelsRequest) (*GetFreeModelsResponse, error)
 	SetFreeModel(context.Context, *SetFreeModelRequest) (*SetFreeModelResponse, error)
 	RemoveFreeModel(context.Context, *RemoveFreeModelRequest) (*RemoveFreeModelResponse, error)
+	// === AI Services v2 ===
+	ChatWithAIV2(*ChatWithAIV2Request, grpc.ServerStreamingServer[ChatWithAIV2Response]) error
+	CreateAIAgent(context.Context, *CreateAIAgentRequest) (*CreateAIAgentResponse, error)
+	UpdateAIAgent(context.Context, *UpdateAIAgentRequest) (*UpdateAIAgentResponse, error)
+	DeleteAIAgent(context.Context, *DeleteAIAgentRequest) (*DeleteAIAgentResponse, error)
+	GetAIAgent(context.Context, *GetAIAgentRequest) (*GetAIAgentResponse, error)
+	ListAIAgents(context.Context, *ListAIAgentsRequest) (*ListAIAgentsResponse, error)
+	CloneAIAgent(context.Context, *CloneAIAgentRequest) (*CloneAIAgentResponse, error)
+	ListAITools(context.Context, *ListAIToolsRequest) (*ListAIToolsResponse, error)
 	mustEmbedUnimplementedChatServiceServer()
 }
 
@@ -1799,6 +1914,30 @@ func (UnimplementedChatServiceServer) SetFreeModel(context.Context, *SetFreeMode
 }
 func (UnimplementedChatServiceServer) RemoveFreeModel(context.Context, *RemoveFreeModelRequest) (*RemoveFreeModelResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RemoveFreeModel not implemented")
+}
+func (UnimplementedChatServiceServer) ChatWithAIV2(*ChatWithAIV2Request, grpc.ServerStreamingServer[ChatWithAIV2Response]) error {
+	return status.Error(codes.Unimplemented, "method ChatWithAIV2 not implemented")
+}
+func (UnimplementedChatServiceServer) CreateAIAgent(context.Context, *CreateAIAgentRequest) (*CreateAIAgentResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateAIAgent not implemented")
+}
+func (UnimplementedChatServiceServer) UpdateAIAgent(context.Context, *UpdateAIAgentRequest) (*UpdateAIAgentResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateAIAgent not implemented")
+}
+func (UnimplementedChatServiceServer) DeleteAIAgent(context.Context, *DeleteAIAgentRequest) (*DeleteAIAgentResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteAIAgent not implemented")
+}
+func (UnimplementedChatServiceServer) GetAIAgent(context.Context, *GetAIAgentRequest) (*GetAIAgentResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetAIAgent not implemented")
+}
+func (UnimplementedChatServiceServer) ListAIAgents(context.Context, *ListAIAgentsRequest) (*ListAIAgentsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListAIAgents not implemented")
+}
+func (UnimplementedChatServiceServer) CloneAIAgent(context.Context, *CloneAIAgentRequest) (*CloneAIAgentResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CloneAIAgent not implemented")
+}
+func (UnimplementedChatServiceServer) ListAITools(context.Context, *ListAIToolsRequest) (*ListAIToolsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListAITools not implemented")
 }
 func (UnimplementedChatServiceServer) mustEmbedUnimplementedChatServiceServer() {}
 func (UnimplementedChatServiceServer) testEmbeddedByValue()                     {}
@@ -3618,6 +3757,143 @@ func _ChatService_RemoveFreeModel_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ChatService_ChatWithAIV2_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(ChatWithAIV2Request)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(ChatServiceServer).ChatWithAIV2(m, &grpc.GenericServerStream[ChatWithAIV2Request, ChatWithAIV2Response]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type ChatService_ChatWithAIV2Server = grpc.ServerStreamingServer[ChatWithAIV2Response]
+
+func _ChatService_CreateAIAgent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateAIAgentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).CreateAIAgent(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_CreateAIAgent_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).CreateAIAgent(ctx, req.(*CreateAIAgentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_UpdateAIAgent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateAIAgentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).UpdateAIAgent(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_UpdateAIAgent_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).UpdateAIAgent(ctx, req.(*UpdateAIAgentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_DeleteAIAgent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteAIAgentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).DeleteAIAgent(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_DeleteAIAgent_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).DeleteAIAgent(ctx, req.(*DeleteAIAgentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_GetAIAgent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetAIAgentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).GetAIAgent(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_GetAIAgent_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).GetAIAgent(ctx, req.(*GetAIAgentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_ListAIAgents_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListAIAgentsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).ListAIAgents(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_ListAIAgents_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).ListAIAgents(ctx, req.(*ListAIAgentsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_CloneAIAgent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CloneAIAgentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).CloneAIAgent(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_CloneAIAgent_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).CloneAIAgent(ctx, req.(*CloneAIAgentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_ListAITools_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListAIToolsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).ListAITools(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_ListAITools_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).ListAITools(ctx, req.(*ListAIToolsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ChatService_ServiceDesc is the grpc.ServiceDesc for ChatService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -4005,6 +4281,34 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "RemoveFreeModel",
 			Handler:    _ChatService_RemoveFreeModel_Handler,
 		},
+		{
+			MethodName: "CreateAIAgent",
+			Handler:    _ChatService_CreateAIAgent_Handler,
+		},
+		{
+			MethodName: "UpdateAIAgent",
+			Handler:    _ChatService_UpdateAIAgent_Handler,
+		},
+		{
+			MethodName: "DeleteAIAgent",
+			Handler:    _ChatService_DeleteAIAgent_Handler,
+		},
+		{
+			MethodName: "GetAIAgent",
+			Handler:    _ChatService_GetAIAgent_Handler,
+		},
+		{
+			MethodName: "ListAIAgents",
+			Handler:    _ChatService_ListAIAgents_Handler,
+		},
+		{
+			MethodName: "CloneAIAgent",
+			Handler:    _ChatService_CloneAIAgent_Handler,
+		},
+		{
+			MethodName: "ListAITools",
+			Handler:    _ChatService_ListAITools_Handler,
+		},
 	},
 	Streams: []grpc.StreamDesc{
 		{
@@ -4053,6 +4357,11 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "SubscribeNotifications",
 			Handler:       _ChatService_SubscribeNotifications_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "ChatWithAIV2",
+			Handler:       _ChatService_ChatWithAIV2_Handler,
 			ServerStreams: true,
 		},
 	},
