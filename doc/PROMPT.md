@@ -1,7 +1,7 @@
-# Промпт для серверных сессий — v1.2.0.9
+# Промпт для серверных сессий — v1.3.0.0
 
 **Дата:** 2026-06-19 | **Ветка:** feat/1.2.0.x
-**Статус:** P0+P1+P2 оптимизации задеплоены. Фокус на FCM batching и стабильности.
+**Статус:** AI Services v2 задеплоены на dev. Фокус на тестировании и доработке.
 
 ---
 
@@ -9,81 +9,107 @@
 
 | | Версия | Статус |
 |---|--------|--------|
-| **Сервер prod** | v1.2.0.9 | ✅ Работает на порту 50051 |
-| **Сервер dev** | v1.2.0.9 | ✅ Работает на порту 50052 |
+| **Сервер prod** | v1.2.0.11 | ✅ Работает на порту 50051 |
+| **Сервер dev** | v1.3.0.0 | ✅ Работает на порту 50052 |
 
 **Android:** `/root/msg.client.android` — документация там, сборка ТОЛЬКО локально.
 
 ---
 
-## АРХИТЕКТУРА
+## АРХИТЕКТУРА v2
 
 ### Сервер (/root/msg)
 ```
 main.go                    — Entry point, gRPC server, GracefulStop 30s timeout
-server.go                  — ServerVersion = "1.2.0.8"
-auth_service.go            — AuthService v1 (deprecated)
+server.go                  — ServerVersion = "1.3.0.0"
+
+=== AI Services v2 (НОВОЕ) ===
+db_ai_v2.go                — DB layer: agents_v2, ai_chats_v2, ai_messages_v2
+ai_v2.go                   — AI Gateway: session mgmt, streaming, chat flow
+ai_router.go               — Hybrid router (keyword + LLM fallback)
+ai_agent_executor.go       — Agent execution + tool calling loop
+ai_provider.go             — AgentProvider interface
+ai_provider_registry.go    — Provider factory registry (7 types)
+ai_provider_openrouter.go  — OpenRouter provider (SSE streaming)
+ai_provider_local.go       — Local Hermes provider (subprocess)
+ai_provider_mimo.go        — MiMo provider (HTTP API)
+ai_provider_webhook.go     — Webhook provider (HTTP POST)
+ai_provider_websocket.go   — WebSocket provider
+ai_provider_subprocess.go  — Subprocess provider (stdin/stdout)
+ai_provider_mcp.go         — MCP provider (stdio, JSON-RPC 2.0)
+ai_tool.go                 — Tool interface
+ai_tool_registry.go        — Tool registry + built-in tools
+ai_tool_search_messages.go — Search messages tool
+ai_tool_search_users.go    — Search users tool
+ai_tool_web_search.go      — Web search tool (DuckDuckGo)
+ai_tool_web_fetch.go       — URL fetch tool
+ai_tool_get_chat_info.go   — Chat info tool
+server_ai_v2.go            — gRPC handlers (8 RPCs)
+rate_limiter.go            — Rate limiter + callOpenRouterContext
+hermes_stubs.go            — Stubs for hermes_agent_service.go
+
+=== Core (unchanged) ===
 auth_service_v2.go         — AuthService v2 (JWT)
-auth_interceptor.go        — gRPC Bearer token + v1 username fallback
-auth_jwt.go                — JWT генерация/валидация (кэш secret, sync.Mutex)
-auth/jwt.go                — JWT для agent tokens (кастомный)
+auth_interceptor.go        — gRPC Bearer token
 db.go                      — Database layer (~80+ CRUD методов)
-db_hermes.go               — Hermes DB migrations + CRUD
-db_chatlist_v2.go          — ChatList v2 DB (PinChat, SearchChats, ArchiveChat, getMutedRoomsSet)
-db_auth_devices.go         — user_devices + device_auth_log
-server_chat.go             — Chat, Typing, CallStream, cleanupRecentMsgs
-server_chatlist_v2.go      — ChatList v2 RPC (PinChat, SearchChats, ArchiveChat)
-server_ai.go               — AI chat (OWL + Hermes) — OWL response теперь сохраняется
-server_profile_v2.go       — ProfileService v2 (JWT)
-hermes_orchestrator.go     — Agent routing — TTL cleanup 30мин, message cap 50
-hermes_agent_service.go    — Agent token management — auth check через GetUserID(ctx)
-hub.go                     — Connection management — Broadcast snapshot+send без лока
-http_server.go             — HTTP uploads + TURN (path traversal fix, env vars)
-secret_chat.go             — E2EE secret chats — membership verification
-owl.go                     — OWL AI — shared http.Client, LimitReader(10MB)
-bot_commands.go            — Bot commands — auth через GetUserID(ctx)
+hub.go                     — Connection management
+http_server.go             — HTTP uploads + TURN
+secret_chat.go             — E2EE secret chats
+bot_commands.go            — Bot commands
 messenger.proto            — All proto definitions
+
+=== Remote Agent (unchanged) ===
+hermes_agent_service.go    — Agent token management
+hermes_remote_manager.go   — Remote agent management
+server_remote.go           — Remote agent RPC
 ```
 
 ---
 
-## ЧТО СДЕЛАНО (v1.2.0.8)
+## AI SERVICES v2 — КЛЮЧЕВЫЕ КОНЦЕПЦИИ
 
-### P1+P2 Оптимизации (Сессия 41)
-- **getAIChatManager sync.Once** — thread-safe lazy init
-- **backfillLastMessageText SQL fix** — operator precedence скобки
-- **Stream interceptor injection** — usernameKey + deviceIDKey в stream context
-- **device_auth_log TTL** — CleanupDeviceAuthLog(), cron 24ч
-- **IncrementParticipantsChatListVersion → UUID[]** — unnest(participant_ids)
-- **Rate limiter cleanup** — cleanup() + periodic goroutine 10мин
-- **ResolveUserID cache** — in-memory cache TTL 5мин
-- **IsUserOnline O(1)** — reverse-lookup sets
-- **DB pool tuning** — MaxIdleConns=15, ConnMaxIdleTime=5min
-- **owl.go ctx cancellation** — ctx.Err() в SSE loop
-- **main.go goroutine leak** — context.WithCancel + ticker
+### 3 типа чатов
+| Тип | Описание | RPC |
+|-----|----------|-----|
+| `simple` | Прямой LLM (как ChatGPT) | ChatWithAIV2 |
+| `agent` | Multi-agent с роутингом | ChatWithAIV2 |
+| `pipeline` | RAG + tools chain | ChatWithAIV2 |
 
-### P0 Оптимизации (Сессия 40)
-- **Broadcast deadlock fix** — snapshot streams под RLock, отправка без лока
-- **isChatMuted N+1** — batch getMutedRoomsSet() вместо N запросов
-- **Push N+1** — GetChat вынесен до цикла, participantSet O(1), senderNotifiesOthers рано
-- **Hermes sessions** — TTL cleanup 30мин + message cap 50
-- **recentMsgs** — periodic cleanup >10s
-- **JWT secret** — кэш с env-change detection
-- **io.LimitReader(10MB)** — OOM protection
-- **OWL response saved** — AddMessage после стрима
-- **GracefulStop 30s timeout** — fix deploy hang
+### 7 типов провайдеров
+| Тип | Описание | Статус |
+|-----|----------|--------|
+| `openrouter` | OpenRouter API | ✅ Работает |
+| `local` | Локальный LLM (hermes binary) | ✅ Работает |
+| `mimo` | MiMo API | ✅ Работает |
+| `webhook` | HTTP webhook | ✅ Работает |
+| `websocket` | WebSocket | 🔨 Placeholder |
+| `subprocess` | Subprocess (Python, Node) | ✅ Работает |
+| `mcp` | MCP (stdio, JSON-RPC 2.0) | ✅ Работает |
 
-### v1.2.0.7 (Сессия 39)
-- UserInfo: user_id + is_super_admin в GetAllUsers
-- deploy-dev-local.sh, deploy-prod-local.sh
-- CreateChat fix (CTE для PostgreSQL parameter type conflict)
-- CLIENT_INTEGRATION.md (127 gRPC методов)
+### 8 пресетов
+| ID | Имя | Провайдер | Tools | RAG |
+|----|-----|-----------|-------|-----|
+| `mimo` | MiMo | mimo | ✅ | ✅ |
+| `assistant` | Assistant | openrouter | ✅ | ✅ |
+| `developer` | Developer | openrouter | ✅ | ❌ |
+| `devops` | DevOps | openrouter | ✅ | ❌ |
+| `architect` | Architect | openrouter | ❌ | ❌ |
+| `writer` | Writer | openrouter | ❌ | ❌ |
+| `analyst` | Analyst | openrouter | ✅ | ✅ |
+| `translator` | Translator | openrouter | ❌ | ❌ |
+
+### 5 встроенных инструментов
+- `search_messages` — поиск сообщений
+- `search_users` — поиск пользователей
+- `web_search` — веб-поиск (DuckDuckGo)
+- `web_fetch` — загрузка URL
+- `get_chat_info` — метаданные чата
 
 ---
 
 ## ПРАВИЛА
 
-1. ⚠️ **НЕ компилировать Android на сервере** — OOM kill. Android собирается ТОЛЬКО локально.
+1. ⚠️ **НЕ компилировать Android на сервере** — OOM kill
 2. Версия сервера в `server.go:33`
 3. userId (UUID) — всегда как ключ, НЕ username
 4. Auth context → `GetUserID(ctx)`, NEVER `req.UserId`
@@ -109,8 +135,8 @@ cd /root/msg && export PATH=$PATH:/usr/local/go/bin:~/go/bin
 ./scripts/deploy-prod-local.sh
 
 # Proto gen
-protoc --go_out=./gen --go_opt=paths=source_relative \
-  --go-grpc_out=./gen --go-grpc_opt=paths=source_relative messenger.proto
+protoc --go_out=gen --go_opt=paths=source_relative \
+  --go-grpc_out=gen --go-grpc_opt=paths=source_relative messenger.proto
 
 # Тесты
 go test ./...
@@ -135,5 +161,6 @@ go test ./...
 - Индекс: `/root/msg/doc/INDEX.md`
 - Задачи: `/root/msg/doc/TASKS.md`
 - Оптимизации: `/root/msg/doc/OPTIMIZATION_PLAN.md`
+- AI Services v2 план: `/root/msg/doc/AI_SERVICES_V2_PLAN.md`
 - Pitfalls: `/root/msg/doc/PITFALLS.md`
 - Android: `/root/msg.client.android/doc/` (вся документация там)
