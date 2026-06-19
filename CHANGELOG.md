@@ -1,5 +1,26 @@
 # Лава — Server Changelog
 
+## [1.2.0.8] - 2026-06-19
+
+### Производительность (P0 оптимизации)
+- **hub.go** — Broadcast/BroadcastGlobal/BroadcastTyping/BroadcastCall/BroadcastConference: snapshot streams под локом, отправка без лока (fix deadlock с медленными клиентами)
+- **db_chatlist_v2.go** — `getMutedRoomsSet()` batch метод: один SELECT вместо N запросов `isChatMuted` в SearchChats/GetUserChatsV2
+- **server_chat.go** — Push notification: `GetChat` вынесен до цикла, `participantSet` для O(1) lookup, `senderNotifiesOthers` проверяется рано
+- **hermes_orchestrator.go** — Cleanup goroutine: TTL-очистка сессий >30мин неактивности + лимит 50 сообщений на сессию
+- **server_chat.go** — `cleanupRecentMsgs()`: периодическая очистка dedup cache (>10s)
+- **auth_jwt.go** — JWT secret кэшируется с проверкой env changes (было `os.Getenv` на каждый запрос)
+- **owl.go** — `io.LimitReader(10MB)` для OpenRouter ответов (prevents OOM)
+
+### Исправления
+- **server_ai.go** — OWL assistant response теперь сохраняется в БД (было TODO, ломало историю переписки)
+- **main.go** — gRPC `GracefulStop()` с 30s timeout (fix deploy hang при зависшем стриме)
+
+### Документация
+- **OPTIMIZATION_PLAN.md** — 35 оптимизаций P0-P3
+- Обновлены все doc файлы до v1.2.0.8
+
+---
+
 ## [1.2.0.7] - 2026-06-19
 
 ### Новое

@@ -1,6 +1,6 @@
 # Lava Messenger — Интеграционная сессия
 
-**Текущая версия:** v1.2.0.7 (сервер prod/dev)
+**Текущая версия:** v1.2.0.8 (сервер prod/dev)
 **Обновлено:** 2026-06-19
 **Ветка сервера:** feat/1.2.0.x
 
@@ -92,6 +92,45 @@
 
 ---
 
+## Сессия 40 — P0 Performance Optimizations
+
+### Что сделано
+
+#### Broadcast Deadlock Fix (hub.go)
+- `Broadcast`, `BroadcastGlobal`, `BroadcastTyping`, `BroadcastCall`, `BroadcastConference` — snapshot streams под `RLock`, отправка без лока
+- Предотвращает deadlock при медленном клиенте + блокировке Register/Unregister
+
+#### N+1 Query Fixes
+1. **isChatMuted** — `getMutedRoomsSet(userID)` batch метод (1 SELECT вместо N)
+2. **Push notifications** — `GetChat(roomID)` вынесен до цикла, `participantSet` O(1) lookup, `senderNotifiesOthers` проверяется рано
+
+#### Memory Leaks Fixed
+1. **Hermes sessions** — cleanup goroutine каждые 5мин, eviction >30мин неактивности
+2. **Session messages** — лимит 50 сообщений (cap + trim)
+3. **recentMsgs** — `cleanupRecentMsgs()` каждые 60с, удаление >10s записей
+
+#### OWL Response Saved
+- `fullResponse.WriteString(token)` + `manager.AddMessage()` после стрима
+- Исправлено: история OWL переписки теперь сохраняется
+
+#### Auth Performance
+- `getJWTSecret()` — кэш с env-change detection (mutex-based, не sync.Once)
+- `io.LimitReader(10MB)` для OpenRouter ответов
+
+#### Deploy Fix
+- `GracefulStop()` с 30s timeout → `s.Stop()` (fix deploy hang)
+
+#### Commits
+- `ea3d784` — perf: P0 optimizations (8 items)
+- `4229c1a` — fix: gRPC GracefulStop 30s timeout
+
+### Статус
+- Dev (50052): ✅ работает
+- Prod (50051): ✅ работает
+- Тесты: 92/92 PASS
+
+---
+
 ## Сессия 39 — UserInfo + Deploy + CreateChat fix
 
 ### Что сделано
@@ -180,7 +219,7 @@ go test ./...
 | Сервис | lavender-server-dev | lavender-server |
 | Конфиг | .env.dev | .env |
 | DB | chat_db_dev | chat_db |
-| Версия | v1.2.0.7 | v1.2.0.7 |
+| Версия | v1.2.0.8 | v1.2.0.8 |
 
 ---
 

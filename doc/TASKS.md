@@ -1,6 +1,6 @@
 # Лава — Задачи
 
-**Версия:** v1.2.0.7
+**Версия:** v1.2.0.8
 **Ветка:** feat/1.2.0.x
 **Обновлено:** 2026-06-19
 
@@ -58,14 +58,34 @@
 
 ---
 
+## ✅ v1.2.0.8 — P0 Performance Optimizations (Сессия 40)
+
+- ✅ Broadcast deadlock fix — snapshot streams, send without lock
+- ✅ isChatMuted N+1 — batch getMutedRoomsSet
+- ✅ Push N+1 — GetChat hoisted, participantSet O(1)
+- ✅ Hermes sessions TTL cleanup + message cap 50
+- ✅ recentMsgs periodic cleanup
+- ✅ OWL response saved to DB
+- ✅ JWT secret cached
+- ✅ io.LimitReader(10MB)
+- ✅ gRPC GracefulStop 30s timeout
+- ✅ Dev + Prod deployed
+
+---
+
 ## 📋 Активные задачи
 
 ### Стабильность (приоритет)
 - [ ] **Тестирование Pin Message** — RPC на dev сервере
 - [ ] **Read receipts (MarkAsRead)** — если нужно на сервере
 
-### Отложено
-- [ ] Qdrant + CLIP (production RAG)
-- [ ] Concurrency fixes (hermes_orchestrator lock, hub broadcast)
-- [ ] DB split (db.go → 4 файла)
-- [ ] Unified RateLimiter
+### P1 оптимизации (следующий приоритет)
+- [ ] FCM batching + retry
+- [ ] Rate limiter cleanup
+- [ ] device_auth_log TTL
+- [ ] ResolveUserID cache
+- [ ] backfillLastMessageText SQL fixes
+- [ ] Stream interceptor username/device_id injection
+- [ ] getAIChatManager sync.Once
+- [ ] PinMessage LIKE → UUID[]
+- [ ] IncrementParticipantsChatListVersion → UUID[]
