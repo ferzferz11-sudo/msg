@@ -29,7 +29,11 @@ echo "=== 5. Start dev server ==="
 ssh $SERVER "systemctl start lavender-server-dev"
 sleep 2
 
-echo "=== 6. Verify ==="
+echo "=== 6. Restart log monitor ==="
+ssh $SERVER "systemctl restart log-monitor-dev" 2>/dev/null || true
+sleep 1
+
+echo "=== 7. Verify ==="
 ssh $SERVER "systemctl is-active lavender-server-dev" | grep -q "active" && {
     echo "✓ Dev server running"
 } || {

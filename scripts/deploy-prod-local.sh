@@ -33,7 +33,11 @@ echo "=== 6. Start prod server ==="
 ssh $SERVER "systemctl start lavender-server"
 sleep 3
 
-echo "=== 7. Verify ==="
+echo "=== 7. Restart log monitor ==="
+ssh $SERVER "systemctl restart log-monitor" 2>/dev/null || true
+sleep 1
+
+echo "=== 8. Verify ==="
 ssh $SERVER "systemctl is-active lavender-server" | grep -q "active" && {
     echo "✓ Prod server running"
 } || {
@@ -44,3 +48,4 @@ ssh $SERVER "systemctl is-active lavender-server" | grep -q "active" && {
 
 echo ""
 echo "Prod server: gRPC :50051, HTTP :8082"
+echo "Logs: http://13.140.25.249/server-logs"
