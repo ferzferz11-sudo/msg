@@ -16,7 +16,7 @@ import (
 
 // Global rate limiters (replacing owl.go globals)
 var (
-	owlRateLimiter     = NewRedisRateLimiter(10, time.Minute, "rl:owl:")
+	owlRateLimiter      = NewRedisRateLimiter(10, time.Minute, "rl:owl:")
 	freeTierRateLimiter = NewRedisRateLimiter(20, time.Hour, "rl:free:")
 )
 

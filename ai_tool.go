@@ -17,8 +17,8 @@ type Tool interface {
 
 // ToolDef — tool definition for LLM function calling
 type ToolDef struct {
-	Type     string       `json:"type"`
-	Function ToolDefFunc  `json:"function"`
+	Type     string      `json:"type"`
+	Function ToolDefFunc `json:"function"`
 }
 
 type ToolDefFunc struct {

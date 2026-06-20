@@ -15,14 +15,14 @@ type mockChatStream struct {
 	ctx context.Context
 }
 
-func (m *mockChatStream) Send(*gen.Message) error          { return nil }
-func (m *mockChatStream) Context() context.Context          { return m.ctx }
-func (m *mockChatStream) SendHeader(metadata.MD) error      { return nil }
-func (m *mockChatStream) SetHeader(metadata.MD) error       { return nil }
-func (m *mockChatStream) SendMsg(interface{}) error         { return nil }
-func (m *mockChatStream) RecvMsg(interface{}) error         { return nil }
-func (m *mockChatStream) SetTrailer(metadata.MD)            {}
-func (m *mockChatStream) Recv() (*gen.Message, error)       { return nil, nil }
+func (m *mockChatStream) Send(*gen.Message) error      { return nil }
+func (m *mockChatStream) Context() context.Context     { return m.ctx }
+func (m *mockChatStream) SendHeader(metadata.MD) error { return nil }
+func (m *mockChatStream) SetHeader(metadata.MD) error  { return nil }
+func (m *mockChatStream) SendMsg(interface{}) error    { return nil }
+func (m *mockChatStream) RecvMsg(interface{}) error    { return nil }
+func (m *mockChatStream) SetTrailer(metadata.MD)       {}
+func (m *mockChatStream) Recv() (*gen.Message, error)  { return nil, nil }
 
 // ======= Hub.IsUserOnline tests =======
 

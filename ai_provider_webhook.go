@@ -13,12 +13,12 @@ import (
 )
 
 type webhookProvider struct {
-	url         string
-	method      string
-	headers     map[string]string
-	timeout     time.Duration
-	streaming   bool
-	client      *http.Client
+	url       string
+	method    string
+	headers   map[string]string
+	timeout   time.Duration
+	streaming bool
+	client    *http.Client
 }
 
 func newWebhookProvider(config map[string]any, apiKey string) (AgentProvider, error) {

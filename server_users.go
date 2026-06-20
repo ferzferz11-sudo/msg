@@ -1,9 +1,9 @@
 package main
 
 import (
-	"database/sql"
 	"LavenderMessenger/gen"
 	"context"
+	"database/sql"
 
 	"google.golang.org/protobuf/types/known/timestamppb"
 )

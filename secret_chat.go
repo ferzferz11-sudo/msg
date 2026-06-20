@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"LavenderMessenger/gen"
+
 	"github.com/google/uuid"
 )
 

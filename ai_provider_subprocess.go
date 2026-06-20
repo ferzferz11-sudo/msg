@@ -14,11 +14,11 @@ import (
 )
 
 type subprocessProvider struct {
-	command    string
-	args       []string
-	env        map[string]string
-	timeout    time.Duration
-	streaming  bool
+	command   string
+	args      []string
+	env       map[string]string
+	timeout   time.Duration
+	streaming bool
 }
 
 func newSubprocessProvider(config map[string]any, apiKey string) (AgentProvider, error) {

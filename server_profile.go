@@ -1,3 +1,8 @@
+// Profile handlers on ChatService — legacy methods.
+// New clients should use ProfileService v2 (server_profile_v2.go):
+//   - GetProfile, UpdateProfile, UpdateAvatar, DeleteProfile, GetUserSettings, UpdateUserSettings
+// These legacy methods remain for backward compatibility with clients that haven't migrated.
+
 package main
 
 import (
@@ -8,6 +13,7 @@ import (
 	"strings"
 )
 
+// Deprecated: Use ProfileService.UpdateProfile for new clients.
 func (s *server) UpdateUsername(ctx context.Context, req *gen.UpdateUsernameRequest) (*gen.UpdateUsernameResponse, error) {
 	userID := GetUserID(ctx)
 	if userID == "" {
@@ -31,6 +37,7 @@ func (s *server) UpdateUsername(ctx context.Context, req *gen.UpdateUsernameRequ
 	}, nil
 }
 
+// Deprecated: No ProfileService v2 equivalent — keep using ChatService for password changes.
 func (s *server) UpdatePassword(ctx context.Context, req *gen.UpdatePasswordRequest) (*gen.UpdatePasswordResponse, error) {
 	userID := GetUserID(ctx)
 	if userID == "" {
@@ -71,6 +78,7 @@ func (s *server) UpdatePassword(ctx context.Context, req *gen.UpdatePasswordRequ
 	}, nil
 }
 
+// Deprecated: No ProfileService v2 equivalent — keep using ChatService for admin password reset.
 func (s *server) AdminUpdatePassword(ctx context.Context, req *gen.AdminUpdatePasswordRequest) (*gen.AdminUpdatePasswordResponse, error) {
 	adminUserID := GetUserID(ctx)
 	if adminUserID == "" {
@@ -102,6 +110,7 @@ func (s *server) AdminUpdatePassword(ctx context.Context, req *gen.AdminUpdatePa
 	}, nil
 }
 
+// Deprecated: No ProfileService v2 equivalent — keep using ChatService for MarkRead.
 func (s *server) MarkRead(ctx context.Context, req *gen.MarkReadRequest) (*gen.MarkReadResponse, error) {
 	if strings.HasPrefix(req.RoomId, "favorites_") {
 		return &gen.MarkReadResponse{Success: true}, nil
@@ -133,6 +142,7 @@ func (s *server) MarkRead(ctx context.Context, req *gen.MarkReadRequest) (*gen.M
 	return &gen.MarkReadResponse{Success: true}, nil
 }
 
+// Deprecated: Use ProfileService.UpdateAvatar for new clients.
 func (s *server) UpdateAvatar(ctx context.Context, req *gen.UpdateAvatarRequest) (*gen.UpdateAvatarResponse, error) {
 	userID := GetUserID(ctx)
 	if userID == "" {
@@ -164,6 +174,7 @@ func (s *server) UpdateAvatar(ctx context.Context, req *gen.UpdateAvatarRequest)
 	return &gen.UpdateAvatarResponse{Success: true, Message: "Avatar updated successfully"}, nil
 }
 
+// Deprecated: Use ProfileService.DeleteProfile for new clients (requires password).
 func (s *server) DeleteProfile(ctx context.Context, req *gen.DeleteProfileRequest) (*gen.DeleteProfileResponse, error) {
 	userID := GetUserID(ctx)
 	if userID == "" {

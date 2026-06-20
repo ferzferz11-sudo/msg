@@ -43,18 +43,18 @@ type AgentV2 struct {
 }
 
 type AIChatV2 struct {
-	ID            string         `json:"id"`
-	UserID        string         `json:"user_id"`
-	ChatType      string         `json:"chat_type"`
-	Name          string         `json:"name"`
-	AgentID       string         `json:"agent_id"`
-	Model         string         `json:"model"`
-	SystemPrompt  string         `json:"system_prompt"`
-	BoundAgentID  string         `json:"bound_agent_id"`
-	BindUntilMsg  int            `json:"bind_until_msg"`
-	Settings      map[string]any `json:"settings"`
-	CreatedAt     time.Time      `json:"created_at"`
-	UpdatedAt     time.Time      `json:"updated_at"`
+	ID           string         `json:"id"`
+	UserID       string         `json:"user_id"`
+	ChatType     string         `json:"chat_type"`
+	Name         string         `json:"name"`
+	AgentID      string         `json:"agent_id"`
+	Model        string         `json:"model"`
+	SystemPrompt string         `json:"system_prompt"`
+	BoundAgentID string         `json:"bound_agent_id"`
+	BindUntilMsg int            `json:"bind_until_msg"`
+	Settings     map[string]any `json:"settings"`
+	CreatedAt    time.Time      `json:"created_at"`
+	UpdatedAt    time.Time      `json:"updated_at"`
 }
 
 type AIMessageV2 struct {

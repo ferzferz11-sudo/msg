@@ -1,11 +1,12 @@
 package main
 
 import (
-	"fmt"
-	"github.com/google/uuid"
 	"LavenderMessenger/gen"
 	"context"
 	"encoding/json"
+	"fmt"
+
+	"github.com/google/uuid"
 
 	"google.golang.org/protobuf/types/known/timestamppb"
 )

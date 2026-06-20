@@ -1,9 +1,10 @@
 package main
 
 import (
-	"github.com/google/uuid"
 	"LavenderMessenger/gen"
 	"context"
+
+	"github.com/google/uuid"
 )
 
 func (s *server) GetMutedChats(_ context.Context, req *gen.GetMutedChatsRequest) (*gen.GetMutedChatsResponse, error) {

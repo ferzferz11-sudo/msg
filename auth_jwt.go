@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	AccessTokenTTL  = 15 * time.Minute   // 15 minutes
+	AccessTokenTTL  = 15 * time.Minute    // 15 minutes
 	RefreshTokenTTL = 30 * 24 * time.Hour // 30 days
 )
 
@@ -26,9 +26,9 @@ type authClaims struct {
 
 // getJWTSecret returns the JWT signing secret from env (cached, re-reads if env changes)
 var (
-	cachedJWTSecret     []byte
-	cachedJWTSecretEnv  string
-	jwtSecretMu         sync.Mutex
+	cachedJWTSecret    []byte
+	cachedJWTSecretEnv string
+	jwtSecretMu        sync.Mutex
 )
 
 func getJWTSecret() ([]byte, error) {

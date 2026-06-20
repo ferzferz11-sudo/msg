@@ -121,11 +121,11 @@ func (a *authServerV2) SignInV2(ctx context.Context, req *gen.SignInRequestV2) (
 	logger.Infof("SignInV2: %s (ID: %s, device: %s)", username, userID, deviceID)
 
 	return &gen.AuthResponseV2{
-		Success:         true,
-		Message:         "sign in successful",
-		AccessToken:     accessToken,
-		RefreshToken:    refreshToken,
-		AccessExpiresAt: accessExp.Unix(),
+		Success:          true,
+		Message:          "sign in successful",
+		AccessToken:      accessToken,
+		RefreshToken:     refreshToken,
+		AccessExpiresAt:  accessExp.Unix(),
 		RefreshExpiresAt: refreshExp.Unix(),
 		User: &gen.User{
 			Id:         userID,
@@ -248,16 +248,16 @@ func (a *authServerV2) SignUpV2(ctx context.Context, req *gen.SignUpRequestV2) (
 	logger.Infof("SignUpV2: new user %s (ID: %s, device: %s)", username, userID, deviceID)
 
 	return &gen.AuthResponseV2{
-		Success:         true,
-		Message:         "sign up successful",
-		AccessToken:     accessToken,
-		RefreshToken:    refreshToken,
-		AccessExpiresAt: accessExp.Unix(),
+		Success:          true,
+		Message:          "sign up successful",
+		AccessToken:      accessToken,
+		RefreshToken:     refreshToken,
+		AccessExpiresAt:  accessExp.Unix(),
 		RefreshExpiresAt: refreshExp.Unix(),
 		User: &gen.User{
-			Id:        userID,
-			Username:  username,
-			Email:     email,
+			Id:       userID,
+			Username: username,
+			Email:    email,
 		},
 	}, nil
 }

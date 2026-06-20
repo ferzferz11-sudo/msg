@@ -146,8 +146,8 @@ func readSSEStream(ctx context.Context, body io.Reader, ch chan<- StreamChunk) {
 				Delta struct {
 					Content   string `json:"content"`
 					ToolCalls []struct {
-						ID   string `json:"id"`
-						Type string `json:"type"`
+						ID       string `json:"id"`
+						Type     string `json:"type"`
 						Function struct {
 							Name      string `json:"name"`
 							Arguments string `json:"arguments"`

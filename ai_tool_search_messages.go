@@ -13,8 +13,10 @@ type searchMessagesTool struct {
 	db *sql.DB
 }
 
-func (t *searchMessagesTool) Name() string        { return "search_messages" }
-func (t *searchMessagesTool) Description() string  { return "Search messages by keyword across user's chats" }
+func (t *searchMessagesTool) Name() string { return "search_messages" }
+func (t *searchMessagesTool) Description() string {
+	return "Search messages by keyword across user's chats"
+}
 func (t *searchMessagesTool) RequiredRole() string { return "user" }
 
 func (t *searchMessagesTool) Parameters() map[string]any {

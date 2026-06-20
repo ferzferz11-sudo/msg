@@ -15,7 +15,7 @@ type queryDatabaseTool struct {
 	db *sql.DB
 }
 
-func (t *queryDatabaseTool) Name() string        { return "query_database" }
+func (t *queryDatabaseTool) Name() string         { return "query_database" }
 func (t *queryDatabaseTool) RequiredRole() string { return "admin" }
 
 func (t *queryDatabaseTool) Description() string {

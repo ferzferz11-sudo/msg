@@ -9,7 +9,8 @@
 //   server_users.go     — GetAllUsers, UpdateProfile, GetUserProfile, GetUserAvatar
 //   server_chats.go     — GetAllChats, GetChats, CreateDirectChat, CreateGroupChat, DeleteChat, etc.
 //   server_messages.go  — GetHistory, SetReaction, DeleteMessages, EditMessage
-//   server_profile.go   — UpdateUsername, UpdatePassword, AdminUpdatePassword, MarkRead, UpdateAvatar, DeleteProfile
+//   server_profile.go   — [DEPRECATED] Legacy profile: UpdateUsername, UpdatePassword, AdminUpdatePassword, MarkRead, UpdateAvatar, DeleteProfile
+//   server_profile_v2.go — ProfileService v2: GetProfile, UpdateProfile, UpdateAvatar, DeleteProfile, GetUserSettings, UpdateUserSettings
 //   server_push.go      — RegisterToken, sendPushNotification, broadcastOnlineUsers, etc.
 //   server_contacts.go  — AddContact, RemoveContact, GetContacts, GetChatListVersion
 //   server_themes.go    — GetThemes, SaveTheme, SetCurrentTheme, DeleteTheme
@@ -27,8 +28,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/google/uuid"
 	firebase "firebase.google.com/go/v4"
+	"github.com/google/uuid"
 )
 
 const ServerVersion = "1.3.0.10"
@@ -56,8 +57,8 @@ type server struct {
 	recentErrors sync.Map      // map[string]time.Time to prevent duplicate error logs
 	fcmLogs      []*gen.FCMLogEntry
 	fcmLogsMu    sync.Mutex
-	owlModel     string        // Default OWL model
-	owlApiKey    string        // Default OpenRouter API key
+	owlModel     string // Default OWL model
+	owlApiKey    string // Default OpenRouter API key
 
 	// Hermes DB (for hermes-agent service)
 	hermesDB *HermesDB
@@ -120,5 +121,3 @@ func resolveDisplayName(db *DB, identifier string) string {
 	}
 	return identifier
 }
-
-

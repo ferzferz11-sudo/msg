@@ -85,15 +85,15 @@ func StartHTTPServer(port string) {
 	http.HandleFunc("/info", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		info := map[string]interface{}{
-			"version":  ServerVersion,
-			"time":     time.Now().Format(time.RFC3339),
+			"version": ServerVersion,
+			"time":    time.Now().Format(time.RFC3339),
 			"services": map[string]string{
-				"auth":     AuthServiceVersion,
-				"chat":     ChatServiceVersion,
-				"profile":  ProfileServiceVersion,
-				"ai":       AIServiceVersion,
-				"files":    FileServiceVersion,
-				"push":     PushServiceVersion,
+				"auth":    AuthServiceVersion,
+				"chat":    ChatServiceVersion,
+				"profile": ProfileServiceVersion,
+				"ai":      AIServiceVersion,
+				"files":   FileServiceVersion,
+				"push":    PushServiceVersion,
 			},
 		}
 		json.NewEncoder(w).Encode(info)
@@ -158,15 +158,15 @@ func StartHTTPServerAndReturn(port string) *http.Server {
 	http.HandleFunc("/info", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		info := map[string]interface{}{
-			"version":  ServerVersion,
-			"time":     time.Now().Format(time.RFC3339),
+			"version": ServerVersion,
+			"time":    time.Now().Format(time.RFC3339),
 			"services": map[string]string{
-				"auth":     AuthServiceVersion,
-				"chat":     ChatServiceVersion,
-				"profile":  ProfileServiceVersion,
-				"ai":       AIServiceVersion,
-				"files":    FileServiceVersion,
-				"push":     PushServiceVersion,
+				"auth":    AuthServiceVersion,
+				"chat":    ChatServiceVersion,
+				"profile": ProfileServiceVersion,
+				"ai":      AIServiceVersion,
+				"files":   FileServiceVersion,
+				"push":    PushServiceVersion,
 			},
 		}
 		json.NewEncoder(w).Encode(info)

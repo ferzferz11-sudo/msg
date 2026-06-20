@@ -6,19 +6,19 @@ import (
 
 // UserDevice represents a registered device for a user
 type UserDevice struct {
-	ID                   string    `json:"id"`
-	UserID               string    `json:"user_id"`
-	DeviceID             string    `json:"device_id"`
-	DeviceName           string    `json:"device_name"`
-	DeviceType           string    `json:"device_type"`
-	ClientVersion        string    `json:"client_version"`
-	IPAddress            string    `json:"ip_address"`
-	UserAgent            string    `json:"user_agent"`
-	RefreshTokenJTI      string    `json:"refresh_token_jti"`
+	ID                    string     `json:"id"`
+	UserID                string     `json:"user_id"`
+	DeviceID              string     `json:"device_id"`
+	DeviceName            string     `json:"device_name"`
+	DeviceType            string     `json:"device_type"`
+	ClientVersion         string     `json:"client_version"`
+	IPAddress             string     `json:"ip_address"`
+	UserAgent             string     `json:"user_agent"`
+	RefreshTokenJTI       string     `json:"refresh_token_jti"`
 	RefreshTokenExpiresAt *time.Time `json:"refresh_token_expires_at"`
-	IsActive             bool      `json:"is_active"`
-	CreatedAt            time.Time `json:"created_at"`
-	LastSeenAt           time.Time `json:"last_seen_at"`
+	IsActive              bool       `json:"is_active"`
+	CreatedAt             time.Time  `json:"created_at"`
+	LastSeenAt            time.Time  `json:"last_seen_at"`
 }
 
 // DeviceAuthLog represents an audit entry for device authentication events

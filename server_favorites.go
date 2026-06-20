@@ -1,13 +1,14 @@
 package main
 
 import (
-	"time"
-	"os"
-	"google.golang.org/protobuf/types/known/timestamppb"
-	"github.com/google/uuid"
-	"encoding/json"
 	"LavenderMessenger/gen"
 	"context"
+	"encoding/json"
+	"os"
+	"time"
+
+	"github.com/google/uuid"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func (s *server) GetUserId(_ context.Context, req *gen.GetUserIdRequest) (*gen.GetUserIdResponse, error) {

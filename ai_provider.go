@@ -52,7 +52,7 @@ type AIMessageInput struct {
 
 // ToolDefInput — tool definition for provider
 type ToolDefInput struct {
-	Type     string         `json:"type"`
+	Type     string           `json:"type"`
 	Function ToolDefFuncInput `json:"function"`
 }
 

@@ -8,9 +8,9 @@ package main
 
 import (
 	"context"
-	"fmt"     // Standard formatting package for console output
-	"net"     // Network functionality for TCP listener
-	"os"      // Operating system interface for environment variables
+	"fmt" // Standard formatting package for console output
+	"net" // Network functionality for TCP listener
+	"os"  // Operating system interface for environment variables
 	"os/signal"
 	"strings" // String manipulation functions
 	"syscall"
@@ -18,10 +18,11 @@ import (
 	"LavenderMessenger/gen" // Generated gRPC code package
 	hermesagent "LavenderMessenger/gen/hermes_agent"
 
+	"time"
+
 	"github.com/joho/godotenv" // Environment variable loading from .env files
 	"google.golang.org/grpc"   // gRPC framework for RPC communication
 	"google.golang.org/grpc/keepalive"
-	"time"
 
 	firebase "firebase.google.com/go/v4"
 	"google.golang.org/api/option"

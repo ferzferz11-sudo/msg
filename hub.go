@@ -25,8 +25,8 @@ type Hub struct {
 	callStreams   map[gen.ChatService_CallSessionServer]string
 
 	// Reverse-lookup sets for O(1) IsUserOnline
-	userIdSet    map[string]bool // userId → online (v2 clients)
-	usernameSet  map[string]bool // username → online (v1 clients)
+	userIdSet      map[string]bool   // userId → online (v2 clients)
+	usernameSet    map[string]bool   // username → online (v1 clients)
 	clientVersions map[string]string // userId → client version
 
 	onStatusChange func()
@@ -236,6 +236,7 @@ func (h *Hub) GetGracePeriodRemaining(username string) time.Duration {
 	}
 	return 0
 }
+
 // Unregister removes a stream from the broadcast list.
 // For graceful reconnect: does NOT immediately remove if user is in grace period.
 // Instead starts a grace period so brief disconnects don't kill the session.

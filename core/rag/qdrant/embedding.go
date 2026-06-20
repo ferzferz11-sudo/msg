@@ -16,10 +16,10 @@ import (
 // OpenAIEmbeddingService implements rag.EmbeddingService using OpenAI API.
 // Uses text-embedding-3-small (1536 dim, $0.00002/1K tokens).
 type OpenAIEmbeddingService struct {
-	apiKey  string
-	model   string
-	dim     int
-	http    *http.Client
+	apiKey string
+	model  string
+	dim    int
+	http   *http.Client
 }
 
 func NewOpenAIEmbeddingService(dim int) *OpenAIEmbeddingService {

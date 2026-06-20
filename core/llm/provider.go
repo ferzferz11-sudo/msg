@@ -1,16 +1,16 @@
 package llm
 
 import (
-	"log"
 	"context"
 	"fmt"
+	"log"
 	"strings"
 	"sync"
 )
 
 // Message — универсальное сообщение для LLM
 type Message struct {
-	Role    string   `json:"role"`    // "user", "assistant", "system", "tool"
+	Role    string   `json:"role"` // "user", "assistant", "system", "tool"
 	Content string   `json:"content"`
 	Images  [][]byte `json:"images,omitempty"` // raw image bytes (base64-encoded in JSON)
 }
@@ -65,16 +65,16 @@ type LLMRouter interface {
 
 // RouteRule — правило маршрутизации
 type RouteRule struct {
-	ModelPrefix string       // "openrouter/" → OpenRouter, "local/" → Hermes, "" → default
-	Provider    LLMProvider  // провайдер
-	Priority    int          // приоритет (выше = важнее)
+	ModelPrefix string      // "openrouter/" → OpenRouter, "local/" → Hermes, "" → default
+	Provider    LLMProvider // провайдер
+	Priority    int         // приоритет (выше = важнее)
 }
 
 // SimpleRouter — простая реализация LLMRouter
 type SimpleRouter struct {
-	mu     sync.RWMutex
-	rules  []RouteRule
-	def    LLMProvider // default provider
+	mu    sync.RWMutex
+	rules []RouteRule
+	def   LLMProvider // default provider
 }
 
 func NewSimpleRouter(defaultProvider LLMProvider) *SimpleRouter {

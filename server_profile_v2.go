@@ -55,17 +55,17 @@ func (p *profileServerV2) GetProfile(ctx context.Context, _ *gen.GetProfileReque
 	}
 
 	return &gen.GetProfileResponse{
-		UserId:         userID,
-		Username:       username,
-		Email:          email,
-		AvatarUrl:      avatarURL,
-		FullAvatarUrl:  fullAvatarURL,
-		Bio:            bio,
-		Status:         status,
-		Locale:         locale,
-		IsSuperAdmin:   isSuperAdmin,
-		CreatedAt:      createdAt.Format(time.RFC3339),
-		LastSeenAt:     lastSeenAt.Format(time.RFC3339),
+		UserId:        userID,
+		Username:      username,
+		Email:         email,
+		AvatarUrl:     avatarURL,
+		FullAvatarUrl: fullAvatarURL,
+		Bio:           bio,
+		Status:        status,
+		Locale:        locale,
+		IsSuperAdmin:  isSuperAdmin,
+		CreatedAt:     createdAt.Format(time.RFC3339),
+		LastSeenAt:    lastSeenAt.Format(time.RFC3339),
 	}, nil
 }
 
@@ -149,10 +149,10 @@ func (p *profileServerV2) UpdateAvatar(ctx context.Context, req *gen.UpdateAvata
 
 	logger.Infof("ProfileV2: Avatar updated for %s", username)
 	return &gen.UpdateAvatarV2Response{
-		Success:        true,
-		Message:        "Avatar updated",
-		AvatarUrl:      req.AvatarUrl,
-		FullAvatarUrl:  req.FullAvatarUrl,
+		Success:       true,
+		Message:       "Avatar updated",
+		AvatarUrl:     req.AvatarUrl,
+		FullAvatarUrl: req.FullAvatarUrl,
 	}, nil
 }
 

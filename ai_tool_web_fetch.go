@@ -12,7 +12,7 @@ import (
 
 type webFetchTool struct{}
 
-func (t *webFetchTool) Name() string        { return "web_fetch" }
+func (t *webFetchTool) Name() string         { return "web_fetch" }
 func (t *webFetchTool) Description() string  { return "Fetch content from a URL" }
 func (t *webFetchTool) RequiredRole() string { return "user" }
 

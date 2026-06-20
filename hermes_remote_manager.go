@@ -16,17 +16,17 @@ import (
 
 // RemoteAgent — информация о подключённом удалённом агенте
 type RemoteAgent struct {
-	ID             string
-	Name           string
-	Version        string
-	Host           string
-	IPAddress      string
-	OS             string
-	Capabilities   []string // shell, git, build, deploy, file, docker
-	Status         string   // "connected", "disconnected", "busy", "error"
-	LastHeartbeat  time.Time
-	ActiveTasks    int
-	MaxConcurrent  int
+	ID            string
+	Name          string
+	Version       string
+	Host          string
+	IPAddress     string
+	OS            string
+	Capabilities  []string // shell, git, build, deploy, file, docker
+	Status        string   // "connected", "disconnected", "busy", "error"
+	LastHeartbeat time.Time
+	ActiveTasks   int
+	MaxConcurrent int
 
 	mu sync.RWMutex
 }
@@ -42,21 +42,21 @@ type RemoteTask struct {
 	StreamOutput bool
 
 	// Резульtат
-	Result       *RemoteTaskResult
-	Done         chan struct{}
-	CreatedAt    time.Time
-	CompletedAt  time.Time
+	Result      *RemoteTaskResult
+	Done        chan struct{}
+	CreatedAt   time.Time
+	CompletedAt time.Time
 }
 
 // RemoteTaskResult — результат выполнения задачи на удалённом агенте
 type RemoteTaskResult struct {
-	TaskID    string
-	Status    string // "success", "error", "timeout", "cancelled"
-	Stdout    string
-	Stderr    string
-	ExitCode  int
-	Duration  time.Duration
-	Error     string
+	TaskID   string
+	Status   string // "success", "error", "timeout", "cancelled"
+	Stdout   string
+	Stderr   string
+	ExitCode int
+	Duration time.Duration
+	Error    string
 }
 
 // RemoteTaskStreamUpdate — промежуточное обновление задачи (для streaming)
@@ -80,15 +80,15 @@ type RemoteAgentManager struct {
 	mu     sync.RWMutex
 
 	// gRPC streams от hermesAgentServer
-	streams map[string]*agentStream
+	streams   map[string]*agentStream
 	streamsMu sync.RWMutex
 
 	// Очередь задач (для балансировки)
 	taskQueue chan *RemoteTask
 
 	// Callbacks
-	onResult    func(agentID string, result *RemoteTaskResult)
-	onStream    func(agentID string, stream *RemoteTaskStreamUpdate) // для real-time вывода
+	onResult func(agentID string, result *RemoteTaskResult)
+	onStream func(agentID string, stream *RemoteTaskStreamUpdate) // для real-time вывода
 
 	// Карта task_id → *RemoteTask для результатов
 	pendingTasks map[string]*RemoteTask

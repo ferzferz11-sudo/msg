@@ -1,10 +1,11 @@
 package main
 
 import (
-	"time"
-	"github.com/google/uuid"
 	"LavenderMessenger/gen"
 	"context"
+	"time"
+
+	"github.com/google/uuid"
 )
 
 func (s *server) GetFCMLogs(_ context.Context, _ *gen.GetFCMLogsRequest) (*gen.GetFCMLogsResponse, error) {
