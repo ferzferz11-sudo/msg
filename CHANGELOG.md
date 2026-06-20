@@ -1,5 +1,16 @@
 # Лава — Server Changelog
 
+## [1.3.0.15] - 2026-06-20
+
+### Security Fixes
+- **Plaintext message logging removed** — messages now logged as truncated 40-char preview only
+- **LIKE injection fix** — `SearchChats` now escapes `%` and `_` wildcards in user input
+- **File extension validation** — upload handlers whitelist allowed image extensions (.jpg, .jpeg, .png, .gif, .webp)
+- **DeleteProfile cascade** — deleting a user now cleans up related data (chat metadata, tokens, contacts, reactions, drafts, devices)
+- **Bcrypt cost increased** — password hashing cost 10→12 for stronger brute-force resistance
+
+---
+
 ## [1.3.0.14] - 2026-06-20
 
 ### Security Fixes

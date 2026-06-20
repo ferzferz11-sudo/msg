@@ -74,6 +74,20 @@ func requireAuth(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+// sanitizeFileExtension validates and normalizes a file extension, returning empty string if disallowed
+func sanitizeFileExtension(filename string, allowed []string) string {
+	ext := strings.ToLower(filepath.Ext(filename))
+	if ext == "" {
+		return ""
+	}
+	for _, a := range allowed {
+		if ext == a {
+			return ext
+		}
+	}
+	return ""
+}
+
 func StartHTTPServer(port string) {
 	// Ensure directories exist
 	os.MkdirAll(avatarsPath, 0755)
@@ -271,7 +285,8 @@ func uploadAvatarHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Generate filename for thumbnail
 	hash := md5.Sum(thumbBytes)
-	ext := filepath.Ext(thumbHandler.Filename)
+	allowedImageExts := []string{".jpg", ".jpeg", ".png", ".gif", ".webp"}
+	ext := sanitizeFileExtension(thumbHandler.Filename, allowedImageExts)
 	if ext == "" {
 		ext = ".jpg"
 	}

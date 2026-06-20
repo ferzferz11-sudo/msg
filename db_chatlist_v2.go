@@ -36,6 +36,14 @@ func decodeCursor(cursor string) (chatCursor, bool) {
 	return c, true
 }
 
+// escapeLike escapes SQL LIKE special characters
+func escapeLike(s string) string {
+	s = strings.ReplaceAll(s, "\\", "\\\\")
+	s = strings.ReplaceAll(s, "%", "\\%")
+	s = strings.ReplaceAll(s, "_", "\\_")
+	return s
+}
+
 // ChatV2Row represents a chat row with v2 fields (pinned, muted, archived)
 type ChatV2Row struct {
 	ID, Name, Type, Participants, Creator, LastMessageText, AvatarURL, FullAvatarURL, LastMessageUsername string
@@ -171,7 +179,7 @@ func (db *DB) SearchChats(userID, query string, limit, offset int) ([]ChatV2Row,
 		return nil, nil
 	}
 
-	searchPattern := "%" + strings.ToLower(query) + "%"
+	searchPattern := "%" + strings.ToLower(escapeLike(query)) + "%"
 
 	rows, err := db.Query(`
 		WITH user_last_read AS (

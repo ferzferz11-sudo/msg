@@ -220,8 +220,27 @@ func (db *DB) UpdateProfile(user, bio, status string) error {
 }
 
 func (db *DB) DeleteProfile(user string) error {
-	_, err := db.Exec(`DELETE FROM users WHERE username=$1`, user)
-	return err
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// Clean up related data
+	tx.Exec(`DELETE FROM user_chat_metadata WHERE user_id = (SELECT id FROM users WHERE username=$1)`, user)
+	tx.Exec(`DELETE FROM muted_chats WHERE username=$1`, user)
+	tx.Exec(`DELETE FROM user_tokens WHERE username=$1`, user)
+	tx.Exec(`DELETE FROM contacts WHERE username=$1 OR contact_username=$1`, user)
+	tx.Exec(`DELETE FROM reactions WHERE username=$1`, user)
+	tx.Exec(`DELETE FROM draft_messages WHERE user_id = (SELECT id::text FROM users WHERE username=$1)`, user)
+	tx.Exec(`DELETE FROM user_devices WHERE user_id = (SELECT id FROM users WHERE username=$1)`, user)
+
+	// Delete the user
+	_, err = tx.Exec(`DELETE FROM users WHERE username=$1`, user)
+	if err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 func (db *DB) GetUserChatListVersion(user string) (int64, error) {

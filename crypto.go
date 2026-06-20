@@ -99,7 +99,7 @@ func decrypt(ciphertext []byte) (string, error) {
 
 // HashPassword хеширует пароль с использованием bcrypt
 func HashPassword(password string) (string, error) {
-	bytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 12)
 	if err != nil {
 		return "", err
 	}

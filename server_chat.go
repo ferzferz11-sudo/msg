@@ -273,14 +273,18 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 				logger.Infof("[%s] in %s: [E2EE encrypted message]", msg.User, roomID)
 			}
 		} else {
+			preview := msg.Text
+			if len(preview) > 40 {
+				preview = preview[:40] + "..."
+			}
 			if len(msg.ImageUrls) > 0 {
-				logger.Infof("[%s] in %s: %s (ImageURLs: %v)", msg.User, roomID, msg.Text, msg.ImageUrls)
+				logger.Infof("[%s] in %s: [image] (ImageURLs: %v)", msg.User, roomID, msg.ImageUrls)
 			} else if msg.ImageUrl != "" {
-				logger.Infof("[%s] in %s: %s (ImageURL: %s)", msg.User, roomID, msg.Text, msg.ImageUrl)
+				logger.Infof("[%s] in %s: [image] (ImageURL: %s)", msg.User, roomID, msg.ImageUrl)
 			} else if msg.VoiceUrl != "" {
-				logger.Infof("[%s] in %s: Voice message (%d seconds) - %s", msg.User, roomID, msg.Duration, msg.VoiceUrl)
+				logger.Infof("[%s] in %s: [voice] (%d seconds)", msg.User, roomID, msg.Duration)
 			} else {
-				logger.Infof("[%s] in %s: %s", msg.User, roomID, msg.Text)
+				logger.Infof("[%s] in %s: %s", msg.User, roomID, preview)
 			}
 		}
 
