@@ -134,14 +134,21 @@ func (db *DB) SearchChats(userID, query string, limit, offset int) ([]ChatV2Row,
 	searchPattern := "%" + strings.ToLower(query) + "%"
 
 	rows, err := db.Query(`
+		WITH unread_counts AS (
+			SELECT room_id, COUNT(*) as count FROM messages WHERE is_read = FALSE AND username != $2::text GROUP BY room_id
+		)
 		SELECT DISTINCT c.id, c.name, c.type, c.participants, c.created_at,
 		       COALESCE(c.creator_username, ''), COALESCE(c.creator_id::text, ''),
 		       COALESCE(c.avatar_url, ''), COALESCE(c.full_avatar_url, ''),
 		       COALESCE(c.allow_members_to_add, FALSE), COALESCE(c.is_secret, FALSE),
 		       COALESCE(c.last_message_text, ''), COALESCE(c.last_message_time, c.created_at),
-		       COALESCE(ucm.pinned, FALSE), COALESCE(ucm.archived, FALSE), COALESCE(ucm.pinned_at, 0)
+		       COALESCE(ucm.pinned, FALSE), COALESCE(ucm.archived, FALSE), COALESCE(ucm.pinned_at, 0),
+		       COALESCE(c.last_message_username, ''),
+		       COALESCE(c.last_message_has_image, FALSE),
+		       COALESCE(uc2.count, 0)
 		FROM chats c
 		LEFT JOIN user_chat_metadata ucm ON ucm.room_id = c.id AND ucm.user_id = $2::uuid
+		LEFT JOIN unread_counts uc2 ON c.id = uc2.room_id
 		WHERE (
 			LOWER(c.name) LIKE $1
 			OR LOWER(c.participants) LIKE $1
@@ -167,6 +174,8 @@ func (db *DB) SearchChats(userID, query string, limit, offset int) ([]ChatV2Row,
 			&c.AllowMembersToAdd, &isSecret,
 			&c.LastMessageText, &c.LastMessageTime,
 			&c.IsPinned, &c.IsArchived, &c.PinnedAt,
+			&c.LastMessageUsername, &c.LastMessageHasImage,
+			&c.UnreadCount,
 		)
 		if err != nil {
 			logger.Errorf("SearchChats scan error: %v", err)
@@ -223,6 +232,9 @@ func (db *DB) GetUserChatsV2(userID, username string, limit, offset int, filter 
 	}
 
 	query := fmt.Sprintf(`
+		WITH unread_counts AS (
+			SELECT room_id, COUNT(*) as count FROM messages WHERE is_read = FALSE AND username != $4 GROUP BY room_id
+		)
 		SELECT c.id, c.name, c.type, c.participants, c.created_at,
 		       COALESCE(c.creator_username, ''), COALESCE(c.creator_id::text, ''),
 		       COALESCE(c.avatar_url, ''), COALESCE(c.full_avatar_url, ''),
@@ -231,10 +243,12 @@ func (db *DB) GetUserChatsV2(userID, username string, limit, offset int, filter 
 		       COALESCE(ucm.pinned, FALSE), COALESCE(ucm.archived, FALSE),
 		       COALESCE(ucm.pinned_at, 0),
 		       COALESCE(c.last_message_username, ''),
-		       COALESCE(c.last_message_has_image, FALSE)
+		       COALESCE(c.last_message_has_image, FALSE),
+		       COALESCE(uc2.count, 0)
 		FROM chats c
 		LEFT JOIN user_chat_metadata ucm ON ucm.room_id = c.id AND ucm.user_id = $1::uuid
 		LEFT JOIN muted_chats mc ON mc.room_id = c.id AND mc.user_id = $1::uuid
+		LEFT JOIN unread_counts uc2 ON c.id = uc2.room_id
 		WHERE c.type NOT IN ('ai', 'owl', 'hermes')
 		AND (c.participant_ids @> ARRAY[$1::uuid] OR c.participants::jsonb @> jsonb_build_array($4::text))
 		%s
@@ -261,6 +275,7 @@ func (db *DB) GetUserChatsV2(userID, username string, limit, offset int, filter 
 			&c.LastMessageText, &c.LastMessageTime,
 			&c.IsPinned, &c.IsArchived, &c.PinnedAt,
 			&c.LastMessageUsername, &c.LastMessageHasImage,
+			&c.UnreadCount,
 		)
 		if err != nil {
 			logger.Errorf("GetUserChatsV2 scan error: %v", err)
