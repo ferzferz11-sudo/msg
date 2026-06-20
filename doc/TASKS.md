@@ -170,6 +170,3 @@
 
 ### Production RAG
 - [ ] Qdrant + CLIP — нужна инфраструктура (Qdrant + CLIP модели на сервере)
-
-### Rate Limiting
-- [ ] Unified RateLimiter (Redis) — нужен Redis
