@@ -96,7 +96,7 @@ func (s *server) sendPushNotification(userId, username, title, body, roomID stri
 		},
 		Data: map[string]string{
 			"title":   title,
-			"body":    body,
+			"body":    truncateForFCM(body),
 			"room_id": roomID,
 			"sender":  title,
 		},
@@ -194,7 +194,7 @@ func (s *server) sendMulticastWithRetry(client *messaging.Client, tokens, userID
 		},
 		Data: map[string]string{
 			"title":   title,
-			"body":    body,
+			"body":    truncateForFCM(body),
 			"room_id": roomID,
 			"sender":  title,
 		},
@@ -276,7 +276,8 @@ func (s *server) isInvalidTokenError(err error) bool {
 	errStr := err.Error()
 	return strings.Contains(errStr, "UNREGISTERED") ||
 		strings.Contains(errStr, "INVALID_ARGUMENT") ||
-		strings.Contains(errStr, "registration token not registered")
+		strings.Contains(errStr, "registration token not registered") ||
+		strings.Contains(errStr, "Requested entity was not found")
 }
 
 func (s *server) isFirebaseCredentialError(err error) bool {
@@ -352,7 +353,7 @@ func (s *server) broadcastConferenceStatus(roomID string) {
 	members, _ := s.db.GetChatParticipants(roomID)
 	var memberIDs []string
 	for _, m := range members {
-		memberIDs = append(memberIDs, s.resolveUserId(m))
+		memberIDs = append(memberIDs, m)
 	}
 	s.hub.BroadcastConference(msg, memberIDs)
 }
@@ -390,7 +391,17 @@ func (s *server) sendPushInternal(targetUserID, title, body string, data map[str
 			Title: title,
 			Body:  body,
 		},
-		Data: data,
+		Data: func() map[string]string {
+			safe := make(map[string]string, len(data))
+			for k, v := range data {
+				if k == "text" {
+					safe[k] = truncateForFCM(v)
+				} else {
+					safe[k] = v
+				}
+			}
+			return safe
+		}(),
 		Android: &messaging.AndroidConfig{
 			Priority: "high",
 		},
@@ -434,9 +445,7 @@ func (s *server) saveCallSystemMessage(u1, u2, icon, text, senderName, senderId 
 func (s *server) handleAbruptDisconnect(userId string) {
 	logger.Infof("[CALL] Handling abrupt disconnect for %s", userId)
 
-	resolvedUserId := s.resolveUserId(userId)
-
-	activeCalls, err := s.db.GetActiveCallsByUser(resolvedUserId)
+	activeCalls, err := s.db.GetActiveCallsByUser(userId)
 	if err != nil {
 		logger.Infof("[CALL] Failed to get active calls for %s: %v", userId, err)
 		return
@@ -444,7 +453,7 @@ func (s *server) handleAbruptDisconnect(userId string) {
 
 	for _, call := range activeCalls {
 		otherPartyId := call.CallerID
-		if call.CallerID == resolvedUserId {
+		if call.CallerID == userId {
 			otherPartyId = call.ReceiverID
 		}
 
@@ -452,7 +461,7 @@ func (s *server) handleAbruptDisconnect(userId string) {
 
 		hangupSignal := &gen.CallMessage{
 			CallId:     call.CallID,
-			SenderId:   resolvedUserId,
+			SenderId:   userId,
 			ReceiverId: otherPartyId,
 			Type:       gen.CallMessage_HANGUP,
 		}
@@ -469,12 +478,12 @@ func (s *server) handleAbruptDisconnect(userId string) {
 			hangupToSender := &gen.CallMessage{
 				CallId:     call.CallID,
 				SenderId:   otherPartyId,
-				ReceiverId: resolvedUserId,
+				ReceiverId: userId,
 				Type:       gen.CallMessage_HANGUP,
 			}
 			s.hub.BroadcastCall(hangupToSender)
 
-			senderName := resolveDisplayName(s.db, resolvedUserId)
+			senderName := resolveDisplayName(s.db, userId)
 			duration, _ := s.db.GetCallDuration(call.CallID)
 			durationText := ""
 			if duration > 0 {
@@ -482,7 +491,7 @@ func (s *server) handleAbruptDisconnect(userId string) {
 				seconds := duration % 60
 				durationText = fmt.Sprintf(" (%d:%02d)", minutes, seconds)
 			}
-			s.saveCallSystemMessage(senderName, otherUsername, "📞↘️", "Соединение потеряно"+durationText, senderName, resolvedUserId)
+			s.saveCallSystemMessage(senderName, otherUsername, "📞↘️", "Соединение потеряно"+durationText, senderName, userId)
 		}
 	}
 }
@@ -539,4 +548,13 @@ func (s *server) broadcastOnlineUsers() {
 
 func durationPtr(d time.Duration) *time.Duration {
 	return &d
+}
+
+const maxFCMDataBodyLen = 3500
+
+func truncateForFCM(s string) string {
+	if len(s) <= maxFCMDataBodyLen {
+		return s
+	}
+	return s[:maxFCMDataBodyLen] + "..."
 }

@@ -31,7 +31,7 @@ import (
 	firebase "firebase.google.com/go/v4"
 )
 
-const ServerVersion = "1.3.0.7"
+const ServerVersion = "1.3.0.8"
 
 // Service versions for client capability negotiation.
 // Service versions for client capability negotiation.
@@ -121,34 +121,4 @@ func resolveDisplayName(db *DB, identifier string) string {
 	return identifier
 }
 
-// resolveUserId converts a potential username to a user ID if needed
-// Deprecated: v1 username→UUID fallback. Use UUID identifiers directly for v2-only handlers.
-func (s *server) resolveUserId(identifier string) string {
-	if identifier == "" {
-		return ""
-	}
-	// Check if it's a UUID
-	if _, err := uuid.Parse(identifier); err == nil {
-		return identifier
-	}
-	// It's a username, try to get the ID
-	id, err := s.db.GetUserIdByUsername(identifier)
-	if err == nil && id != "" {
-		return id
-	}
-	return identifier
-}
 
-// resolveUsername converts a potential user ID to a username if needed
-// Deprecated: v1 UUID→username fallback. Use UUID identifiers directly for v2-only handlers.
-func (s *server) resolveUsername(identifier string) string {
-	if identifier == "" {
-		return ""
-	}
-	var name string
-	err := s.db.QueryRow("SELECT username FROM users WHERE id=$1::uuid", identifier).Scan(&name)
-	if err != nil {
-		return identifier
-	}
-	return name
-}

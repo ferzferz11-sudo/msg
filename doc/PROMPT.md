@@ -1,7 +1,7 @@
-# Промпт для серверных сессий — v1.3.0.3
+# Промпт для серверных сессий — v1.3.0.8
 
 **Дата:** 2026-06-20 | **Ветка:** feat/1.3.0.x
-**Статус:** AI v2 полностью готовы. v1.3.0.3: MarkRead fix + ghost AI chat fix.
+**Статус:** v1 compat полностью удалён. AI v2 + marketplace работают. Остался только Qdrant RAG.
 
 ---
 
@@ -9,8 +9,8 @@
 
 | | Версия | Статус |
 |---|--------|--------|
-| **Сервер prod** | v1.3.0.2 | ✅ Работает на порту 50051 |
-| **Сервер dev** | v1.3.0.2 | ✅ Работает на порту 50052 |
+| **Сервер prod** | v1.3.0.8 | ✅ Работает на порту 50051 |
+| **Сервер dev** | v1.3.0.8 | ✅ Работает на порту 50052 |
 
 **Android:** `/root/msg.client.android` — документация там, сборка ТОЛЬКО локально.
 
@@ -125,7 +125,7 @@ messenger.proto            — All proto definitions
 5. DB миграции: `IF NOT EXISTS`, NEVER `DROP`
 6. Коммитить после каждого изменения
 7. **Стабильность > фичи** — деплоим сразу на prod, ошибки критичны
-8. **НЕ удалять v1 compat код** (auth interceptor, SignIn/SignUp v1, GetChats v1) пока все клиенты не мигрируют на v2 JWT
+8. v1 compat полностью удалён — все клиенты на v2 JWT
 
 ---
 
@@ -178,20 +178,19 @@ go test ./...
 
 ---
 
-## ОСТАЛОСЬ (2 задачи)
+## ОСТАЛОСЬ (1 задача)
 
 | # | Задача | Блокер |
 |---|--------|--------|
-| 30/48 | Qdrant + CLIP (production RAG) | Нужна инфраструктура |
-| 33 | Unified RateLimiter (Redis) | Нужен Redis |
+| 30 | Qdrant + CLIP (production RAG) | Нужна инфраструктура |
 
-**Прогресс: 48/50 задач выполнено (96%)**
+**Прогресс: 49/50 задач выполнено (98%)**
 
 ---
 
 ## КЛЮЧЕВЫЕ ФАЙЛЫ ДЛЯ НОВОЙ СЕССИИ
 
-- `doc/AI_V2_CLIENT_INTEGRATION.md` — передать Android разработчику
-- `doc/AI_V2_IMPLEMENTATION_PLAN.md` — полный план с отметками ✅
+- `doc/MARKETPLACE_AGENTS_SETUP.md` — quickstart для Android клиента
+- `doc/ANDROID_RATE_LIMIT_PROMPT.md` — rate limiting для Android
+- `doc/AI_V2_CLIENT_INTEGRATION.md` — полная интеграция AI v2
 - `doc/TASKS.md` — список задач
-- `doc/OPTIMIZATION_PLAN.md` — план оптимизаций

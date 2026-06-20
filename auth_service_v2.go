@@ -9,13 +9,13 @@ import (
 )
 
 // authServerV2 implements the V2 AuthService methods with JWT + device management
-// It wraps the existing authServer for v1 methods and adds v2 methods
 type authServerV2 struct {
-	*authServer
+	gen.UnimplementedAuthServiceServer
+	db authDB
 }
 
 func newAuthServerV2(db *DB) *authServerV2 {
-	return &authServerV2{authServer: newAuthServer(db)}
+	return &authServerV2{db: db}
 }
 
 // SignInV2 authenticates a user with username/password, registers the device,

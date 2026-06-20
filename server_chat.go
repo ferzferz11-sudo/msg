@@ -30,7 +30,6 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 	defer func() {
 		// Unregister the client when the connection ends
 		s.hub.Unregister(stream)
-		logger.Infof("Stream for %s closed", connectedUser)
 	}()
 
 	// Track auth method for this stream
@@ -107,7 +106,14 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 			if clientVer == "" {
 				clientVer = s.hub.GetClientVersion(connectedUserID)
 			}
-			logger.Infof("Auth success: %s (JWT) v=%s device=%s signal=%s", connectedUser, clientVer, msg.DeviceId, msg.RoomId)
+			deviceInfo := ""
+			if msg.DeviceId != "" {
+				deviceInfo = fmt.Sprintf(" device=%s", msg.DeviceName)
+				if msg.DeviceId != "" {
+					deviceInfo += fmt.Sprintf("(%s)", msg.DeviceId[:min(8, len(msg.DeviceId))])
+				}
+			}
+			logger.Infof("Auth success: %s (JWT) v=%s%s signal=%s", connectedUser, clientVer, deviceInfo, msg.RoomId)
 
 			// Update last client version and last seen timestamp in DB
 			if msg.ClientVersion != "" {
@@ -151,8 +157,6 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 				err := s.db.AddUserDevice(connectedUserID, msg.DeviceId, msg.DeviceName, msg.ClientVersion, ip)
 				if err != nil {
 					logger.Errorf("Failed to register device %s for %s (ID: %s): %v", msg.DeviceId, connectedUser, connectedUserID, err)
-				} else {
-					logger.Infof("Device registered: %s (%s) for %s", msg.DeviceName, msg.DeviceId, connectedUser)
 				}
 			}
 
@@ -472,14 +476,13 @@ func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
 			return nil
 		}
 		if err != nil {
-			if err != context.Canceled && !strings.Contains(err.Error(), "transport is closing") {
+			errStr := err.Error()
+			if err != context.Canceled && !strings.Contains(errStr, "Canceled") && !strings.Contains(errStr, "transport is closing") {
 				logger.Errorf("[CALL] Error receiving signal: %v", err)
 			}
 			return err
 		}
 
-		msg.SenderId = s.resolveUserId(msg.SenderId)
-		msg.ReceiverId = s.resolveUserId(msg.ReceiverId)
 		msg.SenderName = resolveDisplayName(s.db, msg.SenderId)
 		msg.ReceiverName = resolveDisplayName(s.db, msg.ReceiverId)
 

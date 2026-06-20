@@ -1,5 +1,34 @@
 # Лава — Server Changelog
 
+## [1.3.0.8] - 2026-06-20
+
+### v1 Compat Removal
+- **auth_interceptor.go** — удалены v1 fallback, `extractUsernameFromMetadata`, `ResolveUserID` + кэш
+- **auth_service.go** — удалены `authServer` struct, `SignIn`/`SignUp` v1
+- **auth_service_v2.go** — `authServerV2` больше не embedит `*authServer`
+- **server_chats.go** — удалён `GetChats` v1 endpoint
+- **server.go** — удалены `resolveUserId`/`resolveUsername`
+
+### Bug Fixes
+- **server_ai_v2.go** — `getAIV2UserID`: исправлен баг с typed context key (всегда возвращал "")
+- **server_push.go** — FCM push > 4KB: добавлен `truncateForFCM()` для data payload
+- **server_push.go** — `isInvalidTokenError`: добавлена "Requested entity was not found"
+- **server_chat.go** — Call stream: gRPC `context.Canceled` больше не логируется как error
+
+### Logging
+- **server_ai_v2.go** — `[AI]` логи для всех AI v2 хендлеров
+- **server_chat.go** — объединены "Auth success" + "Device registered"
+- **server_chat.go** — удалён неинформативный "Stream for %s closed"
+
+### Documentation
+- **doc/MARKETPLACE_AGENTS_SETUP.md** — quickstart, пресеты, marketplace, tool calling
+- **doc/ANDROID_RATE_LIMIT_PROMPT.md** — rate limiting для Android клиента
+
+### Cleanup
+- Удалена `client.android/` из репозитория
+
+---
+
 ## [1.3.0.7] - 2026-06-20
 
 ### Redis Rate Limiter

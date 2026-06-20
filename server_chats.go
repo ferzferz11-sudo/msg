@@ -46,61 +46,6 @@ func (s *server) GetAllChats(ctx context.Context, req *gen.GetAllChatsRequest) (
 	}, nil
 }
 
-// Deprecated: v1 chat list endpoint. Clients should use GetChatsV2 instead.
-func (s *server) GetChats(_ context.Context, req *gen.GetChatsRequest) (*gen.GetChatsResponse, error) {
-	// Используем username для логов, а ID для запросов в БД
-	// Убираем спам в логах, так как клиент опрашивает этот эндпоинт каждые 3 секунды
-	// logger.Infof("GetChats requested by user %s (ID: %s)", req.Username, req.UserId)
-
-	// Если ID передан, используем его, иначе ищем по username (для старых клиентов)
-	// Deprecated: username fallback — will be removed when all clients use GetChatsV2 with JWT.
-	queryIdentifier := req.UserId
-	if queryIdentifier == "" {
-		id, err := s.db.GetUserIdByUsername(req.Username)
-		if err == nil && id != "" {
-			queryIdentifier = id
-		} else {
-			// Если не нашли ID, ставим нулевой UUID, чтобы запрос к БД не падал с ошибкой синтаксиса $1::uuid
-			queryIdentifier = "00000000-0000-0000-0000-000000000000"
-		}
-	}
-
-	chats, err := s.db.GetUserChats(queryIdentifier, req.Username)
-	if err != nil {
-		logger.Errorf("Error fetching chats for user %s: %v", req.Username, err)
-		return nil, err
-	}
-
-	var chatInfos []*gen.ChatInfo
-	for _, c := range chats {
-		chatInfos = append(chatInfos, &gen.ChatInfo{
-			Id:                  c.ID,
-			Name:                c.Name,
-			Type:                c.Type,
-			Participants:        c.Participants,
-			CreatedAt:           timestamppb.New(c.CreatedAt),
-			UnreadCount:         int32(c.UnreadCount),
-			LastMessageTime:     timestamppb.New(c.LastMessageTime),
-			Creator:             c.Creator,
-			LastMessageText:     c.LastMessageText,
-			AvatarUrl:           c.AvatarURL,
-			FullAvatarUrl:       c.FullAvatarURL,
-			LastMessageUsername: c.LastMessageUsername,
-			LastMessageHasImage: c.LastMessageHasImage,
-			AllowMembersToAdd:   c.AllowMembersToAdd,
-			IsPinned:            false,
-			IsMuted:             false,
-			IsArchived:          false,
-			PinnedAt:            0,
-		})
-	}
-
-	// Note: AI chats (owl/hermes) are NOT included in GetAllChats.
-	// They are fetched separately via GetAIChats RPC and shown in AIBottomSheet.
-
-	return &gen.GetChatsResponse{Chats: chatInfos}, nil
-}
-
 func (s *server) CreateDirectChat(_ context.Context, req *gen.CreateDirectChatRequest) (*gen.CreateDirectChatResponse, error) {
 	u1 := req.User1
 	if req.User1Id != "" {

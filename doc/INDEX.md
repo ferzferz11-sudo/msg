@@ -2,7 +2,7 @@
 
 Индекс всех документов проекта. Читать при каждом старте новой сессии.
 
-**Модуль:** `LavenderMessenger` | **Go:** 1.26 | **Сервер:** v1.2.0.9
+**Модуль:** `LavenderMessenger` | **Go:** 1.26 | **Сервер:** v1.3.0.8
 
 ---
 
@@ -107,22 +107,17 @@
 
 ---
 
-## Deprecated v1 compat (удаление в v1.3)
+## Deprecated v1 compat — УДАЛЕНО в v1.3.0.8
 
-| Что | Файл | Замена |
-|-----|------|--------|
-| `authServer` (v1 SignIn/SignUp) | `auth_service.go` | `authServerV2` (AuthServiceV2) |
-| `SignIn()` / `SignUp()` v1 | `auth_service.go` | `SignInV2()` / `SignUpV2()` |
-| `extractUsernameFromMetadata()` | `auth_interceptor.go` | JWT Bearer token |
-| `AuthInterceptor` v1 fallback | `auth_interceptor.go` | v2 JWT path |
-| `AuthStreamInterceptor` bypass (Chat/Typing/CallSession) | `auth_interceptor.go` | JWT в metadata |
-| `ResolveUserID()` | `auth_interceptor.go` | `GetUserID(ctx)` |
-| `resolveUserId()` / `resolveUsername()` | `server.go` | UUID идентификаторы |
-| `GetChats()` v1 endpoint | `server_chats.go` | **`GetChatsV2()`** — фильтры (pinned/archived/muted), пагинация (limit/offset), v2 поля |
-| Chat stream v1 password auth | `server_chat.go` | JWT в первом сообщении |
-| `IsUserOnline()` username fallback | `hub.go` | UUID-only проверка |
-| `BroadcastCall()` username matching | `hub.go` | UUID-only маршрутизация |
-| `user_chat_metadata.username` nullable | `db_chatlist_v2.go` | `user_id` (UUID PK) |
+| Что | Статус |
+|-----|--------|
+| `authServer` v1 SignIn/SignUp | ✅ Удалён |
+| `extractUsernameFromMetadata()` | ✅ Удалён |
+| `AuthInterceptor` v1 fallback | ✅ Удалён |
+| `AuthStreamInterceptor` bypass | ✅ Удалён |
+| `ResolveUserID()` + cache | ✅ Удалён |
+| `resolveUserId()` / `resolveUsername()` | ✅ Удалены |
+| `GetChats()` v1 endpoint | ✅ Удалён |
 
 ---
 
@@ -135,12 +130,13 @@
 | `TASKS.md` | Таск-трекер: сделано/не сделано |
 | `ARCHITECTURE.md` | Общая архитектура сервера |
 | `CLIENT_INTEGRATION.md` | **Интеграция клиента** — все gRPC методы, HTTP endpoints, auth workflow |
-| `AI_SERVICES.md` | AI-сервисы: OWL AI, Hermes Orchestrator |
+| `AI_SERVICES.md` | AI-сервисы: AI Gateway v2, провайдеры, маркетплейс |
+| `MARKETPLACE_AGENTS_SETUP.md` | **Агенты и пресеты** — quickstart, создание, marketplace, tool calling |
+| `ANDROID_RATE_LIMIT_PROMPT.md` | **Android rate limiting** — кэширование лимитов, UX при превышении |
 | `PITFALLS.md` | Подводные камни и известные проблемы (сервер) |
 | `LOG_MONITOR.md` | Log Monitor: сборка, деплой, API |
 | `TESTING.md` | Модульные тесты |
 | `RELEASE.md` | Процесс релиза |
-| `OPTIMIZATION_PLAN.md` | План оптимизации — 35 пунктов, P0-P3 |
 
 ---
 

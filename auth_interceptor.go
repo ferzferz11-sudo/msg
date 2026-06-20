@@ -3,8 +3,6 @@ package main
 import (
 	"context"
 	"strings"
-	"sync"
-	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -21,94 +19,29 @@ const (
 	deviceIDKey authContextKey = "device_id"
 )
 
-// ResolveUserID cache for username → UUID lookups (v1 fallback)
-type resolveUserIDCache struct {
-	mu      sync.RWMutex
-	entries map[string]cacheEntry
-	ttl     time.Duration
-}
-
-type cacheEntry struct {
-	userID    string
-	expiresAt time.Time
-}
-
-var userIDCache = &resolveUserIDCache{
-	entries: make(map[string]cacheEntry),
-	ttl:     5 * time.Minute,
-}
-
-func (c *resolveUserIDCache) get(username string) (string, bool) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	entry, ok := c.entries[username]
-	if !ok || time.Now().After(entry.expiresAt) {
-		return "", false
-	}
-	return entry.userID, true
-}
-
-func (c *resolveUserIDCache) set(username, userID string) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.entries[username] = cacheEntry{
-		userID:    userID,
-		expiresAt: time.Now().Add(c.ttl),
-	}
-}
-
 // AuthInterceptor validates JWT Bearer tokens on every gRPC call (except AuthService).
 // On success it injects user_id, username, device_id into the context.
-// For v1 clients (no JWT), falls back to username-based auth from metadata.
 func AuthInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 	// Skip auth for AuthService — sign in/up/refresh don't have tokens yet
 	if strings.HasPrefix(info.FullMethod, "/messenger.AuthService/") {
 		return handler(ctx, req)
 	}
 
-	// Try v2 JWT auth first
 	claims, err := extractAndValidateToken(ctx)
-	if err == nil && claims != nil {
-		ctx = context.WithValue(ctx, userIDKey, claims.UserID)
-		ctx = context.WithValue(ctx, usernameKey, claims.Username)
-		ctx = context.WithValue(ctx, deviceIDKey, claims.DeviceID)
-		return handler(ctx, req)
+	if err != nil {
+		return nil, status.Errorf(codes.Unauthenticated, "unauthenticated: %v", err)
 	}
 
-	// Deprecated fallback: v1 username-based auth from gRPC metadata.
-	// Will be removed when all clients are migrated to v2 JWT.
-	if userID, username := extractUsernameFromMetadata(ctx); userID != "" || username != "" {
-		if userID == "" && username != "" {
-			// Resolve username → UUID
-			// Note: we can't call DB here directly, so we store username
-			// and let handlers resolve it if needed
-		}
-		if userID != "" {
-			ctx = context.WithValue(ctx, userIDKey, userID)
-		}
-		if username != "" {
-			ctx = context.WithValue(ctx, usernameKey, username)
-		}
-		return handler(ctx, req)
-	}
-
-	return nil, status.Errorf(codes.Unauthenticated, "unauthenticated: no valid token or credentials")
+	ctx = context.WithValue(ctx, userIDKey, claims.UserID)
+	ctx = context.WithValue(ctx, usernameKey, claims.Username)
+	ctx = context.WithValue(ctx, deviceIDKey, claims.DeviceID)
+	return handler(ctx, req)
 }
 
 // AuthStreamInterceptor is the streaming variant of AuthInterceptor
 func AuthStreamInterceptor(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 	// Skip auth for AuthService
 	if strings.HasPrefix(info.FullMethod, "/messenger.AuthService/") {
-		return handler(srv, ss)
-	}
-
-	// Legacy streams (v1 clients without JWT): Chat, Typing, CallSession.
-	// Deprecated: these streams handle auth internally (password in first message / username-based).
-	// Will be removed when all clients are migrated to v2 JWT.
-	switch info.FullMethod {
-	case "/messenger.ChatService/Chat",
-		"/messenger.ChatService/Typing",
-		"/messenger.ChatService/CallSession":
 		return handler(srv, ss)
 	}
 
@@ -165,27 +98,6 @@ func GetDeviceID(ctx context.Context) string {
 	return ""
 }
 
-// ResolveUserID returns userID from context, or resolves username via DB if needed.
-// Handlers should call this instead of GetUserID when they need a UUID.
-// Deprecated: v1 username fallback. Use GetUserID() directly for v2-only handlers.
-func ResolveUserID(ctx context.Context, db *DB) string {
-	if uid := GetUserID(ctx); uid != "" {
-		return uid
-	}
-	// Fallback: resolve username from context
-	if username := GetUsername(ctx); username != "" {
-		// Check cache first
-		if uid, ok := userIDCache.get(username); ok {
-			return uid
-		}
-		if uid, err := db.GetUserIdByUsername(username); err == nil && uid != "" {
-			userIDCache.set(username, uid)
-			return uid
-		}
-	}
-	return ""
-}
-
 // extractAndValidateToken reads the Bearer token from gRPC metadata and validates it
 func extractAndValidateToken(ctx context.Context) (*authClaims, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
@@ -214,24 +126,4 @@ func extractAndValidateToken(ctx context.Context) (*authClaims, error) {
 	}
 
 	return claims, nil
-}
-
-// extractUsernameFromMetadata extracts username/user_id from gRPC metadata for v1 clients
-// Deprecated: v1 clients no longer supported. Will be removed when all clients use JWT.
-func extractUsernameFromMetadata(ctx context.Context) (userID, username string) {
-	md, ok := metadata.FromIncomingContext(ctx)
-	if !ok {
-		return "", ""
-	}
-
-	// v1 clients send "username" in metadata
-	if vals := md.Get("username"); len(vals) > 0 && vals[0] != "" {
-		username = vals[0]
-	}
-	// Some v1 clients may also send "user_id"
-	if vals := md.Get("user_id"); len(vals) > 0 && vals[0] != "" {
-		userID = vals[0]
-	}
-
-	return userID, username
 }

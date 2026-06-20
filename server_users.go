@@ -102,7 +102,7 @@ func (s *server) GetUserProfile(_ context.Context, req *gen.GetUserProfileReques
 func (s *server) GetUserAvatar(_ context.Context, req *gen.GetUserAvatarRequest) (*gen.GetUserAvatarResponse, error) {
 	username := req.Username
 	if req.UserId != "" {
-		resolved := s.resolveUsername(req.UserId)
+		resolved := resolveDisplayName(s.db, req.UserId)
 		if resolved != "" {
 			username = resolved
 		}

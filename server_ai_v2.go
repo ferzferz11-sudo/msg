@@ -33,6 +33,8 @@ func (s *server) ChatWithAIV2(req *gen.ChatWithAIV2Request, stream gen.ChatServi
 		AgentID: req.AgentId,
 	}
 
+	logger.Infof("[AI] ChatWithAIV2: user=%s agent=%s session=%s msg=%dchars", userID, req.AgentId, req.SessionId, len(req.Message))
+
 	err := gateway.Chat(stream.Context(), chatReq, func(token string, finished bool) error {
 		return stream.Send(&gen.ChatWithAIV2Response{
 			Token:    token,
@@ -41,6 +43,7 @@ func (s *server) ChatWithAIV2(req *gen.ChatWithAIV2Request, stream gen.ChatServi
 	})
 
 	if err != nil {
+		logger.Infof("[AI] ChatWithAIV2 error: user=%s agent=%s err=%v", userID, req.AgentId, err)
 		stream.Send(&gen.ChatWithAIV2Response{
 			Error:    err.Error(),
 			Finished: true,
@@ -115,6 +118,8 @@ func (s *server) CreateAIAgent(ctx context.Context, req *gen.CreateAIAgentReques
 		return &gen.CreateAIAgentResponse{Error: err.Error()}, nil
 	}
 
+	logger.Infof("[AI] CreateAgent: id=%s name=%s provider=%s user=%s", agentID, req.Name, req.ProviderType, userID)
+
 	return &gen.CreateAIAgentResponse{
 		Success: true,
 		AgentId: agentID,
@@ -173,6 +178,8 @@ func (s *server) UpdateAIAgent(ctx context.Context, req *gen.UpdateAIAgentReques
 		return &gen.UpdateAIAgentResponse{Error: err.Error()}, nil
 	}
 
+	logger.Infof("[AI] UpdateAgent: id=%s user=%s", req.AgentId, userID)
+
 	return &gen.UpdateAIAgentResponse{Success: true}, nil
 }
 
@@ -198,6 +205,8 @@ func (s *server) DeleteAIAgent(ctx context.Context, req *gen.DeleteAIAgentReques
 	if err := s.db.DeleteAgentV2(req.AgentId); err != nil {
 		return &gen.DeleteAIAgentResponse{Error: err.Error()}, nil
 	}
+
+	logger.Infof("[AI] DeleteAgent: id=%s user=%s", req.AgentId, userID)
 
 	return &gen.DeleteAIAgentResponse{Success: true}, nil
 }
@@ -228,6 +237,8 @@ func (s *server) ListAIAgents(ctx context.Context, req *gen.ListAIAgentsRequest)
 	for _, a := range agents {
 		result = append(result, agentToProto(a))
 	}
+
+	logger.Infof("[AI] ListAgents: user=%s includePublic=%v count=%d", userID, req.IncludePublic, len(result))
 
 	return &gen.ListAIAgentsResponse{Agents: result}, nil
 }
@@ -271,6 +282,8 @@ func (s *server) CloneAIAgent(ctx context.Context, req *gen.CloneAIAgentRequest)
 	if err := s.db.CreateAgentV2(clone); err != nil {
 		return &gen.CloneAIAgentResponse{Error: err.Error()}, nil
 	}
+
+	logger.Infof("[AI] CloneAgent: from=%s new=%s user=%s", req.AgentId, newID, userID)
 
 	return &gen.CloneAIAgentResponse{
 		Success: true,
@@ -337,6 +350,8 @@ func (s *server) RateAIAgent(ctx context.Context, req *gen.RateAIAgentRequest) (
 		reviewCount = int32(updated.ReviewCount)
 	}
 
+	logger.Infof("[AI] RateAgent: agent=%s user=%s rating=%d", req.AgentId, userID, req.Rating)
+
 	return &gen.RateAIAgentResponse{
 		Success:     true,
 		AvgRating:   avgRating,
@@ -373,6 +388,8 @@ func (s *server) GetAIAgentReviews(ctx context.Context, req *gen.GetAIAgentRevie
 		reviewCount = int32(agent.ReviewCount)
 	}
 
+	logger.Infof("[AI] GetReviews: agent=%s count=%d", req.AgentId, len(result))
+
 	return &gen.GetAIAgentReviewsResponse{
 		Reviews:     result,
 		AvgRating:   avgRating,
@@ -396,6 +413,8 @@ func (s *server) ListMarketplaceAgents(ctx context.Context, req *gen.ListMarketp
 	for _, a := range agents {
 		result = append(result, agentToProto(a))
 	}
+
+	logger.Infof("[AI] Marketplace: query=%q limit=%d offset=%d results=%d", req.Query, limit, offset, len(result))
 
 	return &gen.ListMarketplaceAgentsResponse{
 		Agents: result,
@@ -438,6 +457,8 @@ func (s *server) ShareAIAgent(ctx context.Context, req *gen.ShareAIAgentRequest)
 			return &gen.ShareAIAgentResponse{Error: err.Error()}, nil
 		}
 	}
+
+	logger.Infof("[AI] ShareAgent: agent=%s code=%s user=%s", req.AgentId, shareCode, userID)
 
 	return &gen.ShareAIAgentResponse{
 		Success:   true,
@@ -492,6 +513,8 @@ func (s *server) InstallAIAgent(ctx context.Context, req *gen.InstallAIAgentRequ
 
 	s.db.IncrementInstallCount(original.ID)
 
+	logger.Infof("[AI] InstallAgent: code=%s from=%s new=%s user=%s", req.ShareCode, original.ID, newID, userID)
+
 	return &gen.InstallAIAgentResponse{
 		Success: true,
 		AgentId: newID,
@@ -530,6 +553,8 @@ func (s *server) GetAIUsageStats(ctx context.Context, req *gen.GetAIUsageStatsRe
 			AgentName:    agentName,
 		})
 	}
+
+	logger.Infof("[AI] UsageStats: user=%s tokens=%d requests=%d", userID, totalTokens, totalRequests)
 
 	return &gen.GetAIUsageStatsResponse{
 		Stats:         result,
@@ -573,11 +598,5 @@ func agentToProto(a *AgentV2) *gen.AgentInfoV2 {
 }
 
 func getAIV2UserID(ctx context.Context) string {
-	if ctx == nil {
-		return ""
-	}
-	if id, ok := ctx.Value("user_id").(string); ok {
-		return id
-	}
-	return ""
+	return GetUserID(ctx)
 }

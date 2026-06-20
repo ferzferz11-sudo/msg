@@ -1,9 +1,9 @@
 # Лава — AI Services
 
-Документация по AI-сервисам: OWL AI и Hermes Orchestrator.
+Документация по AI-сервисам: AI Gateway v2, провайдеры, маркетплейс.
 
-**Обновлено:** 2026-06-18
-**Ветка:** feat/1.2.0.x
+**Обновлено:** 2026-06-20
+**Версия:** v1.3.0.8
 
 ---
 
@@ -13,283 +13,124 @@
 ┌─────────────────────────────────────────────────────────────┐
 │                        SERVER                                │
 │                                                             │
-│  ┌─────────────────────────────────────────────────────┐    │
-│  │                    server.go                         │    │
-│  │  gRPC handlers, маршрутизация, rate limiting         │    │
-│  └─────────────┬──────────────────────┬────────────────┘    │
-│                │                      │                      │
-│  ┌─────────────┴──────────┐  ┌───────┴────────────────┐    │
-│  │       owl.go           │  │  hermes_orchestrator.go │    │
-│  │  OWL AI: streaming,    │  │  Hermes: маршрутизация  │    │
-│  │  sessions, history     │  │  агентов, RAG, tools    │    │
-│  └─────────────┬──────────┘  └───────┬────────────────┘    │
-│                │                      │                      │
-│  ┌─────────────┴──────────┐  ┌───────┴────────────────┐    │
-│  │   owlSessionManager    │  │  HermesAgentRegistry   │    │
-│  │  (DB-backed sessions)  │  │  (агенты, пресеты)     │    │
-│  └─────────────┬──────────┘  └───────┬────────────────┘    │
-│                │                      │                      │
-│  ┌─────────────┴──────────────────────┴────────────────┐    │
-│  │                    PostgreSQL                        │    │
-│  │  chats │ owl_messages │ hermes_sessions │            │    │
-│  │  owl_chat_settings │ hermes_messages │              │    │
-│  └─────────────────────────────────────────────────────┘    │
+│  ChatWithAIV2 ──► AIGateway ──► HybridRouter               │
+│                      │              │                       │
+│                      ▼              ▼                       │
+│                 AgentExecutor   ToolRegistry                │
+│                      │              │                       │
+│                      ▼              ▼                       │
+│              ProviderRegistry   6 tools                     │
+│              ┌─────┴─────┐                                 │
+│              │           │                                 │
+│         OpenRouter    MiMo    Webhook  WS  Subprocess  MCP │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-**Принцип:** полная изоляция OWL и Hermes — разные файлы, разные таблицы БД, разные gRPC методы.
+---
+
+## Провайдеры (7 типов)
+
+| Тип | Файл | Описание |
+|-----|------|----------|
+| `openrouter` | `ai_provider_openrouter.go` | OpenRouter API (SSE streaming + tool calls) |
+| `mimo` | `ai_provider_mimo.go` | MiMo API (HTTP + deep integration) |
+| `local` | `ai_provider_local.go` | Локальный LLM (hermes binary) |
+| `webhook` | `ai_provider_webhook.go` | HTTP webhook |
+| `websocket` | `ai_provider_websocket.go` | WebSocket (gorilla/websocket) |
+| `subprocess` | `ai_provider_subprocess.go` | Subprocess (stdin/stdout) |
+| `mcp` | `ai_provider_mcp.go` | MCP (stdio, JSON-RPC 2.0) |
 
 ---
 
-## Таблицы БД
+## Пресеты (8 агентов)
 
-### chats
-Единая таблица для всех чатов (обычные, OWL, Hermes).
-- `id` — уникальный ID (для OWL: `owl-<uuid>`, для Hermes: `hermes-<uuid>`)
-- `type` — `'regular'`, `'owl'`, `'hermes'`
-- `creator_id` — UUID создателя (НЕ username!)
-- `participants` — JSON массив UUID
-- `last_message_text` — текст последнего сообщения (для UI)
-- `last_message_time` — время последнего сообщения
-
-### owl_messages
-История сообщений OWL чатов.
-- `chat_id` → `chats.id` (FK, CASCADE)
-- `role` — `'user'`, `'assistant'`
-- `content` — текст сообщения
-
-### owl_chat_settings
-Настройки каждого OWL чата.
-- `chat_id` → `chats.id` (FK, CASCADE)
-- `user_api_key` — персональный API ключ
-- `model` — модель OpenRouter
-
-### hermes_sessions
-Сессии оркестратора (внутренние, не для UI).
-- `id` — `hermes-<uuid>` (уникальный)
-- `user_id` — UUID пользователя
-- `name` — название сессии
-- `active_agent_id` — текущий активный агент
-- `agent_mode` — `'single'`, `'parallel'`, `'pipeline'`
-
-### hermes_messages
-История сообщений Hermes.
-- `session_id` → `hermes_sessions.id` (FK, CASCADE)
-- `role` — `'user'`, `'assistant'`, `'system'`, `'agent'`
-- `agent_id` — ID агента (пусто = оркестратор)
-- `content` — текст сообщения
-
-### hermes_chat_settings
-Настройки Hermes чатов.
-- `chat_id` → `chats.id` (FK, CASCADE)
-- `user_api_key` — персональный API ключ
-- `model` — модель
+| ID | Имя | Провайдер | Модель | Tools | RAG |
+|----|-----|-----------|--------|-------|-----|
+| `mimo` | MiMo | mimo | mimo-auto | ✅ | ✅ |
+| `assistant` | Assistant | openrouter | claude-sonnet-4 | ✅ | ✅ |
+| `developer` | Developer | openrouter | claude-sonnet-4 | ✅ | ❌ |
+| `devops` | DevOps | openrouter | claude-sonnet-4 | ✅ | ❌ |
+| `architect` | Architect | openrouter | claude-sonnet-4 | ❌ | ❌ |
+| `writer` | Writer | openrouter | gpt-4o | ❌ | ❌ |
+| `analyst` | Analyst | openrouter | claude-sonnet-4 | ✅ | ✅ |
+| `translator` | Translator | openrouter | gpt-4o-mini | ❌ | ❌ |
 
 ---
 
-## OWL AI
+## Инструменты (6 шт.)
 
-### Поток данных
-
-```
-Client                          Server
-  │                               │
-  │── ChatWithOWL(stream) ───────►│
-  │                               │── addMessage(chatID, "user", msg)
-  │                               │── getHistory(chatID)
-  │                               │── callOpenRouter(history)
-  │                               │── addMessage(chatID, "assistant", response)
-  │                               │── UPDATE chats SET last_message_text
-  │◄── stream chunks ────────────│
-  │                               │
-```
-
-### API
-
-| Метод | Тип | Описание |
-|-------|-----|----------|
-| `CreateOwlChat` | Unary | Создание OWL чата |
-| `ChatWithOWL` | Server streaming | Стриминг ответа AI |
-| `GetOwlHistory` | Unary | История сообщений |
-| `DeleteOwlChat` | Unary | Удаление чата |
-| `GetOwlSettings` | Unary | Настройки (ключ, модель) |
-| `SaveOwlSettings` | Unary | Сохранение настроек |
-
-### Rate Limiting
-- С ключом: 10 запросов/минуту
-- Без ключа: 20 запросов/час
-- `rateLimiter.remaining(userID)` — возвращает количество оставшихся запросов
-- `GetOwlSettings` / `GetHermesSettings` возвращают `remaining`, `limit`, `window_seconds`
+| Инструмент | Описание | Параметры |
+|------------|----------|-----------|
+| `search_messages` | Поиск сообщений | `query`, `chat_id?`, `limit?` |
+| `search_users` | Поиск пользователей | `query`, `limit?` |
+| `web_search` | Веб-поиск (DuckDuckGo) | `query` |
+| `web_fetch` | Загрузка URL | `url`, `max_chars?` |
+| `get_chat_info` | Метаданные чата | `chat_id` |
+| `query_database` | SQL запросы (SELECT only, admin) | `query` |
 
 ---
 
-## Hermes Orchestrator
-
-### Поток данных
+## Tool Calling Flow
 
 ```
-Client                    Server
-  │                         │
-  │── CreateHermesSession ─►│── INSERT hermes_sessions
-  │                         │── INSERT chats (type='hermes')
-  │                         │
-  │── ChatWithOrchestrator ►│── getOrCreateSession(userID)
-  │                         │── analyzeRequest() → OpenRouter
-  │                         │── routing decision
-  │                         │── runSingleAgent(agentID)
-  │◄── stream chunks ──────│
-  │                         │── SaveOrchestratorMessage(user)
-  │                         │── SaveOrchestratorMessage(assistant)
-  │                         │── UPDATE chats SET last_message_text
-  │                         │
-  │── GetOrchestratorHistory►│── SELECT hermes_messages
-  │                         │
-  │── DeleteHermesSession ─►│── DELETE hermes_sessions
-  │                         │── DELETE chats
-```
-
-### API
-
-| Метод | Тип | Описание |
-|-------|-----|----------|
-| `CreateHermesSession` | Unary | Создание сессии |
-| `ChatWithOrchestrator` | Server streaming | Стриминг ответа |
-| `GetOrchestratorHistory` | Unary | История сообщений |
-| `DeleteHermesSession` | Unary | Удаление сессии |
-| `ListAgents` | Unary | Список агентов |
-| `ListAgentPresets` | Unary | Пресеты агентов |
-| `CreateAgent` | Unary | Создание агента |
-| `UpdateAgent` | Unary | Обновление агента |
-| `DeleteAgent` | Unary | Удаление агента |
-| `GetHermesSettings` | Unary | Настройки |
-| `SaveHermesSettings` | Unary | Сохранение настроек |
-
-### Агенты (пресеты)
-
-| ID | Имя | Роль |
-|----|-----|------|
-| `hermes-owl` | OWL AI | Универсальный AI (fallback) |
-| `hermes-developer` | Developer | Разработка кода |
-| `hermes-devops` | DevOps | Сервер, деплой, мониторинг |
-| `hermes-architect` | Architect | Архитектура систем |
-| `hermes-support` | Support | Поддержка пользователей |
-| `hermes-qa` | QA Engineer | Тестирование |
-| `hermes-analyst` | Analyst | Анализ данных |
-| `hermes-security` | Security | Безопасность |
-
-### Маршрутизация
-
-Оркестратор анализирует запрос через OpenRouter и выбирает агента:
-1. Формирует промпт со списком агентов
-2. Отправляет в OpenRouter
-3. Парсит JSON ответ: `{"mode": "single", "agents": ["hermes-xxx"], "reason": "..."}`
-4. Выполняет через выбранного агента
-
-Fallback: если ошибка анализа или агент не найден → `hermes-owl`.
-
----
-
-## Известные проблемы и решения
-
-### Дублирование Hermes сессий
-**Проблема:** `getOrCreateSession` создаёт сессию с `id = "hermes-" + userID`, а `CreateHermesSession` создаёт с `id = "hermes-" + UUID`. В результате две записи в `hermes_sessions` для одного пользователя.
-
-**Решение:** `getOrCreateSession` должен искать существующую сессию по `user_id`, а не создавать новую с фиксированным ID.
-
-### Пустой last_message_text для Hermes
-**Проблема:** `ChatWithOrchestrator` сохранял сообщения в `hermes_messages`, но не обновлял `chats.last_message_text`.
-
-**Решение:** добавлен `UPDATE chats SET last_message_text` после ответа.
-
-### Дубли чатов в UI
-**Проблема:** `GetAIChats` брал Hermes из `hermes_sessions`, а OWL из `chats`. Hermes сессии дублировались.
-
-**Решение:** `GetAIChats` берёт оба типа из `chats`.
-
----
-
-## Архитектурные правила
-
-### creator_id — единственный надёжный идентификатор владельца
-**Правило:** `creator_id` (UUID) — ЕДИНСТВЕННЫЙ надёжный owner identifier.
-- `creator_username` — ТОЛЬКО для отображения, username может меняться
-- Все ownership checks (`DeleteOwlChat`, `UpdateOwlSettings`, `GetOwlSettings`, `GetAllChats` filter) должны использовать `creator_id`
-
-### Никогда не собирайте JSON через конкатенацию строк
-**Правило:** `NEVER assemble JSON strings via Go string concatenation for SQL parameters.`
-- Всегда используйте `json.Marshal`
-- Ручная конкатенация типа `"["+username+"]"` создаёт невалидный JSON `[username]`
-- INSERT может пройти, но SELECT с `::jsonb` cast упадёт (PostgreSQL error 22P02)
-- Это относится к любой JSON/text колонке которая может быть приведена к jsonb позднее
-
-### DB owner — всегда lavender
-Право собственности на таблицы PostgreSQL должно быть `lavender`, не `postgres`:
-```bash
-cd /tmp && sudo -u postgres psql -d chat_db -c "ALTER TABLE hermes_sessions OWNER TO lavender;"
-```
-Запускать из `/tmp` чтобы избежать "could not change directory" ошибки.
-
-### Prod vs Dev версии
-- Всегда проверяйте версии на обоих серверах
-- Dev DB: `chat_db_dev`, Prod DB: `chat_db`
-- Версия сервера в `server.go:33` — обновлять при выпуске (деплой + git tag)
-
----
-
-## Proto field mapping
-
-**ВАЖНО:** при изменении `.proto` файлов всегда сверять номера полей с кодом клиента!
-
-### CreateHermesSessionResponse
-```
-message CreateHermesSessionResponse {
-  bool success = 1;        // field 1 = success (bool)
-  string session_id = 2;   // field 2 = session_id (string)
-  string error = 3;        // field 3 = error (string)
-  string name = 4;         // field 4 = name (string)
-}
-```
-
-### CreateAgentResponse
-```
-message CreateAgentResponse {
-  bool success = 1;        // field 1 = success (bool)
-  string agent_id = 2;     // field 2 = agent_id (string)
-  string error = 3;        // field 3 = error (string)
-}
-```
-
-### AgentInfo
-```
-message AgentInfo {
-  string id = 1;
-  string name = 2;
-  string description = 3;
-  bool is_preset = 4;
-  string system_prompt = 5;
-  string model = 6;
-}
-```
-
-### OrchestratorResponse
-```
-message OrchestratorResponse {
-  string token = 1;
-  bool finished = 2;
-  string error = 3;
-}
+1. Клиент → ChatWithAIV2Request{message, agent_id}
+2. Сервер стримит токены
+3. Агент вызывает инструмент → ChatWithAIV2Response{tool_calls=[{id, name, args}]}
+4. Клиент выполняет инструмент
+5. Клиент → ChatWithAIV2Request{tool_calls=[{id, name, args, result}]}
+6. Сервер продолжает стриминг
+7. Готово → ChatWithAIV2Response{finished=true}
 ```
 
 ---
 
-## Команды
+## Rate Limiting
 
-```bash
-# Сборка и деплой на dev
-cd /root/msg
-export PATH=$PATH:/usr/local/go/bin:~/go/bin
-go build -o /tmp/lavender-server-dev .
-systemctl stop lavender-server-dev
-cp /tmp/lavender-server-dev /root/LavenderMessenger/run/lavender-server-dev
-systemctl start lavender-server-dev
+| Лимит | Значение | Окно |
+|-------|----------|------|
+| По умолчанию | 10 запросов | 1 минута |
+| Кастомный | N запросов | 1 минута |
+
+При превышении: `ChatWithAIV2Response{error: "rate limit exceeded"}`
+
+---
+
+## Marketplace
+
+| RPC | Описание |
+|-----|----------|
+| `ListMarketplaceAgents` | Каталог публичных агентов (поиск, пагинация) |
+| `RateAIAgent` | Оценка агента (1-5 звёзд) |
+| `GetAIAgentReviews` | Отзывы на агента |
+| `ShareAIAgent` | Генерация share code |
+| `InstallAIAgent` | Установка по share code |
+| `GetAIAgentStats` | Статистика (installs, rating) |
+| `GetAIUsageStats` | Статистика использования (токены, запросы) |
+
+---
+
+## gRPC Handlers (server_ai_v2.go)
+
+| Хендлер | Описание |
+|---------|----------|
+| `ChatWithAIV2` | Единый AI чат (simple/agent/pipeline) |
+| `CreateAIAgent` | Создание агента |
+| `UpdateAIAgent` | Обновление агента |
+| `DeleteAIAgent` | Удаление агента |
+| `GetAIAgent` | Получение агента |
+| `ListAIAgents` | Список агентов (свои + пресеты + публичные) |
+| `CloneAIAgent` | Клонирование агента |
+| `ListAITools` | Список доступных инструментов |
+
+---
+
+## Логи
+
+Все AI v2 запросы логируются с префиксом `[AI]`:
+
+```
+[AI] ChatWithAIV2: user=xxx agent=assistant session=xxx msg=42chars
+[AI] ListAgents: user=xxx includePublic=true count=8
+[AI] Marketplace: query="code" limit=20 offset=0 results=3
+[AI] RateAgent: agent=xxx user=xxx rating=5
 ```

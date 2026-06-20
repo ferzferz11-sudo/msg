@@ -1,6 +1,6 @@
 # Lavender Messenger — Client Integration Guide
 
-**Сервер:** v1.3.0.4 | **Протокол:** gRPC + Protocol Buffers | **Дата:** 2026-06-20
+**Сервер:** v1.3.0.8 | **Протокол:** gRPC + Protocol Buffers | **Дата:** 2026-06-20
 
 Единый документ для интеграции нового клиента с сервером Lavender Messenger.
 

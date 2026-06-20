@@ -107,7 +107,7 @@ func (s *server) MarkRead(ctx context.Context, req *gen.MarkReadRequest) (*gen.M
 		return &gen.MarkReadResponse{Success: true}, nil
 	}
 
-	userID := ResolveUserID(ctx, s.db)
+	userID := GetUserID(ctx)
 	if userID == "" {
 		userID = req.UserId
 	}

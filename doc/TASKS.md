@@ -1,8 +1,43 @@
 # Лава — Задачи
 
-**Версия:** v1.3.0.3
+**Версия:** v1.3.0.8
 **Ветка:** feat/1.3.0.x
 **Обновлено:** 2026-06-20
+
+---
+
+## ✅ v1.3.0.8 — v1 Removal + Fixes + Logging (Сессия 48)
+
+### Что сделано
+
+#### v1 Compat Removal
+- **auth_interceptor.go** — удалены v1 fallback, `extractUsernameFromMetadata`, `ResolveUserID` + кэш
+- **auth_service.go** — удалены `authServer` struct, `SignIn`/`SignUp` v1 (остался `authDB` interface)
+- **auth_service_v2.go** — `authServerV2` больше не embedит `*authServer`
+- **server_chats.go** — удалён `GetChats` v1
+- **server.go** — удалены `resolveUserId`/`resolveUsername`
+- **server_chat.go**, **server_push.go**, **server_users.go**, **secret_chat.go**, **server_profile.go** — все вызовы удалённых методов заменены
+
+#### Bug Fixes
+- **server_ai_v2.go** — `getAIV2UserID`: исправлен баг с typed context key (всегда возвращал "")
+- **server_push.go** — FCM push > 4KB: добавлен `truncateForFCM()` для data payload
+- **server_push.go** — `isInvalidTokenError`: добавлена строка "Requested entity was not found"
+- **server_chat.go** — Call stream: `context.Canceled` gRPC error больше не логируется как error
+
+#### Logging
+- **server_ai_v2.go** — добавлены `[AI]` логи для всех AI v2 хендлеров (Chat, ListAgents, Marketplace, Rate, Reviews, Share, Install, Usage)
+- **server_chat.go** — объединены "Auth success" + "Device registered" в одно сообщение
+- **server_chat.go** — удалён неинформативный "Stream for %s closed"
+
+#### Documentation
+- **doc/MARKETPLACE_AGENTS_SETUP.md** — quickstart, пресеты, создание агентов, marketplace, tool calling
+- **doc/ANDROID_RATE_LIMIT_PROMPT.md** — кэширование лимитов, UX при превышении
+- **doc/INDEX.md** — обновлён: v1 compat удалён, новые документы
+- **doc/ARCHITECTURE.md** — v1 compat секция заменена на "УДАЛЕНО"
+- **doc/CLIENT_INTEGRATION.md** — версия 1.3.0.8
+
+#### Cleanup
+- Удалена `client.android/` из репозитория (2 файла)
 
 ---
 
@@ -12,14 +47,10 @@
 
 #### MarkRead NULL user_id Fix
 - **server_profile.go** — `MarkRead()`: заменён `GetUserID(ctx)` на `ResolveUserID(ctx, s.db)` для v1 username → UUID fallback
-- **Причина**: v1 auth interceptor ставит только `username` в context, `GetUserID()` возвращает пустую строку → INSERT с NULL user_id
-- **Результат**: `pq: null value in column "user_id"` constraint violation исправлен
 
 #### Ghost AI Chat Fix
 - **db_chats.go** — `GetUserChats` (v1): добавлен `'ai'` в `WHERE c.type NOT IN ('ai', 'owl', 'hermes')`
 - **db_chats.go** — `backfillLastMessageText`: добавлен `'ai'` в `WHERE c.type NOT IN ('ai', 'owl', 'hermes')`
-- **Причина**: v1 запрос не фильтровал AI чаты → ghost чаты с "просто id" в списке
-- **Результат**: AI чаты больше не отображаются в списке чатов
 
 ---
 
@@ -40,7 +71,7 @@
 - `ai_provider_local.go` — Local Hermes (subprocess)
 - `ai_provider_mimo.go` — MiMo (HTTP API)
 - `ai_provider_webhook.go` — Webhook (HTTP POST)
-- `ai_provider_websocket.go` — WebSocket (placeholder)
+- `ai_provider_websocket.go` — WebSocket (gorilla/websocket)
 - `ai_provider_subprocess.go` — Subprocess (stdin/stdout)
 - `ai_provider_mcp.go` — MCP (stdio, JSON-RPC 2.0)
 
@@ -81,86 +112,6 @@
 - New AI v2 tables created
 - 8 preset agents seeded
 - Tests: all passing
-
----
-
-## ✅ v1.2.0.11 — DB Index + Proto Reserved
-
-- ✅ ServerVersion: 1.2.0.10 → 1.2.0.11
-- ✅ db.go: добавлен индекс `idx_messages_username_time ON messages(username, created_at)`
-- ✅ messenger.proto: добавлены reserved поля
-
----
-
-## ✅ v1.2.0.10 — E2EE Secret Chat Fixes
-
-- ✅ UserInfo: `user_id` (UUID) + `is_super_admin` (bool) в GetAllUsers
-- ✅ deploy-dev-local.sh — кросс-компиляция с Mac → SCP → рестарт
-- ✅ CHANGELOG, doc обновлены
-
----
-
-## ✅ v1.2.0.9 — P1 + P2 Performance Optimizations
-
-- ✅ getAIChatManager sync.Once
-- ✅ backfillLastMessageText SQL fix
-- ✅ Stream interceptor injection
-- ✅ device_auth_log TTL
-- ✅ IncrementParticipantsChatListVersion → UUID[]
-- ✅ Rate limiter cleanup
-- ✅ ResolveUserID cache
-- ✅ IsUserOnline O(1)
-- ✅ DB pool tuning
-- ✅ owl.go ctx.Err() check
-- ✅ main.go goroutine leak fix
-
----
-
-## ✅ v1.2.0.8 — P0 Performance Optimizations
-
-- ✅ Broadcast deadlock fix
-- ✅ isChatMuted N+1 batch
-- ✅ Push N+1 hoisted
-- ✅ Hermes sessions TTL cleanup + message cap 50
-- ✅ recentMsgs cleanup
-- ✅ JWT secret cached
-- ✅ io.LimitReader(10MB)
-- ✅ GracefulStop 30s timeout
-
----
-
-## ✅ v1.3.0.1 — P3 + AI v2 доработка (Сессия 44)
-
-### Что сделано
-
-#### DB Split (db.go → 4 файла)
-- `db.go` — 223 строки (ядро: типы, подключение, миграции, прокси-методы)
-- `db_messages.go` — 245 строк (SaveMessage, GetMessages, reactions, favorites)
-- `db_users.go` — 552 строки (User CRUD, themes, tokens, devices)
-- `db_chats.go` — 710 строки (Chat CRUD, contacts, drafts, muted, servers, calls)
-
-#### Deprecated v1 Auth Removal
-- Удален v1 ChatStream password auth (~80 строк)
-- Оставлен v1 auth service для совместимости со старыми клиентами
-
-#### Concurrency Fixes
-- Hub broadcast уже оптимизирован (snapshot under RLock)
-- IsUserOnline grace period: RLock вместо Lock
-
-#### WebSocket Provider (#46)
-- Добавлен gorilla/websocket
-- Реализован full-duplex streaming
-- Ping/pong keepalive
-- Auth header support
-
-#### MiMo Deep Integration (#47)
-- Добавлен `query_database` tool (SELECT only, security whitelist)
-- Max 1000 rows, 10s timeout
-- Blocked dangerous SQL keywords
-
-### Deploy
-- Dev server: v1.3.0.1 deployed, running on port 50052
-- Logs: clean, no errors
 
 ---
 

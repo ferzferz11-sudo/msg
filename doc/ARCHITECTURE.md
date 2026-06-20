@@ -1,7 +1,7 @@
 # Lavender Messenger — Архитектура
 
 **Дата:** 2026-06-20
-**Версия сервера:** 1.3.0.2
+**Версия сервера:** 1.3.0.8
 **Модуль:** `LavenderMessenger` (Go 1.26)
 
 ---
@@ -138,22 +138,9 @@ SIGTERM received
   └── Background goroutines: online broadcast, hermes agents (context cancel)
 ```
 
-## 6. Deprecated v1 Compat (удаление в v1.3)
+## 6. Deprecated v1 Compat — УДАЛЕНО в v1.3.0.8
 
-| Что | Файл | Замена |
-|-----|------|--------|
-| `GetChats()` v1 endpoint | `server_chats.go` | **`GetChatsV2()`** — фильтры, пагинация, v2 поля |
-| `authServer` v1 SignIn/SignUp | `auth_service.go` | `authServerV2` |
-| `extractUsernameFromMetadata()` | `auth_interceptor.go` | JWT Bearer token |
-| `AuthInterceptor` v1 fallback | `auth_interceptor.go` | v2 JWT path |
-| `AuthStreamInterceptor` bypass | `auth_interceptor.go` | JWT в metadata |
-| `ResolveUserID()` | `auth_interceptor.go` | `GetUserID(ctx)` |
-| `resolveUserId()` / `resolveUsername()` | `server.go` | UUID идентификаторы |
-| `GetChats()` v1 | `server_chats.go` | `GetChatsV2()` |
-| Chat stream v1 password auth | `server_chat.go` | JWT в первом сообщении |
-| `IsUserOnline()` username fallback | `hub.go` | UUID-only |
-| `BroadcastCall()` username matching | `hub.go` | UUID-only |
-| `user_chat_metadata.username` | `db_chatlist_v2.go` | `user_id` (UUID PK) |
+Все v1 compat методы удалены. Клиенты обязаны использовать JWT аутентификацию и UUID идентификаторы.
 
 ## 7. Технический стек
 
