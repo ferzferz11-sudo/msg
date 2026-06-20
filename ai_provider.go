@@ -33,6 +33,8 @@ type StreamChunk struct {
 	Content  string
 	ToolCall *ToolCallRequestInput
 	Usage    *StreamUsage
+	ImageURL string
+	Finished bool
 	Done     bool
 	Error    error
 }

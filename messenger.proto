@@ -1642,12 +1642,13 @@ message ChatWithAIV2Response {
   string token = 1;
   bool finished = 2;
   string error = 3;
-  string agent_id = 4;                  // which agent answered
-  string agent_name = 5;                // display name
-  repeated ToolCallRequestV2 tool_calls = 6;  // tool execution requests
+  string agent_id = 4;
+  string agent_name = 5;
+  repeated ToolCallRequestV2 tool_calls = 6;
   bool has_rag_context = 7;
   string model_used = 8;
   int32 token_count = 9;
+  string image_url = 10;
 }
 
 message ToolCallV2 {

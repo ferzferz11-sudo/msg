@@ -1,6 +1,6 @@
 # Lavender Messenger — Client Integration Guide
 
-**Server:** v1.3.0.16 | **Protocol:** gRPC + Protocol Buffers | **Date:** 2026-06-20
+**Server:** v1.3.0.18 | **Protocol:** gRPC + Protocol Buffers | **Date:** 2026-06-20
 
 This document covers everything a client needs to integrate with the Lavender Messenger server. Platform-agnostic — applies to Android, iOS, Web, Desktop, or any gRPC-capable client.
 
@@ -26,7 +26,7 @@ GET http://<host>:<port>/info
 Response:
 ```json
 {
-  "version": "1.3.0.16",
+  "version": "1.3.0.18",
   "time": "2026-06-20T18:00:00Z",
   "services": {
     "auth": "2.0",
@@ -740,6 +740,118 @@ rpc GetAIUsageStats(GetAIUsageStatsRequest) returns (GetAIUsageStatsResponse);
 | Rate limit (free tier) | 20 req/hr |
 | Max images per request | 5 |
 
+### Preset Agents (Free via Server Key)
+
+By default, all clients use the **server's OpenRouter API key** — no payment required. Preset agents use free `:free` models:
+
+| ID | Name | Model | Tools | RAG | Use Case |
+|----|------|-------|-------|-----|----------|
+| `mimo` | MiMo | `mimo-auto` | ✅ | ✅ | AI assistant (own server) |
+| `assistant` | Assistant | `meta-llama/llama-3.3-70b-instruct:free` | ✅ | ✅ | Universal assistant |
+| `developer` | Developer | `qwen/qwen3-coder:free` | ✅ | ❌ | Code writing & debugging |
+| `devops` | DevOps | `meta-llama/llama-3.3-70b-instruct:free` | ✅ | ❌ | Server & infra |
+| `architect` | Architect | `nvidia/nemotron-3-super-120b-a12b:free` | ❌ | ❌ | System design |
+| `writer` | Writer | `meta-llama/llama-3.3-70b-instruct:free` | ❌ | ❌ | Creative writing |
+| `analyst` | Analyst | `qwen/qwen3-next-80b-a3b-instruct:free` | ✅ | ✅ | Data analysis |
+| `translator` | Translator | `meta-llama/llama-3.3-70b-instruct:free` | ❌ | ❌ | Translation |
+| `vision` | Vision | `google/gemma-4-26b-a4b-it:free` | ✅ | ❌ | Image analysis |
+| `reve` | Reve Image | `reve-2.0` | ❌ | ❌ | AI image generation |
+
+**Key resolution priority:**
+1. User's own API key (set via `UpdateAIChatSettings`) → **unlocks paid models**
+2. Agent's `provider_config.api_key` → agent-specific key
+3. Server's `OPENROUTER_API_KEY` env var → **free tier (default)**
+
+### AI Chat Settings (Per-Session)
+
+Each AI chat session can have its own API key and model override. This allows users to use their own OpenRouter key for paid models while defaulting to free models.
+
+#### GetAIChatSettings
+
+```protobuf
+rpc GetAIChatSettings(GetAIChatSettingsRequest) returns (AIChatSettings);
+
+message GetAIChatSettingsRequest {
+  string session_id = 1;  // AI chat session ID
+}
+
+message AIChatSettings {
+  string session_id = 1;
+  string user_api_key = 2;        // user's OpenRouter key (hidden from response if empty)
+  string model = 3;               // model override (empty = use agent default)
+  bool is_using_custom_key = 4;   // true if user has set their own key
+  int32 remaining = 5;            // rate limit remaining (current window)
+  int32 limit = 6;                // rate limit max
+  int32 window_seconds = 7;       // rate limit window size
+}
+```
+
+#### UpdateAIChatSettings
+
+```protobuf
+rpc UpdateAIChatSettings(UpdateAIChatSettingsRequest) returns (UpdateAIChatSettingsResponse);
+
+message UpdateAIChatSettingsRequest {
+  string session_id = 1;  // AI chat session ID
+  string api_key = 2;     // OpenRouter API key (empty = remove, use server key)
+  string model = 3;       // Model override (empty = remove, use agent default)
+}
+
+message UpdateAIChatSettingsResponse {
+  bool success = 1;
+  string message = 2;
+}
+```
+
+**Usage example:**
+```
+// Client wants to use their own key for paid models
+UpdateAIChatSettings {
+  session_id: "ai-chat-abc123"
+  api_key: "sk-or-v1-..."
+  model: "anthropic/claude-sonnet-4"
+}
+→ success: true
+
+// Client wants to revert to free server key
+UpdateAIChatSettings {
+  session_id: "ai-chat-abc123"
+  api_key: ""        // empty = remove user key
+  model: ""          // empty = remove override
+}
+→ success: true
+```
+
+### Reve Image Generation
+
+The `reve` preset agent generates images via the Reve API. Unlike text agents, it returns an `image_url` instead of streaming tokens.
+
+**How it works:**
+1. Client sends a message to agent `reve` via `ChatWithAIV2`
+2. Server calls Reve API (`POST /v1/image/create`) with the prompt
+3. Server decodes base64 image, uploads to `/upload-image`, gets a URL
+4. Server sends final `ChatWithAIV2Response` with `image_url` set
+
+**Client handling:**
+```protobuf
+// ChatWithAIV2Response with image
+ChatWithAIV2Response {
+  token: "Image generated",  // text description
+  finished: true,
+  image_url: "http://host:8082/images/abc123.png",
+  agent_id: "reve",
+  agent_name: "Reve Image"
+}
+```
+
+**Important:** When `image_url` is non-empty, the client should display the image instead of (or in addition to) the text token.
+
+**Reve API limitations:**
+- Max image: 40MB, 33,554,432px (8192×4096)
+- Input formats: WEBP, JPEG, PNG, GIF, TIFF, AVIF
+- `test_time_scaling`: 1–15 (higher = better quality, more credits)
+- Post-processing: upscale (1–4×), remove_background, fit_image
+
 ---
 
 ## HTTP Endpoints
@@ -807,7 +919,7 @@ The server supports graceful shutdown — clients receive a warning before disco
 ### Health During Shutdown
 
 ```
-GET /health → 503 {"status":"shutting_down","version":"1.3.0.16"}
+GET /health → 503 {"status":"shutting_down","version":"1.3.0.17"}
 ```
 
 ### Client Behavior

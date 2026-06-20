@@ -78,7 +78,7 @@ func initRAG() (rag.RAGPipeline, rag.EmbeddingService, rag.VectorSearch) {
 }
 
 // Chat is the main entry point for AI chat
-func (g *AIGateway) Chat(ctx context.Context, req *ChatRequest, streamFn func(token string, finished bool) error) error {
+func (g *AIGateway) Chat(ctx context.Context, req *ChatRequest, streamFn StreamFn) error {
 	userID := req.UserID
 
 	// Per-user lock to prevent concurrent session creation
@@ -122,8 +122,16 @@ func (g *AIGateway) Chat(ctx context.Context, req *ChatRequest, streamFn func(to
 	// 7. Build messages for provider
 	messages := g.buildMessages(ctx, chat, agent, history, req.Message)
 
-	// 8. Get settings
+	// 8. Get settings from chat
 	settings := &AIChatSettings{}
+	if chat.Settings != nil {
+		if apiKey, ok := chat.Settings["user_api_key"].(string); ok {
+			settings.UserAPIKey = apiKey
+		}
+		if model, ok := chat.Settings["model_override"].(string); ok {
+			settings.ModelOverride = model
+		}
+	}
 
 	// 9. Execute
 	var fullResponse string
@@ -131,13 +139,20 @@ func (g *AIGateway) Chat(ctx context.Context, req *ChatRequest, streamFn func(to
 		if !finished {
 			fullResponse += token
 		}
-		return streamFn(token, finished)
+		return streamFn(token, finished, "")
 	})
 
 	// 10. Refund on error
 	if err != nil {
 		g.refundRateLimit(agent, userID)
 		return err
+	}
+
+	// 10.5 Send image URL if present (e.g. Reve image generation)
+	if execResult != nil && execResult.ImageURL != "" {
+		if err := streamFn("", true, execResult.ImageURL); err != nil {
+			logger.Warnf("[AI] streamFn image: %v", err)
+		}
 	}
 
 	// 11. Save assistant response with real token count
@@ -166,6 +181,10 @@ type ChatRequest struct {
 	AgentID  string
 	ChatType string // simple, agent, pipeline
 }
+
+// StreamFn is the callback for streaming tokens. token="" + finished=true signals end.
+// imageURL is set when the agent produces an image (e.g. Reve).
+type StreamFn func(token string, finished bool, imageURL string) error
 
 func (g *AIGateway) loadOrCreateChat(ctx context.Context, req *ChatRequest) (*AIChatV2, error) {
 	if req.ChatID != "" {

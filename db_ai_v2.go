@@ -205,21 +205,31 @@ func seedPresetAgents(db *sql.DB) error {
 		tools, rag                              bool
 	}{
 		{"mimo", "MiMo", "AI assistant integrated into Lavender Messenger", "mimo", "mimo-auto", "You are MiMo, an AI assistant integrated into Lavender Messenger. You help users with their tasks, answer questions, and use available tools when needed.", true, true},
-		{"assistant", "Assistant", "Universal AI assistant", "openrouter", "anthropic/claude-sonnet-4", "You are a helpful AI assistant. Be concise, accurate, and helpful.", true, true},
-		{"developer", "Developer", "Code writing, refactoring, debugging", "openrouter", "anthropic/claude-sonnet-4", "You are an expert software developer. Help with code writing, refactoring, debugging, and code review. Always provide clean, production-ready code.", true, false},
-		{"devops", "DevOps", "Server management, deploy, monitoring", "openrouter", "anthropic/claude-sonnet-4", "You are a DevOps engineer. Help with server management, deployment, CI/CD, monitoring, and infrastructure.", true, false},
-		{"architect", "Architect", "System design, architecture decisions", "openrouter", "anthropic/claude-sonnet-4", "You are a system architect. Help with system design, architecture decisions, trade-offs, and scalability.", false, false},
-		{"writer", "Writer", "Creative writing, content creation", "openrouter", "openai/gpt-4o", "You are a creative writer. Help with writing, editing, content creation, and storytelling.", false, false},
-		{"analyst", "Analyst", "Data analysis, metrics, reports", "openrouter", "anthropic/claude-sonnet-4", "You are a data analyst. Help with data analysis, metrics interpretation, report generation, and insights.", true, true},
-		{"translator", "Translator", "Multi-language translation", "openrouter", "openai/gpt-4o-mini", "You are a professional translator. Translate text accurately between languages, preserving meaning and tone.", false, false},
+		{"assistant", "Assistant", "Universal AI assistant (free)", "openrouter", "meta-llama/llama-3.3-70b-instruct:free", "You are a helpful AI assistant. Be concise, accurate, and helpful.", true, true},
+		{"developer", "Developer", "Code writing, refactoring, debugging (free)", "openrouter", "qwen/qwen3-coder:free", "You are an expert software developer. Help with code writing, refactoring, debugging, and code review. Always provide clean, production-ready code.", true, false},
+		{"devops", "DevOps", "Server management, deploy, monitoring (free)", "openrouter", "meta-llama/llama-3.3-70b-instruct:free", "You are a DevOps engineer. Help with server management, deployment, CI/CD, monitoring, and infrastructure.", true, false},
+		{"architect", "Architect", "System design, architecture decisions (free)", "openrouter", "nvidia/nemotron-3-super-120b-a12b:free", "You are a system architect. Help with system design, architecture decisions, trade-offs, and scalability.", false, false},
+		{"writer", "Writer", "Creative writing, content creation (free)", "openrouter", "meta-llama/llama-3.3-70b-instruct:free", "You are a creative writer. Help with writing, editing, content creation, and storytelling.", false, false},
+		{"analyst", "Analyst", "Data analysis, metrics, reports (free)", "openrouter", "qwen/qwen3-next-80b-a3b-instruct:free", "You are a data analyst. Help with data analysis, metrics interpretation, report generation, and insights.", true, true},
+		{"translator", "Translator", "Multi-language translation (free)", "openrouter", "meta-llama/llama-3.3-70b-instruct:free", "You are a professional translator. Translate text accurately between languages, preserving meaning and tone.", false, false},
+		{"vision", "Vision", "Image analysis and visual Q&A (free)", "openrouter", "google/gemma-4-26b-a4b-it:free", "You are a visual assistant. Analyze images, describe what you see, answer questions about visual content.", true, false},
+		{"reve", "Reve Image", "AI image generation (text-to-image, edit, remix)", "reve", "reve-2.0", "You are Reve, an AI image generation assistant. Generate images based on user descriptions. Be creative and detailed in your prompts.", false, false},
 	}
 
 	for _, p := range presets {
-		pc := map[string]any{"api_key_source": "user", "default_model": p.model}
+		pc := map[string]any{"api_key_source": "server", "default_model": p.model}
 		pcJSON, _ := json.Marshal(pc)
 		query := `INSERT INTO agents_v2 (id, name, description, provider_type, provider_config, system_prompt, model, tools_enabled, rag_enabled, is_preset, is_public, is_active)
 			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, TRUE, TRUE, TRUE)
-			ON CONFLICT (id) DO NOTHING`
+			ON CONFLICT (id) DO UPDATE SET
+				name = EXCLUDED.name,
+				description = EXCLUDED.description,
+				provider_config = EXCLUDED.provider_config,
+				system_prompt = EXCLUDED.system_prompt,
+				model = EXCLUDED.model,
+				tools_enabled = EXCLUDED.tools_enabled,
+				rag_enabled = EXCLUDED.rag_enabled,
+				updated_at = NOW()`
 		if _, err := db.Exec(query, p.id, p.name, p.desc, p.provider, string(pcJSON), p.prompt, p.model, p.tools, p.rag); err != nil {
 			return fmt.Errorf("seed %s: %v", p.id, err)
 		}

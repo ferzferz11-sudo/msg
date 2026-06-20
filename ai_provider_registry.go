@@ -28,6 +28,7 @@ func NewProviderRegistry() *ProviderRegistry {
 	r.Register("websocket", newWebSocketProvider)
 	r.Register("subprocess", newSubprocessProvider)
 	r.Register("mcp", newMCPProvider)
+	r.Register("reve", newReveProvider)
 	return r
 }
 

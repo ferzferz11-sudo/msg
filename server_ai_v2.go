@@ -35,10 +35,11 @@ func (s *server) ChatWithAIV2(req *gen.ChatWithAIV2Request, stream gen.ChatServi
 
 	logger.Infof("[AI] ChatWithAIV2: user=%s agent=%s session=%s msg=%dchars", userID, req.AgentId, req.SessionId, len(req.Message))
 
-	err := gateway.Chat(stream.Context(), chatReq, func(token string, finished bool) error {
+	err := gateway.Chat(stream.Context(), chatReq, func(token string, finished bool, imageURL string) error {
 		return stream.Send(&gen.ChatWithAIV2Response{
 			Token:    token,
 			Finished: finished,
+			ImageUrl: imageURL,
 		})
 	})
 
@@ -599,4 +600,87 @@ func agentToProto(a *AgentV2) *gen.AgentInfoV2 {
 
 func getAIV2UserID(ctx context.Context) string {
 	return GetUserID(ctx)
+}
+
+// ======= AI Chat Settings (per-session user API key & model override) =======
+
+func (s *server) GetAIChatSettings(ctx context.Context, req *gen.GetAIChatSettingsRequest) (*gen.AIChatSettings, error) {
+	userID := getAIV2UserID(ctx)
+	if userID == "" {
+		return &gen.AIChatSettings{}, nil
+	}
+
+	if req.SessionId == "" {
+		return &gen.AIChatSettings{}, nil
+	}
+
+	chat, err := s.db.GetAIChatV2(req.SessionId)
+	if err != nil {
+		return &gen.AIChatSettings{}, nil
+	}
+	if chat.UserID != userID {
+		return &gen.AIChatSettings{}, nil
+	}
+
+	apiKey, _ := chat.Settings["user_api_key"].(string)
+	model, _ := chat.Settings["model_override"].(string)
+	isCustom := apiKey != ""
+
+	var remaining, limit, windowSeconds int32
+
+	return &gen.AIChatSettings{
+		SessionId:        req.SessionId,
+		UserApiKey:       apiKey,
+		Model:            model,
+		IsUsingCustomKey: isCustom,
+		Remaining:        remaining,
+		Limit:            limit,
+		WindowSeconds:    windowSeconds,
+	}, nil
+}
+
+func (s *server) UpdateAIChatSettings(ctx context.Context, req *gen.UpdateAIChatSettingsRequest) (*gen.UpdateAIChatSettingsResponse, error) {
+	userID := getAIV2UserID(ctx)
+	if userID == "" {
+		return &gen.UpdateAIChatSettingsResponse{Success: false, Message: "unauthorized"}, nil
+	}
+
+	if req.SessionId == "" {
+		return &gen.UpdateAIChatSettingsResponse{Success: false, Message: "session_id required"}, nil
+	}
+
+	chat, err := s.db.GetAIChatV2(req.SessionId)
+	if err != nil {
+		return &gen.UpdateAIChatSettingsResponse{Success: false, Message: "chat not found"}, nil
+	}
+	if chat.UserID != userID {
+		return &gen.UpdateAIChatSettingsResponse{Success: false, Message: "permission denied"}, nil
+	}
+
+	if chat.Settings == nil {
+		chat.Settings = make(map[string]any)
+	}
+
+	if req.ApiKey != "" {
+		chat.Settings["user_api_key"] = req.ApiKey
+	} else {
+		delete(chat.Settings, "user_api_key")
+	}
+
+	if req.Model != "" {
+		chat.Settings["model_override"] = req.Model
+	} else {
+		delete(chat.Settings, "model_override")
+	}
+
+	if err := s.db.UpdateAIChatV2(chat); err != nil {
+		return &gen.UpdateAIChatSettingsResponse{Success: false, Message: err.Error()}, nil
+	}
+
+	logger.Infof("[AI] UpdateSettings: session=%s user=%s hasKey=%v model=%s", req.SessionId, userID, req.ApiKey != "", req.Model)
+
+	return &gen.UpdateAIChatSettingsResponse{
+		Success: true,
+		Message: "settings updated",
+	}, nil
 }

@@ -14360,12 +14360,13 @@ type ChatWithAIV2Response struct {
 	Token         string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
 	Finished      bool                   `protobuf:"varint,2,opt,name=finished,proto3" json:"finished,omitempty"`
 	Error         string                 `protobuf:"bytes,3,opt,name=error,proto3" json:"error,omitempty"`
-	AgentId       string                 `protobuf:"bytes,4,opt,name=agent_id,json=agentId,proto3" json:"agent_id,omitempty"`       // which agent answered
-	AgentName     string                 `protobuf:"bytes,5,opt,name=agent_name,json=agentName,proto3" json:"agent_name,omitempty"` // display name
-	ToolCalls     []*ToolCallRequestV2   `protobuf:"bytes,6,rep,name=tool_calls,json=toolCalls,proto3" json:"tool_calls,omitempty"` // tool execution requests
+	AgentId       string                 `protobuf:"bytes,4,opt,name=agent_id,json=agentId,proto3" json:"agent_id,omitempty"`
+	AgentName     string                 `protobuf:"bytes,5,opt,name=agent_name,json=agentName,proto3" json:"agent_name,omitempty"`
+	ToolCalls     []*ToolCallRequestV2   `protobuf:"bytes,6,rep,name=tool_calls,json=toolCalls,proto3" json:"tool_calls,omitempty"`
 	HasRagContext bool                   `protobuf:"varint,7,opt,name=has_rag_context,json=hasRagContext,proto3" json:"has_rag_context,omitempty"`
 	ModelUsed     string                 `protobuf:"bytes,8,opt,name=model_used,json=modelUsed,proto3" json:"model_used,omitempty"`
 	TokenCount    int32                  `protobuf:"varint,9,opt,name=token_count,json=tokenCount,proto3" json:"token_count,omitempty"`
+	ImageUrl      string                 `protobuf:"bytes,10,opt,name=image_url,json=imageUrl,proto3" json:"image_url,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -14461,6 +14462,13 @@ func (x *ChatWithAIV2Response) GetTokenCount() int32 {
 		return x.TokenCount
 	}
 	return 0
+}
+
+func (x *ChatWithAIV2Response) GetImageUrl() string {
+	if x != nil {
+		return x.ImageUrl
+	}
+	return ""
 }
 
 type ToolCallV2 struct {
@@ -17789,7 +17797,7 @@ const file_messenger_proto_rawDesc = "" +
 	"\x06images\x18\x03 \x03(\fR\x06images\x12\x19\n" +
 	"\bagent_id\x18\x04 \x01(\tR\aagentId\x124\n" +
 	"\n" +
-	"tool_calls\x18\x05 \x03(\v2\x15.messenger.ToolCallV2R\ttoolCalls\"\xbd\x02\n" +
+	"tool_calls\x18\x05 \x03(\v2\x15.messenger.ToolCallV2R\ttoolCalls\"\xda\x02\n" +
 	"\x14ChatWithAIV2Response\x12\x14\n" +
 	"\x05token\x18\x01 \x01(\tR\x05token\x12\x1a\n" +
 	"\bfinished\x18\x02 \x01(\bR\bfinished\x12\x14\n" +
@@ -17803,7 +17811,9 @@ const file_messenger_proto_rawDesc = "" +
 	"\n" +
 	"model_used\x18\b \x01(\tR\tmodelUsed\x12\x1f\n" +
 	"\vtoken_count\x18\t \x01(\x05R\n" +
-	"tokenCount\"f\n" +
+	"tokenCount\x12\x1b\n" +
+	"\timage_url\x18\n" +
+	" \x01(\tR\bimageUrl\"f\n" +
 	"\n" +
 	"ToolCallV2\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +

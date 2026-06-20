@@ -1,5 +1,39 @@
 # Лава — Server Changelog
 
+## [1.3.0.18] - 2026-06-20
+
+### Features
+- **Reve Image Generation** — new `reve` provider type for AI image generation via Reve API. Supports text-to-image, edit, and remix workflows. Returns `image_url` in `ChatWithAIV2Response` (field 10).
+- **Image URL in ChatWithAIV2Response** — proto field `image_url = 10` added. When an agent produces an image (e.g. Reve), the final response includes the image URL for display in the client.
+- **Reve preset agent** — pre-configured agent `reve` using `reve-2.0` model. Requires `REVE_API_KEY` env var or `api_key` in agent's `provider_config`.
+
+---
+
+## [1.3.0.17] - 2026-06-20
+
+### Features
+- **Free AI models via server key** — all preset agents now use free OpenRouter models (`:free` suffix). Clients use the server's `OPENROUTER_API_KEY` by default. Users can set their own key to unlock paid models.
+- **AI Chat Settings RPCs** — `GetAIChatSettings` and `UpdateAIChatSettings` allow per-session API key and model override. Users set their own OpenRouter key to use paid models; otherwise defaults to free server key.
+- **Model override** — users can override the model for a specific AI chat session via `UpdateAIChatSettings.model`. The override applies to the agent's provider config at execution time.
+- **New preset: Vision** — image analysis agent using `google/gemma-4-26b-a4b-it:free` (supports images + tools).
+- **Preset auto-update** — `seedPresetAgents` now uses `ON CONFLICT DO UPDATE` instead of `DO NOTHING`, so presets are updated on every server restart.
+
+### Preset Models (all free)
+
+| Agent | Model | Tools | RAG |
+|-------|-------|-------|-----|
+| MiMo | `mimo-auto` | ✅ | ✅ |
+| Assistant | `meta-llama/llama-3.3-70b-instruct:free` | ✅ | ✅ |
+| Developer | `qwen/qwen3-coder:free` | ✅ | ❌ |
+| DevOps | `meta-llama/llama-3.3-70b-instruct:free` | ✅ | ❌ |
+| Architect | `nvidia/nemotron-3-super-120b-a12b:free` | ❌ | ❌ |
+| Writer | `meta-llama/llama-3.3-70b-instruct:free` | ❌ | ❌ |
+| Analyst | `qwen/qwen3-next-80b-a3b-instruct:free` | ✅ | ✅ |
+| Translator | `meta-llama/llama-3.3-70b-instruct:free` | ❌ | ❌ |
+| Vision | `google/gemma-4-26b-a4b-it:free` | ✅ | ❌ |
+
+---
+
 ## [1.3.0.16] - 2026-06-20
 
 ### Bug Fixes
