@@ -1,5 +1,12 @@
 # Лава — Server Changelog
 
+## [1.3.0.12] - 2026-06-20
+
+### Performance
+- **Unread count optimization** — `GetUserChatsV2`, `GetUserChats`, `GetUserChatsByUserID`, `SearchChats` теперь используют `user_chat_metadata.last_read_at` вместо подсчёта всех непрочитанных сообщений. N+1 → O(1) для unread.
+
+---
+
 ## [1.3.0.11] - 2026-06-20
 
 ### Features

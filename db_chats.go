@@ -75,8 +75,16 @@ func (db *DB) GetUserChats(uid, user string) ([]struct {
 	UnreadCount                                                                                           int
 	LastMessageHasImage, AllowMembersToAdd                                                                bool
 }, error) {
-	query := `WITH unread_counts AS (
-		SELECT room_id, COUNT(*) as count FROM messages WHERE is_read = FALSE AND username != $1 GROUP BY room_id
+	query := `WITH user_last_read AS (
+		SELECT room_id, COALESCE(last_read_at, '1970-01-01') as last_read FROM user_chat_metadata WHERE user_id = $2::uuid
+	),
+	unread_counts AS (
+		SELECT m.room_id, COUNT(*) as count
+		FROM messages m
+		LEFT JOIN user_last_read ulr ON ulr.room_id = m.room_id
+		WHERE m.username != $1
+		AND m.created_at > ulr.last_read
+		GROUP BY m.room_id
 	)
 	SELECT c.id, c.name, c.type, c.participants, c.created_at,
 	       COALESCE(uc.count, 0),
@@ -90,9 +98,9 @@ func (db *DB) GetUserChats(uid, user string) ([]struct {
 	FROM chats c
 	LEFT JOIN unread_counts uc ON c.id = uc.room_id
 	WHERE c.type NOT IN ('ai', 'owl', 'hermes')
-	  AND c.participants::jsonb @> jsonb_build_array($2::text)
+	  AND c.participants::jsonb @> jsonb_build_array($1::text)
 	ORDER BY COALESCE(c.last_message_time, c.created_at) DESC`
-	rows, err := db.Query(query, user, user)
+	rows, err := db.Query(query, user, uid)
 	if err != nil {
 		return nil, err
 	}
@@ -128,8 +136,16 @@ func (db *DB) GetUserChatsByUserID(userID string) ([]struct {
 	UnreadCount                                                                                           int
 	LastMessageHasImage, AllowMembersToAdd                                                                bool
 }, error) {
-	query := `WITH unread_counts AS (
-		SELECT room_id, COUNT(*) as count FROM messages WHERE is_read = FALSE AND user_id = $1::uuid GROUP BY room_id
+	query := `WITH user_last_read AS (
+		SELECT room_id, COALESCE(last_read_at, '1970-01-01') as last_read FROM user_chat_metadata WHERE user_id = $1::uuid
+	),
+	unread_counts AS (
+		SELECT m.room_id, COUNT(*) as count
+		FROM messages m
+		LEFT JOIN user_last_read ulr ON ulr.room_id = m.room_id
+		WHERE m.user_id != $1::uuid
+		AND m.created_at > ulr.last_read
+		GROUP BY m.room_id
 	)
 	SELECT c.id, c.name, c.type, c.participants, c.created_at,
 	       COALESCE(uc.count, 0),

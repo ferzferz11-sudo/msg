@@ -134,8 +134,19 @@ func (db *DB) SearchChats(userID, query string, limit, offset int) ([]ChatV2Row,
 	searchPattern := "%" + strings.ToLower(query) + "%"
 
 	rows, err := db.Query(`
-		WITH unread_counts AS (
-			SELECT room_id, COUNT(*) as count FROM messages WHERE is_read = FALSE AND username != $2::text GROUP BY room_id
+		WITH user_last_read AS (
+			SELECT room_id, COALESCE(last_read_at, '1970-01-01') as last_read FROM user_chat_metadata WHERE user_id = $2::uuid
+		),
+		user_info AS (
+			SELECT username FROM users WHERE id = $2::uuid
+		),
+		unread_counts AS (
+			SELECT m.room_id, COUNT(*) as count
+			FROM messages m
+			LEFT JOIN user_last_read ulr ON ulr.room_id = m.room_id
+			WHERE m.username != (SELECT username FROM user_info)
+			AND m.created_at > ulr.last_read
+			GROUP BY m.room_id
 		)
 		SELECT DISTINCT c.id, c.name, c.type, c.participants, c.created_at,
 		       COALESCE(c.creator_username, ''), COALESCE(c.creator_id::text, ''),
@@ -153,7 +164,7 @@ func (db *DB) SearchChats(userID, query string, limit, offset int) ([]ChatV2Row,
 			LOWER(c.name) LIKE $1
 			OR LOWER(c.participants) LIKE $1
 		)
-		AND c.participants LIKE '%' || $2 || '%'
+		AND c.participants LIKE '%' || (SELECT username FROM user_info) || '%'
 		ORDER BY COALESCE(c.last_message_time, c.created_at) DESC NULLS LAST
 		LIMIT $3 OFFSET $4`,
 		searchPattern, userID, limit, offset)
@@ -232,8 +243,16 @@ func (db *DB) GetUserChatsV2(userID, username string, limit, offset int, filter 
 	}
 
 	query := fmt.Sprintf(`
-		WITH unread_counts AS (
-			SELECT room_id, COUNT(*) as count FROM messages WHERE is_read = FALSE AND username != $4 GROUP BY room_id
+		WITH user_last_read AS (
+			SELECT room_id, COALESCE(last_read_at, '1970-01-01') as last_read FROM user_chat_metadata WHERE user_id = $1::uuid
+		),
+		unread_counts AS (
+			SELECT m.room_id, COUNT(*) as count
+			FROM messages m
+			LEFT JOIN user_last_read ulr ON ulr.room_id = m.room_id
+			WHERE m.username != $4
+			AND m.created_at > ulr.last_read
+			GROUP BY m.room_id
 		)
 		SELECT c.id, c.name, c.type, c.participants, c.created_at,
 		       COALESCE(c.creator_username, ''), COALESCE(c.creator_id::text, ''),
