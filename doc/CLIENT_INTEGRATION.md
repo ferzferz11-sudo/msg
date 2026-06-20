@@ -1,6 +1,6 @@
 # Lavender Messenger — Client Integration Guide
 
-**Сервер:** v1.2.0.9 | **Протокол:** gRPC + Protocol Buffers | **Дата:** 2026-06-19
+**Сервер:** v1.3.0.2 | **Протокол:** gRPC + Protocol Buffers | **Дата:** 2026-06-20
 
 Единый документ для интеграции нового клиента с сервером Lavender Messenger.
 
@@ -46,7 +46,7 @@
 
 ## gRPC Services
 
-### 1. ChatService (messenger.proto) — 104 метода
+### 1. ChatService (messenger.proto) — 130+ метода
 
 #### Bidirectional Streams
 
@@ -194,16 +194,43 @@ message UserInfo {
 | `RequestPasswordReset` | `RequestPasswordResetRequest { email }` | `RequestPasswordResetResponse` | Отправить email |
 | `ResetPassword` | `ResetPasswordRequest { token, new_password }` | `ResetPasswordResponse` | Сбросить пароль |
 
-#### AI Chat (Unified)
+#### AI Services v2 (с v1.3.0.0)
 
 | Метод | Запрос | Ответ | Описание |
 |-------|--------|-------|----------|
-| `ChatWithAI` | `AIChatRequest { user_id, chat_id, message, images[] }` | `stream AIChatResponse` | AI чат (стриминг) |
-| `GetAIChats` | `GetAIChatsRequest { user_id }` | `GetAIChatsResponse` | Список AI чатов |
-| `GetAIChatHistory` | `GetAIChatHistoryRequest { chat_id, user_id }` | `GetAIChatHistoryResponse` | История AI чата |
-| `GetAIChatSettings` | `GetAIChatSettingsRequest { chat_id, user_id }` | `AIChatSettings` | Настройки AI чата |
-| `UpdateAIChatSettings` | `UpdateAIChatSettingsRequest { ... }` | `UpdateAIChatSettingsResponse` | Обновить настройки |
-| `RenameAIChat` | `RenameAIChatRequest { chat_id, user_id, name }` | `RenameAIChatResponse` | Переименовать AI чат |
+| `ChatWithAIV2` | `ChatWithAIV2Request { session_id, message, images[], agent_id, tool_calls[] }` | `stream ChatWithAIV2Response` | Единый AI чат (simple/agent/pipeline) |
+| `CreateAIAgent` | `CreateAIAgentRequest { name, provider_type, model, ... }` | `CreateAIAgentResponse { agent_id }` | Создать агента |
+| `UpdateAIAgent` | `UpdateAIAgentRequest { agent_id, ... }` | `UpdateAIAgentResponse` | Обновить агента |
+| `DeleteAIAgent` | `DeleteAIAgentRequest { agent_id }` | `DeleteAIAgentResponse` | Удалить агента |
+| `GetAIAgent` | `GetAIAgentRequest { agent_id }` | `GetAIAgentResponse { agent: AgentInfoV2 }` | Информация об агенте |
+| `ListAIAgents` | `ListAIAgentsRequest { include_public }` | `ListAIAgentsResponse { agents[] }` | Список агентов (свои + пресеты + публичные) |
+| `CloneAIAgent` | `CloneAIAgentRequest { agent_id, new_name }` | `CloneAIAgentResponse { agent_id }` | Клонировать агента |
+| `ListAITools` | `ListAIToolsRequest {}` | `ListAIToolsResponse { tools[] }` | Доступные инструменты |
+
+**AI Marketplace** (с v1.3.0.2):
+
+| Метод | Запрос | Ответ | Описание |
+|-------|--------|-------|----------|
+| `RateAIAgent` | `RateAIAgentRequest { agent_id, rating, review }` | `RateAIAgentResponse` | Оценить агента |
+| `GetAIAgentReviews` | `GetAIAgentReviewsRequest { agent_id }` | `GetAIAgentReviewsResponse { reviews[] }` | Отзывы на агента |
+| `ListMarketplaceAgents` | `ListMarketplaceAgentsRequest { category, sort }` | `ListMarketplaceAgentsResponse { agents[] }` | Маркетплейс агентов |
+| `GetAIAgentStats` | `GetAIAgentStatsRequest { agent_id }` | `GetAIAgentStatsResponse` | Статистика агента |
+| `ShareAIAgent` | `ShareAIAgentRequest { agent_id }` | `ShareAIAgentResponse { share_code }` | Поделиться агентом |
+| `InstallAIAgent` | `InstallAIAgentRequest { share_code }` | `InstallAIAgentResponse { agent_id }` | Установить агента по коду |
+| `GetAIUsageStats` | `GetAIUsageStatsRequest { user_id }` | `GetAIUsageStatsResponse` | Статистика использования AI (токены) |
+
+**Типы AI чатов:**
+- `simple` — прямой LLM (как ChatGPT)
+- `agent` — multi-agent с роутингом
+- `pipeline` — RAG + tools chain
+
+**Встроенные инструменты:** search_messages, search_users, web_search, web_fetch, get_chat_info, query_database
+
+**Провайдеры:** openrouter, local, mimo, webhook, websocket, subprocess, mcp
+
+**Пресеты:** mimo, assistant, developer, devops, architect, writer, analyst, translator
+
+> Полное описание см. в `doc/AI_V2_CLIENT_INTEGRATION.md`
 
 #### Notifications
 
@@ -293,13 +320,14 @@ message UserInfo {
     "auth": "2.0",
     "chat": "2.0",
     "profile": "2.0",
-    "ai": "1.0"
+    "ai": "2.0"
   }
 }
 ```
 
 - `auth >= "2.0"` → использовать `SignInV2` + JWT workflow
 - `chat >= "2.0"` → использовать `GetChatsV2`, JWT в Chat stream
+- `ai >= "2.0"` → использовать `ChatWithAIV2` вместо старого `ChatWithAI`
 
 ---
 

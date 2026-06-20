@@ -89,7 +89,7 @@ func (db *DB) GetUserChats(uid, user string) ([]struct {
 	       COALESCE(c.allow_members_to_add, FALSE)
 	FROM chats c
 	LEFT JOIN unread_counts uc ON c.id = uc.room_id
-	WHERE c.type NOT IN ('owl', 'hermes')
+	WHERE c.type NOT IN ('ai', 'owl', 'hermes')
 	  AND c.participants::jsonb @> jsonb_build_array($2::text)
 	ORDER BY COALESCE(c.last_message_time, c.created_at) DESC`
 	rows, err := db.Query(query, user, user)
@@ -652,7 +652,7 @@ func (db *DB) backfillLastMessageText() {
 			ORDER BY created_at DESC LIMIT 1
 		) m ON TRUE
 		WHERE (c.last_message_text IS NULL OR c.last_message_text = '' OR c.last_message_text = 'Message')
-		AND c.type NOT IN ('owl', 'hermes')
+		AND c.type NOT IN ('ai', 'owl', 'hermes')
 		AND COALESCE(c.is_secret, FALSE) = FALSE`)
 	if err != nil {
 		logger.Errorf("Backfill: query error: %v", err)

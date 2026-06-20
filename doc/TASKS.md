@@ -1,8 +1,25 @@
 # Лава — Задачи
 
-**Версия:** v1.3.0.2
+**Версия:** v1.3.0.3
 **Ветка:** feat/1.3.0.x
 **Обновлено:** 2026-06-20
+
+---
+
+## ✅ v1.3.0.3 — Bug Fixes (Сессия 46)
+
+### Что сделано
+
+#### MarkRead NULL user_id Fix
+- **server_profile.go** — `MarkRead()`: заменён `GetUserID(ctx)` на `ResolveUserID(ctx, s.db)` для v1 username → UUID fallback
+- **Причина**: v1 auth interceptor ставит только `username` в context, `GetUserID()` возвращает пустую строку → INSERT с NULL user_id
+- **Результат**: `pq: null value in column "user_id"` constraint violation исправлен
+
+#### Ghost AI Chat Fix
+- **db_chats.go** — `GetUserChats` (v1): добавлен `'ai'` в `WHERE c.type NOT IN ('ai', 'owl', 'hermes')`
+- **db_chats.go** — `backfillLastMessageText`: добавлен `'ai'` в `WHERE c.type NOT IN ('ai', 'owl', 'hermes')`
+- **Причина**: v1 запрос не фильтровал AI чаты → ghost чаты с "просто id" в списке
+- **Результат**: AI чаты больше не отображаются в списке чатов
 
 ---
 
@@ -149,18 +166,10 @@
 
 ## 📋 Активные задачи
 
-### AI v2 — Доработка
-- [x] WebSocket provider (реализация) ✅
-- [x] MiMo deep integration (DB, bash) ✅
-- [x] Usage stats (token tracking, ai_usage_stats table) ✅
-- [x] Agent marketplace (reviews, ratings, share, install) ✅
-- [ ] Production RAG (Qdrant/CLIP) — нужна инфраструктура
+## Осталось (инфра-зависимые)
 
-### P3 оптимизации
-- [x] DB split (db.go → 4 файла) ✅
-- [x] Concurrency fixes (hub broadcast) ✅
-- [x] Удаление deprecated v1 кода (auth, chat) ✅
-- [x] Usage stats (token tracking) ✅
-- [x] Agent marketplace (reviews, ratings, share) ✅
-- [ ] Qdrant + CLIP (production RAG) — нужна инфраструктура
+### Production RAG
+- [ ] Qdrant + CLIP — нужна инфраструктура (Qdrant + CLIP модели на сервере)
+
+### Rate Limiting
 - [ ] Unified RateLimiter (Redis) — нужен Redis

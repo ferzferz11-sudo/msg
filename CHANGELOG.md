@@ -1,5 +1,17 @@
 # Лава — Server Changelog
 
+## [1.3.0.3] - 2026-06-20
+
+### Bug Fixes
+- **server_profile.go** — MarkRead: use `ResolveUserID(ctx, s.db)` вместо `GetUserID(ctx)` для корректной работы v1 клиентов (username → UUID fallback). Исправляет `pq: null value in column "user_id"` constraint violation.
+- **db_chats.go** — `GetUserChats` (v1): добавлен фильтр `'ai'` в `WHERE c.type NOT IN (...)`. Исправляет ghost AI чаты в списке чатов для v1 клиентов.
+- **db_chats.go** — `backfillLastMessageText`: добавлен фильтр `'ai'` в `WHERE c.type NOT IN (...)`.
+
+### Documentation
+- **doc/CLIENT_INTEGRATION.md** — обновлен до v1.3.0.2: AI v2 RPC (8 основных + 7 marketplace), Capability Negotiation ai >= 2.0
+
+---
+
 ## [1.3.0.2] - 2026-06-20
 
 ### AI Services v2 — Usage Stats + Marketplace

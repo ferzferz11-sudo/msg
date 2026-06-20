@@ -1,7 +1,7 @@
-# Промпт для серверных сессий — v1.3.0.2
+# Промпт для серверных сессий — v1.3.0.3
 
 **Дата:** 2026-06-20 | **Ветка:** feat/1.3.0.x
-**Статус:** AI Services v2 полностью готовы (usage stats + marketplace). Деплой на prod v1.3.0.2 завершён.
+**Статус:** AI v2 полностью готовы. v1.3.0.3: MarkRead fix + ghost AI chat fix.
 
 ---
 
@@ -21,7 +21,7 @@
 ### Сервер (/root/msg)
 ```
 main.go                    — Entry point, gRPC server, GracefulStop 30s timeout
-server.go                  — ServerVersion = "1.3.0.2"
+server.go                  — ServerVersion = "1.3.0.3"
 
 === AI Services v2 (ПОЛНОСТЬЮ ГОТОВО) ===
 db_ai_v2.go                — DB layer: agents_v2, ai_chats_v2, ai_messages_v2, ai_usage_stats, agent_reviews
