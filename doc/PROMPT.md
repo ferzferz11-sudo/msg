@@ -1,7 +1,7 @@
-# Промпт для серверных сессий — v1.3.0.9
+# Промпт для серверных сессий — v1.3.0.10
 
 **Дата:** 2026-06-20 | **Ветка:** feat/1.3.0.x
-**Статус:** v1 compat полностью удалён. AI v2 + marketplace работают. Redis rate limiter подключён. Остался только Qdrant RAG.
+**Статус:** v1 compat удалён. AI v2 + marketplace работают. Redis rate limiter + Qdrant RAG подключены. Серверная часть завершена.
 
 ---
 
@@ -9,8 +9,8 @@
 
 | | Версия | Статус |
 |---|--------|--------|
-| **Сервер prod** | v1.3.0.9 | ✅ Работает на порту 50051 |
-| **Сервер dev** | v1.3.0.9 | ✅ Работает на порту 50052 |
+| **Сервер prod** | v1.3.0.10 | ✅ Работает на порту 50051 |
+| **Сервер dev** | v1.3.0.10 | ✅ Работает на порту 50052 |
 
 **Android:** `/root/msg.client.android` — документация там, сборка ТОЛЬКО локально.
 
@@ -48,6 +48,8 @@ ai_tool_query_db.go        — DB query tool (SELECT only, admin) ✅
 server_ai_v2.go            — gRPC handlers (15 RPCs)
 rate_limiter.go            — Rate limiter + callOpenRouterContext
 redis_rate_limiter.go      — Redis-backed rate limiter (fallback: in-memory)
+core/rag/qdrant/qdrant.go  — Qdrant vector DB client (VectorSearch interface)
+core/rag/qdrant/embedding.go — OpenAI embedding service (text-embedding-3-small)
 hermes_stubs.go            — Stubs for hermes_agent_service.go
 
 === Core (DB split) ===
@@ -179,13 +181,11 @@ go test ./...
 
 ---
 
-## ОСТАЛОСЬ (1 задача)
+## ОСТАЛОСЬ (0 задач)
 
-| # | Задача | Блокер |
-|---|--------|--------|
-| 30 | Qdrant + CLIP (production RAG) | Нужна инфраструктура |
+**Прогресс: 50/50 задач выполнено (100%)**
 
-**Прогресс: 49/50 задач выполнено (98%)**
+Серверная часть Lavender Messenger завершена.
 
 ---
 

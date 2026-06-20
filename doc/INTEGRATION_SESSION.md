@@ -1,10 +1,27 @@
 # Lava Messenger — Интеграционная сессия
 
-**Текущая версия:** v1.3.0.9 (сервер prod/dev)
+**Текущая версия:** v1.3.0.10 (сервер prod/dev)
 **Обновлено:** 2026-06-20
 **Ветка сервера:** feat/1.3.0.x
 
 **Android:** `/root/msg.client.android` — сборка ТОЛЬКО локально.
+
+---
+
+## Сессия 51 — Production RAG (Qdrant + OpenAI)
+
+### Что сделано
+
+1. **core/rag/qdrant/qdrant.go** — Qdrant REST API клиент (VectorSearch interface)
+2. **core/rag/qdrant/embedding.go** — OpenAI embedding сервис (text-embedding-3-small, 1536 dim)
+3. **ai_v2.go** — RAG pipeline подключен в AI Gateway с fallback
+4. Конфигурация: `QDRANT_URL` + `OPENAI_API_KEY` env vars
+
+### Статус
+- Go build: ✅
+- Tests: all PASS
+- Dev (50052): pending
+- Prod (50051): pending
 
 ---
 

@@ -7,10 +7,15 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log"
 	"sync"
 	"time"
 
 	"github.com/google/uuid"
+
+	"LavenderMessenger/core/rag"
+	"LavenderMessenger/core/rag/memory"
+	"LavenderMessenger/core/rag/qdrant"
 )
 
 // AIGateway handles all AI chat operations
@@ -19,6 +24,7 @@ type AIGateway struct {
 	executor     *AgentExecutor
 	tools        *ToolRegistry
 	router       *HybridRouter
+	rag          rag.RAGPipeline
 	mu           sync.RWMutex
 	rateLimiters map[string]*RedisRateLimiter
 }
@@ -30,14 +36,41 @@ func NewAIGateway(db *sql.DB) *AIGateway {
 	executor := NewAgentExecutor(db, registry, tools)
 	router := NewHybridRouter(db)
 
+	// Initialize RAG: Qdrant + OpenAI embeddings, fallback to in-memory
+	ragPipeline := initRAG()
+
 	g := &AIGateway{
 		db:           db,
 		executor:     executor,
 		tools:        tools,
 		router:       router,
+		rag:          ragPipeline,
 		rateLimiters: make(map[string]*RedisRateLimiter),
 	}
 	return g
+}
+
+func initRAG() rag.RAGPipeline {
+	dim := 1536 // text-embedding-3-small dimensions
+
+	// Try Qdrant first
+	qdrantClient := qdrant.NewClient("rag", dim)
+	if qdrantClient != nil && qdrantClient.IsAvailable() {
+		// Try OpenAI embeddings
+		embedder := qdrant.NewOpenAIEmbeddingService(dim)
+		if embedder != nil {
+			log.Printf("[RAG] production mode: Qdrant + OpenAI embeddings")
+			return memory.NewInMemoryRAGPipeline(embedder, qdrantClient)
+		}
+		log.Printf("[RAG] Qdrant available but no OPENAI_API_KEY, using in-memory embeddings")
+	}
+
+	// Fallback: in-memory everything
+	log.Printf("[RAG] in-memory mode (set QDRANT_URL + OPENAI_API_KEY for production)")
+	return memory.NewInMemoryRAGPipeline(
+		memory.NewInMemoryEmbeddingService(dim),
+		memory.NewInMemoryVectorDB(dim),
+	)
 }
 
 // Chat is the main entry point for AI chat
@@ -78,7 +111,7 @@ func (g *AIGateway) Chat(ctx context.Context, req *ChatRequest, streamFn func(to
 	}
 
 	// 7. Build messages for provider
-	messages := g.buildMessages(chat, history, req.Message)
+	messages := g.buildMessages(ctx, chat, agent, history, req.Message)
 
 	// 8. Get settings
 	settings := &AIChatSettings{}
@@ -229,7 +262,7 @@ func (g *AIGateway) loadHistory(ctx context.Context, chatID string) ([]AIMessage
 	return history, nil
 }
 
-func (g *AIGateway) buildMessages(chat *AIChatV2, history []AIMessageInput, userMessage string) []AIMessageInput {
+func (g *AIGateway) buildMessages(ctx context.Context, chat *AIChatV2, agent *AgentV2, history []AIMessageInput, userMessage string) []AIMessageInput {
 	var messages []AIMessageInput
 	sysPrompt := chat.SystemPrompt
 	if sysPrompt == "" {
@@ -237,7 +270,18 @@ func (g *AIGateway) buildMessages(chat *AIChatV2, history []AIMessageInput, user
 	}
 	messages = append(messages, AIMessageInput{Role: "system", Content: sysPrompt})
 	messages = append(messages, history...)
-	messages = append(messages, AIMessageInput{Role: "user", Content: userMessage})
+
+	// RAG augmentation: if agent has RAG enabled, search for relevant context
+	augmentedMsg := userMessage
+	if agent != nil && agent.RAGEnabled && g.rag != nil {
+		ragCtx, err := g.rag.BuildContext(ctx, userMessage, nil)
+		if err == nil && ragCtx.HasResults {
+			augmentedMsg = ragCtx.AugmentedPrompt
+			log.Printf("[RAG] augmented query with %d chunks for agent=%s", len(ragCtx.RetrievedChunks), agent.ID)
+		}
+	}
+
+	messages = append(messages, AIMessageInput{Role: "user", Content: augmentedMsg})
 	return messages
 }
 

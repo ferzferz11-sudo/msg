@@ -1,5 +1,21 @@
 # Лава — Server Changelog
 
+## [1.3.0.10] - 2026-06-20
+
+### Production RAG — Qdrant + OpenAI Embeddings
+- **core/rag/qdrant/qdrant.go** — Qdrant REST API client implementing `VectorSearch` interface
+- **core/rag/qdrant/embedding.go** — OpenAI embedding service (`text-embedding-3-small`, 1536 dim)
+- **ai_v2.go** — RAG pipeline wired into AI Gateway: Qdrant + OpenAI → in-memory fallback
+- RAG augmentation: when agent has `rag_enabled=true`, user query is enriched with relevant context
+- Configuration: `QDRANT_URL` + `OPENAI_API_KEY` env vars (set both for production mode)
+
+### Architecture
+- Qdrant as binary (~100-200MB RAM), not Docker — memory-efficient for 1.9GB server
+- OpenAI text-embedding-3-small: $0.00002/1K tokens (nearly free)
+- Fallback chain: Qdrant+OpenAI → in-memory TF-IDF (no external dependencies)
+
+---
+
 ## [1.3.0.9] - 2026-06-20
 
 ### Redis Rate Limiter — Wired In
