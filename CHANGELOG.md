@@ -1,5 +1,19 @@
 # Лава — Server Changelog
 
+## [1.3.0.4] - 2026-06-20
+
+### Graceful Shutdown
+- **hub.go** — `BroadcastShutdown()`: отправляет `SERVER_SHUTTINGDOWN` всем подключённым клиентам перед остановкой
+- **main.go** — при SIGTERM: ставит `isShuttingDown` флаг, broadcast shutdown, пауза 2с, затем GracefulStop
+- **http_server.go** — health endpoint возвращает 503 `{"status":"shutting_down"}` во время остановки
+- **server.go** — добавлен `isShuttingDown atomic.Bool` в server struct
+
+Клиент может:
+1. Ловить `SERVER_SHUTTINGDOWN` из Chat стрима и показывать "Переподключение..."
+2. Проверять health endpoint перед реконнектом — если 503, ждать перед retry
+
+---
+
 ## [1.3.0.3] - 2026-06-20
 
 ### Bug Fixes

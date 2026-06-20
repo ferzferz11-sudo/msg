@@ -24,13 +24,14 @@ import (
 	"LavenderMessenger/gen"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
 	firebase "firebase.google.com/go/v4"
 )
 
-const ServerVersion = "1.3.0.3"
+const ServerVersion = "1.3.0.4"
 
 // Service versions for client capability negotiation.
 // Service versions for client capability negotiation.
@@ -66,6 +67,9 @@ type server struct {
 
 	// AI Gateway v2
 	aiGateway *AIGateway
+
+	// Shutdown state
+	isShuttingDown atomic.Bool
 }
 
 func (s *server) logErrorOnce(key string, format string, v ...interface{}) {

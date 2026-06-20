@@ -16,6 +16,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
@@ -34,6 +35,9 @@ var (
 	turnServerHost   = getEnvOrDefault("TURN_SERVER_HOST", "13.140.25.249:3478")
 	turnSharedSecret = os.Getenv("TURN_SHARED_SECRET")
 	turnTTL          = 86400 // 24 hours
+
+	// Shutdown state — set to true during graceful shutdown
+	httpShuttingDown atomic.Bool
 )
 
 func getEnvOrDefault(key, defaultValue string) string {
@@ -69,6 +73,11 @@ func StartHTTPServer(port string) {
 	// Health check endpoint
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
+		if httpShuttingDown.Load() {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			fmt.Fprintf(w, `{"status":"shutting_down","version":"%s","time":"%s"}`, ServerVersion, time.Now().Format(time.RFC3339))
+			return
+		}
 		fmt.Fprintf(w, `{"status":"ok","version":"%s","time":"%s"}`, ServerVersion, time.Now().Format(time.RFC3339))
 	})
 
@@ -137,6 +146,11 @@ func StartHTTPServerAndReturn(port string) *http.Server {
 	// Health check endpoint
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
+		if httpShuttingDown.Load() {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			fmt.Fprintf(w, `{"status":"shutting_down","version":"%s","time":"%s"}`, ServerVersion, time.Now().Format(time.RFC3339))
+			return
+		}
 		fmt.Fprintf(w, `{"status":"ok","version":"%s","time":"%s"}`, ServerVersion, time.Now().Format(time.RFC3339))
 	})
 

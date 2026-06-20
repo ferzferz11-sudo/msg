@@ -344,6 +344,16 @@ func (h *Hub) BroadcastGlobal(msg *gen.Message) {
 	}
 }
 
+// BroadcastShutdown sends SERVER_SHUTTINGDOWN to all connected clients
+func (h *Hub) BroadcastShutdown() {
+	msg := &gen.Message{
+		User:   "SYSTEM",
+		Text:   "SERVER_SHUTTINGDOWN",
+		RoomId: "",
+	}
+	h.BroadcastGlobal(msg)
+}
+
 // Broadcast sends a message to all connected clients in the same room
 func (h *Hub) Broadcast(msg *gen.Message) {
 	roomID := msg.RoomId

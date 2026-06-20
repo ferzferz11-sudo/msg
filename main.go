@@ -251,6 +251,15 @@ func main() {
 		sig := <-sigCh
 		logger.Infof("Received signal %v, shutting down gracefully...", sig)
 
+		// Set shutting down flag
+		srv.isShuttingDown.Store(true)
+		httpShuttingDown.Store(true)
+
+		// Notify all connected clients before stopping
+		srv.hub.BroadcastShutdown()
+		logger.Info("Sent SERVER_SHUTTINGDOWN to all clients")
+		time.Sleep(2 * time.Second) // Give clients time to receive the message
+
 		// Cancel background goroutines
 		cancel()
 
