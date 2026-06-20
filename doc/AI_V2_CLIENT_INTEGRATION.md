@@ -1,6 +1,6 @@
 # AI Services v2 — Client Integration Guide
 
-**Сервер:** v1.3.0.0 | **Протокол:** gRPC + Protocol Buffers | **Дата:** 2026-06-19
+**Сервер:** v1.3.0.2 | **Протокол:** gRPC + Protocol Buffers | **Дата:** 2026-06-20
 
 Документ описывает новые AI RPC методы v2. Заменяет старые `ChatWithAI`, `ChatWithOWL`, `ChatWithOrchestrator`, `ChatWithPipeline`.
 

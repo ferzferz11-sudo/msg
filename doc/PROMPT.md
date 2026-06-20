@@ -1,7 +1,7 @@
 # Промпт для серверных сессий — v1.3.0.2
 
 **Дата:** 2026-06-20 | **Ветка:** feat/1.2.0.x
-**Статус:** AI Services v2 полностью готовы. Готово к Android интеграции.
+**Статус:** AI Services v2 полностью готовы (usage stats + marketplace). Деплой на prod завершён.
 
 ---
 
@@ -9,7 +9,7 @@
 
 | | Версия | Статус |
 |---|--------|--------|
-| **Сервер prod** | v1.2.0.11 | ✅ Работает на порту 50051 |
+| **Сервер prod** | v1.3.0.2 | ✅ Работает на порту 50051 |
 | **Сервер dev** | v1.3.0.2 | ✅ Работает на порту 50052 |
 
 **Android:** `/root/msg.client.android` — документация там, сборка ТОЛЬКО локально.
@@ -24,13 +24,13 @@ main.go                    — Entry point, gRPC server, GracefulStop 30s timeou
 server.go                  — ServerVersion = "1.3.0.2"
 
 === AI Services v2 (ПОЛНОСТЬЮ ГОТОВО) ===
-db_ai_v2.go                — DB layer: agents_v2, ai_chats_v2, ai_messages_v2
-ai_v2.go                   — AI Gateway: session mgmt, streaming, chat flow
+db_ai_v2.go                — DB layer: agents_v2, ai_chats_v2, ai_messages_v2, ai_usage_stats, agent_reviews
+ai_v2.go                   — AI Gateway: session mgmt, streaming, chat flow, usage recording
 ai_router.go               — Hybrid router (keyword + LLM fallback)
-ai_agent_executor.go       — Agent execution + tool calling loop
-ai_provider.go             — AgentProvider interface
+ai_agent_executor.go       — Agent execution + tool calling loop (returns ExecutionResult)
+ai_provider.go             — AgentProvider interface + StreamUsage
 ai_provider_registry.go    — Provider factory registry (7 типов)
-ai_provider_openrouter.go  — OpenRouter provider (SSE streaming)
+ai_provider_openrouter.go  — OpenRouter provider (SSE streaming + usage parsing)
 ai_provider_local.go       — Local Hermes provider (subprocess)
 ai_provider_mimo.go        — MiMo provider (HTTP API + deep integration)
 ai_provider_webhook.go     — Webhook provider (HTTP POST)
@@ -45,7 +45,7 @@ ai_tool_web_search.go      — Web search tool (DuckDuckGo)
 ai_tool_web_fetch.go       — URL fetch tool
 ai_tool_get_chat_info.go   — Chat info tool
 ai_tool_query_db.go        — DB query tool (SELECT only, admin) ✅
-server_ai_v2.go            — gRPC handlers (8 RPCs)
+server_ai_v2.go            — gRPC handlers (15 RPCs)
 rate_limiter.go            — Rate limiter + callOpenRouterContext
 hermes_stubs.go            — Stubs for hermes_agent_service.go
 
@@ -107,11 +107,12 @@ messenger.proto            — All proto definitions
 - `get_chat_info` — метаданные чата
 - `query_database` — SQL запросы (SELECT only, admin) ✅
 
-### Usage Stats + Marketplace (NEW)
+### Usage Stats + Marketplace
 - `ai_usage_stats` — агрегированная статистика токенов (per user/agent/hour)
 - `agent_reviews` — отзывы и рейтинги агентов (1-5 звёзд)
 - `ShareAIAgent` / `InstallAIAgent` — шаринг агентов через share_code
 - `ListMarketplaceAgents` — каталог публичных агентов с поиском
+- `GetAIUsageStats` — статистика использования для клиента
 
 ---
 
@@ -166,8 +167,8 @@ go test ./...
 
 ## ДОКУМЕНТАЦИЯ
 
-- Интеграция AI v2: `/root/msg/doc/AI_V2_CLIENT_INTEGRATION.md` (523 строки)
-- План реализации AI v2: `/root/msg/doc/AI_V2_IMPLEMENTATION_PLAN.md` (784 строки, все фазы ✅)
+- Интеграция AI v2: `/root/msg/doc/AI_V2_CLIENT_INTEGRATION.md`
+- План реализации AI v2: `/root/msg/doc/AI_V2_IMPLEMENTATION_PLAN.md`
 - Интеграция клиентов: `/root/msg/doc/CLIENT_INTEGRATION.md`
 - Индекс: `/root/msg/doc/INDEX.md`
 - Задачи: `/root/msg/doc/TASKS.md`
@@ -177,7 +178,7 @@ go test ./...
 
 ---
 
-## ОСТАЛОСЬ (4 задачи)
+## ОСТАЛОСЬ (2 задачи)
 
 | # | Задача | Блокер |
 |---|--------|--------|
