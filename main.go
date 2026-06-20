@@ -185,13 +185,11 @@ func main() {
 	hermesAgentServer := newHermesAgentServer(srv, &Orchestrator{remoteManager: srv.remoteAgentManager})
 	hermesagent.RegisterHermesAgentServiceServer(s, hermesAgentServer)
 
-	// Register ProfileService v2 (JWT-only, dev server only)
-	if appEnv == "dev" {
-		profileServer := newProfileServerV2(db)
-		gen.RegisterProfileServiceServer(s, profileServer)
-		ProfileServiceVersion = "2.0"
-		logger.Info("ProfileService v2 registered (dev)")
-	}
+	// Register ProfileService v2 (JWT-only)
+	profileServer := newProfileServerV2(db)
+	gen.RegisterProfileServiceServer(s, profileServer)
+	ProfileServiceVersion = "2.0"
+	logger.Info("ProfileService v2 registered")
 
 	// Register server management service (only dev)
 	if appEnv == "dev" {

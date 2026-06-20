@@ -10,8 +10,6 @@ import (
 
 // profileServerV2 implements ProfileService — profile management with JWT Bearer auth.
 // All methods extract user_id from gRPC context (set by AuthInterceptor).
-// This service is registered ONLY on dev server (v1.2.1.x+).
-// Prod server continues using legacy profile methods via ChatService.
 type profileServerV2 struct {
 	gen.UnimplementedProfileServiceServer
 	db *DB

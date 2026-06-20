@@ -64,7 +64,7 @@
 | `server_muted.go` | Muted chats |
 | `server_favorites.go` | Favorites, device management, password reset, user ID lookup |
 | `server_profile.go` | Profile: username/password update, mark read, avatar, delete |
-| `server_profile_v2.go` | v2 ProfileService (dev only): JWT-only |
+| `server_profile_v2.go` | ProfileService: JWT-only profile management |
 | `server_management.go` | Server management (admin) |
 | `server_remote.go` | Remote agent RPC: list, status, deploy tasks |
 | `server_ai_v2.go` | AI v2: ChatWithAIV2, Agent CRUD, Marketplace, Usage Stats (15 RPCs) |

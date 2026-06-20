@@ -346,7 +346,7 @@ message AgentInfoV2 {
 
 ---
 
-### 2. ProfileService (messenger.proto) — JWT-only (dev)
+### 2. ProfileService (messenger.proto) — JWT-only
 
 | Метод | Запрос | Ответ | Описание |
 |-------|--------|-------|----------|

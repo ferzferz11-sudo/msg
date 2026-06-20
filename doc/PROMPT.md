@@ -44,7 +44,7 @@ server_chatlist_v2.go      — GetChatsV2, Pin/Unpin, Search, Archive
 server_messages.go         — History, reactions, editing
 server_push.go             — FCM push, call push
 server_contacts.go, server_themes.go, server_drafts.go, server_muted.go, server_favorites.go
-server_profile.go, server_profile_v2.go, server_management.go, server_remote.go
+server_profile.go, server_profile_v2.go (ProfileService), server_management.go, server_remote.go
 secret_chat.go, bot_commands.go, http_server.go, email.go, crypto.go
 ```
 
