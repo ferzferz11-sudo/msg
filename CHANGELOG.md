@@ -1,5 +1,16 @@
 # Лава — Server Changelog
 
+## [1.3.0.13] - 2026-06-20
+
+### Performance Optimizations
+- **Cursor-based pagination** — `GetChatsV2` now supports keyset pagination via `cursor`/`next_cursor`/`has_more` fields. Legacy offset preserved for backward compatibility. O(log n) instead of O(n) for deep pages.
+- **DB connection pool tuning** — `MaxOpenConns` 25→50, `MaxIdleConns` 15→25
+- **AI session deduplication** — per-user mutex prevents race conditions when creating AI sessions with empty `session_id`
+- **AI tool result caching** — LRU cache (1min TTL, 500 entries) for `search_messages`, `search_users`, `get_chat_info` tools
+- **Database indexes** — added composite index for unread CTE, GIN index for `participant_ids` array containment, index for `last_message_time` ordering
+
+---
+
 ## [1.3.0.12] - 2026-06-20
 
 ### Performance

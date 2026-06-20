@@ -2,12 +2,39 @@ package main
 
 import (
 	"database/sql"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
 )
 
 // ======= ChatList v2: Database methods =======
+
+type chatCursor struct {
+	PinnedAt        int64     `json:"p"`
+	LastMessageTime time.Time `json:"t"`
+}
+
+func encodeCursor(c chatCursor) string {
+	data, _ := json.Marshal(c)
+	return base64.URLEncoding.EncodeToString(data)
+}
+
+func decodeCursor(cursor string) (chatCursor, bool) {
+	if cursor == "" {
+		return chatCursor{}, false
+	}
+	data, err := base64.URLEncoding.DecodeString(cursor)
+	if err != nil {
+		return chatCursor{}, false
+	}
+	var c chatCursor
+	if err := json.Unmarshal(data, &c); err != nil {
+		return chatCursor{}, false
+	}
+	return c, true
+}
 
 // ChatV2Row represents a chat row with v2 fields (pinned, muted, archived)
 type ChatV2Row struct {
@@ -19,6 +46,13 @@ type ChatV2Row struct {
 	IsMuted                                                                                               bool
 	IsArchived                                                                                            bool
 	PinnedAt                                                                                              int64
+}
+
+// ChatV2Result extends ChatV2Row with pagination metadata
+type ChatV2Result struct {
+	Chats     []ChatV2Row
+	NextCursor string
+	HasMore    bool
 }
 
 // PinnedMessageRow represents a pinned message with its metadata.
@@ -92,6 +126,12 @@ func MigrateChatListV2(db *sql.DB) {
 		`CREATE INDEX IF NOT EXISTS idx_user_chat_metadata_pinned ON user_chat_metadata(user_id, pinned) WHERE pinned = TRUE`,
 		// Index for muted chats
 		`CREATE INDEX IF NOT EXISTS idx_muted_chats_user ON muted_chats(user_id)`,
+		// Composite index for unread count CTE (messages by room + username + time)
+		`CREATE INDEX IF NOT EXISTS idx_messages_room_username_time ON messages(room_id, username, created_at)`,
+		// GIN index for chats participant_ids array containment check
+		`CREATE INDEX IF NOT EXISTS idx_chats_participant_ids ON chats USING GIN(participant_ids)`,
+		// Index for chat list ordering by last_message_time
+		`CREATE INDEX IF NOT EXISTS idx_chats_last_message_time ON chats(last_message_time DESC NULLS LAST)`,
 	}
 
 	for _, q := range queries {
@@ -220,6 +260,15 @@ func (db *DB) UnarchiveChat(userID, chatID string) error {
 
 // GetUserChatsV2 returns chats with v2 fields (pinned, muted, archived) and pagination
 func (db *DB) GetUserChatsV2(userID, username string, limit, offset int, filter string) ([]ChatV2Row, error) {
+	result, err := db.GetUserChatsV2Cursor(userID, username, limit, "", filter)
+	if err != nil {
+		return nil, err
+	}
+	return result.Chats, nil
+}
+
+// GetUserChatsV2Cursor returns chats with cursor-based pagination
+func (db *DB) GetUserChatsV2Cursor(userID, username string, limit int, cursor, filter string) (*ChatV2Result, error) {
 	if limit <= 0 {
 		limit = 100
 	}
@@ -241,6 +290,23 @@ func (db *DB) GetUserChatsV2(userID, username string, limit, offset int, filter 
 	if filter == "pinned" {
 		orderBy = "ORDER BY ucm.pinned_at DESC NULLS LAST"
 	}
+
+	// Cursor-based filtering
+	cursorClause := ""
+	bindArgs := []interface{}{userID, limit, 0, username}
+	if cur, ok := decodeCursor(cursor); ok {
+		if filter == "pinned" {
+			cursorClause = "AND COALESCE(ucm.pinned_at, 0) < $5"
+			bindArgs = append(bindArgs, cur.PinnedAt)
+		} else {
+			cursorClause = "AND (COALESCE(ucm.pinned_at, 0), COALESCE(c.last_message_time, c.created_at)) < ($5, $6)"
+			bindArgs = append(bindArgs, cur.PinnedAt, cur.LastMessageTime)
+		}
+	}
+
+	// Fetch limit+1 to detect if there are more results
+	fetchLimit := limit + 1
+	bindArgs[1] = fetchLimit
 
 	query := fmt.Sprintf(`
 		WITH user_last_read AS (
@@ -272,9 +338,10 @@ func (db *DB) GetUserChatsV2(userID, username string, limit, offset int, filter 
 		AND (c.participant_ids @> ARRAY[$1::uuid] OR c.participants::jsonb @> jsonb_build_array($4::text))
 		%s
 		%s
-		LIMIT $2 OFFSET $3`, whereExtra, orderBy)
+		%s
+		LIMIT $2`, whereExtra, cursorClause, orderBy)
 
-	rows, err := db.Query(query, userID, limit, offset, username)
+	rows, err := db.Query(query, bindArgs...)
 	if err != nil {
 		return nil, err
 	}
@@ -304,7 +371,27 @@ func (db *DB) GetUserChatsV2(userID, username string, limit, offset int, filter 
 		result = append(result, c)
 	}
 
-	return result, nil
+	// Determine if there are more results
+	hasMore := len(result) > limit
+	if hasMore {
+		result = result[:limit]
+	}
+
+	// Build next cursor from last row
+	var nextCursor string
+	if hasMore && len(result) > 0 {
+		last := result[len(result)-1]
+		nextCursor = encodeCursor(chatCursor{
+			PinnedAt:        last.PinnedAt,
+			LastMessageTime: last.LastMessageTime,
+		})
+	}
+
+	return &ChatV2Result{
+		Chats:      result,
+		NextCursor: nextCursor,
+		HasMore:    hasMore,
+	}, nil
 }
 
 // isChatMuted checks if a chat is muted for a user

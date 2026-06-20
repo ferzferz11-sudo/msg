@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"sync"
+	"time"
 )
 
 // ToolRegistry holds all registered tools
@@ -20,12 +21,14 @@ func NewToolRegistry(db *sql.DB) *ToolRegistry {
 	r := &ToolRegistry{
 		tools: make(map[string]Tool),
 	}
-	// Register built-in tools
-	r.Register(&searchMessagesTool{db: db})
-	r.Register(&searchUsersTool{db: db})
+	// Shared cache for tool results (1min TTL, max 500 entries)
+	cache := newToolCache(time.Minute, 500)
+	// Register built-in tools with caching for DB-backed tools
+	r.Register(newCachedSearchMessagesTool(db, cache))
+	r.Register(newCachedSearchUsersTool(db, cache))
 	r.Register(&webSearchTool{})
 	r.Register(&webFetchTool{})
-	r.Register(&getChatInfoTool{db: db})
+	r.Register(newCachedGetChatInfoTool(db, cache))
 	r.Register(&queryDatabaseTool{db: db})
 	return r
 }

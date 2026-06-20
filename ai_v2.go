@@ -27,6 +27,7 @@ type AIGateway struct {
 	rag          rag.RAGPipeline
 	mu           sync.RWMutex
 	rateLimiters map[string]*RedisRateLimiter
+	userMu       sync.Map // per-user mutex for session dedup
 }
 
 // NewAIGateway creates and initializes the gateway
@@ -76,6 +77,11 @@ func initRAG() rag.RAGPipeline {
 // Chat is the main entry point for AI chat
 func (g *AIGateway) Chat(ctx context.Context, req *ChatRequest, streamFn func(token string, finished bool) error) error {
 	userID := req.UserID
+
+	// Per-user lock to prevent concurrent session creation
+	userLock := g.getUserLock(userID)
+	userLock.Lock()
+	defer userLock.Unlock()
 
 	// 1. Load or create chat
 	chat, err := g.loadOrCreateChat(ctx, req)
@@ -310,6 +316,11 @@ func (g *AIGateway) updateChatsLastMessage(ctx context.Context, chatID, content 
 		truncated = truncated[:100] + "..."
 	}
 	g.db.Exec(`UPDATE chats SET last_message_text = $1, last_message_time = NOW() WHERE id = $2`, truncated, chatID)
+}
+
+func (g *AIGateway) getUserLock(userID string) *sync.Mutex {
+	val, _ := g.userMu.LoadOrStore(userID, &sync.Mutex{})
+	return val.(*sync.Mutex)
 }
 
 func (g *AIGateway) generateChatName(chatType string) string {

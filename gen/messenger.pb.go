@@ -1456,8 +1456,9 @@ type GetChatsRequest struct {
 	Username      string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
 	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	Limit         int32                  `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`   // Pagination: max number of chats to return (0 = default 100)
-	Offset        int32                  `protobuf:"varint,4,opt,name=offset,proto3" json:"offset,omitempty"` // Pagination: skip N chats
+	Offset        int32                  `protobuf:"varint,4,opt,name=offset,proto3" json:"offset,omitempty"` // Pagination: skip N chats (deprecated, use cursor)
 	Filter        string                 `protobuf:"bytes,5,opt,name=filter,proto3" json:"filter,omitempty"`  // Filter: "all", "pinned", "archived", "muted"
+	Cursor        string                 `protobuf:"bytes,6,opt,name=cursor,proto3" json:"cursor,omitempty"`  // Cursor-based pagination: token from previous response
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1527,9 +1528,18 @@ func (x *GetChatsRequest) GetFilter() string {
 	return ""
 }
 
+func (x *GetChatsRequest) GetCursor() string {
+	if x != nil {
+		return x.Cursor
+	}
+	return ""
+}
+
 type GetChatsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Chats         []*ChatInfo            `protobuf:"bytes,1,rep,name=chats,proto3" json:"chats,omitempty"`
+	NextCursor    string                 `protobuf:"bytes,2,opt,name=next_cursor,json=nextCursor,proto3" json:"next_cursor,omitempty"` // Cursor for next page (empty if no more)
+	HasMore       bool                   `protobuf:"varint,3,opt,name=has_more,json=hasMore,proto3" json:"has_more,omitempty"`         // Whether there are more results
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1569,6 +1579,20 @@ func (x *GetChatsResponse) GetChats() []*ChatInfo {
 		return x.Chats
 	}
 	return nil
+}
+
+func (x *GetChatsResponse) GetNextCursor() string {
+	if x != nil {
+		return x.NextCursor
+	}
+	return ""
+}
+
+func (x *GetChatsResponse) GetHasMore() bool {
+	if x != nil {
+		return x.HasMore
+	}
+	return false
 }
 
 type CreateDirectChatRequest struct {
@@ -16814,15 +16838,19 @@ const file_messenger_proto_rawDesc = "" +
 	"\bis_muted\x18\x17 \x01(\bR\aisMuted\x12\x1f\n" +
 	"\vis_archived\x18\x18 \x01(\bR\n" +
 	"isArchived\x12\x1b\n" +
-	"\tpinned_at\x18\x19 \x01(\x03R\bpinnedAt\"\x8c\x01\n" +
+	"\tpinned_at\x18\x19 \x01(\x03R\bpinnedAt\"\xa4\x01\n" +
 	"\x0fGetChatsRequest\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12\x17\n" +
 	"\auser_id\x18\x02 \x01(\tR\x06userId\x12\x14\n" +
 	"\x05limit\x18\x03 \x01(\x05R\x05limit\x12\x16\n" +
 	"\x06offset\x18\x04 \x01(\x05R\x06offset\x12\x16\n" +
-	"\x06filter\x18\x05 \x01(\tR\x06filter\"=\n" +
+	"\x06filter\x18\x05 \x01(\tR\x06filter\x12\x16\n" +
+	"\x06cursor\x18\x06 \x01(\tR\x06cursor\"y\n" +
 	"\x10GetChatsResponse\x12)\n" +
-	"\x05chats\x18\x01 \x03(\v2\x13.messenger.ChatInfoR\x05chats\"{\n" +
+	"\x05chats\x18\x01 \x03(\v2\x13.messenger.ChatInfoR\x05chats\x12\x1f\n" +
+	"\vnext_cursor\x18\x02 \x01(\tR\n" +
+	"nextCursor\x12\x19\n" +
+	"\bhas_more\x18\x03 \x01(\bR\ahasMore\"{\n" +
 	"\x17CreateDirectChatRequest\x12\x14\n" +
 	"\x05user1\x18\x01 \x01(\tR\x05user1\x12\x14\n" +
 	"\x05user2\x18\x02 \x01(\tR\x05user2\x12\x19\n" +

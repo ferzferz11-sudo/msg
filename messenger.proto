@@ -139,12 +139,15 @@ message GetChatsRequest {
   string username = 1;
   string user_id = 2;
   int32 limit = 3;    // Pagination: max number of chats to return (0 = default 100)
-  int32 offset = 4;   // Pagination: skip N chats
+  int32 offset = 4;   // Pagination: skip N chats (deprecated, use cursor)
   string filter = 5;  // Filter: "all", "pinned", "archived", "muted"
+  string cursor = 6;  // Cursor-based pagination: token from previous response
 }
 
 message GetChatsResponse {
   repeated ChatInfo chats = 1;
+  string next_cursor = 2;  // Cursor for next page (empty if no more)
+  bool has_more = 3;       // Whether there are more results
 }
 
 message CreateDirectChatRequest {
