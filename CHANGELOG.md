@@ -1,5 +1,24 @@
 # Лава — Server Changelog
 
+## [1.3.0.11] - 2026-06-20
+
+### Features
+- **ProfileService v2 enabled on prod** — previously dev-only, now all servers expose `messenger.ProfileService/*` (GetProfile, UpdateProfile, UpdateAvatar, DeleteProfile, GetUserSettings, UpdateUserSettings)
+- **Unread count fix** — `GetUserChatsV2` and `SearchChats` now compute unread counts via CTE (was missing, client always saw 0)
+
+### Code Quality
+- Applied `goimports` formatting across 40 files (alignment, struct field spacing)
+- Marked legacy profile methods in `server_profile.go` as deprecated (UpdateUsername, UpdateAvatar, DeleteProfile)
+- Updated `server.go` file comment to note ProfileService v2
+
+### Documentation
+- Consolidated client integration docs: deleted 3 redundant files (AI_V2_CLIENT_INTEGRATION.md, ANDROID_AI_BILLING_INTEGRATION.md, MARKETPLACE_AGENTS_SETUP.md)
+- Updated ARCHITECTURE.md with current AI v2 file structure
+- CLIENT_INTEGRATION.md now single comprehensive guide for all client types
+- Cleaned up INTEGRATION_SESSION.md, TASKS.md, PROMPT.md, PITFALLS.md, TESTING.md, INDEX.md
+
+---
+
 ## [1.3.0.10] - 2026-06-20
 
 ### Production RAG — Qdrant + OpenAI Embeddings

@@ -1,6 +1,6 @@
 # Лава — Задачи
 
-**Версия:** v1.3.0.10
+**Версия:** v1.3.0.11
 **Ветка:** feat/1.3.0.x
 **Обновлено:** 2026-06-20
 
@@ -16,6 +16,7 @@
 
 | Версия | Описание |
 |--------|----------|
+| v1.3.0.11 | ProfileService v2 on prod + unread count fix + docs consolidation |
 | v1.3.0.10 | Production RAG (Qdrant + OpenAI embeddings) |
 | v1.3.0.9 | Redis rate limiter wired in + cleanup |
 | v1.3.0.8 | v1 compat removal + AI gateway bug fix + logging |
