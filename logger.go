@@ -39,38 +39,3 @@ func initLogger() *logrus.Logger {
 
 	return l
 }
-
-// Convenience functions for structured logging with optional fields.
-// These replace log.Printf calls throughout the codebase.
-
-func logInfo(msg string, fields ...logrus.Fields) {
-	if len(fields) > 0 {
-		logger.WithFields(fields[0]).Info(msg)
-	} else {
-		logger.Info(msg)
-	}
-}
-
-func logWarn(msg string, fields ...logrus.Fields) {
-	if len(fields) > 0 {
-		logger.WithFields(fields[0]).Warn(msg)
-	} else {
-		logger.Warn(msg)
-	}
-}
-
-func logError(msg string, fields ...logrus.Fields) {
-	if len(fields) > 0 {
-		logger.WithFields(fields[0]).Error(msg)
-	} else {
-		logger.Error(msg)
-	}
-}
-
-func logFatal(msg string, fields ...logrus.Fields) {
-	if len(fields) > 0 {
-		logger.WithFields(fields[0]).Fatal(msg)
-	} else {
-		logger.Fatal(msg)
-	}
-}

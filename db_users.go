@@ -226,14 +226,38 @@ func (db *DB) DeleteProfile(user string) error {
 	}
 	defer tx.Rollback()
 
-	// Clean up related data
-	tx.Exec(`DELETE FROM user_chat_metadata WHERE user_id = (SELECT id FROM users WHERE username=$1)`, user)
+	userID := `(SELECT id FROM users WHERE username=$1)`
+
+	// AI tables (blocking FK — must delete before users)
+	tx.Exec(`DELETE FROM agent_reviews WHERE user_id = `+userID, user)
+	tx.Exec(`DELETE FROM ai_usage_stats WHERE user_id = `+userID, user)
+	tx.Exec(`DELETE FROM ai_chats_v2 WHERE user_id = `+userID, user)
+	tx.Exec(`DELETE FROM agents_v2 WHERE created_by = `+userID, user)
+
+	// Chat metadata & settings
+	tx.Exec(`DELETE FROM user_chat_metadata WHERE user_id = `+userID, user)
 	tx.Exec(`DELETE FROM muted_chats WHERE username=$1`, user)
-	tx.Exec(`DELETE FROM user_tokens WHERE username=$1`, user)
 	tx.Exec(`DELETE FROM contacts WHERE username=$1 OR contact_username=$1`, user)
-	tx.Exec(`DELETE FROM reactions WHERE username=$1`, user)
 	tx.Exec(`DELETE FROM draft_messages WHERE user_id = (SELECT id::text FROM users WHERE username=$1)`, user)
-	tx.Exec(`DELETE FROM user_devices WHERE user_id = (SELECT id FROM users WHERE username=$1)`, user)
+
+	// User data
+	tx.Exec(`DELETE FROM user_tokens WHERE username=$1`, user)
+	tx.Exec(`DELETE FROM user_devices WHERE user_id = `+userID, user)
+	tx.Exec(`DELETE FROM user_themes WHERE user_id = `+userID, user)
+	tx.Exec(`DELETE FROM reactions WHERE username=$1`, user)
+	tx.Exec(`DELETE FROM favorites WHERE user_id = `+userID, user)
+	tx.Exec(`DELETE FROM pinned_messages WHERE username=$1`, user)
+	tx.Exec(`DELETE FROM chat_list_v2 WHERE user_id = `+userID, user)
+	tx.Exec(`DELETE FROM calls WHERE caller_id = `+userID+` OR receiver_id = `+userID, user)
+	tx.Exec(`DELETE FROM secret_chat_keys WHERE user_id = `+userID, user)
+
+	// Hermes/AI session data
+	tx.Exec(`DELETE FROM hermes_messages WHERE user_id = $1`, user)
+	tx.Exec(`DELETE FROM hermes_sessions WHERE user_id = $1`, user)
+	tx.Exec(`DELETE FROM hermes_agent_runs WHERE user_id = $1`, user)
+	tx.Exec(`DELETE FROM hermes_custom_agents WHERE created_by = $1 OR user_id = $1`, user)
+	tx.Exec(`DELETE FROM ai_chat_sessions WHERE user_id = $1`, user)
+	tx.Exec(`DELETE FROM agent_tokens WHERE created_by = $1`, user)
 
 	// Delete the user
 	_, err = tx.Exec(`DELETE FROM users WHERE username=$1`, user)

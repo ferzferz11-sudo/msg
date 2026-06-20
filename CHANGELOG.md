@@ -5,9 +5,16 @@
 ### Security Fixes
 - **Plaintext message logging removed** — messages now logged as truncated 40-char preview only
 - **LIKE injection fix** — `SearchChats` now escapes `%` and `_` wildcards in user input
-- **File extension validation** — upload handlers whitelist allowed image extensions (.jpg, .jpeg, .png, .gif, .webp)
-- **DeleteProfile cascade** — deleting a user now cleans up related data (chat metadata, tokens, contacts, reactions, drafts, devices)
+- **File extension validation** — upload handlers now reject disallowed extensions (was silently falling back to .jpg). Image: .jpg/.jpeg/.png/.gif/.webp. File: .pdf/.doc/.docx/.xls/.xlsx/.csv/.json/.zip etc. Audio: .m4a/.aac/.ogg/.mp3/.wav. Full avatar now validates its own extension.
+- **DeleteProfile cascade** — now cleans up AI tables (ai_chats_v2, ai_usage_stats, agent_reviews, agents_v2), user data (themes, pins, favorites, chat_list, calls, secret keys), and Hermes/AI session data before deleting user. Prevents FK violation blocking deletion.
 - **Bcrypt cost increased** — password hashing cost 10→12 for stronger brute-force resistance
+
+### Bug Fixes
+- **last_seen_at / last_client_version** — now updated on every chat stream message, not just at connection time. Clients with newer versions are detected on subsequent messages.
+
+### Code Quality
+- **Dead code removed** — `StartHTTPServer`, `StartAPKServer`, `logInfo`/`logWarn`/`logError`/`logFatal`, `backfillLastMessageText` (all zero call sites)
+- **go mod tidy** — cleaned up dependencies
 
 ---
 

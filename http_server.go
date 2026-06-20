@@ -88,79 +88,6 @@ func sanitizeFileExtension(filename string, allowed []string) string {
 	return ""
 }
 
-func StartHTTPServer(port string) {
-	// Ensure directories exist
-	os.MkdirAll(avatarsPath, 0755)
-	os.MkdirAll(imagesPath, 0755)
-	os.MkdirAll(filesPath, 0755)
-	os.MkdirAll(backgroundsPath, 0755)
-	os.MkdirAll(audioPath, 0755)
-
-	http.HandleFunc("/upload-avatar", requireAuth(uploadAvatarHandler))
-	http.HandleFunc("/upload-image", requireAuth(uploadImageHandler))
-	http.HandleFunc("/upload-file", requireAuth(uploadFileHandler))
-	http.HandleFunc("/upload-background", requireAuth(uploadBackgroundHandler))
-	http.HandleFunc("/upload-audio", requireAuth(uploadAudioHandler))
-
-	// TURN credentials endpoint
-	http.HandleFunc("/turn-credentials", turnCredentialsHandler)
-
-	// Health check endpoint
-	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		if httpShuttingDown.Load() {
-			w.WriteHeader(http.StatusServiceUnavailable)
-			fmt.Fprintf(w, `{"status":"shutting_down","version":"%s","time":"%s"}`, ServerVersion, time.Now().Format(time.RFC3339))
-			return
-		}
-		fmt.Fprintf(w, `{"status":"ok","version":"%s","time":"%s"}`, ServerVersion, time.Now().Format(time.RFC3339))
-	})
-
-	// Server info endpoint — returns service versions for client capability negotiation
-	http.HandleFunc("/info", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		info := map[string]interface{}{
-			"version": ServerVersion,
-			"time":    time.Now().Format(time.RFC3339),
-			"services": map[string]string{
-				"auth":    AuthServiceVersion,
-				"chat":    ChatServiceVersion,
-				"profile": ProfileServiceVersion,
-				"ai":      AIServiceVersion,
-				"files":   FileServiceVersion,
-				"push":    PushServiceVersion,
-			},
-		}
-		json.NewEncoder(w).Encode(info)
-	})
-
-	http.HandleFunc("/avatars/", func(w http.ResponseWriter, r *http.Request) {
-		serveFileHandler(w, r, "/avatars/", avatarsPath)
-	})
-	http.HandleFunc("/images/", func(w http.ResponseWriter, r *http.Request) {
-		serveFileHandler(w, r, "/images/", imagesPath)
-	})
-	http.HandleFunc("/files/", func(w http.ResponseWriter, r *http.Request) {
-		serveFileHandler(w, r, "/files/", filesPath)
-	})
-	http.HandleFunc("/background/", func(w http.ResponseWriter, r *http.Request) {
-		serveFileHandler(w, r, "/background/", backgroundsPath)
-	})
-	http.HandleFunc("/audio/", func(w http.ResponseWriter, r *http.Request) {
-		serveFileHandler(w, r, "/audio/", audioPath)
-	})
-
-	srv := &http.Server{
-		Addr:    "0.0.0.0:" + port,
-		Handler: nil,
-	}
-
-	logger.Infof("HTTP server started on port %s", port)
-	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		logger.Errorf("HTTP server error: %v", err)
-	}
-}
-
 func StartHTTPServerAndReturn(port string) *http.Server {
 	// Ensure directories exist
 	os.MkdirAll(avatarsPath, 0755)
@@ -238,22 +165,6 @@ func StartHTTPServerAndReturn(port string) *http.Server {
 	return srv
 }
 
-func StartAPKServer(port string) {
-	apkDir := os.Getenv("APK_DIR")
-	if apkDir == "" {
-		apkDir = "/home/ferz/LavenderMessengerAndroid"
-	}
-
-	mux := http.NewServeMux()
-	fileServer := http.FileServer(http.Dir(apkDir))
-	mux.Handle("/", fileServer)
-
-	logger.Infof("APK server started on port %s serving %s", port, apkDir)
-	if err := http.ListenAndServe("0.0.0.0:"+port, mux); err != nil {
-		logger.Errorf("APK server error: %v", err)
-	}
-}
-
 func uploadAvatarHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -283,12 +194,13 @@ func uploadAvatarHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Generate filename for thumbnail
+	// Validate thumbnail extension
 	hash := md5.Sum(thumbBytes)
 	allowedImageExts := []string{".jpg", ".jpeg", ".png", ".gif", ".webp"}
 	ext := sanitizeFileExtension(thumbHandler.Filename, allowedImageExts)
 	if ext == "" {
-		ext = ".jpg"
+		http.Error(w, "File extension not allowed", http.StatusBadRequest)
+		return
 	}
 	thumbFilename := hex.EncodeToString(hash[:]) + ext
 
@@ -312,18 +224,18 @@ func uploadAvatarHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Process full image (optional)
 	var fullURL string
-	fullFile, _, err := r.FormFile("avatar_full")
+	fullFile, fullHandler, err := r.FormFile("avatar_full")
 	if err == nil {
 		defer closeFile(fullFile)
 
 		fullBytes, err := io.ReadAll(fullFile)
 		if err == nil {
-			// Generate filename for full image
-			fullHash := md5.Sum(fullBytes)
-			fullExt := filepath.Ext(thumbHandler.Filename)
+			// Validate full image extension
+			fullExt := sanitizeFileExtension(fullHandler.Filename, allowedImageExts)
 			if fullExt == "" {
-				fullExt = ".jpg"
+				fullExt = ext // fallback to thumbnail's validated extension
 			}
+			fullHash := md5.Sum(fullBytes)
 			fullFilename := hex.EncodeToString(fullHash[:]) + "_full" + fullExt
 
 			fullPath := filepath.Join(avatarsPath, fullFilename)
@@ -465,18 +377,27 @@ func handleUpload(w http.ResponseWriter, r *http.Request, formKey, saveDir, urlP
 		return
 	}
 
-	// For files, we might want to keep the original name or hash it
-	var filename string
-	if formKey == "file" {
-		filename = handler.Filename
-	} else {
-		hash := md5.Sum(fileBytes)
-		ext := filepath.Ext(handler.Filename)
-		if ext == "" {
-			ext = ".jpg"
-		}
-		filename = hex.EncodeToString(hash[:]) + ext
+	// Validate file extension
+	var allowedExts []string
+	switch formKey {
+	case "image", "background":
+		allowedExts = []string{".jpg", ".jpeg", ".png", ".gif", ".webp"}
+	case "file":
+		allowedExts = []string{".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
+			".txt", ".csv", ".json", ".xml", ".zip", ".rar", ".7z",
+			".mp3", ".mp4", ".avi", ".mov", ".mkv", ".webm", ".m4a", ".aac", ".ogg", ".wav"}
+	default:
+		allowedExts = []string{".jpg", ".jpeg", ".png", ".gif", ".webp"}
 	}
+	ext := sanitizeFileExtension(handler.Filename, allowedExts)
+	if ext == "" {
+		http.Error(w, "File extension not allowed", http.StatusBadRequest)
+		return
+	}
+
+	// Hash filename to prevent path traversal and naming conflicts
+	hash := md5.Sum(fileBytes)
+	filename := hex.EncodeToString(hash[:]) + ext
 
 	filePath := filepath.Join(saveDir, filename)
 	if err := os.WriteFile(filePath, fileBytes, 0644); err != nil {

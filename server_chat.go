@@ -213,6 +213,16 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 			_ = s.db.AddUserDevice(connectedUserID, msg.DeviceId, msg.DeviceName, msg.ClientVersion, ip)
 		}
 
+		// Update last_seen_at on every message
+		if s.hub.IsAuthenticated(stream) && connectedUser != "" {
+			if msg.ClientVersion != "" {
+				_ = s.db.UpdateClientVersion(connectedUser, msg.ClientVersion)
+				s.hub.SetClientVersion(connectedUserID, msg.ClientVersion)
+			} else {
+				_ = s.db.UpdateLastSeen(connectedUser)
+			}
+		}
+
 		// Skip empty messages (unless they have an image or voice)
 		if strings.TrimSpace(msg.Text) == "" && msg.ImageUrl == "" && len(msg.ImageUrls) == 0 && msg.VoiceUrl == "" {
 			// Don't log empty messages if they are just room switches (which we now log on auth)
