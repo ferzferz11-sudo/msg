@@ -2,7 +2,7 @@
 
 Индекс всех документов проекта. Читать при каждом старте новой сессии.
 
-**Модуль:** `LavenderMessenger` | **Go:** 1.26 | **Сервер:** v1.3.0.11
+**Модуль:** `LavenderMessenger` | **Go:** 1.26 | **Сервер:** v1.3.0.15
 
 ---
 
@@ -87,6 +87,13 @@
 | `ai_provider_mcp.go` | MCP (stdio, JSON-RPC 2.0) |
 | `ai_tool.go` | Tool interface |
 | `ai_tool_registry.go` | Tool registry + 6 built-in tools |
+| `ai_tool_cache.go` | LRU cache for AI tool results (1min TTL) |
+| `ai_tool_search_messages.go` | Search messages tool |
+| `ai_tool_search_users.go` | Search users tool |
+| `ai_tool_get_chat_info.go` | Get chat info tool |
+| `ai_tool_query_db.go` | Database query tool (admin, read-only) |
+| `ai_tool_web_search.go` | Web search tool (DuckDuckGo) |
+| `ai_tool_web_fetch.go` | Web fetch tool (SSRF-protected) |
 | `rate_limiter.go` | Rate limiter + callOpenRouterContext |
 | `redis_rate_limiter.go` | Redis-backed rate limiter (fallback: in-memory) |
 | `core/rag/qdrant/` | Qdrant vector DB client + OpenAI embeddings |
@@ -95,7 +102,7 @@
 
 | Файл | Описание |
 |------|----------|
-| `http_server.go` | HTTP: file uploads, TURN, health, info |
+| `http_server.go` | HTTP: file uploads (JWT auth), TURN, health, info |
 | `email.go` | SMTP: password reset emails |
 | `crypto.go` | AES-256-GCM encryption, bcrypt hashing |
 | `secret_chat.go` | E2EE secret chat: creation, public key exchange |
