@@ -63,7 +63,7 @@ func NewRedisRateLimiter(limit int, window time.Duration, prefix string) *RedisR
 	}
 }
 
-func (rl *RedisRateLimiter) Allow(userID string) bool {
+func (rl *RedisRateLimiter) allow(userID string) bool {
 	if !redisAvailable {
 		return rl.memory.allow(userID)
 	}
@@ -93,7 +93,7 @@ func (rl *RedisRateLimiter) Allow(userID string) bool {
 	return countCmd.Val() < int64(rl.limit)
 }
 
-func (rl *RedisRateLimiter) Cancel(userID string) {
+func (rl *RedisRateLimiter) cancel(userID string) {
 	if !redisAvailable {
 		rl.memory.cancel(userID)
 		return
@@ -110,7 +110,7 @@ func (rl *RedisRateLimiter) Cancel(userID string) {
 	}
 }
 
-func (rl *RedisRateLimiter) Remaining(userID string) int {
+func (rl *RedisRateLimiter) remaining(userID string) int {
 	if !redisAvailable {
 		return rl.memory.remaining(userID)
 	}
@@ -135,7 +135,7 @@ func (rl *RedisRateLimiter) Remaining(userID string) int {
 	return remaining
 }
 
-func (rl *RedisRateLimiter) Cleanup() {
+func (rl *RedisRateLimiter) cleanup() {
 	if !redisAvailable {
 		rl.memory.cleanup()
 		return

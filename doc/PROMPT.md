@@ -1,7 +1,7 @@
-# Промпт для серверных сессий — v1.3.0.8
+# Промпт для серверных сессий — v1.3.0.9
 
 **Дата:** 2026-06-20 | **Ветка:** feat/1.3.0.x
-**Статус:** v1 compat полностью удалён. AI v2 + marketplace работают. Остался только Qdrant RAG.
+**Статус:** v1 compat полностью удалён. AI v2 + marketplace работают. Redis rate limiter подключён. Остался только Qdrant RAG.
 
 ---
 
@@ -9,8 +9,8 @@
 
 | | Версия | Статус |
 |---|--------|--------|
-| **Сервер prod** | v1.3.0.8 | ✅ Работает на порту 50051 |
-| **Сервер dev** | v1.3.0.8 | ✅ Работает на порту 50052 |
+| **Сервер prod** | v1.3.0.9 | ✅ Работает на порту 50051 |
+| **Сервер dev** | v1.3.0.9 | ✅ Работает на порту 50052 |
 
 **Android:** `/root/msg.client.android` — документация там, сборка ТОЛЬКО локально.
 
@@ -47,6 +47,7 @@ ai_tool_get_chat_info.go   — Chat info tool
 ai_tool_query_db.go        — DB query tool (SELECT only, admin) ✅
 server_ai_v2.go            — gRPC handlers (15 RPCs)
 rate_limiter.go            — Rate limiter + callOpenRouterContext
+redis_rate_limiter.go      — Redis-backed rate limiter (fallback: in-memory)
 hermes_stubs.go            — Stubs for hermes_agent_service.go
 
 === Core (DB split) ===

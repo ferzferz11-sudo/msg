@@ -1,5 +1,23 @@
 # Лава — Server Changelog
 
+## [1.3.0.9] - 2026-06-20
+
+### Redis Rate Limiter — Wired In
+- **rate_limiter.go** — `owlRateLimiter` и `freeTierRateLimiter` заменены на `RedisRateLimiter` (prefix `rl:owl:`, `rl:free:`)
+- **bot_commands.go** — `botCmdRateLimiter` заменён на `RedisRateLimiter` (prefix `rl:bot:`), удалён `botRateLimiter` struct
+- **ai_v2.go** — per-agent rate limiter заменён на `RedisRateLimiter` (prefix `rl:ai:<id>:`)
+- **redis_rate_limiter.go** — методы приведены к lowercase API (`allow`/`cancel`/`remaining`/`cleanup`)
+- Все limiters: fallback на in-memory если Redis недоступен
+
+### Cleanup
+- **db_ai_v2.go** — удалена функция `DropOldAIV1()` (v1 таблицы уже удалены)
+- **main.go** — удалён вызов `DropOldAIV1(db.DB)` при старте
+
+### Configuration
+- `.env` / `.env.dev` — добавлен `REDIS_ADDR=localhost:6379`
+
+---
+
 ## [1.3.0.8] - 2026-06-20
 
 ### v1 Compat Removal

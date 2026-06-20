@@ -20,7 +20,7 @@ type AIGateway struct {
 	tools        *ToolRegistry
 	router       *HybridRouter
 	mu           sync.RWMutex
-	rateLimiters map[string]*rateLimiter
+	rateLimiters map[string]*RedisRateLimiter
 }
 
 // NewAIGateway creates and initializes the gateway
@@ -35,7 +35,7 @@ func NewAIGateway(db *sql.DB) *AIGateway {
 		executor:     executor,
 		tools:        tools,
 		router:       router,
-		rateLimiters: make(map[string]*rateLimiter),
+		rateLimiters: make(map[string]*RedisRateLimiter),
 	}
 	return g
 }
@@ -193,7 +193,7 @@ func (g *AIGateway) refundRateLimit(agent *AgentV2, userID string) {
 	}
 }
 
-func (g *AIGateway) getRateLimiter(agent *AgentV2) *rateLimiter {
+func (g *AIGateway) getRateLimiter(agent *AgentV2) *RedisRateLimiter {
 	key := agent.ID
 	g.mu.RLock()
 	limiter, ok := g.rateLimiters[key]
@@ -206,7 +206,7 @@ func (g *AIGateway) getRateLimiter(agent *AgentV2) *rateLimiter {
 	if agent.RateLimit != nil {
 		limit = *agent.RateLimit
 	}
-	limiter = newRateLimiter(limit, time.Minute)
+	limiter = NewRedisRateLimiter(limit, time.Minute, "rl:ai:"+agent.ID+":")
 
 	g.mu.Lock()
 	g.rateLimiters[key] = limiter

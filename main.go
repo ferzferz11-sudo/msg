@@ -160,8 +160,7 @@ func main() {
 	// Run Hermes DB migrations
 	runHermesMigrations(db.DB)
 
-	// Drop old AI v1 tables and create v2 tables
-	DropOldAIV1(db.DB)
+	// Create v2 AI tables
 	if err := MigrateAIV2(db.DB); err != nil {
 		logger.Errorf("Failed to migrate AI v2 tables: %v", err)
 	} else {

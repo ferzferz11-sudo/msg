@@ -1,10 +1,37 @@
 # Lava Messenger — Интеграционная сессия
 
-**Текущая версия:** v1.3.0.2 (сервер prod/dev)
+**Текущая версия:** v1.3.0.9 (сервер prod/dev)
 **Обновлено:** 2026-06-20
 **Ветка сервера:** feat/1.3.0.x
 
 **Android:** `/root/msg.client.android` — сборка ТОЛЬКО локально.
+
+---
+
+## Сессия 50 — Redis Rate Limiter + Cleanup
+
+### Что сделано
+
+#### Redis Rate Limiter — Wired In
+1. **redis_rate_limiter.go** — методы `Allow`/`Cancel`/`Remaining`/`Cleanup` переименованы в lowercase (`allow`/`cancel`/`remaining`/`cleanup`) для совместимости с существующим API
+2. **rate_limiter.go** — `owlRateLimiter` и `freeTierRateLimiter` заменены на `NewRedisRateLimiter` (prefix `rl:owl:`, `rl:free:`)
+3. **bot_commands.go** — `botCmdRateLimiter` заменён на `NewRedisRateLimiter` (prefix `rl:bot:`); удалён `botRateLimiter` struct и `newBotRateLimiter()`
+4. **ai_v2.go** — per-agent limiter заменён на `NewRedisRateLimiter` (prefix `rl:ai:<id>:`)
+5. **bot_commands_test.go** — тесты обновлены на `NewRedisRateLimiter`
+
+#### Cleanup
+1. **db_ai_v2.go** — удалена `DropOldAIV1()` (v1 таблицы уже удалены)
+2. **main.go** — удалён вызов `DropOldAIV1(db.DB)`
+
+#### Configuration
+1. `.env` / `.env.dev` — добавлен `REDIS_ADDR=localhost:6379`
+2. Бекапы `.env.bak.*` и `.env.dev.bak.*` созданы
+
+### Статус
+- Go build: ✅
+- Tests: all PASS
+- Dev (50052): ✅ deployed
+- Prod (50051): pending
 
 ---
 

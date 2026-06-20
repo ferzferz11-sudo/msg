@@ -13,47 +13,9 @@ import (
 	"LavenderMessenger/gen"
 )
 
-// ======= Bot Command Rate Limimiter =======
+// ======= Bot Command Rate Limiter =======
 
-type botRateLimiter struct {
-	mu       sync.Mutex
-	requests map[string][]time.Time
-	limit    int
-	window   time.Duration
-}
-
-func newBotRateLimiter(limit int, window time.Duration) *botRateLimiter {
-	return &botRateLimiter{
-		requests: make(map[string][]time.Time),
-		limit:    limit,
-		window:   window,
-	}
-}
-
-func (rl *botRateLimiter) allow(userID string) bool {
-	rl.mu.Lock()
-	defer rl.mu.Unlock()
-
-	now := time.Now()
-	cutoff := now.Add(-rl.window)
-
-	var valid []time.Time
-	for _, t := range rl.requests[userID] {
-		if t.After(cutoff) {
-			valid = append(valid, t)
-		}
-	}
-
-	if len(valid) >= rl.limit {
-		rl.requests[userID] = valid
-		return false
-	}
-
-	rl.requests[userID] = append(valid, now)
-	return true
-}
-
-var botCmdRateLimiter = newBotRateLimiter(30, time.Minute)
+var botCmdRateLimiter = NewRedisRateLimiter(30, time.Minute, "rl:bot:")
 
 // ======= Bot Command Registry =======
 

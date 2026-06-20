@@ -1,8 +1,38 @@
 # Лава — Задачи
 
-**Версия:** v1.3.0.8
+**Версия:** v1.3.0.9
 **Ветка:** feat/1.3.0.x
 **Обновлено:** 2026-06-20
+
+---
+
+## ✅ v1.3.0.9 — Redis Rate Limiter + Cleanup (Сессия 50)
+
+### Что сделано
+
+#### Redis Rate Limiter — Wired In
+- **rate_limiter.go** — `owlRateLimiter` (10/min) и `freeTierRateLimiter` (20/hr) заменены на `NewRedisRateLimiter` с prefix `rl:owl:` и `rl:free:`
+- **bot_commands.go** — `botCmdRateLimiter` (30/min) заменён на `NewRedisRateLimiter` с prefix `rl:bot:`; удалён `botRateLimiter` struct
+- **ai_v2.go** — per-agent rate limiter заменён на `NewRedisRateLimiter` с prefix `rl:ai:<id>:`
+- **redis_rate_limiter.go** — методы приведены к lowercase API (`allow`/`cancel`/`remaining`/`cleanup`)
+- Все limiters: автоматический fallback на in-memory если Redis недоступен
+
+#### Cleanup
+- **db_ai_v2.go** — удалена `DropOldAIV1()` (v1 таблицы уже удалены в предыдущих сессиях)
+- **main.go** — удалён вызов `DropOldAIV1(db.DB)` при старте
+
+#### Configuration
+- `.env` / `.env.dev` — добавлен `REDIS_ADDR=localhost:6379`
+- Бекапы .env созданы перед изменениями
+
+#### Tests
+- **bot_commands_test.go** — обновлены тесты rate limiter на `NewRedisRateLimiter`
+
+### Статус
+- Go build: ✅
+- Tests: all PASS
+- Dev (50052): ✅ deployed
+- Prod (50051): pending
 
 ---
 

@@ -80,28 +80,6 @@ type ToolCallResult struct {
 
 // ======= Migrations =======
 
-// DropOldAIV1 removes all v1 AI tables and data
-func DropOldAIV1(db *sql.DB) {
-	queries := []string{
-		`DROP TABLE IF EXISTS ai_chat_messages CASCADE`,
-		`DROP TABLE IF EXISTS ai_chat_settings CASCADE`,
-		`DROP TABLE IF EXISTS ai_chat_sessions CASCADE`,
-		`DROP TABLE IF EXISTS owl_messages CASCADE`,
-		`DROP TABLE IF EXISTS owl_chat_settings CASCADE`,
-		`DROP TABLE IF EXISTS hermes_chat_settings CASCADE`,
-		`DROP TABLE IF EXISTS hermes_messages CASCADE`,
-		`DROP TABLE IF EXISTS hermes_sessions CASCADE`,
-		`DROP TABLE IF EXISTS hermes_custom_agents CASCADE`,
-		`DROP TABLE IF EXISTS hermes_agent_runs CASCADE`,
-	}
-	for _, q := range queries {
-		if _, err := db.Exec(q); err != nil {
-			logger.Warnf("DropOldAIV1: %v", err)
-		}
-	}
-	logger.Info("Old AI v1 tables dropped")
-}
-
 // MigrateAIV2 creates all v2 AI tables and seeds preset agents
 func MigrateAIV2(db *sql.DB) error {
 	queries := []string{
