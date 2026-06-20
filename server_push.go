@@ -81,7 +81,8 @@ func (s *server) sendPushNotification(userId, username, title, body, roomID stri
 		return
 	}
 
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 	client, err := s.firebaseApp.Messaging(ctx)
 	if err != nil {
 		s.logFCM("ERROR", "Client err: %v", err)
@@ -164,7 +165,8 @@ func (s *server) sendBatchPushNotifications(targets []pushTarget, title, body, r
 		return
 	}
 
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 	client, err := s.firebaseApp.Messaging(ctx)
 	if err != nil {
 		s.logFCM("ERROR", "Batch push client err: %v", err)
@@ -185,7 +187,8 @@ func (s *server) sendBatchPushNotifications(targets []pushTarget, title, body, r
 }
 
 func (s *server) sendMulticastWithRetry(client *messaging.Client, tokens, userIDs []string, title, body, roomID string) {
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 	msg := &messaging.MulticastMessage{
 		Tokens: tokens,
 		Notification: &messaging.Notification{
@@ -378,7 +381,8 @@ func (s *server) sendPushInternal(targetUserID, title, body string, data map[str
 		return
 	}
 
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 	client, err := s.firebaseApp.Messaging(ctx)
 	if err != nil {
 		logger.Errorf("[FCM] Error getting messaging client: %v", err)
@@ -506,7 +510,8 @@ func (s *server) sendCallPushNotification(receiverId, senderName, callId string)
 		return
 	}
 
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 	client, err := s.firebaseApp.Messaging(ctx)
 	if err != nil {
 		return

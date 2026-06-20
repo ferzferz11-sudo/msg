@@ -236,6 +236,10 @@ func (db *DB) SearchChats(userID, query string, limit, offset int) ([]ChatV2Row,
 		result = append(result, c)
 	}
 
+	if err := rows.Err(); err != nil {
+		logger.Errorf("SearchChats rows error: %v", err)
+	}
+
 	return result, nil
 }
 
@@ -369,6 +373,10 @@ func (db *DB) GetUserChatsV2Cursor(userID, username string, limit int, cursor, f
 		}
 		c.IsMuted = mutedSet[c.ID]
 		result = append(result, c)
+	}
+
+	if err := rows.Err(); err != nil {
+		logger.Errorf("GetUserChatsV2 rows error: %v", err)
 	}
 
 	// Determine if there are more results

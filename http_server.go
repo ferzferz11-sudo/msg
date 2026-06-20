@@ -53,6 +53,27 @@ func closeFile(file io.ReadCloser) {
 	}
 }
 
+// requireAuth is HTTP middleware that validates a JWT Bearer token from the Authorization header.
+// On success, it sets X-User-ID and X-Username headers for downstream handlers.
+func requireAuth(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		authHeader := r.Header.Get("Authorization")
+		if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
+			http.Error(w, `{"error":"missing or invalid Authorization header"}`, http.StatusUnauthorized)
+			return
+		}
+		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+		claims, err := ValidateToken(tokenString)
+		if err != nil {
+			http.Error(w, `{"error":"invalid or expired token"}`, http.StatusUnauthorized)
+			return
+		}
+		r.Header.Set("X-User-ID", claims.UserID)
+		r.Header.Set("X-Username", claims.Username)
+		next(w, r)
+	}
+}
+
 func StartHTTPServer(port string) {
 	// Ensure directories exist
 	os.MkdirAll(avatarsPath, 0755)
@@ -61,11 +82,11 @@ func StartHTTPServer(port string) {
 	os.MkdirAll(backgroundsPath, 0755)
 	os.MkdirAll(audioPath, 0755)
 
-	http.HandleFunc("/upload-avatar", uploadAvatarHandler)
-	http.HandleFunc("/upload-image", uploadImageHandler)
-	http.HandleFunc("/upload-file", uploadFileHandler)
-	http.HandleFunc("/upload-background", uploadBackgroundHandler)
-	http.HandleFunc("/upload-audio", uploadAudioHandler)
+	http.HandleFunc("/upload-avatar", requireAuth(uploadAvatarHandler))
+	http.HandleFunc("/upload-image", requireAuth(uploadImageHandler))
+	http.HandleFunc("/upload-file", requireAuth(uploadFileHandler))
+	http.HandleFunc("/upload-background", requireAuth(uploadBackgroundHandler))
+	http.HandleFunc("/upload-audio", requireAuth(uploadAudioHandler))
 
 	// TURN credentials endpoint
 	http.HandleFunc("/turn-credentials", turnCredentialsHandler)
@@ -134,14 +155,14 @@ func StartHTTPServerAndReturn(port string) *http.Server {
 	os.MkdirAll(backgroundsPath, 0755)
 	os.MkdirAll(audioPath, 0755)
 
-	http.HandleFunc("/upload-avatar", uploadAvatarHandler)
-	http.HandleFunc("/upload-image", uploadImageHandler)
-	http.HandleFunc("/upload-file", uploadFileHandler)
-	http.HandleFunc("/upload-background", uploadBackgroundHandler)
-	http.HandleFunc("/upload-audio", uploadAudioHandler)
+	http.HandleFunc("/upload-avatar", requireAuth(uploadAvatarHandler))
+	http.HandleFunc("/upload-image", requireAuth(uploadImageHandler))
+	http.HandleFunc("/upload-file", requireAuth(uploadFileHandler))
+	http.HandleFunc("/upload-background", requireAuth(uploadBackgroundHandler))
+	http.HandleFunc("/upload-audio", requireAuth(uploadAudioHandler))
 
 	// TURN credentials endpoint
-	http.HandleFunc("/turn-credentials", turnCredentialsHandler)
+	http.HandleFunc("/turn-credentials", requireAuth(turnCredentialsHandler))
 
 	// Health check endpoint
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {

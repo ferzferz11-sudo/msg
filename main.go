@@ -49,6 +49,14 @@ func main() {
 		godotenv.Load()
 	}
 
+	// Validate critical secrets at startup
+	if secret := os.Getenv("JWT_SECRET"); len(secret) < 32 {
+		logger.Fatal("FATAL: JWT_SECRET is missing or too short (must be >= 32 bytes). Set JWT_SECRET in .env or environment.")
+	}
+	if key := os.Getenv("CHAT_SECRET_KEY"); len(key) < 32 {
+		logger.Fatal("FATAL: CHAT_SECRET_KEY is missing or too short (must be >= 32 bytes). Set CHAT_SECRET_KEY in .env or environment.")
+	}
+
 	// Initialize Firebase Admin SDK
 	firebaseCredentials := os.Getenv("FIREBASE_CREDENTIALS_PATH")
 	if firebaseCredentials == "" {

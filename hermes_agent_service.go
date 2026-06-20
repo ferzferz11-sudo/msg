@@ -315,7 +315,7 @@ func hashToken(token string) string {
 	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
-// isAdmin проверяет является ли пользователь супер-админом
+// isAdmin проверяет является ли пользователь админом
 func (h *hermesAgentServer) isAdmin(userID string) bool {
 	if h.server == nil || h.server.db == nil || userID == "" {
 		return false

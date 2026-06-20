@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
+
+	"github.com/lib/pq"
 )
 
 func (db *DB) GetChat(id string) (struct {
@@ -202,6 +204,15 @@ func (db *DB) IncrementParticipantsChatListVersionByChatID(chatID string) error 
 		UNION
 		SELECT id FROM users WHERE username IN (SELECT json_array_elements_text(participants::json) FROM chats WHERE id=$1)
 	)`, chatID)
+	return err
+}
+
+// IncrementChatListVersionByUsernames batch-updates chat_list_version for a list of usernames
+func (db *DB) IncrementChatListVersionByUsernames(usernames []string) error {
+	if len(usernames) == 0 {
+		return nil
+	}
+	_, err := db.Exec(`UPDATE users SET chat_list_version=chat_list_version+1 WHERE username = ANY($1::text[])`, pq.Array(usernames))
 	return err
 }
 

@@ -161,8 +161,11 @@ func (db *DB) UpdateUsername(old, new string) error {
 }
 
 func (db *DB) UpdatePassword(user, pass string) error {
-	h, _ := HashPassword(pass)
-	_, err := db.Exec(`UPDATE users SET password_hash=$1 WHERE username=$2`, h, user)
+	h, err := HashPassword(pass)
+	if err != nil {
+		return fmt.Errorf("failed to hash password: %w", err)
+	}
+	_, err = db.Exec(`UPDATE users SET password_hash=$1 WHERE username=$2`, h, user)
 	return err
 }
 

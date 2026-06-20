@@ -191,7 +191,7 @@ func handleBotDeploy(s *server, req *gen.BotCommandRequest) *gen.BotCommandRespo
 		return &gen.BotCommandResponse{
 			Success:      false,
 			IsError:      true,
-			ErrorMessage: "Доступ запрещён: только для супер-админа",
+			ErrorMessage: "Access denied: admin only",
 		}
 	}
 
@@ -243,7 +243,7 @@ func handleBotRestart(s *server, req *gen.BotCommandRequest) *gen.BotCommandResp
 		return &gen.BotCommandResponse{
 			Success:      false,
 			IsError:      true,
-			ErrorMessage: "Доступ запрещён: только для супер-админа",
+			ErrorMessage: "Access denied: admin only",
 		}
 	}
 
@@ -266,6 +266,14 @@ func handleBotRestart(s *server, req *gen.BotCommandRequest) *gen.BotCommandResp
 }
 
 func handleBotLogs(s *server, req *gen.BotCommandRequest) *gen.BotCommandResponse {
+	if !s.db.IsSuperAdmin(req.UserId) && !s.db.IsSuperAdmin(req.Username) {
+		return &gen.BotCommandResponse{
+			Success:      false,
+			IsError:      true,
+			ErrorMessage: "Access denied: admin only",
+		}
+	}
+
 	lines := 20
 	if len(req.Args) > 0 {
 		n, _ := fmt.Sscanf(req.Args[0], "%d", &lines)

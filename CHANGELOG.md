@@ -1,5 +1,32 @@
 # Лава — Server Changelog
 
+## [1.3.0.14] - 2026-06-20
+
+### Security Fixes
+- **Firebase key removed from git** — removed tracked service account JSON, will rotate key
+- **`.env.example` sanitized** — replaced real credentials with placeholders
+- **HTTP upload auth** — added JWT Bearer middleware to all upload endpoints + TURN credentials
+- **Bot `/logs` admin check** — restricted to admin-only access
+- **`query_database` hardened** — read-only transaction, expanded blocklist, sensitive table blocklist
+- **DROP TABLE removed** — removed destructive `DROP TABLE IF EXISTS` from hermes migrations
+- **Chat stream auth re-enabled** — uncommented unauthenticated message rejection
+- **JWT_SECRET startup validation** — server fails fast if JWT_SECRET or CHAT_SECRET_KEY missing/short
+- **SSRF protection** — `web_fetch` tool now blocks private IPs, localhost, cloud metadata endpoints
+- **JSON injection fix** — `CreateGroupChat` uses `json.Marshal` instead of manual string concatenation
+
+### Bug Fixes
+- **HashPassword error propagation** — `UpdatePassword` now returns bcrypt errors
+- **N+1 batch query** — `DeleteChat` uses single batch UPDATE instead of per-participant loop
+- **Goroutine lifecycle** — `RemoteAgentManager` goroutines now respect context cancellation
+- **Firebase context timeouts** — all push notification calls now have 10-30s timeouts
+
+### Code Quality
+- **`rows.Err()` checks** — added to key database iteration loops
+- **`go mod tidy`** — cleaned up dependencies
+- **Russian→English error messages** — admin-only responses now use English
+
+---
+
 ## [1.3.0.13] - 2026-06-20
 
 ### Performance Optimizations

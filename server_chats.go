@@ -94,17 +94,13 @@ func (s *server) CreateGroupChat(_ context.Context, req *gen.CreateGroupChatRequ
 	logger.Infof("CreateGroupChat: %s (Creator: %s)", req.Name, creator)
 	chatID := uuid.New().String()
 
-	// Convert participants slice to JSON string
-	participants := "["
-	for i, p := range req.Participants {
-		participants += "\"" + p + "\""
-		if i < len(req.Participants)-1 {
-			participants += ", "
-		}
+	// Convert participants slice to JSON string safely
+	participantsJSON, err := json.Marshal(req.Participants)
+	if err != nil {
+		return &gen.CreateGroupChatResponse{Success: false}, fmt.Errorf("failed to encode participants: %w", err)
 	}
-	participants += "]"
 
-	err := s.db.CreateChat(chatID, req.Name, "group", participants, creator, req.CreatorId)
+	err = s.db.CreateChat(chatID, req.Name, "group", string(participantsJSON), creator, req.CreatorId)
 	if err != nil {
 		logger.Infof("Failed to create group chat in DB: %v", err)
 		return &gen.CreateGroupChatResponse{Success: false}, err
@@ -312,9 +308,7 @@ func (s *server) DeleteChat(_ context.Context, req *gen.DeleteChatRequest) (*gen
 	// and the deleting user already knows the chat is gone. Broadcast below is enough.
 	if chat.Type != "owl" && chat.Type != "hermes" {
 		logger.Infof("DeleteChat: Notifying %d participants.", len(participants))
-		for _, p := range participants {
-			_ = s.db.IncrementUserChatListVersion(p)
-		}
+		_ = s.db.IncrementChatListVersionByUsernames(participants)
 	}
 
 	// 6. Send signal to clear cache for all participants

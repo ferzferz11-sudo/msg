@@ -180,11 +180,10 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 		}
 
 		// Reject messages from unauthenticated streams (except first auth message)
-		// Temporarily disabled to debug authentication issues
-		/*if !s.hub.IsAuthenticated(stream) && msg.Password == "" {
+		if !s.hub.IsAuthenticated(stream) && msg.Password == "" {
 			logger.Info("Rejected message from unauthenticated stream")
 			return fmt.Errorf("not authenticated")
-		}*/
+		}
 
 		// Генерируем уникальный ID для сообщения, если его нет
 		if msg.Id == "" {

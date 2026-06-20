@@ -368,6 +368,9 @@ func (g *AIGateway) GetAIUsageStats(userID string) ([]*AIUsageStat, error) {
 		}
 		stats = append(stats, &s)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return stats, nil
 }
 
@@ -428,6 +431,9 @@ func (g *AIGateway) dbGetMessages(chatID string, limit int) ([]*AIMessageV2, err
 			return nil, err
 		}
 		msgs = append(msgs, &m)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return msgs, nil
 }
