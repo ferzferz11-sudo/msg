@@ -1,5 +1,19 @@
 # Лава — Server Changelog
 
+## [1.3.0.7] - 2026-06-20
+
+### Redis Rate Limiter
+- **redis_rate_limiter.go** — Redis-backed sliding window rate limiter (go-redis/v9)
+- Автоматический fallback на in-memory если Redis недоступен
+- Ключи: `rl:{prefix}:{userID}`, sorted sets с TTL
+- Конфигурация через `REDIS_ADDR` env (по умолчанию localhost:6379)
+
+### Documentation
+- **doc/ANDROID_AI_BILLING_INTEGRATION.md** — Android integration guide для Usage Stats UI
+- **doc/CLIENT_INTEGRATION.md** — исправлены ListMarketplaceAgents и GetAIUsageStats запросы
+
+---
+
 ## [1.3.0.4] - 2026-06-20
 
 ### Graceful Shutdown

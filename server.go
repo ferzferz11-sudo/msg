@@ -31,7 +31,7 @@ import (
 	firebase "firebase.google.com/go/v4"
 )
 
-const ServerVersion = "1.3.0.4"
+const ServerVersion = "1.3.0.7"
 
 // Service versions for client capability negotiation.
 // Service versions for client capability negotiation.

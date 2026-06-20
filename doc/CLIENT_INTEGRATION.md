@@ -213,11 +213,11 @@ message UserInfo {
 |-------|--------|-------|----------|
 | `RateAIAgent` | `RateAIAgentRequest { agent_id, rating, review }` | `RateAIAgentResponse` | Оценить агента |
 | `GetAIAgentReviews` | `GetAIAgentReviewsRequest { agent_id }` | `GetAIAgentReviewsResponse { reviews[] }` | Отзывы на агента |
-| `ListMarketplaceAgents` | `ListMarketplaceAgentsRequest { category, sort }` | `ListMarketplaceAgentsResponse { agents[] }` | Маркетплейс агентов |
+| `ListMarketplaceAgents` | `ListMarketplaceAgentsRequest { query, limit, offset }` | `ListMarketplaceAgentsResponse { agents[], total }` | Маркетплейс агентов с поиском и пагинацией |
 | `GetAIAgentStats` | `GetAIAgentStatsRequest { agent_id }` | `GetAIAgentStatsResponse` | Статистика агента |
 | `ShareAIAgent` | `ShareAIAgentRequest { agent_id }` | `ShareAIAgentResponse { share_code }` | Поделиться агентом |
 | `InstallAIAgent` | `InstallAIAgentRequest { share_code }` | `InstallAIAgentResponse { agent_id }` | Установить агента по коду |
-| `GetAIUsageStats` | `GetAIUsageStatsRequest { user_id }` | `GetAIUsageStatsResponse` | Статистика использования AI (токены) |
+| `GetAIUsageStats` | `GetAIUsageStatsRequest {}` | `GetAIUsageStatsResponse { stats[], total_tokens, total_requests }` | Статистика использования AI (токены, запросы per-agent) |
 
 **Типы AI чатов:**
 - `simple` — прямой LLM (как ChatGPT)
