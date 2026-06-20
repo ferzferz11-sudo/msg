@@ -293,13 +293,13 @@ func (db *DB) GetUserChatsV2Cursor(userID, username string, limit int, cursor, f
 
 	// Cursor-based filtering
 	cursorClause := ""
-	bindArgs := []interface{}{userID, limit, 0, username}
+	bindArgs := []interface{}{userID, limit, username}
 	if cur, ok := decodeCursor(cursor); ok {
 		if filter == "pinned" {
-			cursorClause = "AND COALESCE(ucm.pinned_at, 0) < $5"
+			cursorClause = "AND COALESCE(ucm.pinned_at, 0) < $4"
 			bindArgs = append(bindArgs, cur.PinnedAt)
 		} else {
-			cursorClause = "AND (COALESCE(ucm.pinned_at, 0), COALESCE(c.last_message_time, c.created_at)) < ($5, $6)"
+			cursorClause = "AND (COALESCE(ucm.pinned_at, 0), COALESCE(c.last_message_time, c.created_at)) < ($4, $5)"
 			bindArgs = append(bindArgs, cur.PinnedAt, cur.LastMessageTime)
 		}
 	}
@@ -316,7 +316,7 @@ func (db *DB) GetUserChatsV2Cursor(userID, username string, limit int, cursor, f
 			SELECT m.room_id, COUNT(*) as count
 			FROM messages m
 			LEFT JOIN user_last_read ulr ON ulr.room_id = m.room_id
-			WHERE m.username != $4
+			WHERE m.username != $3
 			AND m.created_at > ulr.last_read
 			GROUP BY m.room_id
 		)
@@ -335,7 +335,7 @@ func (db *DB) GetUserChatsV2Cursor(userID, username string, limit int, cursor, f
 		LEFT JOIN muted_chats mc ON mc.room_id = c.id AND mc.user_id = $1::uuid
 		LEFT JOIN unread_counts uc2 ON c.id = uc2.room_id
 		WHERE c.type NOT IN ('ai', 'owl', 'hermes')
-		AND (c.participant_ids @> ARRAY[$1::uuid] OR c.participants::jsonb @> jsonb_build_array($4::text))
+		AND (c.participant_ids @> ARRAY[$1::uuid] OR c.participants::jsonb @> jsonb_build_array($3::text))
 		%s
 		%s
 		%s
