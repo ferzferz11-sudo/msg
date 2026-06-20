@@ -9,8 +9,8 @@
 ## Быстрый старт
 
 1. **PROMPT.md** — текущий контекст сессии (ветка, статус, команды)
-2. **INTEGRATION_SESSION.md** — интеграционная сессия (коммиты, статус)
-3. **TASKS.md** — таск-трекер
+2. **INTEGRATION_SESSION.md** — интеграционная сессия (статус, правила)
+3. **CLIENT_INTEGRATION.md** — **полная интеграция клиентов** (все gRPC методы, HTTP endpoints, AI v2, marketplace)
 
 ---
 
@@ -29,114 +29,102 @@
 
 | Файл | Описание |
 |------|----------|
-| `auth_service.go` | ⚠️ **Deprecated** v1 AuthService (SignIn/SignUp без JWT) |
-| `auth_service_v2.go` | v2 AuthService: JWT, device management, token refresh, sign-out |
-| `auth_interceptor.go` | gRPC unary + stream interceptors (JWT validation, v1 fallback) |
+| `auth_service_v2.go` | AuthService: JWT, device management, token refresh, sign-out |
+| `auth_interceptor.go` | gRPC interceptors (JWT validation) |
 | `auth_jwt.go` | JWT token generation/validation (HMAC-SHA256) |
-| `auth/jwt.go` | Agent token management для hermes-agent daemon (отдельный пакет) |
+| `auth/jwt.go` | Agent token management для hermes-agent daemon |
 
 ### Database
 
 | Файл | Описание |
 |------|----------|
-| `db.go` | Core DB layer: PostgreSQL connection, schema, ~80+ CRUD методов |
-| `db_chatlist_v2.go` | ChatList v2: pin/unpin/archive/search, pinned messages |
-| `db_hermes.go` | Hermes Orchestrator DB: sessions, messages, agent runs, tokens |
-| `db_auth_migrations.go` | Миграции auth v2: user_devices, device_auth_log, user_settings |
-| `db_auth_devices.go` | Device management CRUD: upsert, revoke, validate refresh tokens |
+| `db.go` | Core DB layer: PostgreSQL, schema, migrations |
+| `db_messages.go` | Message операции |
+| `db_users.go` | User операции |
+| `db_chats.go` | Chat операции (GetUserChats v1) |
+| `db_chatlist_v2.go` | ChatList v2: pin/unpin/archive/search, pinned messages, unread counts |
+| `db_ai_v2.go` | AI v2 DB: agents, chats, messages, usage stats, reviews |
+| `db_auth_devices.go` | Device management CRUD |
+| `db_auth_migrations.go` | Миграции auth v2 |
+| `db_hermes.go` | Hermes DB: sessions, messages, agent runs, tokens |
 
 ### gRPC Handlers
 
 | Файл | Описание |
 |------|----------|
-| `server_chat.go` | Bidirectional streams: Chat, Typing, CallSession (WebRTC signaling) |
-| `server_chats.go` | Chat CRUD: GetAllChats, GetChats ⚠️ **Deprecated**, Create, Delete, Update |
-| `server_chatlist_v2.go` | ChatList v2 RPC: **GetChatsV2** (основной), pin/unpin chats, search, archive, pin messages |
+| `server_chat.go` | Bidirectional streams: Chat, Typing, CallSession |
+| `server_chatlist_v2.go` | **GetChatsV2** (основной), Pin/UnPin chats, Search, Archive, Pin messages |
+| `server_chats.go` | Chat CRUD: GetAllChats, Create, Delete, Update |
 | `server_messages.go` | Message history, reactions, deletion, editing |
 | `server_users.go` | User profiles: list, update, get profile, get avatar |
-| `server_push.go` | Push notifications (FCM), call pushes, conference pushes, online broadcast |
+| `server_push.go` | Push notifications (FCM), call pushes, online broadcast |
 | `server_contacts.go` | Contact list, chat list version |
 | `server_themes.go` | Custom theme management |
-| `server_drafts.go` | Draft messages, FCM logs |
+| `server_drafts.go` | Draft messages |
 | `server_muted.go` | Muted chats |
 | `server_favorites.go` | Favorites, device management, password reset, user ID lookup |
-| `server_profile.go` | v1 profile: username/password update, mark read, avatar, delete |
-| `server_profile_v2.go` | v2 ProfileService (dev only): JWT-only profile management |
-| `server_management.go` | Server management (admin): list, add, update, delete servers |
-| `server_remote.go` | Remote agent RPC: list, status, deploy tasks (unary + streaming) |
-| `server_ai.go` | AI chat: ChatWithAI (streaming), history, settings, free models |
+| `server_profile.go` | Profile: username/password update, mark read, avatar, delete |
+| `server_profile_v2.go` | v2 ProfileService (dev only): JWT-only |
+| `server_management.go` | Server management (admin) |
+| `server_remote.go` | Remote agent RPC: list, status, deploy tasks |
+| `server_ai_v2.go` | AI v2: ChatWithAIV2, Agent CRUD, Marketplace, Usage Stats (15 RPCs) |
 
-### AI Services
+### AI Services v2
 
 | Файл | Описание |
 |------|----------|
-| `owl.go` | OpenRouter API: HTTP client, streaming, rate limiter, session manager |
-| `ai_chat_manager.go` | Unified AI chat manager: sessions, messages, settings CRUD |
-| `hermes_orchestrator.go` | Multi-agent orchestrator: routing, RAG, tool calling, pipeline |
-| `hermes_agents.go` | Agent definitions, 8 presets (Dev, DevOps, Architect...), registry |
-| `hermes_agent_service.go` | gRPC service для hermes-agent daemon connections |
-| `hermes_remote_manager.go` | Remote agent management: connections, tasks, health checks |
-| `core/llm/provider.go` | LLM abstraction: interfaces, router, Message/ToolDef types |
-| `core/llm/openrouter/provider.go` | OpenRouter LLM provider with streaming + function calling |
-| `core/llm/hermes/provider.go` | Local Hermes agent LLM provider (hermes chat subprocess) |
-| `core/pipeline/pipeline.go` | AI pipeline: RAG context → LLM streaming → tool-calling loop |
-| `core/tools/executor.go` | Default tool executor: search_messages, search_users, web_search, get_chat_info |
-| `core/rag/interfaces.go` | RAG interfaces: vector search, embedding, pipeline |
-| `core/rag/memory/memory.go` | In-memory RAG: TF-IDF embeddings, cosine similarity, full pipeline |
+| `ai_v2.go` | AI Gateway: session management, streaming, chat flow, RAG |
+| `ai_router.go` | Hybrid router (keyword + LLM fallback) |
+| `ai_agent_executor.go` | Agent execution + tool calling loop |
+| `ai_provider.go` | AgentProvider interface + StreamUsage |
+| `ai_provider_registry.go` | Provider factory registry (7 types) |
+| `ai_provider_openrouter.go` | OpenRouter (SSE streaming + usage parsing) |
+| `ai_provider_mimo.go` | MiMo (HTTP + deep integration) |
+| `ai_provider_local.go` | Local Hermes (subprocess) |
+| `ai_provider_webhook.go` | Webhook (HTTP POST) |
+| `ai_provider_websocket.go` | WebSocket (gorilla/websocket) |
+| `ai_provider_subprocess.go` | Subprocess (stdin/stdout) |
+| `ai_provider_mcp.go` | MCP (stdio, JSON-RPC 2.0) |
+| `ai_tool.go` | Tool interface |
+| `ai_tool_registry.go` | Tool registry + 6 built-in tools |
+| `rate_limiter.go` | Rate limiter + callOpenRouterContext |
+| `redis_rate_limiter.go` | Redis-backed rate limiter (fallback: in-memory) |
+| `core/rag/qdrant/` | Qdrant vector DB client + OpenAI embeddings |
 
 ### Infrastructure
 
 | Файл | Описание |
 |------|----------|
-| `http_server.go` | HTTP: file uploads (avatar/image/file/background/audio), TURN, health, info |
+| `http_server.go` | HTTP: file uploads, TURN, health, info |
 | `email.go` | SMTP: password reset emails |
-| `crypto.go` | AES-256-GCM encryption, bcrypt hashing, reset token generation |
+| `crypto.go` | AES-256-GCM encryption, bcrypt hashing |
 | `secret_chat.go` | E2EE secret chat: creation, public key exchange |
-| `bot_commands.go` | Bot commands (/status, /deploy, /restart, /ai...), notification service |
+| `bot_commands.go` | Bot commands (/status, /deploy, /restart, /ai), notifications |
 
 ### Generated / Tests
 
 | Файл | Описание |
 |------|----------|
-| `gen/messenger.pb.go` | Protobuf generated: messenger messages |
-| `gen/messenger_grpc.pb.go` | Protobuf generated: gRPC service stubs |
-| `gen/server.pb.go` | Protobuf generated: server messages |
-| `gen/server_grpc.pb.go` | Protobuf generated: server gRPC stubs |
-| `gen/hermes_agent/*.pb.go` | Protobuf generated: hermes agent protocol |
-| `*_test.go` | Unit tests (auth_jwt, auth_service, owl, bot_commands, push, remote, memory) |
+| `gen/messenger.pb.go` | Protobuf: messenger messages |
+| `gen/messenger_grpc.pb.go` | Protobuf: gRPC service stubs |
+| `*_test.go` | Unit tests (~88 tests) |
 
 ---
 
-## Deprecated v1 compat — УДАЛЕНО в v1.3.0.8
-
-| Что | Статус |
-|-----|--------|
-| `authServer` v1 SignIn/SignUp | ✅ Удалён |
-| `extractUsernameFromMetadata()` | ✅ Удалён |
-| `AuthInterceptor` v1 fallback | ✅ Удалён |
-| `AuthStreamInterceptor` bypass | ✅ Удалён |
-| `ResolveUserID()` + cache | ✅ Удалён |
-| `resolveUserId()` / `resolveUsername()` | ✅ Удалены |
-| `GetChats()` v1 endpoint | ✅ Удалён |
-
----
-
-## Файлы документации (10 файлов)
+## Файлы документации
 
 | Файл | Назначение |
 |------|-----------|
 | `PROMPT.md` | Промпт для серверных сессий: статус, правила, команды |
-| `INTEGRATION_SESSION.md` | Интеграционная сессия: коммиты, статус, deprecated таблица |
-| `TASKS.md` | Таск-трекер: сделано/не сделано |
-| `ARCHITECTURE.md` | Общая архитектура сервера |
-| `CLIENT_INTEGRATION.md` | **Интеграция клиента** — все gRPC методы, HTTP endpoints, auth workflow |
-| `AI_SERVICES.md` | AI-сервисы: AI Gateway v2, провайдеры, маркетплейс |
-| `MARKETPLACE_AGENTS_SETUP.md` | **Агенты и пресеты** — quickstart, создание, marketplace, tool calling |
-| `ANDROID_RATE_LIMIT_PROMPT.md` | **Android rate limiting** — кэширование лимитов, UX при превышении |
-| `PITFALLS.md` | Подводные камни и известные проблемы (сервер) |
-| `LOG_MONITOR.md` | Log Monitor: сборка, деплой, API |
+| `INTEGRATION_SESSION.md` | Интеграционная сессия: статус, правила |
+| `CLIENT_INTEGRATION.md` | **Единый документ интеграции клиентов** — все gRPC методы, HTTP endpoints, auth, AI v2, marketplace |
+| `ARCHITECTURE.md` | Архитектура сервера |
+| `AI_SERVICES.md` | AI-сервисы: провайдеры, пресеты, инструменты |
+| `TASKS.md` | Таск-трекер |
+| `PITFALLS.md` | Подводные камни и известные проблемы |
 | `TESTING.md` | Модульные тесты |
 | `RELEASE.md` | Процесс релиза |
+| `LOG_MONITOR.md` | Log Monitor: сборка, деплой, API |
 
 ---
 
@@ -146,9 +134,6 @@
 - При интеграции нового клиента: `CLIENT_INTEGRATION.md` (все методы)
 - При работе с AI: читать `AI_SERVICES.md`
 - При деплое: читать `RELEASE.md`
-- После изменений: обновлять `INTEGRATION_SESSION.md` + `TASKS.md`
-- Версия сервера в `server.go:ServerVersion`
-- CHANGELOG.md в `/root/msg/CHANGELOG.md`
-- Deprecated методы будут удалены в v1.3 — не добавлять новых вызовов
-- Android: `/root/msg.client.android/doc/` — вся документация клиента там
+- Версия сервера в `server.go`
+- Android: `/root/msg.client.android/doc/` — документация клиента
 - ⚠️ Android собирается ТОЛЬКО локально (нет памяти на сервере)

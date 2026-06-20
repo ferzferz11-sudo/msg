@@ -2,7 +2,7 @@
 
 Документация по модульным тестам: как запускать, что покрыто, как писать новые тесты.
 
-**Актуально:** v1.2.0.9 (2026-06-19)
+**Актуально:** v1.3.0.10 (2026-06-20)
 
 ---
 
@@ -32,7 +32,7 @@ go test -coverprofile=/tmp/cover.out -count=1 . && go tool cover -func=/tmp/cove
 | Файл | Что тестирует | Тестов |
 |------|--------------|--------|
 | `auth_jwt_test.go` | JWT generation, validation, expiry, tamper | 2 |
-| `auth_service_test.go` | AuthService v1 (SignIn, SignUp) + v2 (SignInV2, SignUpV2, TokenPair) | 20 |
+| `auth_service_test.go` | AuthService v2 (SignInV2, SignUpV2, TokenPair) + v1 compat | 20 |
 | `owl_test.go` | OWL rate limiter, mock OpenRouter API, streaming | 15 |
 | `bot_commands_test.go` | Bot commands, rate limiter, notifications | 20 |
 | `server_push_test.go` | Hub.IsUserOnline (v1+v2, grace period) | 6 |
@@ -55,7 +55,7 @@ go test -coverprofile=/tmp/cover.out -count=1 . && go tool cover -func=/tmp/cove
 
 ## auth_service_test.go (20 тестов)
 
-### V1 Auth (deprecated)
+### Auth (SignIn, SignUp)
 
 | Тест | Что проверяет |
 |------|--------------|
@@ -182,11 +182,8 @@ go test -coverprofile=/tmp/cover.out -count=1 . && go tool cover -func=/tmp/cove
 
 | Тест | Что проверяет |
 |------|--------------|
-| `TestIsUserOnline_UserPresent` | v2 клиент (userId) онлайн |
+| `TestIsUserOnline_UserPresent` | Пользователь онлайн |
 | `TestIsUserOnline_UserNotPresent` | Несуществующий пользователь |
-| `TestIsUserOnline_FallbackToUsername` | v1 клиент (только username) |
-| `TestIsUserOnline_BothUserIdAndUsername` | v2 клиент: userId + username fallback |
-| `TestIsUserOnline_MultipleStreams` | 2 стрима, 2 пользователя |
 | `TestIsUserOnline_AfterUnregister` | Grace period после отключения |
 
 ---

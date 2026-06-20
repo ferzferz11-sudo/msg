@@ -219,18 +219,106 @@ message UserInfo {
 | `InstallAIAgent` | `InstallAIAgentRequest { share_code }` | `InstallAIAgentResponse { agent_id }` | Установить агента по коду |
 | `GetAIUsageStats` | `GetAIUsageStatsRequest {}` | `GetAIUsageStatsResponse { stats[], total_tokens, total_requests }` | Статистика использования AI (токены, запросы per-agent) |
 
-**Типы AI чатов:**
-- `simple` — прямой LLM (как ChatGPT)
-- `agent` — multi-agent с роутингом
-- `pipeline` — RAG + tools chain
-
-**Встроенные инструменты:** search_messages, search_users, web_search, web_fetch, get_chat_info, query_database
-
+**Типы AI чатов:** simple (прямой LLM), agent (multi-agent), pipeline (RAG + tools)
 **Провайдеры:** openrouter, local, mimo, webhook, websocket, subprocess, mcp
-
 **Пресеты:** mimo, assistant, developer, devops, architect, writer, analyst, translator
 
-> Полное описание см. в `doc/AI_V2_CLIENT_INTEGRATION.md`
+##### ChatWithAIV2 — Детали
+
+```protobuf
+message ChatWithAIV2Request {
+  string session_id = 1;        // пусто = создать новый чат
+  string message = 2;           // текст сообщения
+  repeated bytes images = 3;    // base64 изображения (multimodal)
+  string agent_id = 4;          // принудительно выбрать агента
+  repeated ToolCallV2 tool_calls = 5;  // результаты tool execution
+}
+
+message ChatWithAIV2Response {
+  string token = 1;             // токен стриминга
+  bool finished = 2;            // конец стрима
+  string error = 3;             // ошибка
+  string agent_id = 4;          // какой агент ответил
+  string agent_name = 5;        // имя агента (для UI)
+  repeated ToolCallRequestV2 tool_calls = 6;  // запрос на выполнение инструмента
+  bool has_rag_context = 7;     // был ли использован RAG
+  string model_used = 8;        // какая модель
+  int32 token_count = 9;        // количество токенов
+}
+```
+
+**Flow:**
+1. Клиент → `ChatWithAIV2Request{message, agent_id}`
+2. Сервер стримит токены
+3. Если агент хочет вызвать инструмент → `ChatWithAIV2Response{tool_calls=[{id, name, args}]}`
+4. Клиент выполняет инструмент → `ChatWithAIV2Request{tool_calls=[{id, name, args, result}]}`
+5. Сервер продолжает стриминг
+6. Готово → `ChatWithAIV2Response{finished=true}`
+
+##### Tool Calling Flow (клиентский цикл)
+
+```
+1. Получить ChatWithAIV2Response с tool_calls
+2. Выполнить инструмент (локально или через API)
+3. Отправить результат через ChatWithAIV2Request с tool_calls
+4. Получить следующий chunk стриминга
+```
+
+**Встроенные инструменты:**
+
+| Инструмент | Описание | Параметры |
+|------------|----------|-----------|
+| `search_messages` | Поиск сообщений | `query`, `chat_id?`, `limit?` |
+| `search_users` | Поиск пользователей | `query`, `limit?` |
+| `web_search` | Веб-поиск (DuckDuckGo) | `query` |
+| `web_fetch` | Загрузка URL | `url`, `max_chars?` |
+| `get_chat_info` | Метаданные чата | `chat_id` |
+| `query_database` | SQL запросы (SELECT only, admin) | `query` |
+
+##### AgentInfoV2
+
+```protobuf
+message AgentInfoV2 {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  string provider_type = 4;
+  string model = 5;
+  string system_prompt = 6;
+  bool tools_enabled = 7;
+  bool rag_enabled = 8;
+  bool is_preset = 9;
+  bool is_public = 10;
+  int32 max_tokens = 11;
+  float temperature = 12;
+  string created_by = 13;
+  AgentCapabilitiesV2 capabilities = 14;
+  int32 install_count = 15;
+  float avg_rating = 16;
+  int32 review_count = 17;
+  repeated string tags = 18;
+  string original_agent_id = 19;
+  string version = 20;
+  string share_code = 21;
+}
+```
+
+##### Provider Config (JSON)
+
+**OpenRouter:** `{"api_key_source": "user", "default_model": "anthropic/claude-sonnet-4"}`
+**MiMo:** `{"api_key_source": "admin", "base_url": "https://api.mimo.ai/v1", "model": "mimo-auto"}`
+**Webhook:** `{"url": "https://...", "method": "POST", "headers": {}, "timeout_seconds": 30, "streaming": true}`
+**Subprocess:** `{"command": "/usr/bin/python3", "args": ["/path/to/agent.py"], "env": {}, "timeout_seconds": 60}`
+**MCP:** `{"command": "npx", "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"], "transport": "stdio"}`
+
+##### Лимиты
+
+| Параметр | Значение |
+|----------|----------|
+| Макс. итераций tool calling | 10 |
+| Rate limit (по умолчанию) | 10 req/min |
+| Rate limit (free tier) | 20 req/hr |
+| Макс. изображений за запрос | 5 |
 
 #### Notifications
 
