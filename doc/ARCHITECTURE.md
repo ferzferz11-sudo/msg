@@ -195,3 +195,4 @@ SIGTERM received
 - Admin-only: bot commands /deploy, /restart, /logs
 - Auth interceptor на всех RPC (кроме AuthService)
 - Panic recovery в stream handlers (Chat, Typing, CallSession)
+- Agent marketplace: rate limiting на отзывы (1 отзыв на пользователя на агента)

@@ -521,3 +521,56 @@ for (tool in tools.toolsList) {
 | Rate limit (free tier) | 20 req/hour |
 | Макс. изображений за запрос | 5 |
 | Макс. размер изображения | 10MB |
+
+---
+
+## Marketplace + Usage Stats (NEW)
+
+### RateAIAgent — Оценка агента
+```protobuf
+rpc RateAIAgent(RateAIAgentRequest) returns (RateAIAgentResponse);
+```
+Запрос: `{agent_id, rating: 1-5, review: "optional text"}`
+Ответ: `{success, avg_rating, review_count}`
+
+### ListMarketplaceAgents — Каталог публичных агентов
+```protobuf
+rpc ListMarketplaceAgents(ListMarketplaceAgentsRequest) returns (ListMarketplaceAgentsResponse);
+```
+Запрос: `{query: "search text", limit, offset}`
+Ответ: `{agents: AgentInfoV2[], total}`
+
+### ShareAIAgent — Генерация ссылки
+```protobuf
+rpc ShareAIAgent(ShareAIAgentRequest) returns (ShareAIAgentResponse);
+```
+Запрос: `{agent_id}`
+Ответ: `{success, share_code}`
+
+### InstallAIAgent — Установка по share code
+```protobuf
+rpc InstallAIAgent(InstallAIAgentRequest) returns (InstallAIAgentResponse);
+```
+Запрос: `{share_code, new_name: "optional rename"}`
+Ответ: `{success, agent_id}`
+
+### GetAIUsageStats — Статистика использования
+```protobuf
+rpc GetAIUsageStats(GetAIUsageStatsRequest) returns (GetAIUsageStatsResponse);
+```
+Запрос: `{}` (берёт текущего пользователя из JWT)
+Ответ: `{stats: [{agent_id, agent_name, total_tokens, request_count, period_start}], total_tokens, total_requests}`
+
+### GetAIAgentStats — Статистика агента
+```protobuf
+rpc GetAIAgentStats(GetAIAgentStatsRequest) returns (GetAIAgentStatsResponse);
+```
+Запрос: `{agent_id}`
+Ответ: `{install_count, avg_rating, review_count}`
+
+### GetAIAgentReviews — Отзывы
+```protobuf
+rpc GetAIAgentReviews(GetAIAgentReviewsRequest) returns (GetAIAgentReviewsResponse);
+```
+Запрос: `{agent_id, limit}`
+Ответ: `{reviews: [{user_id, rating, review, created_at}], avg_rating, review_count}`

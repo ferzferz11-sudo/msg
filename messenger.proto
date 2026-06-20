@@ -785,6 +785,14 @@ service ChatService {
   rpc ListAIAgents(ListAIAgentsRequest) returns (ListAIAgentsResponse);
   rpc CloneAIAgent(CloneAIAgentRequest) returns (CloneAIAgentResponse);
   rpc ListAITools(ListAIToolsRequest) returns (ListAIToolsResponse);
+  // === AI Marketplace ===
+  rpc RateAIAgent(RateAIAgentRequest) returns (RateAIAgentResponse);
+  rpc GetAIAgentReviews(GetAIAgentReviewsRequest) returns (GetAIAgentReviewsResponse);
+  rpc ListMarketplaceAgents(ListMarketplaceAgentsRequest) returns (ListMarketplaceAgentsResponse);
+  rpc GetAIAgentStats(GetAIAgentStatsRequest) returns (GetAIAgentStatsResponse);
+  rpc ShareAIAgent(ShareAIAgentRequest) returns (ShareAIAgentResponse);
+  rpc InstallAIAgent(InstallAIAgentRequest) returns (InstallAIAgentResponse);
+  rpc GetAIUsageStats(GetAIUsageStatsRequest) returns (GetAIUsageStatsResponse);
 }
 
 // ======= AI Pipeline Messages =======
@@ -1729,6 +1737,13 @@ message AgentInfoV2 {
   float temperature = 12;
   string created_by = 13;
   AgentCapabilitiesV2 capabilities = 14;
+  int32 install_count = 15;
+  float avg_rating = 16;
+  int32 review_count = 17;
+  repeated string tags = 18;
+  string original_agent_id = 19;
+  int32 version = 20;
+  string share_code = 21;
 }
 
 message AgentCapabilitiesV2 {
@@ -1768,6 +1783,98 @@ message ToolInfoV2 {
   string description = 2;
   string parameters_schema = 3;   // JSON Schema
   string required_role = 4;
+}
+
+// === AI Marketplace Messages ===
+
+message RateAIAgentRequest {
+  string agent_id = 1;
+  int32 rating = 2;           // 1-5
+  string review = 3;          // optional text review
+}
+
+message RateAIAgentResponse {
+  bool success = 1;
+  string error = 2;
+  float avg_rating = 3;
+  int32 review_count = 4;
+}
+
+message GetAIAgentReviewsRequest {
+  string agent_id = 1;
+  int32 limit = 2;
+}
+
+message AgentReviewInfo {
+  string user_id = 1;
+  int32 rating = 2;
+  string review = 3;
+  string created_at = 4;
+}
+
+message GetAIAgentReviewsResponse {
+  repeated AgentReviewInfo reviews = 1;
+  float avg_rating = 2;
+  int32 review_count = 3;
+}
+
+message ListMarketplaceAgentsRequest {
+  string query = 1;           // search by name/description/tags
+  int32 limit = 2;
+  int32 offset = 3;
+}
+
+message ListMarketplaceAgentsResponse {
+  repeated AgentInfoV2 agents = 1;
+  int32 total = 2;
+}
+
+message GetAIAgentStatsRequest {
+  string agent_id = 1;
+}
+
+message GetAIAgentStatsResponse {
+  int32 install_count = 1;
+  float avg_rating = 2;
+  int32 review_count = 3;
+  int32 total_tokens_used = 4;
+}
+
+message ShareAIAgentRequest {
+  string agent_id = 1;
+}
+
+message ShareAIAgentResponse {
+  bool success = 1;
+  string share_code = 2;
+  string error = 3;
+}
+
+message InstallAIAgentRequest {
+  string share_code = 1;
+  string new_name = 2;        // optional rename
+}
+
+message InstallAIAgentResponse {
+  bool success = 1;
+  string agent_id = 2;
+  string error = 3;
+}
+
+message GetAIUsageStatsRequest {}
+
+message UsageStatInfo {
+  string agent_id = 1;
+  int32 total_tokens = 2;
+  int32 request_count = 3;
+  string period_start = 4;
+  string agent_name = 5;
+}
+
+message GetAIUsageStatsResponse {
+  repeated UsageStatInfo stats = 1;
+  int32 total_tokens = 2;
+  int32 total_requests = 3;
 }
 
 service ProfileService {

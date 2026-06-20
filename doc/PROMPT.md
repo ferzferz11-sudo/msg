@@ -1,4 +1,4 @@
-# Промпт для серверных сессий — v1.3.0.1
+# Промпт для серверных сессий — v1.3.0.2
 
 **Дата:** 2026-06-20 | **Ветка:** feat/1.2.0.x
 **Статус:** AI Services v2 полностью готовы. Готово к Android интеграции.
@@ -10,7 +10,7 @@
 | | Версия | Статус |
 |---|--------|--------|
 | **Сервер prod** | v1.2.0.11 | ✅ Работает на порту 50051 |
-| **Сервер dev** | v1.3.0.1 | ✅ Работает на порту 50052 |
+| **Сервер dev** | v1.3.0.2 | ✅ Работает на порту 50052 |
 
 **Android:** `/root/msg.client.android` — документация там, сборка ТОЛЬКО локально.
 
@@ -21,7 +21,7 @@
 ### Сервер (/root/msg)
 ```
 main.go                    — Entry point, gRPC server, GracefulStop 30s timeout
-server.go                  — ServerVersion = "1.3.0.1"
+server.go                  — ServerVersion = "1.3.0.2"
 
 === AI Services v2 (ПОЛНОСТЬЮ ГОТОВО) ===
 db_ai_v2.go                — DB layer: agents_v2, ai_chats_v2, ai_messages_v2
@@ -107,6 +107,12 @@ messenger.proto            — All proto definitions
 - `get_chat_info` — метаданные чата
 - `query_database` — SQL запросы (SELECT only, admin) ✅
 
+### Usage Stats + Marketplace (NEW)
+- `ai_usage_stats` — агрегированная статистика токенов (per user/agent/hour)
+- `agent_reviews` — отзывы и рейтинги агентов (1-5 звёзд)
+- `ShareAIAgent` / `InstallAIAgent` — шаринг агентов через share_code
+- `ListMarketplaceAgents` — каталог публичных агентов с поиском
+
 ---
 
 ## ПРАВИЛА
@@ -177,10 +183,8 @@ go test ./...
 |---|--------|--------|
 | 30/48 | Qdrant + CLIP (production RAG) | Нужна инфраструктура |
 | 33 | Unified RateLimiter (Redis) | Нужен Redis |
-| 49 | Usage stats + billing | Нужно UI |
-| 50 | Agent marketplace | Нужно UI + модерация |
 
-**Прогресс: 46/50 задач выполнено (92%)**
+**Прогресс: 48/50 задач выполнено (96%)**
 
 ---
 

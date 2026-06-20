@@ -142,7 +142,7 @@ func (db *DB) GetUserChatsByUserID(userID string) ([]struct {
 	       COALESCE(c.allow_members_to_add, FALSE)
 	FROM chats c
 	LEFT JOIN unread_counts uc ON c.id = uc.room_id
-	WHERE c.type NOT IN ('owl', 'hermes')
+	WHERE c.type NOT IN ('owl', 'hermes', 'ai')
 		AND (c.participant_ids @> ARRAY[$1::uuid] OR c.participants::jsonb @> jsonb_build_array((SELECT username FROM users WHERE id=$1::uuid)))
 	ORDER BY COALESCE(c.last_message_time, c.created_at) DESC`
 	rows, err := db.Query(query, userID)
@@ -331,26 +331,26 @@ func (db *DB) MarkRead(room, user string) error {
 	return err
 }
 
-func (db *DB) MarkReadAndCheck(room, user string) (bool, error) {
+func (db *DB) MarkReadAndCheck(room, userID string) (bool, error) {
 	tx, err := db.Begin()
 	if err != nil {
 		return false, err
 	}
 	defer tx.Rollback()
 
-	res, err := tx.Exec(`UPDATE user_chat_metadata SET last_read_at=NOW() WHERE username=$1 AND room_id=$2`, user, room)
+	res, err := tx.Exec(`UPDATE user_chat_metadata SET last_read_at=NOW() WHERE user_id=$1::uuid AND room_id=$2`, userID, room)
 	if err != nil {
 		return false, err
 	}
 	affected, _ := res.RowsAffected()
 	if affected == 0 {
-		_, err = tx.Exec(`INSERT INTO user_chat_metadata (username, room_id, last_read_at) VALUES ($1, $2, NOW())`, user, room)
+		_, err = tx.Exec(`INSERT INTO user_chat_metadata (user_id, room_id, last_read_at) VALUES ($1::uuid, $2, NOW()) ON CONFLICT DO NOTHING`, userID, room)
 		if err != nil {
 			return false, err
 		}
 	}
 
-	res, err = tx.Exec(`UPDATE messages SET is_read=TRUE WHERE room_id=$1 AND username!=$2 AND is_read=FALSE`, room, user)
+	res, err = tx.Exec(`UPDATE messages SET is_read=TRUE WHERE room_id=$1 AND username!=$2 AND is_read=FALSE`, room, userID)
 	if err != nil {
 		return false, err
 	}
@@ -359,7 +359,7 @@ func (db *DB) MarkReadAndCheck(room, user string) (bool, error) {
 
 	err = tx.Commit()
 	if err == nil && affected > 0 {
-		_ = db.IncrementUserChatListVersion(user)
+		_ = db.IncrementUserChatListVersionByUserID(userID)
 	}
 	return affected > 0, err
 }

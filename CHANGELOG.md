@@ -1,5 +1,25 @@
 # Лава — Server Changelog
 
+## [1.3.0.2] - 2026-06-20
+
+### AI Services v2 — Usage Stats + Marketplace
+- **ai_provider.go** — `StreamChunk` добавлен `Usage *StreamUsage` (prompt_tokens, completion_tokens, total_tokens)
+- **ai_provider_openrouter.go** — парсинг `usage` из SSE response (финальный чанк)
+- **ai_agent_executor.go** — `Execute()` возвращает `ExecutionResult{ModelUsed, TokenCount}`, трекинг токенов
+- **ai_v2.go** — `recordUsage()` записывает агрегированную статистику в `ai_usage_stats` (per user/agent/hour)
+- **ai_v2.go** — `saveAssistantMessage()` сохраняет реальный `token_count` + `model_used`
+- **ai_v2.go** — `GetAIUsageStats()` + `GetAIUsageStatsSummary()` — статистика использования
+- **db_ai_v2.go** — новая таблица `ai_usage_stats` (user_id, agent_id, total_tokens, request_count, period_start)
+- **db_ai_v2.go** — новая таблица `agent_reviews` (agent_id, user_id, rating 1-5, review)
+- **db_ai_v2.go** — `agents_v2` расширена: install_count, avg_rating, review_count, tags, original_agent_id, version, share_code
+- **db_ai_v2.go** — CRUD для отзывов: AddAgentReview, GetAgentReviews, DeleteAgentReview
+- **db_ai_v2.go** — Marketplace: ListMarketplaceAgents, GetAgentByShareCode, SetAgentShareCode, IncrementInstallCount
+- **server_ai_v2.go** — 7 новых RPC: RateAIAgent, GetAIAgentReviews, ListMarketplaceAgents, GetAIAgentStats, ShareAIAgent, InstallAIAgent, GetAIUsageStats
+- **messenger.proto** — 7 новых RPC + 10 новых message типов для marketplace и usage stats
+- **ai_provider_websocket.go** — fix: non-constant format string в fmt.Errorf
+
+---
+
 ## [1.2.0.11] - 2026-06-19
 
 ### Оптимизация

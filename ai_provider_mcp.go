@@ -64,7 +64,6 @@ func (p *mcpProvider) connect(ctx context.Context) error {
 		return nil // already connected
 	}
 
-	p.command = p.command
 	p.cmd = exec.CommandContext(ctx, p.command, p.args...)
 	stdin, err := p.cmd.StdinPipe()
 	if err != nil {

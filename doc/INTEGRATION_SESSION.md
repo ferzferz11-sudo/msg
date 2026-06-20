@@ -26,6 +26,36 @@
 
 ---
 
+## Сессия 45 — AI v2 Usage Stats + Marketplace
+
+### Что сделано
+
+#### Usage Stats
+1. **StreamChunk.Usage** — добавлен `StreamUsage{PromptTokens, CompletionTokens, TotalTokens}`
+2. **OpenRouter provider** — парсинг `usage` из SSE response (финальный чанк)
+3. **AgentExecutor.Execute()** — возвращает `ExecutionResult{ModelUsed, TokenCount}`
+4. **AIGateway.Chat()** — сохраняет реальный `token_count` + `model_used` в `ai_messages_v2`
+5. **ai_usage_stats** таблица — агрегированная статистика по user/agent/hour
+6. **GetAIUsageStats** RPC — статистика использования для клиента
+
+#### Agent Marketplace
+1. **agent_reviews** таблица — отзывы с рейтингами 1-5
+2. **agents_v2** расширена — install_count, avg_rating, review_count, tags, original_agent_id, version, share_code
+3. **RateAIAgent** RPC — оценка и отзыв на агента
+4. **ShareAIAgent / InstallAIAgent** — шаринг агентов через share_code
+5. **ListMarketplaceAgents** — каталог публичных агентов с поиском
+6. **CloneAIAgent** — теперь отслеживает original_agent_id
+
+#### Proto
+- 7 новых RPC + 10 новых message типов
+
+### Статус
+- Go build: ✅
+- Tests: all PASS
+- Dev (50052): ready for deploy
+
+---
+
 ## Сессия 38 — ChatList V2 Last Message Optimization
 
 ### Что сделано

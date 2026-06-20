@@ -152,12 +152,15 @@
 ### AI v2 — Доработка
 - [x] WebSocket provider (реализация) ✅
 - [x] MiMo deep integration (DB, bash) ✅
+- [x] Usage stats (token tracking, ai_usage_stats table) ✅
+- [x] Agent marketplace (reviews, ratings, share, install) ✅
 - [ ] Production RAG (Qdrant/CLIP) — нужна инфраструктура
-- [ ] Usage stats + billing — нужно UI
 
 ### P3 оптимизации
 - [x] DB split (db.go → 4 файла) ✅
 - [x] Concurrency fixes (hub broadcast) ✅
 - [x] Удаление deprecated v1 кода (auth, chat) ✅
+- [x] Usage stats (token tracking) ✅
+- [x] Agent marketplace (reviews, ratings, share) ✅
 - [ ] Qdrant + CLIP (production RAG) — нужна инфраструктура
 - [ ] Unified RateLimiter (Redis) — нужен Redis

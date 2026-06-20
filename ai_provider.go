@@ -21,10 +21,18 @@ type AgentProvider interface {
 	Close() error
 }
 
+// StreamUsage tracks token usage from an LLM response
+type StreamUsage struct {
+	PromptTokens     int
+	CompletionTokens int
+	TotalTokens      int
+}
+
 // StreamChunk is a single chunk from a streaming response
 type StreamChunk struct {
 	Content  string
 	ToolCall *ToolCallRequestInput
+	Usage    *StreamUsage
 	Done     bool
 	Error    error
 }

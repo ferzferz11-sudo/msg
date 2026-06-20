@@ -124,7 +124,7 @@ func (p *webSocketProvider) StreamChat(ctx context.Context, messages []AIMessage
 			conn.SetReadDeadline(time.Now().Add(5 * time.Minute))
 
 			if resp.Error != "" {
-				ch <- StreamChunk{Error: fmt.Errorf(resp.Error), Done: true}
+				ch <- StreamChunk{Error: fmt.Errorf("%s", resp.Error), Done: true}
 				return
 			}
 

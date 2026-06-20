@@ -28,12 +28,21 @@ func NewAgentExecutor(db *sql.DB, registry *ProviderRegistry, tools *ToolRegistr
 	}
 }
 
+// ExecutionResult holds the result of an agent execution
+type ExecutionResult struct {
+	ModelUsed    string
+	TokenCount   int
+	PromptTokens int
+}
+
 // Execute runs an agent with messages, streaming chunks via onChunk callback
-func (e *AgentExecutor) Execute(ctx context.Context, agent *AgentV2, messages []AIMessageInput, settings *AIChatSettings, onChunk func(token string, finished bool) error) error {
+func (e *AgentExecutor) Execute(ctx context.Context, agent *AgentV2, messages []AIMessageInput, settings *AIChatSettings, onChunk func(token string, finished bool) error) (*ExecutionResult, error) {
+	result := &ExecutionResult{ModelUsed: agent.Model}
+
 	// 1. Get provider from registry
 	provider, err := e.registry.Create(agent.ProviderType, agent.ProviderConfig, resolveAPIKey(agent, settings))
 	if err != nil {
-		return fmt.Errorf("failed to create provider: %w", err)
+		return nil, fmt.Errorf("failed to create provider: %w", err)
 	}
 	defer provider.Close()
 
@@ -59,7 +68,7 @@ func (e *AgentExecutor) Execute(ctx context.Context, agent *AgentV2, messages []
 		// Stream from provider
 		ch, err := provider.StreamChat(ctx, messages, toolDefs)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		// Collect response and tool calls
@@ -67,7 +76,7 @@ func (e *AgentExecutor) Execute(ctx context.Context, agent *AgentV2, messages []
 		var toolCalls []ToolCallRequestInput
 		for chunk := range ch {
 			if chunk.Error != nil {
-				return chunk.Error
+				return nil, chunk.Error
 			}
 			if chunk.Content != "" {
 				fullContent += chunk.Content
@@ -75,6 +84,10 @@ func (e *AgentExecutor) Execute(ctx context.Context, agent *AgentV2, messages []
 			}
 			if chunk.ToolCall != nil {
 				toolCalls = append(toolCalls, *chunk.ToolCall)
+			}
+			if chunk.Usage != nil {
+				result.TokenCount = chunk.Usage.TotalTokens
+				result.PromptTokens = chunk.Usage.PromptTokens
 			}
 			if chunk.Done {
 				break
@@ -84,7 +97,7 @@ func (e *AgentExecutor) Execute(ctx context.Context, agent *AgentV2, messages []
 		// If no tool calls, we're done
 		if len(toolCalls) == 0 {
 			onChunk("", true)
-			return nil
+			return result, nil
 		}
 
 		// Execute tools and build results
@@ -99,7 +112,7 @@ func (e *AgentExecutor) Execute(ctx context.Context, agent *AgentV2, messages []
 	}
 
 	onChunk("", true)
-	return nil
+	return result, nil
 }
 
 func (e *AgentExecutor) executeTool(ctx context.Context, name string, argsJSON string) string {

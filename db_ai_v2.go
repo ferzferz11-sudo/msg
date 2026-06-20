@@ -13,26 +13,33 @@ import (
 // ======= Types =======
 
 type AgentV2 struct {
-	ID             string         `json:"id"`
-	Name           string         `json:"name"`
-	Description    string         `json:"description"`
-	ProviderType   string         `json:"provider_type"`
-	ProviderConfig map[string]any `json:"provider_config"`
-	SystemPrompt   string         `json:"system_prompt"`
-	Model          string         `json:"model"`
-	MaxTokens      int            `json:"max_tokens"`
-	Temperature    float64        `json:"temperature"`
-	ToolsEnabled   bool           `json:"tools_enabled"`
-	ToolWhitelist  []string       `json:"tool_whitelist"`
-	RAGEnabled     bool           `json:"rag_enabled"`
-	RAGConfig      map[string]any `json:"rag_config"`
-	RateLimit      *int           `json:"rate_limit"`
-	IsPreset       bool           `json:"is_preset"`
-	IsPublic       bool           `json:"is_public"`
-	IsActive       bool           `json:"is_active"`
-	CreatedBy      string         `json:"created_by"`
-	CreatedAt      time.Time      `json:"created_at"`
-	UpdatedAt      time.Time      `json:"updated_at"`
+	ID              string         `json:"id"`
+	Name            string         `json:"name"`
+	Description     string         `json:"description"`
+	ProviderType    string         `json:"provider_type"`
+	ProviderConfig  map[string]any `json:"provider_config"`
+	SystemPrompt    string         `json:"system_prompt"`
+	Model           string         `json:"model"`
+	MaxTokens       int            `json:"max_tokens"`
+	Temperature     float64        `json:"temperature"`
+	ToolsEnabled    bool           `json:"tools_enabled"`
+	ToolWhitelist   []string       `json:"tool_whitelist"`
+	RAGEnabled      bool           `json:"rag_enabled"`
+	RAGConfig       map[string]any `json:"rag_config"`
+	RateLimit       *int           `json:"rate_limit"`
+	IsPreset        bool           `json:"is_preset"`
+	IsPublic        bool           `json:"is_public"`
+	IsActive        bool           `json:"is_active"`
+	CreatedBy       string         `json:"created_by"`
+	InstallCount    int            `json:"install_count"`
+	AvgRating       float64        `json:"avg_rating"`
+	ReviewCount     int            `json:"review_count"`
+	Tags            []string       `json:"tags"`
+	OriginalAgentID string         `json:"original_agent_id"`
+	Version         int            `json:"version"`
+	ShareCode       string         `json:"share_code"`
+	CreatedAt       time.Time      `json:"created_at"`
+	UpdatedAt       time.Time      `json:"updated_at"`
 }
 
 type AIChatV2 struct {
@@ -165,6 +172,38 @@ func MigrateAIV2(db *sql.DB) error {
 			requests_per_hour   INT DEFAULT 100,
 			tokens_per_minute   INT DEFAULT 100000
 		)`,
+
+		// Usage stats (aggregated per user/agent/hour)
+		`CREATE TABLE IF NOT EXISTS ai_usage_stats (
+			user_id       UUID NOT NULL REFERENCES users(id),
+			agent_id      VARCHAR(255) NOT NULL,
+			total_tokens  INT DEFAULT 0,
+			request_count INT DEFAULT 0,
+			period_start  TIMESTAMPTZ NOT NULL,
+			PRIMARY KEY (user_id, agent_id, period_start)
+		)`,
+		`CREATE INDEX IF NOT EXISTS idx_ai_usage_stats_user ON ai_usage_stats(user_id, period_start DESC)`,
+
+		// Agent reviews (marketplace)
+		`CREATE TABLE IF NOT EXISTS agent_reviews (
+			id          BIGSERIAL PRIMARY KEY,
+			agent_id    VARCHAR(255) NOT NULL REFERENCES agents_v2(id) ON DELETE CASCADE,
+			user_id     UUID NOT NULL REFERENCES users(id),
+			rating      INT NOT NULL CHECK (rating >= 1 AND rating <= 5),
+			review      TEXT DEFAULT '',
+			created_at  TIMESTAMPTZ DEFAULT NOW(),
+			UNIQUE (agent_id, user_id)
+		)`,
+		`CREATE INDEX IF NOT EXISTS idx_agent_reviews_agent ON agent_reviews(agent_id)`,
+
+		// Agent marketplace fields (added to agents_v2)
+		`ALTER TABLE agents_v2 ADD COLUMN IF NOT EXISTS install_count INT DEFAULT 0`,
+		`ALTER TABLE agents_v2 ADD COLUMN IF NOT EXISTS avg_rating FLOAT DEFAULT 0`,
+		`ALTER TABLE agents_v2 ADD COLUMN IF NOT EXISTS review_count INT DEFAULT 0`,
+		`ALTER TABLE agents_v2 ADD COLUMN IF NOT EXISTS tags TEXT[] DEFAULT '{}'`,
+		`ALTER TABLE agents_v2 ADD COLUMN IF NOT EXISTS original_agent_id VARCHAR(255) DEFAULT ''`,
+		`ALTER TABLE agents_v2 ADD COLUMN IF NOT EXISTS version INT DEFAULT 1`,
+		`ALTER TABLE agents_v2 ADD COLUMN IF NOT EXISTS share_code VARCHAR(32) DEFAULT ''`,
 	}
 
 	for _, q := range queries {
@@ -232,9 +271,9 @@ func (d *DB) GetAgentV2(id string) (*AgentV2, error) {
 	var a AgentV2
 	var pcJSON, rcJSON string
 	var toolWL []string
-	query := `SELECT id, name, description, provider_type, provider_config, system_prompt, model, max_tokens, temperature, tools_enabled, tool_whitelist, rag_enabled, rag_config, rate_limit, is_preset, is_public, is_active, COALESCE(created_by,''), created_at, updated_at
+	query := `SELECT id, name, description, provider_type, provider_config, system_prompt, model, max_tokens, temperature, tools_enabled, tool_whitelist, rag_enabled, rag_config, rate_limit, is_preset, is_public, is_active, COALESCE(created_by,''), install_count, avg_rating, review_count, tags, original_agent_id, version, share_code, created_at, updated_at
 		FROM agents_v2 WHERE id = $1 AND is_active = TRUE`
-	err := d.QueryRow(query, id).Scan(&a.ID, &a.Name, &a.Description, &a.ProviderType, &pcJSON, &a.SystemPrompt, &a.Model, &a.MaxTokens, &a.Temperature, &a.ToolsEnabled, &toolWL, &a.RAGEnabled, &rcJSON, &a.RateLimit, &a.IsPreset, &a.IsPublic, &a.IsActive, &a.CreatedBy, &a.CreatedAt, &a.UpdatedAt)
+	err := d.QueryRow(query, id).Scan(&a.ID, &a.Name, &a.Description, &a.ProviderType, &pcJSON, &a.SystemPrompt, &a.Model, &a.MaxTokens, &a.Temperature, &a.ToolsEnabled, &toolWL, &a.RAGEnabled, &rcJSON, &a.RateLimit, &a.IsPreset, &a.IsPublic, &a.IsActive, &a.CreatedBy, &a.InstallCount, &a.AvgRating, &a.ReviewCount, &a.Tags, &a.OriginalAgentID, &a.Version, &a.ShareCode, &a.CreatedAt, &a.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -248,11 +287,11 @@ func (d *DB) ListAgentsV2(userID string, includePublic bool) ([]*AgentV2, error)
 	var query string
 	var args []any
 	if includePublic {
-		query = `SELECT id, name, description, provider_type, provider_config, system_prompt, model, max_tokens, temperature, tools_enabled, tool_whitelist, rag_enabled, rag_config, rate_limit, is_preset, is_public, is_active, COALESCE(created_by,''), created_at, updated_at
+		query = `SELECT id, name, description, provider_type, provider_config, system_prompt, model, max_tokens, temperature, tools_enabled, tool_whitelist, rag_enabled, rag_config, rate_limit, is_preset, is_public, is_active, COALESCE(created_by,''), install_count, avg_rating, review_count, tags, original_agent_id, version, share_code, created_at, updated_at
 			FROM agents_v2 WHERE is_active = TRUE AND (created_by = $1::uuid OR is_public = TRUE) ORDER BY is_preset DESC, name ASC`
 		args = []any{userID}
 	} else {
-		query = `SELECT id, name, description, provider_type, provider_config, system_prompt, model, max_tokens, temperature, tools_enabled, tool_whitelist, rag_enabled, rag_config, rate_limit, is_preset, is_public, is_active, COALESCE(created_by,''), created_at, updated_at
+		query = `SELECT id, name, description, provider_type, provider_config, system_prompt, model, max_tokens, temperature, tools_enabled, tool_whitelist, rag_enabled, rag_config, rate_limit, is_preset, is_public, is_active, COALESCE(created_by,''), install_count, avg_rating, review_count, tags, original_agent_id, version, share_code, created_at, updated_at
 			FROM agents_v2 WHERE is_active = TRUE AND created_by = $1::uuid ORDER BY name ASC`
 		args = []any{userID}
 	}
@@ -260,13 +299,13 @@ func (d *DB) ListAgentsV2(userID string, includePublic bool) ([]*AgentV2, error)
 }
 
 func (d *DB) ListPresetAgentsV2() ([]*AgentV2, error) {
-	query := `SELECT id, name, description, provider_type, provider_config, system_prompt, model, max_tokens, temperature, tools_enabled, tool_whitelist, rag_enabled, rag_config, rate_limit, is_preset, is_public, is_active, COALESCE(created_by,''), created_at, updated_at
+	query := `SELECT id, name, description, provider_type, provider_config, system_prompt, model, max_tokens, temperature, tools_enabled, tool_whitelist, rag_enabled, rag_config, rate_limit, is_preset, is_public, is_active, COALESCE(created_by,''), install_count, avg_rating, review_count, tags, original_agent_id, version, share_code, created_at, updated_at
 		FROM agents_v2 WHERE is_active = TRUE AND is_preset = TRUE ORDER BY name ASC`
 	return d.scanAgents(query)
 }
 
 func (d *DB) ListAllActiveAgentsV2() ([]*AgentV2, error) {
-	query := `SELECT id, name, description, provider_type, provider_config, system_prompt, model, max_tokens, temperature, tools_enabled, tool_whitelist, rag_enabled, rag_config, rate_limit, is_preset, is_public, is_active, COALESCE(created_by,''), created_at, updated_at
+	query := `SELECT id, name, description, provider_type, provider_config, system_prompt, model, max_tokens, temperature, tools_enabled, tool_whitelist, rag_enabled, rag_config, rate_limit, is_preset, is_public, is_active, COALESCE(created_by,''), install_count, avg_rating, review_count, tags, original_agent_id, version, share_code, created_at, updated_at
 		FROM agents_v2 WHERE is_active = TRUE ORDER BY is_preset DESC, name ASC`
 	return d.scanAgents(query)
 }
@@ -302,7 +341,7 @@ func (d *DB) scanAgents(query string, args ...any) ([]*AgentV2, error) {
 		var a AgentV2
 		var pcJSON, rcJSON string
 		var toolWL []string
-		if err := rows.Scan(&a.ID, &a.Name, &a.Description, &a.ProviderType, &pcJSON, &a.SystemPrompt, &a.Model, &a.MaxTokens, &a.Temperature, &a.ToolsEnabled, &toolWL, &a.RAGEnabled, &rcJSON, &a.RateLimit, &a.IsPreset, &a.IsPublic, &a.IsActive, &a.CreatedBy, &a.CreatedAt, &a.UpdatedAt); err != nil {
+		if err := rows.Scan(&a.ID, &a.Name, &a.Description, &a.ProviderType, &pcJSON, &a.SystemPrompt, &a.Model, &a.MaxTokens, &a.Temperature, &a.ToolsEnabled, &toolWL, &a.RAGEnabled, &rcJSON, &a.RateLimit, &a.IsPreset, &a.IsPublic, &a.IsActive, &a.CreatedBy, &a.InstallCount, &a.AvgRating, &a.ReviewCount, &a.Tags, &a.OriginalAgentID, &a.Version, &a.ShareCode, &a.CreatedAt, &a.UpdatedAt); err != nil {
 			return nil, err
 		}
 		a.ProviderConfig = make(map[string]any)
@@ -387,9 +426,9 @@ func GetAgentV2FromDB(d *sql.DB, id string) (*AgentV2, error) {
 	var a AgentV2
 	var pcJSON, rcJSON string
 	var toolWL []string
-	query := `SELECT id, name, description, provider_type, provider_config, system_prompt, model, max_tokens, temperature, tools_enabled, tool_whitelist, rag_enabled, rag_config, rate_limit, is_preset, is_public, is_active, COALESCE(created_by,''), created_at, updated_at
+	query := `SELECT id, name, description, provider_type, provider_config, system_prompt, model, max_tokens, temperature, tools_enabled, tool_whitelist, rag_enabled, rag_config, rate_limit, is_preset, is_public, is_active, COALESCE(created_by,''), install_count, avg_rating, review_count, tags, original_agent_id, version, share_code, created_at, updated_at
 		FROM agents_v2 WHERE id = $1 AND is_active = TRUE`
-	err := d.QueryRow(query, id).Scan(&a.ID, &a.Name, &a.Description, &a.ProviderType, &pcJSON, &a.SystemPrompt, &a.Model, &a.MaxTokens, &a.Temperature, &a.ToolsEnabled, &toolWL, &a.RAGEnabled, &rcJSON, &a.RateLimit, &a.IsPreset, &a.IsPublic, &a.IsActive, &a.CreatedBy, &a.CreatedAt, &a.UpdatedAt)
+	err := d.QueryRow(query, id).Scan(&a.ID, &a.Name, &a.Description, &a.ProviderType, &pcJSON, &a.SystemPrompt, &a.Model, &a.MaxTokens, &a.Temperature, &a.ToolsEnabled, &toolWL, &a.RAGEnabled, &rcJSON, &a.RateLimit, &a.IsPreset, &a.IsPublic, &a.IsActive, &a.CreatedBy, &a.InstallCount, &a.AvgRating, &a.ReviewCount, &a.Tags, &a.OriginalAgentID, &a.Version, &a.ShareCode, &a.CreatedAt, &a.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -457,4 +496,104 @@ func arrayToNullable(arr []string) interface{} {
 	}
 	b, _ := json.Marshal(arr)
 	return string(b)
+}
+
+// ======= Agent Reviews (Marketplace) =======
+
+type AgentReview struct {
+	ID        int64     `json:"id"`
+	AgentID   string    `json:"agent_id"`
+	UserID    string    `json:"user_id"`
+	Rating    int       `json:"rating"`
+	Review    string    `json:"review"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+func (d *DB) AddAgentReview(r *AgentReview) error {
+	_, err := d.Exec(`INSERT INTO agent_reviews (agent_id, user_id, rating, review) VALUES ($1, $2, $3, $4)
+		ON CONFLICT (agent_id, user_id) DO UPDATE SET rating = $3, review = $4`,
+		r.AgentID, r.UserID, r.Rating, r.Review)
+	if err != nil {
+		return err
+	}
+	// Update agent rating aggregates
+	_, err = d.Exec(`UPDATE agents_v2 SET avg_rating = (SELECT COALESCE(AVG(rating),0) FROM agent_reviews WHERE agent_id = $1),
+		review_count = (SELECT COUNT(*) FROM agent_reviews WHERE agent_id = $1) WHERE id = $1`, r.AgentID)
+	return err
+}
+
+func (d *DB) GetAgentReviews(agentID string, limit int) ([]*AgentReview, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+	rows, err := d.Query(`SELECT id, agent_id, user_id, rating, review, created_at
+		FROM agent_reviews WHERE agent_id = $1 ORDER BY created_at DESC LIMIT $2`, agentID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var reviews []*AgentReview
+	for rows.Next() {
+		var r AgentReview
+		if err := rows.Scan(&r.ID, &r.AgentID, &r.UserID, &r.Rating, &r.Review, &r.CreatedAt); err != nil {
+			return nil, err
+		}
+		reviews = append(reviews, &r)
+	}
+	return reviews, nil
+}
+
+func (d *DB) DeleteAgentReview(agentID, userID string) error {
+	_, err := d.Exec(`DELETE FROM agent_reviews WHERE agent_id = $1 AND user_id = $2`, agentID, userID)
+	if err != nil {
+		return err
+	}
+	_, err = d.Exec(`UPDATE agents_v2 SET avg_rating = (SELECT COALESCE(AVG(rating),0) FROM agent_reviews WHERE agent_id = $1),
+		review_count = (SELECT COUNT(*) FROM agent_reviews WHERE agent_id = $1) WHERE id = $1`, agentID)
+	return err
+}
+
+func (d *DB) IncrementInstallCount(agentID string) error {
+	_, err := d.Exec(`UPDATE agents_v2 SET install_count = install_count + 1 WHERE id = $1`, agentID)
+	return err
+}
+
+func (d *DB) ListMarketplaceAgents(query string, limit, offset int) ([]*AgentV2, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+	sqlQuery := `SELECT id, name, description, provider_type, provider_config, system_prompt, model, max_tokens, temperature, tools_enabled, tool_whitelist, rag_enabled, rag_config, rate_limit, is_preset, is_public, is_active, COALESCE(created_by,''), install_count, avg_rating, review_count, tags, original_agent_id, version, share_code, created_at, updated_at
+		FROM agents_v2 WHERE is_active = TRUE AND is_public = TRUE`
+	var args []any
+	if query != "" {
+		sqlQuery += ` AND (name ILIKE $1 OR description ILIKE $1 OR $2 = ANY(tags))`
+		args = append(args, "%"+query+"%", query)
+		sqlQuery += ` ORDER BY avg_rating DESC, install_count DESC LIMIT $3 OFFSET $4`
+		args = append(args, limit, offset)
+	} else {
+		sqlQuery += ` ORDER BY avg_rating DESC, install_count DESC LIMIT $1 OFFSET $2`
+		args = append(args, limit, offset)
+	}
+	return d.scanAgents(sqlQuery, args...)
+}
+
+func (d *DB) GetAgentByShareCode(shareCode string) (*AgentV2, error) {
+	var a AgentV2
+	var pcJSON, rcJSON string
+	var toolWL []string
+	query := `SELECT id, name, description, provider_type, provider_config, system_prompt, model, max_tokens, temperature, tools_enabled, tool_whitelist, rag_enabled, rag_config, rate_limit, is_preset, is_public, is_active, COALESCE(created_by,''), install_count, avg_rating, review_count, tags, original_agent_id, version, share_code, created_at, updated_at
+		FROM agents_v2 WHERE share_code = $1 AND is_active = TRUE`
+	err := d.QueryRow(query, shareCode).Scan(&a.ID, &a.Name, &a.Description, &a.ProviderType, &pcJSON, &a.SystemPrompt, &a.Model, &a.MaxTokens, &a.Temperature, &a.ToolsEnabled, &toolWL, &a.RAGEnabled, &rcJSON, &a.RateLimit, &a.IsPreset, &a.IsPublic, &a.IsActive, &a.CreatedBy, &a.InstallCount, &a.AvgRating, &a.ReviewCount, &a.Tags, &a.OriginalAgentID, &a.Version, &a.ShareCode, &a.CreatedAt, &a.UpdatedAt)
+	if err != nil {
+		return nil, err
+	}
+	json.Unmarshal([]byte(pcJSON), &a.ProviderConfig)
+	json.Unmarshal([]byte(rcJSON), &a.RAGConfig)
+	a.ToolWhitelist = toolWL
+	return &a, nil
+}
+
+func (d *DB) SetAgentShareCode(agentID, shareCode string) error {
+	_, err := d.Exec(`UPDATE agents_v2 SET share_code = $2 WHERE id = $1`, agentID, shareCode)
+	return err
 }

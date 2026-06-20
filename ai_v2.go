@@ -85,7 +85,7 @@ func (g *AIGateway) Chat(ctx context.Context, req *ChatRequest, streamFn func(to
 
 	// 9. Execute
 	var fullResponse string
-	err = g.executor.Execute(ctx, agent, messages, settings, func(token string, finished bool) error {
+	execResult, err := g.executor.Execute(ctx, agent, messages, settings, func(token string, finished bool) error {
 		if !finished {
 			fullResponse += token
 		}
@@ -98,10 +98,19 @@ func (g *AIGateway) Chat(ctx context.Context, req *ChatRequest, streamFn func(to
 		return err
 	}
 
-	// 11. Save assistant response
-	g.saveAssistantMessage(ctx, chat.ID, agent.ID, fullResponse)
+	// 11. Save assistant response with real token count
+	tokenCount := 0
+	modelUsed := agent.Model
+	if execResult != nil {
+		tokenCount = execResult.TokenCount
+		modelUsed = execResult.ModelUsed
+	}
+	g.saveAssistantMessage(ctx, chat.ID, agent.ID, fullResponse, tokenCount, modelUsed)
 
-	// 12. Update chats table for UI
+	// 12. Update usage stats
+	g.recordUsage(userID, agent.ID, tokenCount)
+
+	// 13. Update chats table for UI
 	g.updateChatsLastMessage(ctx, chat.ID, fullResponse)
 
 	return nil
@@ -240,12 +249,14 @@ func (g *AIGateway) saveUserMessage(ctx context.Context, chatID, message string)
 	})
 }
 
-func (g *AIGateway) saveAssistantMessage(ctx context.Context, chatID, agentID, content string) {
+func (g *AIGateway) saveAssistantMessage(ctx context.Context, chatID, agentID, content string, tokenCount int, modelUsed string) {
 	g.dbAddMessage(&AIMessageV2{
-		ChatID:  chatID,
-		Role:    "assistant",
-		AgentID: agentID,
-		Content: content,
+		ChatID:     chatID,
+		Role:       "assistant",
+		AgentID:    agentID,
+		Content:    content,
+		TokenCount: tokenCount,
+		ModelUsed:  modelUsed,
 	})
 }
 
@@ -267,6 +278,58 @@ func (g *AIGateway) generateChatName(chatType string) string {
 		return "Pipeline Chat"
 	}
 	return "AI Chat"
+}
+
+// recordUsage tracks token usage per user per agent
+func (g *AIGateway) recordUsage(userID, agentID string, tokens int) {
+	if tokens <= 0 {
+		return
+	}
+	go func() {
+		_, err := g.db.Exec(`INSERT INTO ai_usage_stats (user_id, agent_id, total_tokens, request_count, period_start)
+			VALUES ($1, $2, $3, 1, date_trunc('hour', NOW()))
+			ON CONFLICT (user_id, agent_id, period_start)
+			DO UPDATE SET total_tokens = ai_usage_stats.total_tokens + $3, request_count = ai_usage_stats.request_count + 1`,
+			userID, agentID, tokens)
+		if err != nil {
+			logger.Warnf("recordUsage: %v", err)
+		}
+	}()
+}
+
+// GetAIUsageStats returns aggregated usage stats for a user
+func (g *AIGateway) GetAIUsageStats(userID string) ([]*AIUsageStat, error) {
+	rows, err := g.db.Query(`SELECT user_id, agent_id, total_tokens, request_count, period_start
+		FROM ai_usage_stats WHERE user_id = $1::uuid ORDER BY period_start DESC LIMIT 100`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var stats []*AIUsageStat
+	for rows.Next() {
+		var s AIUsageStat
+		if err := rows.Scan(&s.UserID, &s.AgentID, &s.TotalTokens, &s.RequestCount, &s.PeriodStart); err != nil {
+			return nil, err
+		}
+		stats = append(stats, &s)
+	}
+	return stats, nil
+}
+
+// GetAIUsageStatsSummary returns totals for a user
+func (g *AIGateway) GetAIUsageStatsSummary(userID string) (totalTokens, totalRequests int, err error) {
+	err = g.db.QueryRow(`SELECT COALESCE(SUM(total_tokens),0), COALESCE(SUM(request_count),0)
+		FROM ai_usage_stats WHERE user_id = $1::uuid`, userID).Scan(&totalTokens, &totalRequests)
+	return
+}
+
+// AIUsageStat represents a usage statistics record
+type AIUsageStat struct {
+	UserID       string    `json:"user_id"`
+	AgentID      string    `json:"agent_id"`
+	TotalTokens  int       `json:"total_tokens"`
+	RequestCount int       `json:"request_count"`
+	PeriodStart  time.Time `json:"period_start"`
 }
 
 // ======= DB wrappers =======

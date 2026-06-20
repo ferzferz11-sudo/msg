@@ -111,19 +111,21 @@ func (s *server) MarkRead(ctx context.Context, req *gen.MarkReadRequest) (*gen.M
 	if userID == "" {
 		userID = req.UserId
 	}
-	username := resolveDisplayName(s.db, userID)
+	if userID == "" {
+		return &gen.MarkReadResponse{Success: true}, nil
+	}
 
-	changed, err := s.db.MarkReadAndCheck(req.RoomId, username)
+	changed, err := s.db.MarkReadAndCheck(req.RoomId, userID)
 	if err != nil {
-		logger.Infof("Failed to mark read for %s in room %s: %v", username, req.RoomId, err)
+		logger.Infof("Failed to mark read for %s in room %s: %v", userID, req.RoomId, err)
 		return &gen.MarkReadResponse{Success: false}, err
 	}
 
 	if changed {
-		logger.Infof("Marked read for %s in room %s", username, req.RoomId)
+		logger.Infof("Marked read for %s in room %s", userID, req.RoomId)
 		s.hub.Broadcast(&gen.Message{
 			User:   "SYSTEM",
-			Text:   "READ_ALL:" + username,
+			Text:   "READ_ALL:" + userID,
 			RoomId: req.RoomId,
 		})
 	}

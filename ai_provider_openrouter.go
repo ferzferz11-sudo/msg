@@ -139,23 +139,39 @@ func (p *openRouterProvider) readSSEStream(ctx context.Context, body io.Reader, 
 					} `json:"tool_calls"`
 				} `json:"delta"`
 			} `json:"choices"`
+			Usage *struct {
+				PromptTokens     int `json:"prompt_tokens"`
+				CompletionTokens int `json:"completion_tokens"`
+				TotalTokens      int `json:"total_tokens"`
+			} `json:"usage"`
 		}
 		if err := json.Unmarshal([]byte(data), &chunk); err != nil {
 			continue
 		}
-		if len(chunk.Choices) == 0 {
+		if len(chunk.Choices) == 0 && chunk.Usage == nil {
 			continue
 		}
-		delta := chunk.Choices[0].Delta
-		if delta.Content != "" {
-			ch <- StreamChunk{Content: delta.Content}
+		if len(chunk.Choices) > 0 {
+			delta := chunk.Choices[0].Delta
+			if delta.Content != "" {
+				ch <- StreamChunk{Content: delta.Content}
+			}
+			for _, tc := range delta.ToolCalls {
+				ch <- StreamChunk{
+					ToolCall: &ToolCallRequestInput{
+						ID:        tc.ID,
+						Name:      tc.Function.Name,
+						Arguments: tc.Function.Arguments,
+					},
+				}
+			}
 		}
-		for _, tc := range delta.ToolCalls {
+		if chunk.Usage != nil {
 			ch <- StreamChunk{
-				ToolCall: &ToolCallRequestInput{
-					ID:        tc.ID,
-					Name:      tc.Function.Name,
-					Arguments: tc.Function.Arguments,
+				Usage: &StreamUsage{
+					PromptTokens:     chunk.Usage.PromptTokens,
+					CompletionTokens: chunk.Usage.CompletionTokens,
+					TotalTokens:      chunk.Usage.TotalTokens,
 				},
 			}
 		}

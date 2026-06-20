@@ -131,6 +131,13 @@ const (
 	ChatService_ListAIAgents_FullMethodName           = "/messenger.ChatService/ListAIAgents"
 	ChatService_CloneAIAgent_FullMethodName           = "/messenger.ChatService/CloneAIAgent"
 	ChatService_ListAITools_FullMethodName            = "/messenger.ChatService/ListAITools"
+	ChatService_RateAIAgent_FullMethodName            = "/messenger.ChatService/RateAIAgent"
+	ChatService_GetAIAgentReviews_FullMethodName      = "/messenger.ChatService/GetAIAgentReviews"
+	ChatService_ListMarketplaceAgents_FullMethodName  = "/messenger.ChatService/ListMarketplaceAgents"
+	ChatService_GetAIAgentStats_FullMethodName        = "/messenger.ChatService/GetAIAgentStats"
+	ChatService_ShareAIAgent_FullMethodName           = "/messenger.ChatService/ShareAIAgent"
+	ChatService_InstallAIAgent_FullMethodName         = "/messenger.ChatService/InstallAIAgent"
+	ChatService_GetAIUsageStats_FullMethodName        = "/messenger.ChatService/GetAIUsageStats"
 )
 
 // ChatServiceClient is the client API for ChatService service.
@@ -262,6 +269,14 @@ type ChatServiceClient interface {
 	ListAIAgents(ctx context.Context, in *ListAIAgentsRequest, opts ...grpc.CallOption) (*ListAIAgentsResponse, error)
 	CloneAIAgent(ctx context.Context, in *CloneAIAgentRequest, opts ...grpc.CallOption) (*CloneAIAgentResponse, error)
 	ListAITools(ctx context.Context, in *ListAIToolsRequest, opts ...grpc.CallOption) (*ListAIToolsResponse, error)
+	// === AI Marketplace ===
+	RateAIAgent(ctx context.Context, in *RateAIAgentRequest, opts ...grpc.CallOption) (*RateAIAgentResponse, error)
+	GetAIAgentReviews(ctx context.Context, in *GetAIAgentReviewsRequest, opts ...grpc.CallOption) (*GetAIAgentReviewsResponse, error)
+	ListMarketplaceAgents(ctx context.Context, in *ListMarketplaceAgentsRequest, opts ...grpc.CallOption) (*ListMarketplaceAgentsResponse, error)
+	GetAIAgentStats(ctx context.Context, in *GetAIAgentStatsRequest, opts ...grpc.CallOption) (*GetAIAgentStatsResponse, error)
+	ShareAIAgent(ctx context.Context, in *ShareAIAgentRequest, opts ...grpc.CallOption) (*ShareAIAgentResponse, error)
+	InstallAIAgent(ctx context.Context, in *InstallAIAgentRequest, opts ...grpc.CallOption) (*InstallAIAgentResponse, error)
+	GetAIUsageStats(ctx context.Context, in *GetAIUsageStatsRequest, opts ...grpc.CallOption) (*GetAIUsageStatsResponse, error)
 }
 
 type chatServiceClient struct {
@@ -1464,6 +1479,76 @@ func (c *chatServiceClient) ListAITools(ctx context.Context, in *ListAIToolsRequ
 	return out, nil
 }
 
+func (c *chatServiceClient) RateAIAgent(ctx context.Context, in *RateAIAgentRequest, opts ...grpc.CallOption) (*RateAIAgentResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RateAIAgentResponse)
+	err := c.cc.Invoke(ctx, ChatService_RateAIAgent_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) GetAIAgentReviews(ctx context.Context, in *GetAIAgentReviewsRequest, opts ...grpc.CallOption) (*GetAIAgentReviewsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetAIAgentReviewsResponse)
+	err := c.cc.Invoke(ctx, ChatService_GetAIAgentReviews_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) ListMarketplaceAgents(ctx context.Context, in *ListMarketplaceAgentsRequest, opts ...grpc.CallOption) (*ListMarketplaceAgentsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListMarketplaceAgentsResponse)
+	err := c.cc.Invoke(ctx, ChatService_ListMarketplaceAgents_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) GetAIAgentStats(ctx context.Context, in *GetAIAgentStatsRequest, opts ...grpc.CallOption) (*GetAIAgentStatsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetAIAgentStatsResponse)
+	err := c.cc.Invoke(ctx, ChatService_GetAIAgentStats_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) ShareAIAgent(ctx context.Context, in *ShareAIAgentRequest, opts ...grpc.CallOption) (*ShareAIAgentResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ShareAIAgentResponse)
+	err := c.cc.Invoke(ctx, ChatService_ShareAIAgent_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) InstallAIAgent(ctx context.Context, in *InstallAIAgentRequest, opts ...grpc.CallOption) (*InstallAIAgentResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(InstallAIAgentResponse)
+	err := c.cc.Invoke(ctx, ChatService_InstallAIAgent_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) GetAIUsageStats(ctx context.Context, in *GetAIUsageStatsRequest, opts ...grpc.CallOption) (*GetAIUsageStatsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetAIUsageStatsResponse)
+	err := c.cc.Invoke(ctx, ChatService_GetAIUsageStats_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ChatServiceServer is the server API for ChatService service.
 // All implementations must embed UnimplementedChatServiceServer
 // for forward compatibility.
@@ -1593,6 +1678,14 @@ type ChatServiceServer interface {
 	ListAIAgents(context.Context, *ListAIAgentsRequest) (*ListAIAgentsResponse, error)
 	CloneAIAgent(context.Context, *CloneAIAgentRequest) (*CloneAIAgentResponse, error)
 	ListAITools(context.Context, *ListAIToolsRequest) (*ListAIToolsResponse, error)
+	// === AI Marketplace ===
+	RateAIAgent(context.Context, *RateAIAgentRequest) (*RateAIAgentResponse, error)
+	GetAIAgentReviews(context.Context, *GetAIAgentReviewsRequest) (*GetAIAgentReviewsResponse, error)
+	ListMarketplaceAgents(context.Context, *ListMarketplaceAgentsRequest) (*ListMarketplaceAgentsResponse, error)
+	GetAIAgentStats(context.Context, *GetAIAgentStatsRequest) (*GetAIAgentStatsResponse, error)
+	ShareAIAgent(context.Context, *ShareAIAgentRequest) (*ShareAIAgentResponse, error)
+	InstallAIAgent(context.Context, *InstallAIAgentRequest) (*InstallAIAgentResponse, error)
+	GetAIUsageStats(context.Context, *GetAIUsageStatsRequest) (*GetAIUsageStatsResponse, error)
 	mustEmbedUnimplementedChatServiceServer()
 }
 
@@ -1938,6 +2031,27 @@ func (UnimplementedChatServiceServer) CloneAIAgent(context.Context, *CloneAIAgen
 }
 func (UnimplementedChatServiceServer) ListAITools(context.Context, *ListAIToolsRequest) (*ListAIToolsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListAITools not implemented")
+}
+func (UnimplementedChatServiceServer) RateAIAgent(context.Context, *RateAIAgentRequest) (*RateAIAgentResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RateAIAgent not implemented")
+}
+func (UnimplementedChatServiceServer) GetAIAgentReviews(context.Context, *GetAIAgentReviewsRequest) (*GetAIAgentReviewsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetAIAgentReviews not implemented")
+}
+func (UnimplementedChatServiceServer) ListMarketplaceAgents(context.Context, *ListMarketplaceAgentsRequest) (*ListMarketplaceAgentsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListMarketplaceAgents not implemented")
+}
+func (UnimplementedChatServiceServer) GetAIAgentStats(context.Context, *GetAIAgentStatsRequest) (*GetAIAgentStatsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetAIAgentStats not implemented")
+}
+func (UnimplementedChatServiceServer) ShareAIAgent(context.Context, *ShareAIAgentRequest) (*ShareAIAgentResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ShareAIAgent not implemented")
+}
+func (UnimplementedChatServiceServer) InstallAIAgent(context.Context, *InstallAIAgentRequest) (*InstallAIAgentResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method InstallAIAgent not implemented")
+}
+func (UnimplementedChatServiceServer) GetAIUsageStats(context.Context, *GetAIUsageStatsRequest) (*GetAIUsageStatsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetAIUsageStats not implemented")
 }
 func (UnimplementedChatServiceServer) mustEmbedUnimplementedChatServiceServer() {}
 func (UnimplementedChatServiceServer) testEmbeddedByValue()                     {}
@@ -3894,6 +4008,132 @@ func _ChatService_ListAITools_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ChatService_RateAIAgent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RateAIAgentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).RateAIAgent(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_RateAIAgent_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).RateAIAgent(ctx, req.(*RateAIAgentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_GetAIAgentReviews_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetAIAgentReviewsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).GetAIAgentReviews(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_GetAIAgentReviews_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).GetAIAgentReviews(ctx, req.(*GetAIAgentReviewsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_ListMarketplaceAgents_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListMarketplaceAgentsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).ListMarketplaceAgents(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_ListMarketplaceAgents_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).ListMarketplaceAgents(ctx, req.(*ListMarketplaceAgentsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_GetAIAgentStats_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetAIAgentStatsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).GetAIAgentStats(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_GetAIAgentStats_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).GetAIAgentStats(ctx, req.(*GetAIAgentStatsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_ShareAIAgent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ShareAIAgentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).ShareAIAgent(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_ShareAIAgent_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).ShareAIAgent(ctx, req.(*ShareAIAgentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_InstallAIAgent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(InstallAIAgentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).InstallAIAgent(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_InstallAIAgent_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).InstallAIAgent(ctx, req.(*InstallAIAgentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_GetAIUsageStats_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetAIUsageStatsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).GetAIUsageStats(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_GetAIUsageStats_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).GetAIUsageStats(ctx, req.(*GetAIUsageStatsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ChatService_ServiceDesc is the grpc.ServiceDesc for ChatService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -4308,6 +4548,34 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListAITools",
 			Handler:    _ChatService_ListAITools_Handler,
+		},
+		{
+			MethodName: "RateAIAgent",
+			Handler:    _ChatService_RateAIAgent_Handler,
+		},
+		{
+			MethodName: "GetAIAgentReviews",
+			Handler:    _ChatService_GetAIAgentReviews_Handler,
+		},
+		{
+			MethodName: "ListMarketplaceAgents",
+			Handler:    _ChatService_ListMarketplaceAgents_Handler,
+		},
+		{
+			MethodName: "GetAIAgentStats",
+			Handler:    _ChatService_GetAIAgentStats_Handler,
+		},
+		{
+			MethodName: "ShareAIAgent",
+			Handler:    _ChatService_ShareAIAgent_Handler,
+		},
+		{
+			MethodName: "InstallAIAgent",
+			Handler:    _ChatService_InstallAIAgent_Handler,
+		},
+		{
+			MethodName: "GetAIUsageStats",
+			Handler:    _ChatService_GetAIUsageStats_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

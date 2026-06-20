@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/google/uuid"
 	"LavenderMessenger/gen"
 	"context"
@@ -114,6 +115,14 @@ func (s *server) CreateDirectChat(_ context.Context, req *gen.CreateDirectChatRe
 		if resolved != "" {
 			u2 = resolved
 		}
+	}
+
+	// Validate both users exist
+	exists1, err1 := s.db.UserExists(u1)
+	exists2, err2 := s.db.UserExists(u2)
+	if err1 != nil || err2 != nil || !exists1 || !exists2 {
+		logger.Errorf("CreateDirectChat: user not found (u1=%s exists=%v err=%v, u2=%s exists=%v err=%v)", u1, exists1, err1, u2, exists2, err2)
+		return &gen.CreateDirectChatResponse{Success: false}, fmt.Errorf("user not found")
 	}
 
 	logger.Infof("CreateDirectChat: %s <-> %s", u1, u2)

@@ -100,6 +100,7 @@ func (s *server) CreateAIAgent(ctx context.Context, req *gen.CreateAIAgentReques
 		IsPublic:       req.IsPublic,
 		IsActive:       true,
 		CreatedBy:      userID,
+		Version:        1,
 	}
 
 	if agent.MaxTokens == 0 {
@@ -244,24 +245,27 @@ func (s *server) CloneAIAgent(ctx context.Context, req *gen.CloneAIAgentRequest)
 
 	newID := fmt.Sprintf("agent-%s", uuid.New().String()[:8])
 	clone := &AgentV2{
-		ID:             newID,
-		Name:           req.NewName,
-		Description:    original.Description,
-		ProviderType:   original.ProviderType,
-		ProviderConfig: original.ProviderConfig,
-		SystemPrompt:   original.SystemPrompt,
-		Model:          original.Model,
-		MaxTokens:      original.MaxTokens,
-		Temperature:    original.Temperature,
-		ToolsEnabled:   original.ToolsEnabled,
-		ToolWhitelist:  original.ToolWhitelist,
-		RAGEnabled:     original.RAGEnabled,
-		RAGConfig:      original.RAGConfig,
-		RateLimit:      original.RateLimit,
-		IsPreset:       false,
-		IsPublic:       false,
-		IsActive:       true,
-		CreatedBy:      userID,
+		ID:              newID,
+		Name:            req.NewName,
+		Description:     original.Description,
+		ProviderType:    original.ProviderType,
+		ProviderConfig:  original.ProviderConfig,
+		SystemPrompt:    original.SystemPrompt,
+		Model:           original.Model,
+		MaxTokens:       original.MaxTokens,
+		Temperature:     original.Temperature,
+		ToolsEnabled:    original.ToolsEnabled,
+		ToolWhitelist:   original.ToolWhitelist,
+		RAGEnabled:      original.RAGEnabled,
+		RAGConfig:       original.RAGConfig,
+		RateLimit:       original.RateLimit,
+		IsPreset:        false,
+		IsPublic:        false,
+		IsActive:        true,
+		CreatedBy:       userID,
+		OriginalAgentID: original.ID,
+		Tags:            original.Tags,
+		Version:         1,
 	}
 
 	if err := s.db.CreateAgentV2(clone); err != nil {
@@ -294,6 +298,246 @@ func (s *server) ListAITools(ctx context.Context, req *gen.ListAIToolsRequest) (
 	return &gen.ListAIToolsResponse{Tools: tools}, nil
 }
 
+// ======= Marketplace Handlers =======
+
+func (s *server) RateAIAgent(ctx context.Context, req *gen.RateAIAgentRequest) (*gen.RateAIAgentResponse, error) {
+	userID := getAIV2UserID(ctx)
+	if userID == "" {
+		return &gen.RateAIAgentResponse{Error: "unauthorized"}, nil
+	}
+
+	if req.Rating < 1 || req.Rating > 5 {
+		return &gen.RateAIAgentResponse{Error: "rating must be 1-5"}, nil
+	}
+
+	agent, err := s.db.GetAgentV2(req.AgentId)
+	if err != nil {
+		return &gen.RateAIAgentResponse{Error: "agent not found"}, nil
+	}
+	if agent.IsPreset {
+		return &gen.RateAIAgentResponse{Error: "cannot rate preset agents"}, nil
+	}
+
+	review := &AgentReview{
+		AgentID: req.AgentId,
+		UserID:  userID,
+		Rating:  int(req.Rating),
+		Review:  req.Review,
+	}
+
+	if err := s.db.AddAgentReview(review); err != nil {
+		return &gen.RateAIAgentResponse{Error: err.Error()}, nil
+	}
+
+	updated, _ := s.db.GetAgentV2(req.AgentId)
+	var avgRating float32
+	var reviewCount int32
+	if updated != nil {
+		avgRating = float32(updated.AvgRating)
+		reviewCount = int32(updated.ReviewCount)
+	}
+
+	return &gen.RateAIAgentResponse{
+		Success:     true,
+		AvgRating:   avgRating,
+		ReviewCount: reviewCount,
+	}, nil
+}
+
+func (s *server) GetAIAgentReviews(ctx context.Context, req *gen.GetAIAgentReviewsRequest) (*gen.GetAIAgentReviewsResponse, error) {
+	limit := int(req.Limit)
+	if limit <= 0 {
+		limit = 20
+	}
+
+	reviews, err := s.db.GetAgentReviews(req.AgentId, limit)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	var result []*gen.AgentReviewInfo
+	for _, r := range reviews {
+		result = append(result, &gen.AgentReviewInfo{
+			UserId:    r.UserID,
+			Rating:    int32(r.Rating),
+			Review:    r.Review,
+			CreatedAt: r.CreatedAt.Format("2006-01-02T15:04:05Z"),
+		})
+	}
+
+	agent, _ := s.db.GetAgentV2(req.AgentId)
+	var avgRating float32
+	var reviewCount int32
+	if agent != nil {
+		avgRating = float32(agent.AvgRating)
+		reviewCount = int32(agent.ReviewCount)
+	}
+
+	return &gen.GetAIAgentReviewsResponse{
+		Reviews:     result,
+		AvgRating:   avgRating,
+		ReviewCount: reviewCount,
+	}, nil
+}
+
+func (s *server) ListMarketplaceAgents(ctx context.Context, req *gen.ListMarketplaceAgentsRequest) (*gen.ListMarketplaceAgentsResponse, error) {
+	limit := int(req.Limit)
+	if limit <= 0 {
+		limit = 20
+	}
+	offset := int(req.Offset)
+
+	agents, err := s.db.ListMarketplaceAgents(req.Query, limit, offset)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	var result []*gen.AgentInfoV2
+	for _, a := range agents {
+		result = append(result, agentToProto(a))
+	}
+
+	return &gen.ListMarketplaceAgentsResponse{
+		Agents: result,
+		Total:  int32(len(result)),
+	}, nil
+}
+
+func (s *server) GetAIAgentStats(ctx context.Context, req *gen.GetAIAgentStatsRequest) (*gen.GetAIAgentStatsResponse, error) {
+	agent, err := s.db.GetAgentV2(req.AgentId)
+	if err != nil {
+		return nil, status.Error(codes.NotFound, "agent not found")
+	}
+
+	return &gen.GetAIAgentStatsResponse{
+		InstallCount: int32(agent.InstallCount),
+		AvgRating:    float32(agent.AvgRating),
+		ReviewCount:  int32(agent.ReviewCount),
+	}, nil
+}
+
+func (s *server) ShareAIAgent(ctx context.Context, req *gen.ShareAIAgentRequest) (*gen.ShareAIAgentResponse, error) {
+	userID := getAIV2UserID(ctx)
+	if userID == "" {
+		return &gen.ShareAIAgentResponse{Error: "unauthorized"}, nil
+	}
+
+	agent, err := s.db.GetAgentV2(req.AgentId)
+	if err != nil {
+		return &gen.ShareAIAgentResponse{Error: "agent not found"}, nil
+	}
+
+	if agent.CreatedBy != userID {
+		return &gen.ShareAIAgentResponse{Error: "permission denied"}, nil
+	}
+
+	shareCode := agent.ShareCode
+	if shareCode == "" {
+		shareCode = uuid.New().String()[:8]
+		if err := s.db.SetAgentShareCode(agent.ID, shareCode); err != nil {
+			return &gen.ShareAIAgentResponse{Error: err.Error()}, nil
+		}
+	}
+
+	return &gen.ShareAIAgentResponse{
+		Success:   true,
+		ShareCode: shareCode,
+	}, nil
+}
+
+func (s *server) InstallAIAgent(ctx context.Context, req *gen.InstallAIAgentRequest) (*gen.InstallAIAgentResponse, error) {
+	userID := getAIV2UserID(ctx)
+	if userID == "" {
+		return &gen.InstallAIAgentResponse{Error: "unauthorized"}, nil
+	}
+
+	original, err := s.db.GetAgentByShareCode(req.ShareCode)
+	if err != nil {
+		return &gen.InstallAIAgentResponse{Error: "agent not found for share code"}, nil
+	}
+
+	newID := fmt.Sprintf("agent-%s", uuid.New().String()[:8])
+	newName := req.NewName
+	if newName == "" {
+		newName = original.Name
+	}
+
+	clone := &AgentV2{
+		ID:              newID,
+		Name:            newName,
+		Description:     original.Description,
+		ProviderType:    original.ProviderType,
+		ProviderConfig:  original.ProviderConfig,
+		SystemPrompt:    original.SystemPrompt,
+		Model:           original.Model,
+		MaxTokens:       original.MaxTokens,
+		Temperature:     original.Temperature,
+		ToolsEnabled:    original.ToolsEnabled,
+		ToolWhitelist:   original.ToolWhitelist,
+		RAGEnabled:      original.RAGEnabled,
+		RAGConfig:       original.RAGConfig,
+		RateLimit:       original.RateLimit,
+		IsPreset:        false,
+		IsPublic:        false,
+		IsActive:        true,
+		CreatedBy:       userID,
+		OriginalAgentID: original.ID,
+		Tags:            original.Tags,
+		Version:         1,
+	}
+
+	if err := s.db.CreateAgentV2(clone); err != nil {
+		return &gen.InstallAIAgentResponse{Error: err.Error()}, nil
+	}
+
+	s.db.IncrementInstallCount(original.ID)
+
+	return &gen.InstallAIAgentResponse{
+		Success: true,
+		AgentId: newID,
+	}, nil
+}
+
+func (s *server) GetAIUsageStats(ctx context.Context, req *gen.GetAIUsageStatsRequest) (*gen.GetAIUsageStatsResponse, error) {
+	userID := getAIV2UserID(ctx)
+	if userID == "" {
+		return &gen.GetAIUsageStatsResponse{}, nil
+	}
+
+	gateway := s.aiGateway
+	if gateway == nil {
+		return &gen.GetAIUsageStatsResponse{}, nil
+	}
+
+	stats, err := gateway.GetAIUsageStats(userID)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	totalTokens, totalRequests, _ := gateway.GetAIUsageStatsSummary(userID)
+
+	var result []*gen.UsageStatInfo
+	for _, stat := range stats {
+		agentName := stat.AgentID
+		if a, err := s.db.GetAgentV2(stat.AgentID); err == nil {
+			agentName = a.Name
+		}
+		result = append(result, &gen.UsageStatInfo{
+			AgentId:      stat.AgentID,
+			TotalTokens:  int32(stat.TotalTokens),
+			RequestCount: int32(stat.RequestCount),
+			PeriodStart:  stat.PeriodStart.Format("2006-01-02T15:04:05Z"),
+			AgentName:    agentName,
+		})
+	}
+
+	return &gen.GetAIUsageStatsResponse{
+		Stats:         result,
+		TotalTokens:   int32(totalTokens),
+		TotalRequests: int32(totalRequests),
+	}, nil
+}
+
 // ======= helpers =======
 
 func agentToProto(a *AgentV2) *gen.AgentInfoV2 {
@@ -304,20 +548,27 @@ func agentToProto(a *AgentV2) *gen.AgentInfoV2 {
 		MaxTokens:         int32(a.MaxTokens),
 	}
 	return &gen.AgentInfoV2{
-		Id:             a.ID,
-		Name:           a.Name,
-		Description:    a.Description,
-		ProviderType:   a.ProviderType,
-		Model:          a.Model,
-		SystemPrompt:   a.SystemPrompt,
-		ToolsEnabled:   a.ToolsEnabled,
-		RagEnabled:     a.RAGEnabled,
-		IsPreset:       a.IsPreset,
-		IsPublic:       a.IsPublic,
-		MaxTokens:      int32(a.MaxTokens),
-		Temperature:    float32(a.Temperature),
-		CreatedBy:      a.CreatedBy,
-		Capabilities:   caps,
+		Id:              a.ID,
+		Name:            a.Name,
+		Description:     a.Description,
+		ProviderType:    a.ProviderType,
+		Model:           a.Model,
+		SystemPrompt:    a.SystemPrompt,
+		ToolsEnabled:    a.ToolsEnabled,
+		RagEnabled:      a.RAGEnabled,
+		IsPreset:        a.IsPreset,
+		IsPublic:        a.IsPublic,
+		MaxTokens:       int32(a.MaxTokens),
+		Temperature:     float32(a.Temperature),
+		CreatedBy:       a.CreatedBy,
+		Capabilities:    caps,
+		InstallCount:    int32(a.InstallCount),
+		AvgRating:       float32(a.AvgRating),
+		ReviewCount:     int32(a.ReviewCount),
+		Tags:            a.Tags,
+		OriginalAgentId: a.OriginalAgentID,
+		Version:         int32(a.Version),
+		ShareCode:       a.ShareCode,
 	}
 }
 

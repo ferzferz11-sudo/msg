@@ -341,54 +341,56 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 
 		// Send push notification to all users in the room (except sender)
 		// This ensures users in background receive notifications
-
-		// CRITICAL: Check if sender wants to notify others
-		senderNotifiesOthers := s.db.GetUserPushStatus(msg.User)
-		if !senderNotifiesOthers {
-			logger.Infof("Push skip: %s has disabled outgoing notifications", msg.User)
-		} else {
-			// Get chat participants ONCE (not per user)
-			chat, err := s.db.GetChat(roomID)
-			if err != nil {
-				logger.Errorf("Failed to get chat for push: %v", err)
+		// Skip push for favorites and other virtual rooms
+		if !strings.HasPrefix(roomID, "favorites_") {
+			// CRITICAL: Check if sender wants to notify others
+			senderNotifiesOthers := s.db.GetUserPushStatus(msg.User)
+			if !senderNotifiesOthers {
+				logger.Infof("Push skip: %s has disabled outgoing notifications", msg.User)
 			} else {
-				var participants []string
-				json.Unmarshal([]byte(chat.Participants), &participants)
-
-				// Build participant set for O(1) lookup
-				participantSet := make(map[string]bool, len(participants))
-				for _, p := range participants {
-					participantSet[p] = true
-				}
-
-				// Get all users, but only send to participants
-				allUsers, err := s.db.GetAllUsers()
+				// Get chat participants ONCE (not per user)
+				chat, err := s.db.GetChat(roomID)
 				if err != nil {
-					logger.Errorf("Failed to get all users for push notifications: %v", err)
-			} else {
-				var targets []pushTarget
-				for _, user := range allUsers {
-					if user.Username == msg.User {
-						continue
-					}
-					if !participantSet[user.Username] {
-						continue
+					logger.Errorf("Failed to get chat for push: %v", err)
+				} else {
+					var participants []string
+					json.Unmarshal([]byte(chat.Participants), &participants)
+
+					// Build participant set for O(1) lookup
+					participantSet := make(map[string]bool, len(participants))
+					for _, p := range participants {
+						participantSet[p] = true
 					}
 
-					targets = append(targets, pushTarget{
-						UserId:   user.UserId,
-						Username: user.Username,
-					})
-				}
+					// Get all users, but only send to participants
+					allUsers, err := s.db.GetAllUsers()
+					if err != nil {
+						logger.Errorf("Failed to get all users for push notifications: %v", err)
+					} else {
+						var targets []pushTarget
+						for _, user := range allUsers {
+							if user.Username == msg.User {
+								continue
+							}
+							if !participantSet[user.Username] {
+								continue
+							}
 
-				if len(targets) > 0 {
-					pushText := msg.Text
-					if chat.IsSecret {
-						pushText = "New encrypted message"
+							targets = append(targets, pushTarget{
+								UserId:   user.UserId,
+								Username: user.Username,
+							})
+						}
+
+						if len(targets) > 0 {
+							pushText := msg.Text
+							if chat.IsSecret {
+								pushText = "New encrypted message"
+							}
+							s.sendBatchPushNotifications(targets, msg.User, pushText, roomID)
+						}
 					}
-					s.sendBatchPushNotifications(targets, msg.User, pushText, roomID)
 				}
-			}
 			}
 		}
 	}
