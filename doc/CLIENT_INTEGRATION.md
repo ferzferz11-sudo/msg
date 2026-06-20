@@ -1,554 +1,890 @@
 # Lavender Messenger — Client Integration Guide
 
-**Сервер:** v1.3.0.10 | **Протокол:** gRPC + Protocol Buffers | **Дата:** 2026-06-20
+**Server:** v1.3.0.16 | **Protocol:** gRPC + Protocol Buffers | **Date:** 2026-06-20
 
-Единый документ для интеграции нового клиента с сервером Lavender Messenger.
-
----
-
-## Серверы
-
-| | Prod | Dev |
-|---|---|---|
-| gRPC | `13.140.25.249:50051` | `13.140.25.249:50052` |
-| HTTP | `13.140.25.249:8082` | `13.140.25.249:8083` |
-| Logs | — | `http://13.140.25.249/server-logs-dev` |
+This document covers everything a client needs to integrate with the Lavender Messenger server. Platform-agnostic — applies to Android, iOS, Web, Desktop, or any gRPC-capable client.
 
 ---
 
-## Аутентификация
-
-### AuthService (messenger.proto)
-
-| Метод | Запрос | Ответ | Описание |
-|-------|--------|-------|----------|
-| `SignInV2` | `SignInRequestV2 { username, password, device: DeviceInfo { device_id, device_name, platform } }` | `AuthResponseV2 { success, message, user_id, username, access_token, refresh_token, expires_at }` | Вход (JWT) |
-| `SignUpV2` | `SignUpRequestV2 { username, password, email, device: DeviceInfo }` | `AuthResponseV2` | Регистрация (JWT) |
-| `RefreshToken` | `RefreshTokenRequest { refresh_token }` | `RefreshTokenResponse { success, access_token, refresh_token, expires_at }` | Обновление access token |
-| `SignOut` | `SignOutRequest { user_id, all_devices }` | `AuthResponse` | Выход |
-| `RevokeDevice` | `RevokeDeviceRequest { user_id, device_id }` | `AuthResponse` | Отзыв устройства |
-
-### JWT Workflow
-
-```
-1. SignInV2 → access_token (15 мин) + refresh_token (30 дней)
-2. Каждый gRPC запрос: metadata["authorization"] = "Bearer <access_token>"
-3. Access истёк → RefreshToken(refresh_token) → новые токены
-4. Refresh token rotation: каждый refresh → новый refresh, старый инвалидируется
-```
-
-### Interceptor
-
-Сервер использует `AuthInterceptor` — извлекает `user_id` из JWT в контекст.
-Для неавторизованных вызовов: только `AuthService` методы (`SignIn`, `SignUp`, `SignInV2`, `SignUpV2`).
-
----
-
-## gRPC Services
-
-### 1. ChatService (messenger.proto) — 130+ метода
-
-#### Bidirectional Streams
-
-| Метод | Тип | Описание |
-|-------|-----|----------|
-| `Chat` | `stream Message ↔ stream Message` | Основной чат-стрим. Первое сообщение: `{ room_id, user_id }` для идентификации |
-| `Typing` | `stream TypingRequest ↔ stream TypingSignal` | Индикатор набора текста |
-| `CallSession` | `stream CallMessage ↔ stream CallMessage` | WebRTC signaling (SDP, ICE, accept, reject, hangup) |
-
-**Chat stream — JWT auth:**
-Первое сообщение в стриме должно содержать `user_id` из JWT (не из request fields — сервер валидирует через context).
-
-#### Chat Management
-
-| Метод | Запрос | Ответ | Описание |
-|-------|--------|-------|----------|
-| `GetChatsV2` | `GetChatsRequest { user_id, limit, offset, filter: pinned/archived/muted/all }` | `GetChatsResponse { chats: ChatInfo[] }` | **Основной** эндпоинт чат-листа |
-| `GetAllChats` | `GetAllChatsRequest` | `GetAllChatsResponse { chats: ChatInfo[] }` | Все чаты (admin) |
-| `CreateDirectChat` | `CreateDirectChatRequest { user_id, other_user_id }` | `CreateDirectChatResponse { chat_id }` | 1-on-1 чат |
-| `CreateGroupChat` | `CreateGroupChatRequest { user_id, name, participant_ids[] }` | `CreateGroupChatResponse { chat_id }` | Групповой чат |
-| `DeleteChat` | `DeleteChatRequest { chat_id, requester_user_id }` | `DeleteDeleteChatResponse` | Удаление чата |
-| `UpdateChatName` | `UpdateChatNameRequest { chat_id, user_id, new_name }` | `UpdateChatNameResponse` | Переименование |
-| `UpdateChatAvatar` | `UpdateChatAvatarRequest { chat_id, user_id, avatar_url }` | `UpdateChatAvatarResponse` | Аватар чата |
-| `UpdateChatSettings` | `UpdateChatSettingsRequest { ... }` | `UpdateChatSettingsResponse` | Настройки чата |
-| `AddParticipant` | `AddParticipantRequest { chat_id, user_id, new_participant_id }` | `AddParticipantResponse` | Добавить участника |
-| `RemoveParticipant` | `RemoveParticipantRequest { chat_id, user_id, participant_id }` | `RemoveParticipantResponse` | Удалить участника |
-
-#### ChatList v2
-
-| Метод | Запрос | Ответ | Описание |
-|-------|--------|-------|----------|
-| `PinChat` | `PinChatRequest { chat_id, user_id }` | `PinChatResponse` | Закрепить чат |
-| `UnPinChat` | `UnPinChatRequest { chat_id, user_id }` | `UnPinChatResponse` | Открепить |
-| `ArchiveChat` | `ArchiveChatRequest { chat_id, user_id }` | `ArchiveChatResponse` | Архивировать |
-| `UnarchiveChat` | `UnarchiveChatRequest { chat_id, user_id }` | `UnarchiveChatResponse` | Разархивировать |
-| `SearchChats` | `SearchChatsRequest { user_id, query, limit, offset }` | `SearchChatsResponse` | Поиск чатов |
-| `GetChatListVersion` | `GetChatListVersionRequest { user_id }` | `GetChatListVersionResponse { version }` | Версия для кэширования |
-
-#### Messages
-
-| Метод | Запрос | Ответ | Описание |
-|-------|--------|-------|----------|
-| `GetHistory` | `GetHistoryRequest { room_id, limit }` | `GetHistoryResponse { messages: Message[] }` | История сообщений |
-| `SetReaction` | `ReactionRequest { message_id, room_id, user_id, emoji }` | `ReactionResponse` | Реакция |
-| `DeleteMessages` | `DeleteMessagesRequest { message_ids[], room_id, user_id }` | `DeleteMessagesResponse` | Удаление |
-| `EditMessage` | `EditMessageRequest { message_id, room_id, user_id, new_text }` | `EditMessageResponse` | Редактирование |
-| `MarkRead` | `MarkReadRequest { room_id, user_id, message_id }` | `MarkReadResponse` | Прочитано |
-
-#### Pin Messages
-
-| Метод | Запрос | Ответ | Описание |
-|-------|--------|-------|----------|
-| `PinMessage` | `PinMessageRequest { message_id, chat_id, user_id }` | `PinMessageResponse` | Закрепить сообщение |
-| `UnPinMessage` | `UnPinMessageRequest { message_id, chat_id, user_id }` | `UnPinMessageResponse` | Открепить |
-| `GetPinnedMessages` | `GetPinnedMessagesRequest { chat_id, user_id }` | `GetPinnedMessagesResponse` | Список закреплённых |
-
-#### Secret Chats (E2EE)
-
-| Метод | Запрос | Ответ | Описание |
-|-------|--------|-------|----------|
-| `CreateSecretChat` | `CreateSecretChatRequest { user_id, other_user_id }` | `CreateSecretChatResponse { chat_id }` | Создать секретный чат |
-| `ExchangeSecretKey` | `ExchangeSecretKeyRequest { chat_id, user_id, public_key }` | `ExchangeSecretKeyResponse` | Обмен ключами |
-| `GetSecretChatKey` | `GetSecretChatKeyRequest { chat_id, user_id }` | `GetSecretChatKeyResponse { public_key }` | Получить ключ |
-
-#### Drafts
-
-| Метод | Запрос | Ответ | Описание |
-|-------|--------|-------|----------|
-| `SaveDraft` | `SaveDraftRequest { user_id, room_id, text }` | `SaveDraftResponse` | Сохранить черновик |
-| `GetDraft` | `GetDraftRequest { user_id, room_id }` | `GetDraftResponse { text }` | Получить черновик |
-| `DeleteDraft` | `DeleteDraftRequest { user_id, room_id }` | `DeleteDraftResponse` | Удалить черновик |
-
-#### Favorites
-
-| Метод | Запрос | Ответ | Описание |
-|-------|--------|-------|----------|
-| `AddFavorite` | `AddFavoriteRequest { user_id, message_id }` | `AddFavoriteResponse` | В избранное |
-| `RemoveFavorite` | `RemoveFavoriteRequest { user_id, message_id }` | `RemoveFavoriteResponse` | Убрать из избранного |
-| `GetFavorites` | `GetFavoritesRequest { user_id }` | `GetFavoritesResponse` | Список избранных |
-
-#### Muted
-
-| Метод | Запрос | Ответ | Описание |
-|-------|--------|-------|----------|
-| `GetMutedChats` | `GetMutedChatsRequest { user_id }` | `GetMutedChatsResponse { room_ids[] }` | Заглушенные чаты |
-| `SetMutedChat` | `SetMutedChatRequest { user_id, room_id, muted }` | `SetMutedChatResponse` | Заглушить/включить |
-
-#### Users & Profile (v1 — через ChatService)
-
-| Метод | Запрос | Ответ | Описание |
-|-------|--------|-------|----------|
-| `GetAllUsers` | `GetAllUsersRequest` | `GetAllUsersResponse { users: UserInfo[] }` | Все пользователи |
-| `GetUserProfile` | `GetUserProfileRequest { user_id OR username }` | `GetUserProfileResponse` | Профиль пользователя |
-| `GetUserAvatar` | `GetUserAvatarRequest { user_id OR username }` | `GetUserAvatarResponse { avatar_url, full_avatar_url }` | Аватар |
-| `GetUserId` | `GetUserIdRequest { username }` | `GetUserIdResponse { user_id }` | username → UUID |
-| `UpdateProfile` | `UpdateProfileRequest { user_id, bio, status }` | `UpdateProfileResponse` | Обновить профиль |
-| `UpdateUsername` | `UpdateUsernameRequest { user_id, new_username }` | `UpdateUsernameResponse` | Сменить username |
-| `UpdatePassword` | `UpdatePasswordRequest { user_id, old_password, new_password }` | `UpdatePasswordResponse` | Сменить пароль |
-| `AdminUpdatePassword` | `AdminUpdatePasswordRequest { admin_user_id, target_user_id, new_password }` | `AdminUpdatePasswordResponse` | Админ: сменить пароль |
-| `DeleteProfile` | `DeleteProfileRequest { user_id, password }` | `DeleteProfileResponse` | Удалить аккаунт (пароль обязателен) |
-
-**UserInfo (GetAllUsers):**
-```protobuf
-message UserInfo {
-  string username = 1;
-  string avatar_url = 2;
-  string last_client_version = 3;
-  Timestamp last_seen_at = 4;
-  string email = 5;
-  string user_id = 6;       // v1.2.0.7
-  bool is_super_admin = 7;  // v1.2.0.7
-}
-```
-
-#### Contacts
-
-| Метод | Запрос | Ответ | Описание |
-|-------|--------|-------|----------|
-| `AddContact` | `AddContactRequest { user_id, contact_user_id }` | `AddContactResponse` | Добавить контакт |
-| `RemoveContact` | `RemoveContactRequest { user_id, contact_user_id }` | `RemoveContactResponse` | Удалить контакт |
-| `GetContacts` | `GetContactsRequest { user_id }` | `GetContactsResponse` | Список контактов |
-
-#### Themes
-
-| Метод | Запрос | Ответ | Описание |
-|-------|--------|-------|----------|
-| `GetThemes` | `GetThemesRequest { user_id }` | `GetThemesResponse` | Темы пользователя |
-| `SaveTheme` | `SaveThemeRequest { user_id, name, colors }` | `SaveThemeResponse` | Сохранить тему |
-| `SetCurrentTheme` | `SetCurrentThemeRequest { user_id, theme_id }` | `SetCurrentThemeResponse` | Выбрать тему |
-| `DeleteTheme` | `DeleteThemeRequest { user_id, theme_id }` | `DeleteThemeResponse` | Удалить тему |
-
-#### Push Notifications
-
-| Метод | Запрос | Ответ | Описание |
-|-------|--------|-------|----------|
-| `RegisterToken` | `TokenRequest { user_id, token, platform, device_id }` | `TokenResponse` | Зарегистрировать FCM token |
-| `GetDevices` | `GetDevicesRequest { user_id }` | `GetDevicesResponse` | Устройства |
-| `DeleteDevice` | `DeleteDeviceRequest { user_id, device_id }` | `DeleteDeviceResponse` | Удалить устройство |
-| `DeleteOtherDevices` | `DeleteDeviceRequest { user_id, device_id }` | `DeleteDeviceResponse` | Удалить остальные |
-
-#### Password Reset
-
-| Метод | Запрос | Ответ | Описание |
-|-------|--------|-------|----------|
-| `RequestPasswordReset` | `RequestPasswordResetRequest { email }` | `RequestPasswordResetResponse` | Отправить email |
-| `ResetPassword` | `ResetPasswordRequest { token, new_password }` | `ResetPasswordResponse` | Сбросить пароль |
-
-#### AI Services v2 (с v1.3.0.0)
-
-| Метод | Запрос | Ответ | Описание |
-|-------|--------|-------|----------|
-| `ChatWithAIV2` | `ChatWithAIV2Request { session_id, message, images[], agent_id, tool_calls[] }` | `stream ChatWithAIV2Response` | Единый AI чат (simple/agent/pipeline) |
-| `CreateAIAgent` | `CreateAIAgentRequest { name, provider_type, model, ... }` | `CreateAIAgentResponse { agent_id }` | Создать агента |
-| `UpdateAIAgent` | `UpdateAIAgentRequest { agent_id, ... }` | `UpdateAIAgentResponse` | Обновить агента |
-| `DeleteAIAgent` | `DeleteAIAgentRequest { agent_id }` | `DeleteAIAgentResponse` | Удалить агента |
-| `GetAIAgent` | `GetAIAgentRequest { agent_id }` | `GetAIAgentResponse { agent: AgentInfoV2 }` | Информация об агенте |
-| `ListAIAgents` | `ListAIAgentsRequest { include_public }` | `ListAIAgentsResponse { agents[] }` | Список агентов (свои + пресеты + публичные) |
-| `CloneAIAgent` | `CloneAIAgentRequest { agent_id, new_name }` | `CloneAIAgentResponse { agent_id }` | Клонировать агента |
-| `ListAITools` | `ListAIToolsRequest {}` | `ListAIToolsResponse { tools[] }` | Доступные инструменты |
-
-**AI Marketplace** (с v1.3.0.2):
-
-| Метод | Запрос | Ответ | Описание |
-|-------|--------|-------|----------|
-| `RateAIAgent` | `RateAIAgentRequest { agent_id, rating, review }` | `RateAIAgentResponse` | Оценить агента |
-| `GetAIAgentReviews` | `GetAIAgentReviewsRequest { agent_id }` | `GetAIAgentReviewsResponse { reviews[] }` | Отзывы на агента |
-| `ListMarketplaceAgents` | `ListMarketplaceAgentsRequest { query, limit, offset }` | `ListMarketplaceAgentsResponse { agents[], total }` | Маркетплейс агентов с поиском и пагинацией |
-| `GetAIAgentStats` | `GetAIAgentStatsRequest { agent_id }` | `GetAIAgentStatsResponse` | Статистика агента |
-| `ShareAIAgent` | `ShareAIAgentRequest { agent_id }` | `ShareAIAgentResponse { share_code }` | Поделиться агентом |
-| `InstallAIAgent` | `InstallAIAgentRequest { share_code }` | `InstallAIAgentResponse { agent_id }` | Установить агента по коду |
-| `GetAIUsageStats` | `GetAIUsageStatsRequest {}` | `GetAIUsageStatsResponse { stats[], total_tokens, total_requests }` | Статистика использования AI (токены, запросы per-agent) |
-
-**Типы AI чатов:** simple (прямой LLM), agent (multi-agent), pipeline (RAG + tools)
-**Провайдеры:** openrouter, local, mimo, webhook, websocket, subprocess, mcp
-**Пресеты:** mimo, assistant, developer, devops, architect, writer, analyst, translator
-
-##### ChatWithAIV2 — Детали
-
-```protobuf
-message ChatWithAIV2Request {
-  string session_id = 1;        // пусто = создать новый чат
-  string message = 2;           // текст сообщения
-  repeated bytes images = 3;    // base64 изображения (multimodal)
-  string agent_id = 4;          // принудительно выбрать агента
-  repeated ToolCallV2 tool_calls = 5;  // результаты tool execution
-}
-
-message ChatWithAIV2Response {
-  string token = 1;             // токен стриминга
-  bool finished = 2;            // конец стрима
-  string error = 3;             // ошибка
-  string agent_id = 4;          // какой агент ответил
-  string agent_name = 5;        // имя агента (для UI)
-  repeated ToolCallRequestV2 tool_calls = 6;  // запрос на выполнение инструмента
-  bool has_rag_context = 7;     // был ли использован RAG
-  string model_used = 8;        // какая модель
-  int32 token_count = 9;        // количество токенов
-}
-```
-
-**Flow:**
-1. Клиент → `ChatWithAIV2Request{message, agent_id}`
-2. Сервер стримит токены
-3. Если агент хочет вызвать инструмент → `ChatWithAIV2Response{tool_calls=[{id, name, args}]}`
-4. Клиент выполняет инструмент → `ChatWithAIV2Request{tool_calls=[{id, name, args, result}]}`
-5. Сервер продолжает стриминг
-6. Готово → `ChatWithAIV2Response{finished=true}`
-
-##### Tool Calling Flow (клиентский цикл)
-
-```
-1. Получить ChatWithAIV2Response с tool_calls
-2. Выполнить инструмент (локально или через API)
-3. Отправить результат через ChatWithAIV2Request с tool_calls
-4. Получить следующий chunk стриминга
-```
-
-**Встроенные инструменты:**
-
-| Инструмент | Описание | Параметры |
-|------------|----------|-----------|
-| `search_messages` | Поиск сообщений | `query`, `chat_id?`, `limit?` |
-| `search_users` | Поиск пользователей | `query`, `limit?` |
-| `web_search` | Веб-поиск (DuckDuckGo) | `query` |
-| `web_fetch` | Загрузка URL | `url`, `max_chars?` |
-| `get_chat_info` | Метаданные чата | `chat_id` |
-| `query_database` | SQL запросы (SELECT only, admin) | `query` |
-
-##### AgentInfoV2
-
-```protobuf
-message AgentInfoV2 {
-  string id = 1;
-  string name = 2;
-  string description = 3;
-  string provider_type = 4;
-  string model = 5;
-  string system_prompt = 6;
-  bool tools_enabled = 7;
-  bool rag_enabled = 8;
-  bool is_preset = 9;
-  bool is_public = 10;
-  int32 max_tokens = 11;
-  float temperature = 12;
-  string created_by = 13;
-  AgentCapabilitiesV2 capabilities = 14;
-  int32 install_count = 15;
-  float avg_rating = 16;
-  int32 review_count = 17;
-  repeated string tags = 18;
-  string original_agent_id = 19;
-  string version = 20;
-  string share_code = 21;
-}
-```
-
-##### Provider Config (JSON)
-
-**OpenRouter:** `{"api_key_source": "user", "default_model": "anthropic/claude-sonnet-4"}`
-**MiMo:** `{"api_key_source": "admin", "base_url": "https://api.mimo.ai/v1", "model": "mimo-auto"}`
-**Webhook:** `{"url": "https://...", "method": "POST", "headers": {}, "timeout_seconds": 30, "streaming": true}`
-**Subprocess:** `{"command": "/usr/bin/python3", "args": ["/path/to/agent.py"], "env": {}, "timeout_seconds": 60}`
-**MCP:** `{"command": "npx", "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"], "transport": "stdio"}`
-
-##### Лимиты
-
-| Параметр | Значение |
-|----------|----------|
-| Макс. итераций tool calling | 10 |
-| Rate limit (по умолчанию) | 10 req/min |
-| Rate limit (free tier) | 20 req/hr |
-| Макс. изображений за запрос | 5 |
-
-#### Notifications
-
-| Метод | Запрос | Ответ | Описание |
-|-------|--------|-------|----------|
-| `SubscribeNotifications` | `SubscribeNotificationsRequest { user_id }` | `stream ServerNotification` | Подписка на уведомления |
-| `GetNotificationHistory` | `GetNotificationHistoryRequest { user_id, limit }` | `GetNotificationHistoryResponse` | История уведомлений |
-| `MarkNotificationsRead` | `MarkNotificationReadRequest { user_id, notification_ids[] }` | `MarkNotificationReadResponse` | Прочитано |
-| `GetUnreadCount` | `GetUnreadCountRequest { user_id }` | `GetUnreadCountResponse { count }` | Непрочитанные |
-
-#### Bot Commands
-
-| Метод | Запрос | Ответ | Описание |
-|-------|--------|-------|----------|
-| `ProcessBotCommand` | `BotCommandRequest { user_id, command, args }` | `BotCommandResponse { response }` | Выполнить команду (/status, /help, /deploy...) |
-| `GetBotCommands` | `GetBotCommandsRequest` | `GetBotCommandsResponse` | Список команд |
-
-#### Free Models (admin)
-
-| Метод | Запрос | Ответ | Описание |
-|-------|--------|-------|----------|
-| `GetFreeModels` | `GetFreeModelsRequest` | `GetFreeModelsResponse { models[] }` | Бесплатные модели |
-| `SetFreeModel` | `SetFreeModelRequest { admin_user_id, model_id, name }` | `SetFreeModelResponse` | Добавить модель |
-| `RemoveFreeModel` | `RemoveFreeModelRequest { admin_user_id, model_id }` | `RemoveFreeModelResponse` | Удалить модель |
-
----
-
-### 2. ProfileService (messenger.proto) — JWT-only
-
-| Метод | Запрос | Ответ | Описание |
-|-------|--------|-------|----------|
-| `GetProfile` | `GetProfileRequest` | `GetProfileResponse { user_id, username, display_name, bio, status, avatar_url, is_super_admin }` | Профиль из JWT context |
-| `UpdateProfile` | `UpdateProfileV2Request { username, bio, status, locale }` | `UpdateProfileV2Response { ... }` | Обновить (возвращает обновлённый профиль) |
-| `UpdateAvatar` | `UpdateAvatarV2Request { avatar_url, full_avatar_url }` | `UpdateAvatarV2Response` | Аватар |
-| `DeleteProfile` | `DeleteProfileV2Request { password }` | `DeleteProfileV2Response` | Удалить аккаунт |
-| `GetUserSettings` | `GetUserSettingsRequest` | `GetUserSettingsResponse { locale, theme_id, push_enabled, settings{} }` | Настройки |
-| `UpdateUserSettings` | `UpdateUserSettingsRequest { locale, theme_id, push_enabled, settings{} }` | `UpdateUserSettingsResponse` | Обновить настройки |
-
----
-
-### 3. ServerService (server.proto) — public + admin
-
-| Метод | Запрос | Ответ | Описание |
-|-------|--------|-------|----------|
-| `ListServers` | `ListServersRequest` | `ListServersResponse { servers[] }` | Список серверов (public) |
-| `GetDefaultServer` | `GetDefaultServerRequest` | `GetDefaultServerResponse` | Сервер по умолчанию (public) |
-| `AddServer` | `AddServerRequest { auth: AdminAuth, name, address, ... }` | `AddServerResponse` | Добавить (admin) |
-| `UpdateServer` | `UpdateServerRequest { auth: AdminAuth, ... }` | `UpdateServerResponse` | Обновить (admin) |
-| `DeleteServer` | `DeleteServerRequest { auth: AdminAuth, server_id }` | `DeleteServerResponse` | Удалить (admin) |
-| `SetDefaultServer` | `SetDefaultServerRequest { auth: AdminAuth, server_id }` | `SetDefaultServerResponse` | По умолчанию (admin) |
-
----
-
-### 4. HermesAgentService (hermes_agent.proto) — agent daemon
-
-| Метод | Тип | Описание |
-|-------|-----|----------|
-| `Connect` | `stream AgentMessage ↔ stream OrchestratorMessage` | Bidirectional stream для hermes-agent daemon |
-| `GenerateAgentToken` | `AgentTokenRequest → AgentTokenResponse` | Создать токен (admin) |
-| `RevokeAgentToken` | `RevokeTokenRequest → RevokeTokenResponse` | Отозвать токен (admin) |
-| `ListAgentTokens` | `ListTokensRequest → ListTokensResponse` | Список токенов (admin) |
-
----
-
-## HTTP Endpoints
-
-| Метод | Путь | Описание |
-|-------|------|----------|
-| GET | `/health` | Health check |
-| GET | `/info` | Версии сервисов (для capability negotiation) |
-| POST | `/upload/avatar` | Загрузка аватара |
-| POST | `/upload/image` | Загрузка изображения |
-| POST | `/upload/file` | Загрузка файла |
-| POST | `/upload/background` | Загрузка фона |
-| POST | `/upload/audio` | Загрузка аудио |
-| GET | `/files/<path>` | Просмотр файлов |
-| GET | `/turn` | TURN credentials (WebRTC) |
+## Server Endpoints
+
+| Environment | gRPC | HTTP | Logs |
+|-------------|------|------|------|
+| **Prod** | `13.140.25.249:50051` | `13.140.25.249:8082` | — |
+| **Dev** | `13.140.25.249:50052` | `13.140.25.249:8083` | `http://13.140.25.249/server-logs-dev` |
 
 ---
 
 ## Capability Negotiation
 
-При старте клиент запрашивает `GET /info`:
+On startup, call `GET /info` to discover available services:
+
+```
+GET http://<host>:<port>/info
+```
+
+Response:
 ```json
 {
+  "version": "1.3.0.16",
+  "time": "2026-06-20T18:00:00Z",
   "services": {
     "auth": "2.0",
     "chat": "2.0",
     "profile": "2.0",
-    "ai": "2.0"
+    "ai": "2.0",
+    "files": "1.0",
+    "push": "1.0"
   }
 }
 ```
 
-- `auth >= "2.0"` → использовать `SignInV2` + JWT workflow
-- `chat >= "2.0"` → использовать `GetChatsV2`, JWT в Chat stream
-- `ai >= "2.0"` → использовать `ChatWithAIV2` вместо старого `ChatWithAI`
+Use these versions to decide which API paths to use:
+- `auth >= "2.0"` → use `SignInV2` / `SignUpV2` (JWT tokens)
+- `profile >= "2.0"` → use `ProfileService` v2 (separate gRPC service)
+- `ai >= "2.0"` → use `ChatWithAIV2`
 
 ---
 
-## Graceful Shutdown и Reconnection (v1.3.0.4+)
+## Authentication (AuthService)
 
-Сервер поддерживает graceful shutdown — клиенты получают предупреждение перед отключением.
-
-### Поведение сервера при остановке
-
-1. Сервер получает SIGTERM (рестарт, деплой)
-2. Отправляет `SERVER_SHUTTINGDOWN` всем подключённым клиентам через Chat стрим
-3. Ждёт 2 секунды (время на получение клиентом)
-4. Вызывает `GracefulStop()` — закрывает новые подключения, ждёт завершения активных RPC (до 30с)
-
-### Health Endpoint
+### Flow
 
 ```
-GET /health
+1. SignInV2(username, password, device) → access_token + refresh_token
+2. Every gRPC call: metadata["authorization"] = "Bearer <access_token>"
+3. When access_token expires → RefreshToken(refresh_token) → new tokens
+4. Refresh token rotation: each refresh invalidates the old refresh_token
 ```
 
-| Статус | Ответ | Когда |
-|--------|-------|-------|
-| `200 OK` | `{"status":"ok","version":"1.3.0.4"}` | Сервер работает |
-| `503 Service Unavailable` | `{"status":"shutting_down","version":"1.3.0.4"}` | Сервер останавливается |
+### RPCs
 
-### Рекомендуемое поведение клиента
+#### SignInV2
 
-**1. Обработка `SERVER_SHUTTINGDOWN` в Chat стриме:**
-```kotlin
-// В обработчике сообщений Chat стрима
-if (message.user == "SYSTEM" && message.text == "SERVER_SHUTTINGDOWN") {
-    // Показать индикатор "Переподключение..."
-    showReconnecting()
+```protobuf
+message SignInRequestV2 {
+  string username = 1;
+  string password = 2;
+  DeviceInfo device = 3;       // optional device info
+  string client_version = 4;   // e.g. "1.3.0" from BuildConfig
+}
+
+message DeviceInfo {
+  string device_id = 1;        // unique device identifier
+  string device_name = 2;      // display name, e.g. "Samsung Galaxy S24"
+  string client_version = 3;
+  Timestamp last_seen_at = 4;
+  string ip_address = 5;
+}
+
+message AuthResponseV2 {
+  bool success = 1;
+  string message = 2;
+  string access_token = 3;     // JWT, valid 15 minutes
+  string refresh_token = 4;    // JWT, valid 30 days
+  int64 access_expires_at = 5; // unix timestamp (seconds)
+  int64 refresh_expires_at = 6;
+  User user = 7;               // { id, username, avatar_url }
 }
 ```
 
-**2. Обработка `UNAVAILABLE` ошибки:**
-```kotlin
-// При получении StatusRuntimeException.UNAVAILABLE
-catch (e: StatusRuntimeException) {
-    if (e.status.code == Status.Code.UNAVAILABLE) {
-        // Не очищать список чатов!
-        // Показать "Сервер недоступен, повторное подключение..."
-        showReconnecting()
-        scheduleReconnect()
-    }
+#### SignUpV2
+
+```protobuf
+message SignUpRequestV2 {
+  string username = 1;
+  string password = 2;
+  string email = 3;
+  DeviceInfo device = 4;
+  string client_version = 5;
+}
+// Returns: AuthResponseV2 (same as SignInV2)
+```
+
+#### RefreshToken
+
+```protobuf
+message RefreshTokenRequest {
+  string refresh_token = 1;
+}
+
+message RefreshTokenResponse {
+  string access_token = 1;
+  string refresh_token = 2;    // new refresh token (old is invalidated)
+  int64 access_expires_at = 3;
+  int64 refresh_expires_at = 4;
 }
 ```
 
-**3. Retry с exponential backoff:**
-```kotlin
-fun scheduleReconnect() {
-    // Сначала проверить health endpoint
-    scope.launch {
-        val health = checkHealth() // GET /health
-        if (health.status == "shutting_down") {
-            delay(5000) // Ждать 5с если сервер останавливается
-            scheduleReconnect()
-            return@launch
-        }
-        // Сервер доступен — реконнект
-        delay(reconnectDelay)
-        reconnectDelay = minOf(reconnectDelay * 2, 30_000L) // max 30s
-        reconnectChatStream()
-    }
+#### SignOut
+
+```protobuf
+message SignOutRequest {
+  string refresh_token = 1;
+  bool all_devices = 2;        // true = invalidate all refresh tokens
 }
+// Returns: AuthResponse (success, message)
 ```
 
-**4. Кэширование данных:**
-- Кэшировать список чатов локально (Room DB / SQLite)
-- При `SERVER_SHUTTINGDOWN` или `UNAVAILABLE` — показывать кэшированные данные
-- После реконнекта — обновить данные с сервера
+#### RevokeDevice
 
-### Порядок действий при деплое сервера
+```protobuf
+message RevokeDeviceRequest {
+  string device_id = 1;
+}
+// Returns: AuthResponse
+```
 
-```
-1. Клиент получает SERVER_SHUTTINGDOWN → показывает "Переподключение..."
-2. Сервер закрывает соединения (GracefulStop)
-3. Клиент получает UNAVAILABLE → НЕ очищает UI, показывает кэш
-4. Клиент poll /health → 503 → ждёт
-5. Новый сервер запускается → /health возвращает 200
-6. Клиент переподключается → обновляет данные
-```
+### Token Requirements
+
+- Access token: JWT, HS256, expires in **15 minutes**
+- Refresh token: JWT, HS256, expires in **30 days**
+- `JWT_SECRET` must be ≥ 32 bytes (enforced at server startup)
+- Refresh token rotation: every `RefreshToken` call returns a new refresh token and invalidates the old one
 
 ---
 
-## Message (основной тип)
+## Chat Stream (Bidirectional gRPC)
+
+The Chat stream is the core real-time connection. It handles messaging, typing indicators, presence, and server commands.
+
+### Connection
+
+```protobuf
+rpc Chat(stream Message) returns (stream Message);
+```
+
+### Auth on Connect
+
+**First message** must contain your JWT access token:
 
 ```protobuf
 message Message {
-  string message_id = 1;     // UUID
-  string room_id = 2;        // chat ID
-  string user_id = 3;        // UUID отправителя
-  string username = 4;       // отображаемое имя (deprecated, используй user_id)
-  bytes encrypted = 5;       // зашифрованное содержимое
-  string text = 6;           // расшифрованный текст
-  int64 timestamp = 7;
-  string reply_to = 8;
-  repeated Reaction reactions = 9;
-  bool is_read = 10;
-  bool has_image = 11;
-  // ... (см. полное определение в messenger.proto)
+  string jwt_token = 26;      // JWT access token (first message only)
+  string room_id = 10;        // chat ID to join
+  string user_id = 23;        // your UUID (from AuthResponseV2.user.id)
+  string client_version = 15; // your app version
+  string device_id = 21;      // your device ID
+  string device_name = 22;    // your device name
+  // ... other fields empty in first message
 }
+```
+
+The server validates the JWT, extracts `user_id` and `username` from it, and registers the stream.
+
+### Receiving Messages
+
+After auth, the server streams `Message` objects to you:
+
+```protobuf
+message Message {
+  string id = 1;              // message UUID
+  string user = 2;            // sender username
+  string text = 3;            // message text (plaintext for non-E2EE)
+  Timestamp created_at = 4;
+  repeated Reaction reactions = 5;
+  string replied_to_message_id = 7;
+  string replied_to_user = 8;
+  string replied_to_text = 9;
+  string room_id = 10;
+  bool is_read = 11;
+  string avatar_url = 12;
+  string image_url = 13;      // single image URL
+  repeated string image_urls = 20; // multiple images
+  bool edited = 14;
+  string user_id = 23;        // sender UUID
+  string voice_url = 17;      // voice message URL
+  int32 duration = 18;        // voice message duration (seconds)
+  bool is_e2ee = 24;          // true if E2EE message
+  string e2ee_payload = 25;   // base64-encoded encrypted payload
+}
+```
+
+### Sending Messages
+
+Send a `Message` with `room_id` and content:
+
+```protobuf
+// Text message
+Message {
+  room_id: "chat-uuid",
+  text: "Hello!",
+  user_id: "your-uuid"
+}
+
+// Image message
+Message {
+  room_id: "chat-uuid",
+  text: "",
+  image_url: "http://host:8082/images/<hash>.jpg",
+  user_id: "your-uuid"
+}
+
+// Voice message
+Message {
+  room_id: "chat-uuid",
+  voice_url: "http://host:8082/audio/<hash>.m4a",
+  duration: 12,
+  user_id: "your-uuid"
+}
+
+// Reply
+Message {
+  room_id: "chat-uuid",
+  text: "Reply text",
+  replied_to_message_id: "original-msg-id",
+  replied_to_user: "original-sender",
+  replied_to_text: "Original message preview",
+  user_id: "your-uuid"
+}
+```
+
+### System Messages
+
+The server sends system messages with `user = "SYSTEM"`:
+
+| Text | Meaning |
+|------|---------|
+| `SERVER_SHUTTINGDOWN` | Server is about to restart (graceful shutdown) |
+| `SERVER_INFO:<version>` | Sent after successful auth |
+| `FORCE_DISCONNECT:<username>` | User was deleted or kicked |
+| `AUTH_FAILED` | Authentication failed |
+
+### Typing Indicator
+
+```protobuf
+rpc Typing(stream TypingRequest) returns (stream TypingSignal);
+```
+
+Separate bidirectional stream for typing indicators.
+
+### Call Session (WebRTC Signaling)
+
+```protobuf
+rpc CallSession(stream CallMessage) returns (stream CallMessage);
+```
+
+Separate bidirectional stream for WebRTC signaling (SDP, ICE, accept, reject, hangup).
+
+---
+
+## Chat Management
+
+### GetChatsV2 (Primary Chat List)
+
+```protobuf
+message GetChatsRequest {
+  string user_id = 2;         // your UUID
+  int32 limit = 3;            // max chats per page (0 = default 100)
+  string filter = 5;          // "all" | "pinned" | "archived" | "muted"
+  string cursor = 6;          // cursor from previous response (omit for first page)
+}
+
+message GetChatsResponse {
+  repeated ChatInfo chats = 1;
+  string next_cursor = 2;     // pass as `cursor` in next request (empty = no more)
+  bool has_more = 3;
+}
+
+message ChatInfo {
+  string id = 1;
+  string name = 2;
+  string type = 3;            // "direct" | "group" | "secret"
+  string participants = 4;    // JSON array of usernames
+  Timestamp created_at = 5;
+  int32 unread_count = 6;
+  Timestamp last_message_time = 7;
+  string last_message_text = 9;
+  string avatar_url = 10;
+  string full_avatar_url = 11;
+  string last_message_username = 12;
+  bool last_message_has_image = 13;
+  bool is_secret = 15;
+}
+```
+
+**Pagination:** Use cursor-based pagination. First request: `cursor = ""`. Response includes `next_cursor` for the next page. Stop when `has_more = false`.
+
+**Filtering:** Use `filter` to get only pinned, archived, or muted chats.
+
+### CreateDirectChat
+
+```protobuf
+message CreateDirectChatRequest {
+  string user1_id = 3;        // your UUID
+  string user2_id = 4;        // other user's UUID
+}
+// Returns: CreateDirectChatResponse { chat_id, success }
+```
+
+### CreateGroupChat
+
+```protobuf
+message CreateGroupChatRequest {
+  string name = 1;
+  repeated string participant_ids = 5;  // UUIDs of participants
+  string creator_id = 4;               // your UUID
+}
+// Returns: CreateGroupChatResponse { chat_id, success }
+```
+
+### DeleteChat
+
+```protobuf
+message DeleteChatRequest {
+  string chat_id = 1;
+  string requester_user_id = 2;  // your UUID
+}
+// Returns: DeleteChatResponse { success }
+```
+
+### Chat Participants
+
+```protobuf
+// Add participant
+message AddParticipantRequest {
+  string chat_id = 1;
+  string user_id = 2;              // your UUID (must be chat creator/admin)
+  string new_participant_id = 3;
+}
+
+// Remove participant
+message RemoveParticipantRequest {
+  string chat_id = 1;
+  string user_id = 2;
+  string participant_id = 3;
+}
+```
+
+### Pin / Mute / Archive
+
+```protobuf
+rpc PinChat(PinChatRequest) returns (PinChatResponse);
+rpc UnPinChat(UnPinChatRequest) returns (UnPinChatResponse);
+rpc ArchiveChat(ArchiveChatRequest) returns (ArchiveChatResponse);
+rpc UnarchiveChat(UnarchiveChatRequest) returns (UnarchiveChatResponse);
+rpc SetMutedChat(SetMutedChatRequest) returns (SetMutedChatResponse);
+rpc GetMutedChats(GetMutedChatsRequest) returns (GetMutedChatsResponse);
+```
+
+### ChatList Version (Cache Invalidation)
+
+```protobuf
+rpc GetChatListVersion(GetChatListVersionRequest) returns (GetChatListVersionResponse);
+
+message GetChatListVersionRequest {
+  string user_id = 1;
+}
+message GetChatListVersionResponse {
+  int64 version = 1;  // increment on any chat list change
+}
+```
+
+Use this to check if the client's cached chat list is stale.
+
+### Search Chats
+
+```protobuf
+message SearchChatsRequest {
+  string user_id = 1;
+  string query = 2;
+  int32 limit = 3;
+}
+// Returns: SearchChatsResponse { chats: ChatInfo[] }
+```
+
+---
+
+## Messages
+
+### GetHistory
+
+```protobuf
+message GetHistoryRequest {
+  int32 limit = 1;       // max messages (default 50)
+  string room = 2;       // chat ID
+}
+// Returns: GetHistoryResponse { messages: Message[] }
+```
+
+### Edit / Delete
+
+```protobuf
+rpc EditMessage(EditMessageRequest) returns (EditMessageResponse);
+rpc DeleteMessages(DeleteMessagesRequest) returns (DeleteMessagesResponse);
+```
+
+### Reactions
+
+```protobuf
+rpc SetReaction(ReactionRequest) returns (ReactionResponse);
+
+message ReactionRequest {
+  string message_id = 1;
+  Reaction reaction = 2;    // { user, emoji }
+}
+```
+
+### Pin Messages
+
+```protobuf
+rpc PinMessage(PinMessageRequest) returns (PinMessageResponse);
+rpc UnPinMessage(UnPinMessageRequest) returns (UnPinMessageResponse);
+rpc GetPinnedMessages(GetPinnedMessagesRequest) returns (GetPinnedMessagesResponse);
+```
+
+### Mark Read
+
+```protobuf
+rpc MarkRead(MarkReadRequest) returns (MarkReadResponse);
+
+message MarkReadRequest {
+  string room_id = 1;
+  string message_id = 2;    // last read message ID
+}
+```
+
+---
+
+## Profile (ProfileService v2)
+
+**Important:** ProfileService is a separate gRPC service (not part of ChatService). Connect to the same gRPC endpoint.
+
+### RPCs
+
+```protobuf
+service ProfileService {
+  rpc GetProfile(GetProfileRequest) returns (GetProfileResponse);
+  rpc UpdateProfile(UpdateProfileV2Request) returns (UpdateProfileV2Response);
+  rpc UpdateAvatar(UpdateAvatarV2Request) returns (UpdateAvatarV2Response);
+  rpc DeleteProfile(DeleteProfileV2Request) returns (DeleteProfileV2Response);
+  rpc GetUserSettings(GetUserSettingsRequest) returns (GetUserSettingsResponse);
+  rpc UpdateUserSettings(UpdateUserSettingsRequest) returns (UpdateUserSettingsResponse);
+}
+```
+
+### GetProfile
+
+Returns the authenticated user's profile (user_id from JWT, no request fields needed):
+
+```protobuf
+message GetProfileResponse {
+  string user_id = 1;
+  string username = 2;
+  string email = 3;
+  string avatar_url = 4;
+  string full_avatar_url = 5;
+  string bio = 6;
+  string status = 7;
+  string locale = 8;
+  bool is_super_admin = 9;
+  string created_at = 10;
+}
+```
+
+### UpdateProfile
+
+```protobuf
+message UpdateProfileV2Request {
+  string username = 1;    // optional: change username
+  string bio = 2;
+  string status = 3;
+  string locale = 4;      // "en", "ru", etc.
+}
+// Returns: UpdateProfileV2Response { success, message, profile: GetProfileResponse }
+```
+
+### UpdateAvatar
+
+```protobuf
+message UpdateAvatarV2Request {
+  string avatar_url = 1;
+  string full_avatar_url = 2;
+}
+// Returns: UpdateAvatarV2Response { success, avatar_url, full_avatar_url }
+```
+
+### DeleteProfile
+
+```protobuf
+message DeleteProfileV2Request {
+  string password = 1;    // required: confirm with password
+}
+// Returns: DeleteProfileV2Response { success, message }
+```
+
+**Warning:** Deleting a profile permanently removes all user data including AI chats, themes, contacts, favorites, and pins. Messages in group chats are preserved (shared history).
+
+### User Settings
+
+```protobuf
+message GetUserSettingsRequest {}  // empty — user_id from JWT
+
+message GetUserSettingsResponse {
+  string locale = 1;
+  string theme_id = 2;
+  bool push_enabled = 3;
+  map<string, string> custom = 4;  // extensible key-value store
+}
+
+message UpdateUserSettingsRequest {
+  string locale = 1;
+  string theme_id = 2;
+  bool push_enabled = 3;
+  map<string, string> custom = 4;
+}
+```
+
+---
+
+## Users
+
+### GetAllUsers
+
+```protobuf
+rpc GetAllUsers(GetAllUsersRequest) returns (GetAllUsersResponse);
+
+message GetAllUsersResponse {
+  repeated UserInfo users = 1;
+  Timestamp server_time = 2;
+}
+
+message UserInfo {
+  string username = 1;
+  string avatar_url = 2;
+  string last_client_version = 3;   // e.g. "1.3.0"
+  Timestamp last_seen_at = 4;
+  string email = 5;
+  string user_id = 6;               // UUID
+  bool is_super_admin = 7;
+}
+```
+
+### Other User RPCs
+
+```protobuf
+rpc GetUserProfile(GetUserProfileRequest) returns (GetUserProfileResponse);
+rpc GetUserAvatar(GetUserAvatarRequest) returns (GetUserAvatarResponse);
+rpc GetUserId(GetUserIdRequest) returns (GetUserIdResponse);  // username → UUID
+```
+
+---
+
+## Contacts
+
+```protobuf
+rpc AddContact(AddContactRequest) returns (AddContactResponse);
+rpc RemoveContact(RemoveContactRequest) returns (RemoveContactResponse);
+rpc GetContacts(GetContactsRequest) returns (GetContactsResponse);
+```
+
+---
+
+## Favorites
+
+```protobuf
+rpc AddFavorite(AddFavoriteRequest) returns (AddFavoriteResponse);
+rpc RemoveFavorite(RemoveFavoriteRequest) returns (RemoveFavoriteResponse);
+rpc GetFavorites(GetFavoritesRequest) returns (GetFavoritesResponse);
+```
+
+---
+
+## Drafts
+
+```protobuf
+rpc SaveDraft(SaveDraftRequest) returns (SaveDraftResponse);
+rpc GetDraft(GetDraftRequest) returns (GetDraftResponse);
+rpc DeleteDraft(DeleteDraftRequest) returns (DeleteDraftResponse);
+```
+
+---
+
+## Themes
+
+```protobuf
+rpc GetThemes(GetThemesRequest) returns (GetThemesResponse);
+rpc SaveTheme(SaveThemeRequest) returns (SaveThemeResponse);
+rpc SetCurrentTheme(SetCurrentThemeRequest) returns (SetCurrentThemeResponse);
+rpc DeleteTheme(DeleteThemeRequest) returns (DeleteThemeResponse);
+```
+
+---
+
+## Push Notifications (FCM)
+
+```protobuf
+rpc RegisterToken(TokenRequest) returns (TokenResponse);
+
+message TokenRequest {
+  string user_id = 1;
+  string token = 2;        // FCM registration token
+  string platform = 3;     // "android", "ios", "web"
+  string device_id = 4;
+}
+```
+
+---
+
+## Secret Chats (E2EE)
+
+```protobuf
+rpc CreateSecretChat(CreateSecretChatRequest) returns (CreateSecretChatResponse);
+rpc ExchangeSecretKey(ExchangeSecretKeyRequest) returns (ExchangeSecretKeyResponse);
+rpc GetSecretChatKey(GetSecretChatKeyRequest) returns (GetSecretChatKeyResponse);
+```
+
+E2EE messages are encrypted client-side. The server stores only the encrypted payload. When sending, set `is_e2ee = true` and `e2ee_payload` with the base64-encoded ciphertext.
+
+---
+
+## Password Reset
+
+```protobuf
+rpc RequestPasswordReset(RequestPasswordResetRequest) returns (RequestPasswordResetResponse);
+rpc ResetPassword(ResetPasswordRequest) returns (ResetPasswordResponse);
+```
+
+---
+
+## AI Services v2
+
+### ChatWithAIV2 (Streaming)
+
+```protobuf
+service ChatService {
+  rpc ChatWithAIV2(ChatWithAIV2Request) returns (stream ChatWithAIV2Response);
+}
+```
+
+```protobuf
+message ChatWithAIV2Request {
+  string session_id = 1;     // empty = create new chat
+  string message = 2;
+  repeated bytes images = 3; // base64 images for multimodal
+  string agent_id = 4;       // force specific agent (optional)
+  repeated ToolCallV2 tool_calls = 5;  // tool execution results (for agentic loop)
+}
+
+message ChatWithAIV2Response {
+  string token = 1;          // streaming token
+  bool finished = 2;         // true = response complete
+  string error = 3;          // error message (if any)
+  string agent_id = 4;       // which agent answered
+  string agent_name = 5;     // display name
+  repeated ToolCallRequestV2 tool_calls = 6;  // tool execution requests
+  bool has_rag_context = 7;  // RAG was used
+  string model_used = 8;     // model name
+  int32 token_count = 9;     // token count
+}
+```
+
+### Tool Calling Flow
+
+When the agent needs to call a tool, the server sends `tool_calls` in the response. The client must:
+
+1. Receive `ChatWithAIV2Response` with `tool_calls` (and `finished = false`)
+2. Execute each tool (locally or via API)
+3. Send back results via `ChatWithAIV2Request` with `tool_calls` containing results
+4. Continue receiving tokens
+
+```
+Client → ChatWithAIV2Request { message: "What's the weather?" }
+Server → ChatWithAIV2Response { tool_calls: [{id, name: "web_search", args}], finished: false }
+Client → ChatWithAIV2Request { tool_calls: [{id, name: "web_search", result: "Sunny, 22°C"}] }
+Server → ChatWithAIV2Response { token: "The weather is sunny...", finished: false }
+Server → ChatWithAIV2Response { finished: true }
+```
+
+### Built-in Tools
+
+| Tool | Description | Parameters |
+|------|-------------|------------|
+| `search_messages` | Search chat messages | `query`, `chat_id?`, `limit?` |
+| `search_users` | Search users | `query`, `limit?` |
+| `web_search` | Web search (DuckDuckGo) | `query` |
+| `web_fetch` | Fetch URL content | `url`, `max_chars?` |
+| `get_chat_info` | Chat metadata | `chat_id` |
+| `query_database` | SQL SELECT (admin only) | `query` |
+
+### Agent Management
+
+```protobuf
+rpc CreateAIAgent(CreateAIAgentRequest) returns (CreateAIAgentResponse);
+rpc UpdateAIAgent(UpdateAIAgentRequest) returns (UpdateAIAgentResponse);
+rpc DeleteAIAgent(DeleteAIAgentRequest) returns (DeleteAIAgentResponse);
+rpc GetAIAgent(GetAIAgentRequest) returns (GetAIAgentResponse);
+rpc ListAIAgents(ListAIAgentsRequest) returns (ListAIAgentsResponse);
+rpc CloneAIAgent(CloneAIAgentRequest) returns (CloneAIAgentResponse);
+rpc ListAITools(ListAIToolsRequest) returns (ListAIToolsResponse);
+```
+
+### AI Marketplace
+
+```protobuf
+rpc RateAIAgent(RateAIAgentRequest) returns (RateAIAgentResponse);
+rpc GetAIAgentReviews(GetAIAgentReviewsRequest) returns (GetAIAgentReviewsResponse);
+rpc ListMarketplaceAgents(ListMarketplaceAgentsRequest) returns (ListMarketplaceAgentsResponse);
+rpc GetAIAgentStats(GetAIAgentStatsRequest) returns (GetAIAgentStatsResponse);
+rpc ShareAIAgent(ShareAIAgentRequest) returns (ShareAIAgentResponse);
+rpc InstallAIAgent(InstallAIAgentRequest) returns (InstallAIAgentResponse);
+rpc GetAIUsageStats(GetAIUsageStatsRequest) returns (GetAIUsageStatsResponse);
+```
+
+### AI Limits
+
+| Parameter | Value |
+|-----------|-------|
+| Max tool calling iterations | 10 |
+| Rate limit (default) | 10 req/min |
+| Rate limit (free tier) | 20 req/hr |
+| Max images per request | 5 |
+
+---
+
+## HTTP Endpoints
+
+All HTTP endpoints are on port 8082 (prod) or 8083 (dev).
+
+### Public (No Auth)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/health` | Health check (returns version + status) |
+| `GET` | `/info` | Service versions for capability negotiation |
+
+### Upload (Requires JWT Bearer Token)
+
+All upload endpoints require `Authorization: Bearer <access_token>` header.
+
+| Method | Path | Content-Type | Description |
+|--------|------|-------------|-------------|
+| `POST` | `/upload-avatar` | `multipart/form-data` | Upload avatar (fields: `avatar` required, `avatar_full` optional) |
+| `POST` | `/upload-image` | `multipart/form-data` | Upload image (field: `image`) |
+| `POST` | `/upload-file` | `multipart/form-data` | Upload file (field: `file`) |
+| `POST` | `/upload-background` | `multipart/form-data` | Upload background (field: `background`) |
+| `POST` | `/upload-audio` | `multipart/form-data` | Upload audio (field: `audio`) |
+
+**Allowed extensions:**
+- Images (avatar, image, background): `.jpg`, `.jpeg`, `.png`, `.gif`, `.webp`
+- Audio: `.m4a`, `.aac`, `.ogg`, `.mp3`, `.wav`
+- Files: `.pdf`, `.doc`, `.docx`, `.xls`, `.xlsx`, `.ppt`, `.pptx`, `.txt`, `.csv`, `.json`, `.xml`, `.zip`, `.rar`, `.7z`, `.mp3`, `.mp4`, `.avi`, `.mov`, `.mkv`, `.webm`, `.m4a`, `.aac`, `.ogg`, `.wav`
+
+**Response:** `{"url": "http://host:port/<prefix>/<hash>.<ext>"}`
+
+### Static Files
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/avatars/<filename>` | View avatar |
+| `GET` | `/images/<filename>` | View image |
+| `GET` | `/files/<filename>` | View file |
+| `GET` | `/background/<filename>` | View background |
+| `GET` | `/audio/<filename>` | View audio |
+
+### TURN Credentials (WebRTC)
+
+```
+GET /turn-credentials
+Authorization: Bearer <access_token>
+```
+
+Returns TURN server credentials for WebRTC.
+
+---
+
+## Graceful Shutdown
+
+The server supports graceful shutdown — clients receive a warning before disconnection.
+
+### What Happens
+
+1. Server receives SIGTERM (restart, deploy)
+2. Sends `SERVER_SHUTTINGDOWN` to all connected Chat streams
+3. Waits 2 seconds
+4. Calls `GracefulStop()` — closes new connections, waits up to 30s for active RPCs
+
+### Health During Shutdown
+
+```
+GET /health → 503 {"status":"shutting_down","version":"1.3.0.16"}
+```
+
+### Client Behavior
+
+1. **Detect shutdown:** Check for `SERVER_SHUTTINGDOWN` system message in Chat stream
+2. **Handle disconnection:** When you get `UNAVAILABLE` error, do NOT clear UI data
+3. **Poll health:** Check `GET /health` before reconnecting
+4. **Reconnect:** Exponential backoff (1s → 2s → 4s → ... → max 30s)
+5. **Cache locally:** Store chat list in local database for offline display
+
+```
+Reconnection flow:
+1. Receive SERVER_SHUTTINGDOWN → show "Reconnecting..."
+2. Server closes connections → client gets UNAVAILABLE
+3. Client shows cached data (NOT empty state)
+4. Client polls /health → 503 → wait
+5. New server starts → /health returns 200
+6. Client reconnects → fetch fresh data
 ```
 
 ---
 
 ## Proto Files
 
-| Файл | Назначение |
-|------|------------|
-| `messenger.proto` | ChatService, AuthService, ProfileService, все основные RPC |
-| `server.proto` | ServerService (admin) |
-| `hermes_agent.proto` | HermesAgentService (agent daemon) |
+| File | Service | Description |
+|------|---------|-------------|
+| `messenger.proto` | ChatService, AuthService, ProfileService | All main RPCs |
+| `server.proto` | ServerService | Server management (admin) |
+| `hermes_remote.proto` | HermesAgentService | Agent daemon communication |
+
+### Proto Generation
+
+```bash
+PATH=$PATH:~/go/bin protoc \
+  --go_out=./gen --go_opt=paths=source_relative \
+  --go-grpc_out=./gen --go-grpc_opt=paths=source_relative \
+  messenger.proto
+```
 
 ---
 
-## Команды для разработки
+## Error Handling
 
-```bash
-# Генерация proto
-protoc --go_out=./gen --go_opt=paths=source_relative \
-  --go-grpc_out=./gen --go-grpc_opt=paths=source_relative messenger.proto
+### gRPC Status Codes
 
-# Деплой dev (с сервера)
-./scripts/deploy-dev.sh
+| Code | Meaning | Client Action |
+|------|---------|---------------|
+| `OK` (0) | Success | Process response |
+| `UNAVAILABLE` (14) | Server down / network issue | Retry with backoff |
+| `UNAUTHENTICATED` (16) | Invalid/expired token | Refresh token, retry |
+| `PERMISSION_DENIED` (7) | Not authorized for this action | Check permissions |
+| `INVALID_ARGUMENT` (3) | Bad request parameters | Fix request |
+| `NOT_FOUND` (5) | Resource not found | Show appropriate UI |
 
-# Деплой dev (с локальной машины)
-./scripts/deploy-dev-local.sh
+### Token Expiry Handling
 
-# Деплой prod (с локальной машины)
-./scripts/release.sh <version> --deploy --remote
-
-# Тесты
-go test ./...
 ```
+1. Call fails with UNAUTHENTICATED
+2. Call RefreshToken(refresh_token)
+3. If RefreshToken succeeds → retry original call with new access_token
+4. If RefreshToken fails → user must re-login (SignInV2)
+```
+
+---
+
+## Integration Checklist
+
+For a new client, implement in this order:
+
+1. **Capability negotiation:** `GET /info` → determine which APIs to use
+2. **Auth:** `SignInV2` → store tokens securely
+3. **Token refresh:** Automatic refresh before expiry
+4. **Chat stream:** Open bidirectional stream, send JWT as first message
+5. **Chat list:** `GetChatsV2` with cursor pagination
+6. **Messages:** `GetHistory`, send via Chat stream
+7. **Profile:** `ProfileService.GetProfile`
+8. **File uploads:** Upload with JWT auth, use returned URLs in messages
+9. **Push notifications:** `RegisterToken` with FCM token
+10. **AI chat:** `ChatWithAIV2` with streaming
+11. **Graceful shutdown:** Handle `SERVER_SHUTTINGDOWN` and reconnect logic

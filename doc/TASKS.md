@@ -1,6 +1,6 @@
 # Лава — Задачи
 
-**Версия:** v1.3.0.15
+**Версия:** v1.3.0.16
 **Ветка:** feat/1.3.0.x
 **Обновлено:** 2026-06-20
 
@@ -16,7 +16,8 @@
 
 | Версия | Описание |
 |--------|----------|
-| v1.3.0.15 | Security audit: message logging, LIKE injection, file extensions, delete cascade, bcrypt cost |
+| v1.3.0.16 | RAG message indexing, JWT rotation, upload validation, DeleteProfile cascade, dead code removal |
+| v1.3.0.15 | Security audit: message logging, LIKE injection, bcrypt cost |
 | v1.3.0.14 | Security audit: Firebase key, HTTP auth, SSRF, SQL hardening, context timeouts |
 | v1.3.0.13 | Performance optimizations: cursor pagination, DB pool tuning, AI dedup, tool caching, indexes |
 | v1.3.0.12 | Unread count optimization (read_at based) |
