@@ -25,6 +25,8 @@ type AIGateway struct {
 	tools        *ToolRegistry
 	router       *HybridRouter
 	rag          rag.RAGPipeline
+	embedder     rag.EmbeddingService
+	vectorDB     rag.VectorSearch
 	mu           sync.RWMutex
 	rateLimiters map[string]*RedisRateLimiter
 	userMu       sync.Map // per-user mutex for session dedup
@@ -37,8 +39,7 @@ func NewAIGateway(db *sql.DB) *AIGateway {
 	executor := NewAgentExecutor(db, registry, tools)
 	router := NewHybridRouter(db)
 
-	// Initialize RAG: Qdrant + OpenAI embeddings, fallback to in-memory
-	ragPipeline := initRAG()
+	ragPipeline, embedder, vectorDB := initRAG()
 
 	g := &AIGateway{
 		db:           db,
@@ -46,32 +47,34 @@ func NewAIGateway(db *sql.DB) *AIGateway {
 		tools:        tools,
 		router:       router,
 		rag:          ragPipeline,
+		embedder:     embedder,
+		vectorDB:     vectorDB,
 		rateLimiters: make(map[string]*RedisRateLimiter),
 	}
 	return g
 }
 
-func initRAG() rag.RAGPipeline {
+func initRAG() (rag.RAGPipeline, rag.EmbeddingService, rag.VectorSearch) {
 	dim := 1536 // text-embedding-3-small dimensions
 
 	// Try Qdrant first
 	qdrantClient := qdrant.NewClient("rag", dim)
 	if qdrantClient != nil && qdrantClient.IsAvailable() {
-		// Try OpenAI embeddings
 		embedder := qdrant.NewOpenAIEmbeddingService(dim)
 		if embedder != nil {
 			log.Printf("[RAG] production mode: Qdrant + OpenAI embeddings")
-			return memory.NewInMemoryRAGPipeline(embedder, qdrantClient)
+			return memory.NewInMemoryRAGPipeline(embedder, qdrantClient), embedder, qdrantClient
 		}
 		log.Printf("[RAG] Qdrant available but no OPENAI_API_KEY, using in-memory embeddings")
+		inMemEmb := memory.NewInMemoryEmbeddingService(dim)
+		return memory.NewInMemoryRAGPipeline(inMemEmb, qdrantClient), inMemEmb, qdrantClient
 	}
 
 	// Fallback: in-memory everything
 	log.Printf("[RAG] in-memory mode (set QDRANT_URL + OPENAI_API_KEY for production)")
-	return memory.NewInMemoryRAGPipeline(
-		memory.NewInMemoryEmbeddingService(dim),
-		memory.NewInMemoryVectorDB(dim),
-	)
+	inMemEmb := memory.NewInMemoryEmbeddingService(dim)
+	inMemVDB := memory.NewInMemoryVectorDB(dim)
+	return memory.NewInMemoryRAGPipeline(inMemEmb, inMemVDB), inMemEmb, inMemVDB
 }
 
 // Chat is the main entry point for AI chat
@@ -292,11 +295,15 @@ func (g *AIGateway) buildMessages(ctx context.Context, chat *AIChatV2, agent *Ag
 }
 
 func (g *AIGateway) saveUserMessage(ctx context.Context, chatID, message string) error {
-	return g.dbAddMessage(&AIMessageV2{
+	err := g.dbAddMessage(&AIMessageV2{
 		ChatID:  chatID,
 		Role:    "user",
 		Content: message,
 	})
+	if err == nil {
+		go g.indexMessage(context.Background(), chatID, "user", "", message)
+	}
+	return err
 }
 
 func (g *AIGateway) saveAssistantMessage(ctx context.Context, chatID, agentID, content string, tokenCount int, modelUsed string) {
@@ -308,6 +315,36 @@ func (g *AIGateway) saveAssistantMessage(ctx context.Context, chatID, agentID, c
 		TokenCount: tokenCount,
 		ModelUsed:  modelUsed,
 	})
+	go g.indexMessage(context.Background(), chatID, "assistant", agentID, content)
+}
+
+func (g *AIGateway) indexMessage(ctx context.Context, chatID, role, agentID, content string) {
+	if g.embedder == nil || g.vectorDB == nil || content == "" {
+		return
+	}
+
+	emb, err := g.embedder.EmbedText(ctx, content)
+	if err != nil {
+		log.Printf("[RAG] indexMessage: embed error: %v", err)
+		return
+	}
+
+	pointID := uuid.New().String()
+	truncated := content
+	if len(truncated) > 2000 {
+		truncated = truncated[:2000]
+	}
+
+	metadata := map[string]any{
+		"content":  truncated,
+		"chat_id":  chatID,
+		"role":     role,
+		"agent_id": agentID,
+	}
+
+	if err := g.vectorDB.Upsert(ctx, pointID, emb, metadata); err != nil {
+		log.Printf("[RAG] indexMessage: upsert error: %v", err)
+	}
 }
 
 func (g *AIGateway) updateChatsLastMessage(ctx context.Context, chatID, content string) {

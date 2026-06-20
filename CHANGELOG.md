@@ -4,10 +4,14 @@
 
 ### Bug Fixes
 - **last_seen_at / last_client_version** — now updated on every chat stream message, not just at connection time. Clients with newer versions are detected on subsequent messages.
+- **JWT_SECRET rotated** — all existing tokens invalidated, users will re-login
 
 ### Security Fixes
 - **File extension validation** — upload handlers now reject disallowed extensions. Image: .jpg/.jpeg/.png/.gif/.webp. File: .pdf/.doc/.docx/.xls/.xlsx/.csv/.json/.zip etc. Audio: .m4a/.aac/.ogg/.mp3/.wav. Full avatar now validates its own extension.
 - **DeleteProfile cascade** — now cleans up AI tables (ai_chats_v2, ai_usage_stats, agent_reviews, agents_v2), user data (themes, pins, favorites, chat_list, calls, secret keys), and Hermes/AI session data before deleting user.
+
+### Features
+- **RAG message indexing** — AI chat messages (user + assistant) are now embedded and indexed into Qdrant vector DB for semantic search. Async indexing doesn't block chat responses.
 
 ### Code Quality
 - **Dead code removed** — `StartHTTPServer`, `StartAPKServer`, `logInfo`/`logWarn`/`logError`/`logFatal`, `backfillLastMessageText`
