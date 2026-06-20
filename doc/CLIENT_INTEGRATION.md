@@ -1,6 +1,6 @@
 # Lavender Messenger — Client Integration Guide
 
-**Сервер:** v1.3.0.2 | **Протокол:** gRPC + Protocol Buffers | **Дата:** 2026-06-20
+**Сервер:** v1.3.0.4 | **Протокол:** gRPC + Protocol Buffers | **Дата:** 2026-06-20
 
 Единый документ для интеграции нового клиента с сервером Lavender Messenger.
 
@@ -328,6 +328,89 @@ message UserInfo {
 - `auth >= "2.0"` → использовать `SignInV2` + JWT workflow
 - `chat >= "2.0"` → использовать `GetChatsV2`, JWT в Chat stream
 - `ai >= "2.0"` → использовать `ChatWithAIV2` вместо старого `ChatWithAI`
+
+---
+
+## Graceful Shutdown и Reconnection (v1.3.0.4+)
+
+Сервер поддерживает graceful shutdown — клиенты получают предупреждение перед отключением.
+
+### Поведение сервера при остановке
+
+1. Сервер получает SIGTERM (рестарт, деплой)
+2. Отправляет `SERVER_SHUTTINGDOWN` всем подключённым клиентам через Chat стрим
+3. Ждёт 2 секунды (время на получение клиентом)
+4. Вызывает `GracefulStop()` — закрывает новые подключения, ждёт завершения активных RPC (до 30с)
+
+### Health Endpoint
+
+```
+GET /health
+```
+
+| Статус | Ответ | Когда |
+|--------|-------|-------|
+| `200 OK` | `{"status":"ok","version":"1.3.0.4"}` | Сервер работает |
+| `503 Service Unavailable` | `{"status":"shutting_down","version":"1.3.0.4"}` | Сервер останавливается |
+
+### Рекомендуемое поведение клиента
+
+**1. Обработка `SERVER_SHUTTINGDOWN` в Chat стриме:**
+```kotlin
+// В обработчике сообщений Chat стрима
+if (message.user == "SYSTEM" && message.text == "SERVER_SHUTTINGDOWN") {
+    // Показать индикатор "Переподключение..."
+    showReconnecting()
+}
+```
+
+**2. Обработка `UNAVAILABLE` ошибки:**
+```kotlin
+// При получении StatusRuntimeException.UNAVAILABLE
+catch (e: StatusRuntimeException) {
+    if (e.status.code == Status.Code.UNAVAILABLE) {
+        // Не очищать список чатов!
+        // Показать "Сервер недоступен, повторное подключение..."
+        showReconnecting()
+        scheduleReconnect()
+    }
+}
+```
+
+**3. Retry с exponential backoff:**
+```kotlin
+fun scheduleReconnect() {
+    // Сначала проверить health endpoint
+    scope.launch {
+        val health = checkHealth() // GET /health
+        if (health.status == "shutting_down") {
+            delay(5000) // Ждать 5с если сервер останавливается
+            scheduleReconnect()
+            return@launch
+        }
+        // Сервер доступен — реконнект
+        delay(reconnectDelay)
+        reconnectDelay = minOf(reconnectDelay * 2, 30_000L) // max 30s
+        reconnectChatStream()
+    }
+}
+```
+
+**4. Кэширование данных:**
+- Кэшировать список чатов локально (Room DB / SQLite)
+- При `SERVER_SHUTTINGDOWN` или `UNAVAILABLE` — показывать кэшированные данные
+- После реконнекта — обновить данные с сервера
+
+### Порядок действий при деплое сервера
+
+```
+1. Клиент получает SERVER_SHUTTINGDOWN → показывает "Переподключение..."
+2. Сервер закрывает соединения (GracefulStop)
+3. Клиент получает UNAVAILABLE → НЕ очищает UI, показывает кэш
+4. Клиент poll /health → 503 → ждёт
+5. Новый сервер запускается → /health возвращает 200
+6. Клиент переподключается → обновляет данные
+```
 
 ---
 
