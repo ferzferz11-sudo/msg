@@ -2,8 +2,8 @@
 
 Документация по AI-сервисам: AI Gateway v2, провайдеры, маркетплейс.
 
-**Обновлено:** 2026-06-20
-**Версия:** v1.3.0.16
+**Обновлено:** 2026-06-21
+**Версия:** v1.3.0.19
 
 ---
 
@@ -39,6 +39,7 @@
 | `websocket` | `ai_provider_websocket.go` | WebSocket (gorilla/websocket) |
 | `subprocess` | `ai_provider_subprocess.go` | Subprocess (stdin/stdout) |
 | `mcp` | `ai_provider_mcp.go` | MCP (stdio, JSON-RPC 2.0) |
+| `reve` | `ai_provider_reve.go` | Reve image generation (POST /v1/image/create) |
 
 ---
 
@@ -47,13 +48,15 @@
 | ID | Имя | Провайдер | Модель | Tools | RAG |
 |----|-----|-----------|--------|-------|-----|
 | `mimo` | MiMo | mimo | mimo-auto | ✅ | ✅ |
-| `assistant` | Assistant | openrouter | claude-sonnet-4 | ✅ | ✅ |
-| `developer` | Developer | openrouter | claude-sonnet-4 | ✅ | ❌ |
-| `devops` | DevOps | openrouter | claude-sonnet-4 | ✅ | ❌ |
-| `architect` | Architect | openrouter | claude-sonnet-4 | ❌ | ❌ |
-| `writer` | Writer | openrouter | gpt-4o | ❌ | ❌ |
-| `analyst` | Analyst | openrouter | claude-sonnet-4 | ✅ | ✅ |
-| `translator` | Translator | openrouter | gpt-4o-mini | ❌ | ❌ |
+| `assistant` | Assistant | openrouter | meta-llama/llama-3.3-70b-instruct:free | ✅ | ✅ |
+| `developer` | Developer | openrouter | qwen/qwen3-coder:free | ✅ | ❌ |
+| `devops` | DevOps | openrouter | meta-llama/llama-3.3-70b-instruct:free | ✅ | ❌ |
+| `architect` | Architect | openrouter | nvidia/nemotron-3-super-120b-a12b:free | ❌ | ❌ |
+| `writer` | Writer | openrouter | meta-llama/llama-3.3-70b-instruct:free | ❌ | ❌ |
+| `analyst` | Analyst | openrouter | qwen/qwen3-next-80b-a3b-instruct:free | ✅ | ✅ |
+| `translator` | Translator | openrouter | meta-llama/llama-3.3-70b-instruct:free | ❌ | ❌ |
+| `vision` | Vision | openrouter | google/gemma-4-26b-a4b-it:free | ✅ | ❌ |
+| `reve` | Reve Image | reve | reve-2.0 | ❌ | ❌ |
 
 ---
 

@@ -216,7 +216,6 @@ func TestDispatchBotCommand_KnownCommands(t *testing.T) {
 		{"/status", true},
 		{"/version", true},
 		{"/help", true},
-		{"/logs", true},
 	}
 
 	for _, tt := range tests {

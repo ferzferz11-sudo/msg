@@ -1,7 +1,7 @@
 # Lavender Messenger — Архитектура
 
-**Дата:** 2026-06-20
-**Версия сервера:** 1.3.0.16
+**Дата:** 2026-06-21
+**Версия сервера:** 1.3.0.19
 **Модуль:** `LavenderMessenger` (Go 1.26)
 
 ---
@@ -29,15 +29,6 @@
 | `server.go` | `server` struct (ChatService), версии сервисов, helpers |
 | `hub.go` | Менеджер streams: clients, typing, call, conference, online status, grace period |
 | `logger.go` | Structured logging (logrus) |
-
-### Auth
-
-| Файл | Назначение |
-|------|------------|
-| `auth_service_v2.go` | AuthService: JWT, device management, refresh, sign-out |
-| `auth_interceptor.go` | gRPC interceptors: JWT validation |
-| `auth_jwt.go` | JWT generation/validation (HMAC-SHA256) |
-| `auth/jwt.go` | Agent tokens для hermes-agent daemon |
 
 ### Database
 
@@ -90,6 +81,7 @@
 | `ai_provider_websocket.go` | WebSocket provider (gorilla/websocket) |
 | `ai_provider_subprocess.go` | Subprocess provider (stdin/stdout) |
 | `ai_provider_mcp.go` | MCP provider (stdio, JSON-RPC 2.0) |
+| `ai_provider_reve.go` | Reve image generation provider |
 | `ai_tool.go` | Tool interface |
 | `ai_tool_registry.go` | Tool registry + 6 built-in tools |
 | `ai_tool_search_messages.go` | Search messages tool |
@@ -121,6 +113,29 @@
 | `crypto.go` | AES-256-GCM encryption, bcrypt hashing, reset tokens |
 | `secret_chat.go` | E2EE: secret chat creation, public key exchange |
 | `bot_commands.go` | Bot: /status, /deploy, /restart, /ai, notifications pub/sub |
+
+### Core (LLM/RAG Pipeline)
+
+| Файл | Назначение |
+|------|------------|
+| `core/llm/provider.go` | LLMProvider interface, Message, ToolDef, ToolCall types |
+| `core/llm/openrouter/provider.go` | OpenRouter LLM provider |
+| `core/llm/hermes/provider.go` | Hermes LLM provider |
+| `core/rag/interfaces.go` | VectorSearch, EmbeddingService, RAGPipeline interfaces |
+| `core/rag/qdrant/qdrant.go` | Qdrant REST API client |
+| `core/rag/qdrant/embedding.go` | OpenAI embedding service |
+| `core/rag/memory/memory.go` | In-memory RAG: TF-IDF, cosine similarity (fallback) |
+| `core/pipeline/pipeline.go` | Pipeline orchestrator: RAG → LLM → Tool Calls |
+
+### Auth
+
+| Файл | Назначение |
+|------|------------|
+| `auth_service.go` | Auth database interface definition |
+| `auth_service_v2.go` | AuthService v2: JWT, device management, refresh, sign-out |
+| `auth_interceptor.go` | gRPC interceptors: JWT validation |
+| `auth_jwt.go` | JWT generation/validation (HMAC-SHA256) |
+| `auth/jwt.go` | Agent tokens для hermes-agent daemon |
 
 ### Generated
 
@@ -216,7 +231,7 @@ Health endpoint returns 503 `{"status":"shutting_down"}` during shutdown window.
 | `go test ./...` | Все тесты (~88) |
 | `go test -race -count=1 .` | С race detector |
 
-Тесты: `auth_jwt_test.go`, `auth_service_test.go`, `owl_test.go`, `bot_commands_test.go`, `server_push_test.go`, `server_remote_test.go`, `server_stability_test.go`, `core/rag/memory/memory_test.go`
+Тесты: `auth_jwt_test.go`, `auth_service_test.go`, `owl_test.go`, `bot_commands_test.go`, `server_push_test.go`, `server_remote_test.go`, `server_stability_test.go`, `chatv2_test.go`, `messages_v2_test.go`, `core/rag/memory/memory_test.go`
 
 ---
 

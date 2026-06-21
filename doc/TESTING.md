@@ -2,7 +2,7 @@
 
 Документация по модульным тестам: как запускать, что покрыто, как писать новые тесты.
 
-**Актуально:** v1.3.0.16 (2026-06-20)
+**Актуально:** v1.3.0.19 (2026-06-21)
 
 ---
 
@@ -38,9 +38,11 @@ go test -coverprofile=/tmp/cover.out -count=1 . && go tool cover -func=/tmp/cove
 | `server_push_test.go` | Hub.IsUserOnline (v1+v2, grace period) | 6 |
 | `server_remote_test.go` | Remote agent deployment, stream updates, done filtering | 8 |
 | `server_stability_test.go` | Pinned messages fix, type assertion, graceful shutdown, panic recovery | 13 |
+| `chatv2_test.go` | ChatV2 stream: auth, message routing, typing | TBD |
+| `messages_v2_test.go` | Messages v2: CRUD, cursor pagination, reactions | TBD |
 | `core/rag/memory/memory_test.go` | In-memory RAG: embeddings, vector DB, pipeline | 4 |
 
-**Всего:** ~88 тестов (все проходят)
+**Всего:** ~88+ тестов (все проходят)
 
 ---
 
