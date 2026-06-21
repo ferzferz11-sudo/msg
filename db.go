@@ -87,6 +87,32 @@ func ConnectDB() (*DB, error) {
 		`CREATE INDEX IF NOT EXISTS idx_messages_user_id ON messages(user_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_messages_username_time ON messages(username, created_at)`,
 
+		// --- Messages v2 ---
+		`CREATE TABLE IF NOT EXISTS messages_v2 (
+			id              VARCHAR(255) PRIMARY KEY,
+			room_id         VARCHAR(255) NOT NULL,
+			sender_id       UUID NOT NULL REFERENCES users(id),
+			content_type    VARCHAR(20) NOT NULL,
+			text            TEXT DEFAULT '',
+			media_url       VARCHAR(512) DEFAULT '',
+			media_urls      JSONB DEFAULT '[]',
+			duration        INT DEFAULT 0,
+			reply_to_id     VARCHAR(255) DEFAULT NULL,
+			reply_preview   TEXT DEFAULT '',
+			edited          BOOLEAN DEFAULT FALSE,
+			is_read         BOOLEAN DEFAULT FALSE,
+			is_e2ee         BOOLEAN DEFAULT FALSE,
+			e2ee_payload    BYTEA DEFAULT NULL,
+			reactions       JSONB DEFAULT '{}',
+			created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+		)`,
+		`CREATE INDEX IF NOT EXISTS idx_messages_v2_room_cursor ON messages_v2(room_id, created_at DESC, id DESC)`,
+		`CREATE INDEX IF NOT EXISTS idx_messages_v2_reply_to ON messages_v2(reply_to_id) WHERE reply_to_id IS NOT NULL`,
+		`CREATE INDEX IF NOT EXISTS idx_messages_v2_sender ON messages_v2(sender_id)`,
+		`DO $$ BEGIN
+			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages_v2' AND column_name='reply_preview') THEN ALTER TABLE messages_v2 ADD COLUMN reply_preview TEXT DEFAULT ''; END IF;
+		END $$;`,
+
 		// --- Chats ---
 		`CREATE TABLE IF NOT EXISTS chats (id VARCHAR(255) PRIMARY KEY, name VARCHAR(255) NOT NULL, type VARCHAR(50) NOT NULL, participants TEXT NOT NULL, creator_username VARCHAR(255), created_at TIMESTAMP NOT NULL DEFAULT NOW(), avatar_url TEXT DEFAULT '', full_avatar_url TEXT DEFAULT '')`,
 		`DO $$ BEGIN

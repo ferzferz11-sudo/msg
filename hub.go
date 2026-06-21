@@ -24,6 +24,11 @@ type Hub struct {
 	typingStreams map[gen.ChatService_TypingServer]string
 	callStreams   map[gen.ChatService_CallSessionServer]string
 
+	// ChatV2 streams
+	v2Clients   map[gen.ChatService_ChatV2Server]string // stream → username
+	v2UserIds   map[gen.ChatService_ChatV2Server]string // stream → userId
+	v2Rooms     map[gen.ChatService_ChatV2Server]string // stream → room ID
+
 	// Reverse-lookup sets for O(1) IsUserOnline
 	userIdSet      map[string]bool   // userId → online (v2 clients)
 	usernameSet    map[string]bool   // username → online (v1 clients)
@@ -56,6 +61,9 @@ func NewHub(onStatusChange func()) *Hub {
 		rooms:          make(map[gen.ChatService_ChatServer]string),
 		typingStreams:  make(map[gen.ChatService_TypingServer]string),
 		callStreams:    make(map[gen.ChatService_CallSessionServer]string),
+		v2Clients:      make(map[gen.ChatService_ChatV2Server]string),
+		v2UserIds:      make(map[gen.ChatService_ChatV2Server]string),
+		v2Rooms:        make(map[gen.ChatService_ChatV2Server]string),
 		userIdSet:      make(map[string]bool),
 		usernameSet:    make(map[string]bool),
 		clientVersions: make(map[string]string),
@@ -270,12 +278,101 @@ func (h *Hub) Unregister(stream gen.ChatService_ChatServer) {
 	}
 }
 
+// RegisterV2 registers a ChatV2 stream
+func (h *Hub) RegisterV2(stream gen.ChatService_ChatV2Server) {
+	h.mu.Lock()
+	h.v2Clients[stream] = "Anonymous"
+	h.mu.Unlock()
+}
+
+// UnregisterV2 unregisters a ChatV2 stream
+func (h *Hub) UnregisterV2(stream gen.ChatService_ChatV2Server) {
+	h.mu.Lock()
+	username := h.v2Clients[stream]
+	userId := h.v2UserIds[stream]
+	delete(h.v2Clients, stream)
+	delete(h.v2UserIds, stream)
+	delete(h.v2Rooms, stream)
+	if userId != "" {
+		h.userIdSet[userId] = false
+		delete(h.userIdSet, userId)
+	}
+	if username != "" && username != "Anonymous" {
+		h.usernameSet[username] = false
+		delete(h.usernameSet, username)
+	}
+	h.mu.Unlock()
+
+	if username != "" && username != "Anonymous" {
+		h.StartGracePeriod(username)
+	}
+	if h.onStatusChange != nil {
+		h.onStatusChange()
+	}
+}
+
+// SetV2Room sets the room for a ChatV2 stream
+func (h *Hub) SetV2Room(stream gen.ChatService_ChatV2Server, room string) {
+	h.mu.Lock()
+	h.v2Rooms[stream] = room
+	h.mu.Unlock()
+}
+
+// SetV2UserId sets the userId for a ChatV2 stream
+func (h *Hub) SetV2UserId(stream gen.ChatService_ChatV2Server, userId string) {
+	h.mu.Lock()
+	oldId := h.v2UserIds[stream]
+	h.v2UserIds[stream] = userId
+	if oldId != "" {
+		h.userIdSet[oldId] = false
+		delete(h.userIdSet, oldId)
+	}
+	if userId != "" {
+		h.userIdSet[userId] = true
+	}
+	h.mu.Unlock()
+}
+
+// SetV2Username sets the username for a ChatV2 stream
+func (h *Hub) SetV2Username(stream gen.ChatService_ChatV2Server, name string) {
+	h.mu.Lock()
+	oldName := h.v2Clients[stream]
+	h.v2Clients[stream] = name
+	if oldName != "" && oldName != "Anonymous" {
+		h.usernameSet[oldName] = false
+		delete(h.usernameSet, oldName)
+	}
+	if name != "" && name != "Anonymous" {
+		h.usernameSet[name] = true
+	}
+	h.mu.Unlock()
+}
+
+// SnapshotRoomStreams returns a copy of all ChatV2 streams in a room for safe sending.
+func (h *Hub) SnapshotRoomStreams(roomID string) []gen.ChatService_ChatV2Server {
+	h.mu.RLock()
+	var targets []gen.ChatService_ChatV2Server
+	for stream, room := range h.v2Rooms {
+		if room == roomID {
+			targets = append(targets, stream)
+		}
+	}
+	h.mu.RUnlock()
+	return targets
+}
+
 // GetOnlineUsers returns a list of unique usernames currently connected.
 // Includes users in grace period (reconnecting) so they appear online during brief disconnects.
 func (h *Hub) GetOnlineUsers() []string {
 	h.mu.RLock()
 	userMap := make(map[string]struct{})
 	for _, name := range h.clients {
+		if name != "" && name != "Anonymous" {
+			userMap[name] = struct{}{}
+		}
+	}
+	// Also include v2 clients
+	for _, name := range h.v2Clients {
 		if name != "" && name != "Anonymous" {
 			userMap[name] = struct{}{}
 		}

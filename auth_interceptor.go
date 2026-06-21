@@ -26,6 +26,10 @@ func AuthInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServe
 	if strings.HasPrefix(info.FullMethod, "/messenger.AuthService/") {
 		return handler(ctx, req)
 	}
+	// Skip auth for gRPC reflection
+	if strings.HasPrefix(info.FullMethod, "/grpc.reflection.") {
+		return handler(ctx, req)
+	}
 
 	claims, err := extractAndValidateToken(ctx)
 	if err != nil {
@@ -42,6 +46,10 @@ func AuthInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServe
 func AuthStreamInterceptor(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 	// Skip auth for AuthService
 	if strings.HasPrefix(info.FullMethod, "/messenger.AuthService/") {
+		return handler(srv, ss)
+	}
+	// Skip auth for gRPC reflection
+	if strings.HasPrefix(info.FullMethod, "/grpc.reflection.") {
 		return handler(srv, ss)
 	}
 

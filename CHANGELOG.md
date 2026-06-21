@@ -1,5 +1,27 @@
 # Лава — Server Changelog
 
+## [1.3.0.19] - 2026-06-21
+
+### Features
+- **Messages v2** — lightweight message system with `MessageV2` proto (12 fields vs 26 in v1), `oneof content` (text/media/reply), JSONB reactions, cursor-based pagination, sender_id (UUID).
+- **ChatV2 stream** — new bidirectional gRPC stream `ChatV2(stream ChatV2Message)` with `oneof payload` (message/typing/system). JWT auth via first message.
+- **6 new RPCs** — `GetHistoryV2`, `SendMessageV2`, `EditMessageV2`, `DeleteMessageV2`, `SetReactionV2`, `ChatV2`.
+- **messages_v2 table** — new PostgreSQL table with cursor pagination index, reply index, sender index. Reactions stored as JSONB.
+- **Dual-write** — old Chat stream writes to both `messages` and `messages_v2` for gradual migration.
+
+### Improvements
+- Removed denormalized fields (avatar_url, is_super_admin, replied_to_text, replied_to_user)
+- Auth fields (jwt_token, device_id, etc.) moved out of Message proto
+- Reactions: batch read (JSONB) instead of N+1 queries
+- Cursor pagination: O(log n) instead of OFFSET
+
+### Backward Compatibility
+- All existing v1 RPCs continue to work unchanged
+- Old `Message` proto and `Chat` stream untouched
+- Dual-write ensures messages_v2 stays in sync during migration
+
+---
+
 ## [1.3.0.18] - 2026-06-20
 
 ### Features

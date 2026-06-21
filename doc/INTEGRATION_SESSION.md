@@ -1,7 +1,7 @@
 # Lava Messenger — Интеграционная сессия
 
-**Текущая версия:** v1.3.0.16 (сервер prod/dev)
-**Обновлено:** 2026-06-20
+**Текущая версия:** v1.3.0.19 (сервер prod/dev)
+**Обновлено:** 2026-06-21
 **Ветка сервера:** feat/1.3.0.x
 
 ---
@@ -10,8 +10,8 @@
 
 | | Версия | Статус |
 |---|--------|--------|
-| **Сервер prod** | v1.3.0.16 | ✅ Работает на порту 50051 |
-| **Сервер dev** | v1.3.0.16 | ✅ Работает на порту 50052 |
+| **Сервер prod** | v1.3.0.19 | ✅ Работает на порту 50051 |
+| **Сервер dev** | v1.3.0.19 | ✅ Работает на порту 50052 |
 
 **Серверная часть завершена (50/50 задач).**
 
@@ -20,8 +20,9 @@
 ## Ключевые фичи
 
 - **Auth:** JWT (access+refresh), device management, token rotation
-- **Chat:** Bidirectional streams, typing, WebRTC calls, conference
+- **Chat:** Bidirectional streams, typing, WebRTC calls, conference, ChatV2 stream
 - **ChatList v2:** Pin/Unpin, Archive, Search, unread counts, pagination
+- **Messages v2:** MessageV2 (12 fields), cursor pagination, JSONB reactions, dual-write
 - **AI v2:** 7 providers, 6 tools, 8 presets, marketplace, usage stats, RAG (Qdrant+OpenAI)
 - **E2EE:** Secret chats with AES-256-GCM
 - **Push:** FCM batch, auto-cleanup invalid tokens

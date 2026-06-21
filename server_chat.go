@@ -3,6 +3,7 @@ package main
 import (
 	"LavenderMessenger/gen"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -336,6 +337,44 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 				logger.Errorf("Failed to save msg: %v", err)
 			} else {
 				logger.Infof("Msg saved: %s (%s)", msg.Id, roomID)
+
+				// Dual-write: also save to messages_v2 for gradual migration
+				if connectedUserID != "" {
+					v2Row := &MessageRowV2{
+						ID:          msg.Id,
+						RoomID:      roomID,
+						SenderID:    connectedUserID,
+						ContentType: "text",
+						IsRead:      strings.HasPrefix(roomID, "favorites_"),
+						IsE2EE:      msg.IsE2Ee,
+						CreatedAt:   msg.CreatedAt.AsTime(),
+					}
+					if msg.IsE2Ee {
+						v2Row.E2EEPayload = []byte(msg.E2EePayload)
+					} else {
+						v2Row.Text = msg.Text
+					}
+					if imageURL != "" {
+						v2Row.MediaURL = imageURL
+						v2Row.ContentType = "image"
+					} else if len(msg.ImageUrls) > 0 {
+						v2Row.MediaURL = msg.ImageUrls[0]
+						b, _ := json.Marshal(msg.ImageUrls)
+						v2Row.MediaURLs = string(b)
+						v2Row.ContentType = "image"
+					} else if voiceURL != "" {
+						v2Row.MediaURL = voiceURL
+						v2Row.Duration = duration
+						v2Row.ContentType = "voice"
+					}
+					if msg.RepliedToMessageId != "" {
+						v2Row.ReplyToID = sql.NullString{String: msg.RepliedToMessageId, Valid: true}
+						v2Row.ReplyPreview = sql.NullString{String: msg.RepliedToText, Valid: true}
+					}
+					if err := s.db.SaveMessageV2(v2Row); err != nil {
+						logger.Warnf("Dual-write v2 failed for %s: %v", msg.Id, err)
+					}
+				}
 			}
 		}
 
@@ -668,4 +707,153 @@ func (s *server) cleanupRecentMsgs() {
 		}
 		return true
 	})
+}
+
+// ChatV2 is a bidirectional stream for v2 messages (oneof payload).
+func (s *server) ChatV2(stream gen.ChatService_ChatV2Server) error {
+	defer func() {
+		if r := recover(); r != nil {
+			logger.Errorf("panic recovered in ChatV2 stream: %v", r)
+		}
+	}()
+
+	var connectedUserID string
+	var connectedUser string
+	var currentRoom string
+	authDone := false
+
+	// Register with hub
+	s.hub.RegisterV2(stream)
+	defer s.hub.UnregisterV2(stream)
+
+	for {
+		msg, err := stream.Recv()
+		if err != nil {
+			return err
+		}
+
+		// Auth: first message with JWT
+		if !authDone && msg.JwtToken != "" {
+			claims, err := ValidateToken(msg.JwtToken)
+			if err != nil || claims.Type != "access" {
+				_ = stream.Send(&gen.ChatV2Message{
+					Payload: &gen.ChatV2Message_System{
+						System: &gen.ChatV2System{Type: "AUTH_FAILED", Message: "invalid token"},
+					},
+				})
+				return fmt.Errorf("auth failed")
+			}
+			connectedUserID = claims.UserID
+			connectedUser = claims.Username
+			currentRoom = msg.RoomId
+			authDone = true
+			s.hub.SetV2UserId(stream, connectedUserID)
+			s.hub.SetV2Username(stream, connectedUser)
+			s.hub.SetV2Room(stream, currentRoom)
+			s.hub.ClearGracePeriod(connectedUser)
+			logger.Infof("[ChatV2] %s connected to room %s", connectedUser, currentRoom)
+			continue
+		}
+
+		if !authDone {
+			_ = stream.Send(&gen.ChatV2Message{
+				Payload: &gen.ChatV2Message_System{
+					System: &gen.ChatV2System{Type: "AUTH_REQUIRED", Message: "send jwt_token first"},
+				},
+			})
+			continue
+		}
+
+		// Handle different payload types
+		switch p := msg.Payload.(type) {
+		case *gen.ChatV2Message_Message:
+			// Receive message from client → save + broadcast
+			v2msg := p.Message
+			if v2msg == nil {
+				continue
+			}
+			// Override room from stream context
+			if currentRoom != "" {
+				v2msg.RoomId = currentRoom
+			}
+			if v2msg.RoomId == "" {
+				continue
+			}
+
+			// Save to DB
+			row := &MessageRowV2{
+				ID:          v2msg.Id,
+				RoomID:      v2msg.RoomId,
+				SenderID:    connectedUserID,
+				ContentType: "text",
+				IsRead:      false,
+				CreatedAt:   time.Now().UTC(),
+			}
+
+			switch c := v2msg.Content.(type) {
+			case *gen.MessageV2_Text:
+				row.Text = c.Text
+				row.ContentType = "text"
+			case *gen.MessageV2_Media:
+				row.MediaURL = c.Media.Url
+				if len(c.Media.Urls) > 0 {
+					b, _ := json.Marshal(c.Media.Urls)
+					row.MediaURLs = string(b)
+				}
+				row.Duration = c.Media.Duration
+				row.ContentType = c.Media.Type
+			case *gen.MessageV2_Reply:
+				row.ReplyToID = sql.NullString{String: c.Reply.MessageId, Valid: true}
+				row.ReplyPreview = sql.NullString{String: c.Reply.Preview, Valid: true}
+				row.ContentType = "text"
+			}
+
+			if v2msg.IsE2Ee {
+				row.IsE2EE = true
+				row.E2EEPayload = []byte(v2msg.E2EePayload)
+			}
+
+			if err := s.db.SaveMessageV2(row); err != nil {
+				logger.Errorf("[ChatV2] save error: %v", err)
+				continue
+			}
+
+			// Update chat last message
+			preview := row.Text
+			if len(preview) > 500 {
+				preview = preview[:500]
+			}
+			if row.ContentType == "image" {
+				preview = "Image"
+			} else if row.ContentType == "voice" {
+				preview = "Voice message"
+			}
+			_, _ = s.db.Exec(`UPDATE chats SET last_message_text=$1, last_message_time=$2, last_message_username=$3, last_message_has_image=$4 WHERE id=$5`,
+				preview, row.CreatedAt, connectedUser, row.ContentType == "image", row.RoomID)
+			_ = s.db.IncrementParticipantsChatListVersion(row.RoomID)
+
+			// Broadcast to all in room (including sender for confirmation)
+			protoMsg := rowToProtoV2(row)
+			wrappedMsg := &gen.ChatV2Message{
+				Payload: &gen.ChatV2Message_Message{Message: protoMsg},
+			}
+			hubSnapshot := s.hub.SnapshotRoomStreams(currentRoom)
+			for _, target := range hubSnapshot {
+				_ = target.Send(wrappedMsg)
+			}
+
+		case *gen.ChatV2Message_Typing:
+			// Typing indicator → broadcast to room
+			typing := &gen.TypingSignal{
+				RoomId:   currentRoom,
+				Username: connectedUser,
+				IsTyping: p.Typing.IsTyping,
+			}
+			s.hub.BroadcastTyping(typing)
+
+		case *gen.ChatV2Message_System:
+			// System messages are server→client only, ignore from client
+			continue
+		}
+	}
 }

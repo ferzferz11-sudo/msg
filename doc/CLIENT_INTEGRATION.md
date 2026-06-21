@@ -446,6 +446,177 @@ message MarkReadRequest {
 
 ---
 
+## Messages v2
+
+Messages v2 provides a lightweight, type-safe message system with cursor-based pagination, JSONB reactions, and a ChatV2 bidirectional stream.
+
+### Key differences from v1
+
+| Feature | v1 Message | v2 MessageV2 |
+|---------|-----------|-------------|
+| Fields | 26 (God Object) | ~12 (lean) |
+| Sender | `user` (username) | `sender_id` (UUID) |
+| Content | flat fields | `oneof content` (text/media/reply) |
+| Reactions | N+1 queries | JSONB in message |
+| Pagination | OFFSET | Cursor-based |
+| Auth | in-message (jwt_token, device_id) | interceptor-only |
+| Avatar | denormalized | resolved at read time |
+
+### ChatV2 Stream (bidirectional)
+
+```protobuf
+rpc ChatV2(stream ChatV2Message) returns (stream ChatV2Message);
+
+message ChatV2Message {
+  string jwt_token = 1;     // first message only (auth)
+  string room_id = 2;       // room to join
+
+  oneof payload {
+    MessageV2 message = 10;
+    ChatV2Typing typing = 11;
+    ChatV2System system = 12;
+  }
+}
+
+message ChatV2Typing {
+  bool is_typing = 1;
+}
+
+message ChatV2System {
+  string type = 1;    // "AUTH_FAILED", "AUTH_REQUIRED", "SERVER_SHUTTINGDOWN"
+  string message = 2;
+}
+```
+
+**Auth flow:**
+1. Open ChatV2 stream
+2. First message: `{ jwt_token: "Bearer ...", room_id: "chat-uuid" }`
+3. Server validates JWT, registers stream in room
+4. Send/receive `MessageV2` payloads
+
+### MessageV2
+
+```protobuf
+message MessageV2 {
+  string id = 1;           // UUID
+  string room_id = 2;
+  string sender_id = 3;    // UUID (not username)
+
+  oneof content {
+    string text = 10;
+    MessageMedia media = 11;
+    MessageReply reply = 12;
+  }
+
+  bool edited = 20;
+  bool is_read = 21;
+  google.protobuf.Timestamp created_at = 22;
+  bytes reactions = 23;     // JSON: {"uuid":"emoji",...}
+
+  bool is_e2ee = 30;
+  string e2ee_payload = 31;
+}
+
+message MessageMedia {
+  string type = 1;       // "image" | "voice" | "file"
+  string url = 2;
+  repeated string urls = 3; // gallery
+  int32 duration = 4;    // voice duration
+}
+
+message MessageReply {
+  string message_id = 1;
+  string preview = 2;    // text preview of original
+}
+```
+
+### GetHistoryV2 (cursor pagination)
+
+```protobuf
+rpc GetHistoryV2(GetHistoryV2Request) returns (GetHistoryV2Response);
+
+message GetHistoryV2Request {
+  string room_id = 1;
+  int32 limit = 2;       // default 50, max 200
+  string cursor = 3;     // from previous response
+}
+
+message GetHistoryV2Response {
+  repeated MessageV2 messages = 1;
+  string next_cursor = 2;  // empty = no more
+  bool has_more = 3;
+}
+```
+
+**Pagination:**
+1. First request: `cursor = ""`
+2. Response includes `next_cursor`
+3. Pass `next_cursor` as `cursor` in next request
+4. Stop when `has_more = false`
+
+### SendMessageV2
+
+```protobuf
+rpc SendMessageV2(SendMessageV2Request) returns (SendMessageV2Response);
+
+message SendMessageV2Request {
+  string room_id = 1;
+  oneof content {
+    string text = 2;
+    MessageMedia media = 3;
+  }
+  string reply_to_id = 4;
+  bool is_e2ee = 5;
+  string e2ee_payload = 6;
+}
+
+message SendMessageV2Response {
+  MessageV2 message = 1;
+  bool success = 2;
+  string error = 3;
+}
+```
+
+### EditMessageV2
+
+```protobuf
+rpc EditMessageV2(EditMessageV2Request) returns (EditMessageV2Response);
+
+message EditMessageV2Request {
+  string message_id = 1;
+  string text = 2;
+}
+```
+
+### DeleteMessageV2
+
+```protobuf
+rpc DeleteMessageV2(DeleteMessageV2Request) returns (DeleteMessageV2Response);
+
+message DeleteMessageV2Request {
+  repeated string message_ids = 1;
+  string requester_user_id = 2;
+}
+```
+
+### SetReactionV2
+
+```protobuf
+rpc SetReactionV2(SetReactionV2Request) returns (SetReactionV2Response);
+
+message SetReactionV2Request {
+  string message_id = 1;
+  string emoji = 2;       // empty = remove reaction
+}
+
+message SetReactionV2Response {
+  bool success = 1;
+  bytes reactions = 2;    // updated reactions JSON
+}
+```
+
+---
+
 ## Profile (ProfileService v2)
 
 **Important:** ProfileService is a separate gRPC service (not part of ChatService). Connect to the same gRPC endpoint.

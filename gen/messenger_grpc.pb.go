@@ -123,6 +123,12 @@ const (
 	ChatService_GetFreeModels_FullMethodName          = "/messenger.ChatService/GetFreeModels"
 	ChatService_SetFreeModel_FullMethodName           = "/messenger.ChatService/SetFreeModel"
 	ChatService_RemoveFreeModel_FullMethodName        = "/messenger.ChatService/RemoveFreeModel"
+	ChatService_ChatV2_FullMethodName                 = "/messenger.ChatService/ChatV2"
+	ChatService_GetHistoryV2_FullMethodName           = "/messenger.ChatService/GetHistoryV2"
+	ChatService_SendMessageV2_FullMethodName          = "/messenger.ChatService/SendMessageV2"
+	ChatService_EditMessageV2_FullMethodName          = "/messenger.ChatService/EditMessageV2"
+	ChatService_DeleteMessageV2_FullMethodName        = "/messenger.ChatService/DeleteMessageV2"
+	ChatService_SetReactionV2_FullMethodName          = "/messenger.ChatService/SetReactionV2"
 	ChatService_ChatWithAIV2_FullMethodName           = "/messenger.ChatService/ChatWithAIV2"
 	ChatService_CreateAIAgent_FullMethodName          = "/messenger.ChatService/CreateAIAgent"
 	ChatService_UpdateAIAgent_FullMethodName          = "/messenger.ChatService/UpdateAIAgent"
@@ -260,6 +266,14 @@ type ChatServiceClient interface {
 	GetFreeModels(ctx context.Context, in *GetFreeModelsRequest, opts ...grpc.CallOption) (*GetFreeModelsResponse, error)
 	SetFreeModel(ctx context.Context, in *SetFreeModelRequest, opts ...grpc.CallOption) (*SetFreeModelResponse, error)
 	RemoveFreeModel(ctx context.Context, in *RemoveFreeModelRequest, opts ...grpc.CallOption) (*RemoveFreeModelResponse, error)
+	// === Chat v2 (bidirectional stream) ===
+	ChatV2(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[ChatV2Message, ChatV2Message], error)
+	// === Messages v2 ===
+	GetHistoryV2(ctx context.Context, in *GetHistoryV2Request, opts ...grpc.CallOption) (*GetHistoryV2Response, error)
+	SendMessageV2(ctx context.Context, in *SendMessageV2Request, opts ...grpc.CallOption) (*SendMessageV2Response, error)
+	EditMessageV2(ctx context.Context, in *EditMessageV2Request, opts ...grpc.CallOption) (*EditMessageV2Response, error)
+	DeleteMessageV2(ctx context.Context, in *DeleteMessageV2Request, opts ...grpc.CallOption) (*DeleteMessageV2Response, error)
+	SetReactionV2(ctx context.Context, in *SetReactionV2Request, opts ...grpc.CallOption) (*SetReactionV2Response, error)
 	// === AI Services v2 ===
 	ChatWithAIV2(ctx context.Context, in *ChatWithAIV2Request, opts ...grpc.CallOption) (grpc.ServerStreamingClient[ChatWithAIV2Response], error)
 	CreateAIAgent(ctx context.Context, in *CreateAIAgentRequest, opts ...grpc.CallOption) (*CreateAIAgentResponse, error)
@@ -1390,9 +1404,72 @@ func (c *chatServiceClient) RemoveFreeModel(ctx context.Context, in *RemoveFreeM
 	return out, nil
 }
 
+func (c *chatServiceClient) ChatV2(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[ChatV2Message, ChatV2Message], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &ChatService_ServiceDesc.Streams[9], ChatService_ChatV2_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[ChatV2Message, ChatV2Message]{ClientStream: stream}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type ChatService_ChatV2Client = grpc.BidiStreamingClient[ChatV2Message, ChatV2Message]
+
+func (c *chatServiceClient) GetHistoryV2(ctx context.Context, in *GetHistoryV2Request, opts ...grpc.CallOption) (*GetHistoryV2Response, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetHistoryV2Response)
+	err := c.cc.Invoke(ctx, ChatService_GetHistoryV2_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) SendMessageV2(ctx context.Context, in *SendMessageV2Request, opts ...grpc.CallOption) (*SendMessageV2Response, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SendMessageV2Response)
+	err := c.cc.Invoke(ctx, ChatService_SendMessageV2_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) EditMessageV2(ctx context.Context, in *EditMessageV2Request, opts ...grpc.CallOption) (*EditMessageV2Response, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(EditMessageV2Response)
+	err := c.cc.Invoke(ctx, ChatService_EditMessageV2_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) DeleteMessageV2(ctx context.Context, in *DeleteMessageV2Request, opts ...grpc.CallOption) (*DeleteMessageV2Response, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteMessageV2Response)
+	err := c.cc.Invoke(ctx, ChatService_DeleteMessageV2_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) SetReactionV2(ctx context.Context, in *SetReactionV2Request, opts ...grpc.CallOption) (*SetReactionV2Response, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SetReactionV2Response)
+	err := c.cc.Invoke(ctx, ChatService_SetReactionV2_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *chatServiceClient) ChatWithAIV2(ctx context.Context, in *ChatWithAIV2Request, opts ...grpc.CallOption) (grpc.ServerStreamingClient[ChatWithAIV2Response], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &ChatService_ServiceDesc.Streams[9], ChatService_ChatWithAIV2_FullMethodName, cOpts...)
+	stream, err := c.cc.NewStream(ctx, &ChatService_ServiceDesc.Streams[10], ChatService_ChatWithAIV2_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1669,6 +1746,14 @@ type ChatServiceServer interface {
 	GetFreeModels(context.Context, *GetFreeModelsRequest) (*GetFreeModelsResponse, error)
 	SetFreeModel(context.Context, *SetFreeModelRequest) (*SetFreeModelResponse, error)
 	RemoveFreeModel(context.Context, *RemoveFreeModelRequest) (*RemoveFreeModelResponse, error)
+	// === Chat v2 (bidirectional stream) ===
+	ChatV2(grpc.BidiStreamingServer[ChatV2Message, ChatV2Message]) error
+	// === Messages v2 ===
+	GetHistoryV2(context.Context, *GetHistoryV2Request) (*GetHistoryV2Response, error)
+	SendMessageV2(context.Context, *SendMessageV2Request) (*SendMessageV2Response, error)
+	EditMessageV2(context.Context, *EditMessageV2Request) (*EditMessageV2Response, error)
+	DeleteMessageV2(context.Context, *DeleteMessageV2Request) (*DeleteMessageV2Response, error)
+	SetReactionV2(context.Context, *SetReactionV2Request) (*SetReactionV2Response, error)
 	// === AI Services v2 ===
 	ChatWithAIV2(*ChatWithAIV2Request, grpc.ServerStreamingServer[ChatWithAIV2Response]) error
 	CreateAIAgent(context.Context, *CreateAIAgentRequest) (*CreateAIAgentResponse, error)
@@ -2007,6 +2092,24 @@ func (UnimplementedChatServiceServer) SetFreeModel(context.Context, *SetFreeMode
 }
 func (UnimplementedChatServiceServer) RemoveFreeModel(context.Context, *RemoveFreeModelRequest) (*RemoveFreeModelResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RemoveFreeModel not implemented")
+}
+func (UnimplementedChatServiceServer) ChatV2(grpc.BidiStreamingServer[ChatV2Message, ChatV2Message]) error {
+	return status.Error(codes.Unimplemented, "method ChatV2 not implemented")
+}
+func (UnimplementedChatServiceServer) GetHistoryV2(context.Context, *GetHistoryV2Request) (*GetHistoryV2Response, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetHistoryV2 not implemented")
+}
+func (UnimplementedChatServiceServer) SendMessageV2(context.Context, *SendMessageV2Request) (*SendMessageV2Response, error) {
+	return nil, status.Error(codes.Unimplemented, "method SendMessageV2 not implemented")
+}
+func (UnimplementedChatServiceServer) EditMessageV2(context.Context, *EditMessageV2Request) (*EditMessageV2Response, error) {
+	return nil, status.Error(codes.Unimplemented, "method EditMessageV2 not implemented")
+}
+func (UnimplementedChatServiceServer) DeleteMessageV2(context.Context, *DeleteMessageV2Request) (*DeleteMessageV2Response, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteMessageV2 not implemented")
+}
+func (UnimplementedChatServiceServer) SetReactionV2(context.Context, *SetReactionV2Request) (*SetReactionV2Response, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetReactionV2 not implemented")
 }
 func (UnimplementedChatServiceServer) ChatWithAIV2(*ChatWithAIV2Request, grpc.ServerStreamingServer[ChatWithAIV2Response]) error {
 	return status.Error(codes.Unimplemented, "method ChatWithAIV2 not implemented")
@@ -3871,6 +3974,103 @@ func _ChatService_RemoveFreeModel_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ChatService_ChatV2_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(ChatServiceServer).ChatV2(&grpc.GenericServerStream[ChatV2Message, ChatV2Message]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type ChatService_ChatV2Server = grpc.BidiStreamingServer[ChatV2Message, ChatV2Message]
+
+func _ChatService_GetHistoryV2_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetHistoryV2Request)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).GetHistoryV2(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_GetHistoryV2_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).GetHistoryV2(ctx, req.(*GetHistoryV2Request))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_SendMessageV2_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SendMessageV2Request)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).SendMessageV2(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_SendMessageV2_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).SendMessageV2(ctx, req.(*SendMessageV2Request))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_EditMessageV2_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(EditMessageV2Request)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).EditMessageV2(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_EditMessageV2_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).EditMessageV2(ctx, req.(*EditMessageV2Request))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_DeleteMessageV2_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteMessageV2Request)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).DeleteMessageV2(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_DeleteMessageV2_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).DeleteMessageV2(ctx, req.(*DeleteMessageV2Request))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_SetReactionV2_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetReactionV2Request)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).SetReactionV2(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_SetReactionV2_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).SetReactionV2(ctx, req.(*SetReactionV2Request))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ChatService_ChatWithAIV2_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(ChatWithAIV2Request)
 	if err := stream.RecvMsg(m); err != nil {
@@ -4522,6 +4722,26 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _ChatService_RemoveFreeModel_Handler,
 		},
 		{
+			MethodName: "GetHistoryV2",
+			Handler:    _ChatService_GetHistoryV2_Handler,
+		},
+		{
+			MethodName: "SendMessageV2",
+			Handler:    _ChatService_SendMessageV2_Handler,
+		},
+		{
+			MethodName: "EditMessageV2",
+			Handler:    _ChatService_EditMessageV2_Handler,
+		},
+		{
+			MethodName: "DeleteMessageV2",
+			Handler:    _ChatService_DeleteMessageV2_Handler,
+		},
+		{
+			MethodName: "SetReactionV2",
+			Handler:    _ChatService_SetReactionV2_Handler,
+		},
+		{
 			MethodName: "CreateAIAgent",
 			Handler:    _ChatService_CreateAIAgent_Handler,
 		},
@@ -4626,6 +4846,12 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 			StreamName:    "SubscribeNotifications",
 			Handler:       _ChatService_SubscribeNotifications_Handler,
 			ServerStreams: true,
+		},
+		{
+			StreamName:    "ChatV2",
+			Handler:       _ChatService_ChatV2_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
 		},
 		{
 			StreamName:    "ChatWithAIV2",

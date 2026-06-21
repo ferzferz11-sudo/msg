@@ -23,6 +23,7 @@ import (
 	"github.com/joho/godotenv" // Environment variable loading from .env files
 	"google.golang.org/grpc"   // gRPC framework for RPC communication
 	"google.golang.org/grpc/keepalive"
+	"google.golang.org/grpc/reflection"
 
 	firebase "firebase.google.com/go/v4"
 	"google.golang.org/api/option"
@@ -206,6 +207,10 @@ func main() {
 		gen.RegisterServerServiceServer(s, srvMgmt)
 		logger.Info("ServerService registered (dev)")
 	}
+
+	// Enable gRPC server reflection (for grpcurl, debugging)
+	reflection.Register(s)
+	logger.Info("gRPC reflection enabled")
 
 	// Log server startup information
 	logger.Infof("Listening clients at %v", lis.Addr())

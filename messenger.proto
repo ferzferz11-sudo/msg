@@ -779,6 +779,16 @@ service ChatService {
   rpc SetFreeModel(SetFreeModelRequest) returns (SetFreeModelResponse);
   rpc RemoveFreeModel(RemoveFreeModelRequest) returns (RemoveFreeModelResponse);
 
+  // === Chat v2 (bidirectional stream) ===
+  rpc ChatV2(stream ChatV2Message) returns (stream ChatV2Message);
+
+  // === Messages v2 ===
+  rpc GetHistoryV2(GetHistoryV2Request) returns (GetHistoryV2Response);
+  rpc SendMessageV2(SendMessageV2Request) returns (SendMessageV2Response);
+  rpc EditMessageV2(EditMessageV2Request) returns (EditMessageV2Response);
+  rpc DeleteMessageV2(DeleteMessageV2Request) returns (DeleteMessageV2Response);
+  rpc SetReactionV2(SetReactionV2Request) returns (SetReactionV2Response);
+
   // === AI Services v2 ===
   rpc ChatWithAIV2(ChatWithAIV2Request) returns (stream ChatWithAIV2Response);
   rpc CreateAIAgent(CreateAIAgentRequest) returns (CreateAIAgentResponse);
@@ -1626,6 +1636,119 @@ message UpdateUserSettingsRequest {
 message UpdateUserSettingsResponse {
   bool success = 1;
   string message = 2;
+}
+
+// ======= Messages v2 =======
+
+message ChatV2Message {
+  // Auth (first message only)
+  string jwt_token = 1;
+  string room_id = 2;
+
+  oneof payload {
+    MessageV2 message = 10;
+    ChatV2Typing typing = 11;
+    ChatV2System system = 12;
+  }
+}
+
+message ChatV2Typing {
+  bool is_typing = 1;
+}
+
+message ChatV2System {
+  string type = 1;
+  string message = 2;
+}
+
+message MessageV2 {
+  string id = 1;
+  string room_id = 2;
+  string sender_id = 3;
+
+  oneof content {
+    string text = 10;
+    MessageMedia media = 11;
+    MessageReply reply = 12;
+  }
+
+  bool edited = 20;
+  bool is_read = 21;
+  google.protobuf.Timestamp created_at = 22;
+  bytes reactions = 23;
+
+  bool is_e2ee = 30;
+  string e2ee_payload = 31;
+}
+
+message MessageMedia {
+  string type = 1;
+  string url = 2;
+  repeated string urls = 3;
+  int32 duration = 4;
+}
+
+message MessageReply {
+  string message_id = 1;
+  string preview = 2;
+}
+
+message GetHistoryV2Request {
+  string room_id = 1;
+  int32 limit = 2;
+  string cursor = 3;
+}
+
+message GetHistoryV2Response {
+  repeated MessageV2 messages = 1;
+  string next_cursor = 2;
+  bool has_more = 3;
+}
+
+message SendMessageV2Request {
+  string room_id = 1;
+  oneof content {
+    string text = 2;
+    MessageMedia media = 3;
+  }
+  string reply_to_id = 4;
+  bool is_e2ee = 5;
+  string e2ee_payload = 6;
+}
+
+message SendMessageV2Response {
+  MessageV2 message = 1;
+  bool success = 2;
+  string error = 3;
+}
+
+message EditMessageV2Request {
+  string message_id = 1;
+  string text = 2;
+}
+
+message EditMessageV2Response {
+  bool success = 1;
+  string message = 2;
+}
+
+message DeleteMessageV2Request {
+  repeated string message_ids = 1;
+  string requester_user_id = 2;
+}
+
+message DeleteMessageV2Response {
+  bool success = 1;
+}
+
+message SetReactionV2Request {
+  string message_id = 1;
+  string emoji = 2;
+}
+
+message SetReactionV2Response {
+  bool success = 1;
+  bytes reactions = 2;
 }
 
 // ======= AI Services v2 Messages =======

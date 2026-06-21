@@ -1,7 +1,7 @@
-# Промпт для серверных сессий — v1.3.0.16
+# Промпт для серверных сессий — v1.3.0.19
 
-**Дата:** 2026-06-20 | **Ветка:** feat/1.3.0.x
-**Статус:** Серверная часть завершена. AI v2 + marketplace + RAG работают. Redis rate limiter подключён. ProfileService v2 на prod.
+**Дата:** 2026-06-21 | **Ветка:** feat/1.3.0.x
+**Статус:** Messages v2 deployed to prod. ChatV2 stream, GetHistoryV2, SendMessageV2, Edit/Delete/ReactionV2. Dual-write active.
 
 ---
 
@@ -9,8 +9,8 @@
 
 | | Версия | Статус |
 |---|--------|--------|
-| **Сервер prod** | v1.3.0.16 | ✅ Работает на порту 50051 |
-| **Сервер dev** | v1.3.0.16 | ✅ Работает на порту 50052 |
+| **Сервер prod** | v1.3.0.19 | ✅ Работает на порту 50051 |
+| **Сервер dev** | v1.3.0.19 | ✅ Работает на порту 50052 |
 
 **Android:** `/root/msg.client.android` — документация там, сборка ТОЛЬКО локально.
 
@@ -35,13 +35,14 @@ rate_limiter.go            — Rate limiter + OpenRouter calls
 redis_rate_limiter.go      — Redis-backed rate limiter
 
 === Core DB ===
-db.go, db_messages.go, db_users.go, db_chats.go, db_chatlist_v2.go
+db.go, db_messages.go, db_messages_v2.go, db_users.go, db_chats.go, db_chatlist_v2.go
 db_ai_v2.go, db_auth_devices.go, db_hermes.go
 
 === Handlers ===
-server_chat.go             — Chat/Typing/CallSession streams
+server_chat.go             — Chat/Typing/CallSession streams + ChatV2 stream
 server_chatlist_v2.go      — GetChatsV2, Pin/Unpin, Search, Archive
-server_messages.go         — History, reactions, editing
+server_messages.go         — History, reactions, editing (v1)
+server_messages_v2.go      — GetHistoryV2, SendMessageV2, Edit/Delete/ReactionV2
 server_push.go             — FCM push, call push
 server_contacts.go, server_themes.go, server_drafts.go, server_muted.go, server_favorites.go
 server_profile.go, server_profile_v2.go (ProfileService), server_management.go, server_remote.go
