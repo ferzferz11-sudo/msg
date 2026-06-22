@@ -806,6 +806,9 @@ service ChatService {
   rpc ShareAIAgent(ShareAIAgentRequest) returns (ShareAIAgentResponse);
   rpc InstallAIAgent(InstallAIAgentRequest) returns (InstallAIAgentResponse);
   rpc GetAIUsageStats(GetAIUsageStatsRequest) returns (GetAIUsageStatsResponse);
+  // === AI Chat v2 ===
+  rpc GetAIV2ChatHistory(GetAIV2ChatHistoryRequest) returns (GetAIV2ChatHistoryResponse);
+  rpc ListAIV2Chats(ListAIV2ChatsRequest) returns (ListAIV2ChatsResponse);
 }
 
 // ======= AI Pipeline Messages =======
@@ -2002,6 +2005,43 @@ message GetAIUsageStatsResponse {
   repeated UsageStatInfo stats = 1;
   int32 total_tokens = 2;
   int32 total_requests = 3;
+}
+
+// ======= AI Chat v2 Messages =======
+
+message GetAIV2ChatHistoryRequest {
+  string session_id = 1;
+  int32 limit = 2;
+}
+
+message AIV2ChatMessage {
+  int64 id = 1;
+  string chat_id = 2;
+  string role = 3;
+  string content = 4;
+  string agent_id = 5;
+  int32 token_count = 6;
+  string model_used = 7;
+  string created_at = 8;
+}
+
+message GetAIV2ChatHistoryResponse {
+  repeated AIV2ChatMessage messages = 1;
+}
+
+message ListAIV2ChatsRequest {}
+
+message AIV2ChatInfo {
+  string id = 1;
+  string name = 2;
+  string chat_type = 3;
+  string agent_id = 4;
+  string created_at = 5;
+  string updated_at = 6;
+}
+
+message ListAIV2ChatsResponse {
+  repeated AIV2ChatInfo chats = 1;
 }
 
 service ProfileService {

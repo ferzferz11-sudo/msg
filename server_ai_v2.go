@@ -35,11 +35,13 @@ func (s *server) ChatWithAIV2(req *gen.ChatWithAIV2Request, stream gen.ChatServi
 
 	logger.Infof("[AI] ChatWithAIV2: user=%s agent=%s session=%s msg=%dchars", userID, req.AgentId, req.SessionId, len(req.Message))
 
-	err := gateway.Chat(stream.Context(), chatReq, func(token string, finished bool, imageURL string) error {
+	err := gateway.Chat(stream.Context(), chatReq, func(token string, finished bool, imageURL string, agentID string, agentName string) error {
 		return stream.Send(&gen.ChatWithAIV2Response{
-			Token:    token,
-			Finished: finished,
-			ImageUrl: imageURL,
+			Token:     token,
+			Finished:  finished,
+			ImageUrl:  imageURL,
+			AgentId:   agentID,
+			AgentName: agentName,
 		})
 	})
 
@@ -683,4 +685,73 @@ func (s *server) UpdateAIChatSettings(ctx context.Context, req *gen.UpdateAIChat
 		Success: true,
 		Message: "settings updated",
 	}, nil
+}
+
+// ======= AI Chat v2 History & List =======
+
+func (s *server) GetAIV2ChatHistory(ctx context.Context, req *gen.GetAIV2ChatHistoryRequest) (*gen.GetAIV2ChatHistoryResponse, error) {
+	userID := getAIV2UserID(ctx)
+	if userID == "" {
+		return &gen.GetAIV2ChatHistoryResponse{}, nil
+	}
+
+	chat, err := s.db.GetAIChatV2(req.SessionId)
+	if err != nil {
+		return &gen.GetAIV2ChatHistoryResponse{}, nil
+	}
+	if chat.UserID != userID {
+		return &gen.GetAIV2ChatHistoryResponse{}, nil
+	}
+
+	limit := int(req.Limit)
+	if limit <= 0 {
+		limit = 50
+	}
+
+	msgs, err := s.db.GetAIMessagesV2(req.SessionId, limit)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	var result []*gen.AIV2ChatMessage
+	for _, m := range msgs {
+		result = append(result, &gen.AIV2ChatMessage{
+			Id:         m.ID,
+			ChatId:     m.ChatID,
+			Role:       m.Role,
+			Content:    m.Content,
+			AgentId:    m.AgentID,
+			TokenCount: int32(m.TokenCount),
+			ModelUsed:  m.ModelUsed,
+			CreatedAt:  m.CreatedAt.Format("2006-01-02T15:04:05Z"),
+		})
+	}
+
+	return &gen.GetAIV2ChatHistoryResponse{Messages: result}, nil
+}
+
+func (s *server) ListAIV2Chats(ctx context.Context, req *gen.ListAIV2ChatsRequest) (*gen.ListAIV2ChatsResponse, error) {
+	userID := getAIV2UserID(ctx)
+	if userID == "" {
+		return &gen.ListAIV2ChatsResponse{}, nil
+	}
+
+	chats, err := s.db.ListAIChatsV2(userID)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	var result []*gen.AIV2ChatInfo
+	for _, c := range chats {
+		result = append(result, &gen.AIV2ChatInfo{
+			Id:        c.ID,
+			Name:      c.Name,
+			ChatType:  c.ChatType,
+			AgentId:   c.AgentID,
+			CreatedAt: c.CreatedAt.Format("2006-01-02T15:04:05Z"),
+			UpdatedAt: c.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+		})
+	}
+
+	return &gen.ListAIV2ChatsResponse{Chats: result}, nil
 }

@@ -1,5 +1,19 @@
 # Лава — Server Changelog
 
+## [1.3.0.20] - 2026-06-22
+
+### Features
+- **AI Chat v2 History** — new `GetAIV2ChatHistory` RPC returns chat messages with `agent_id`, `token_count`, `model_used` per message.
+- **AI Chats List** — new `ListAIV2Chats` RPC returns all user's AI v2 chats with type, agent_id, timestamps.
+- **Agent ID in streaming** — `ChatWithAIV2Response` now includes `agent_id` and `agent_name` in every streamed token (fixed missing fields).
+- **Multi-agent chat support** — server-side streaming now correctly identifies which agent produced each token, enabling client-side multi-agent routing.
+
+### Improvements
+- `StreamFn` signature updated to pass agent metadata through the streaming pipeline
+- New proto types: `AIV2ChatMessage`, `AIV2ChatInfo`, `GetAIV2ChatHistoryRequest/Response`, `ListAIV2ChatsRequest/Response`
+
+---
+
 ## [1.3.0.19] - 2026-06-21
 
 ### Features

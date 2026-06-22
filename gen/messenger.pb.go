@@ -17830,6 +17830,366 @@ func (x *GetAIUsageStatsResponse) GetTotalRequests() int32 {
 	return 0
 }
 
+type GetAIV2ChatHistoryRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	Limit         int32                  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetAIV2ChatHistoryRequest) Reset() {
+	*x = GetAIV2ChatHistoryRequest{}
+	mi := &file_messenger_proto_msgTypes[291]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetAIV2ChatHistoryRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetAIV2ChatHistoryRequest) ProtoMessage() {}
+
+func (x *GetAIV2ChatHistoryRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_messenger_proto_msgTypes[291]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetAIV2ChatHistoryRequest.ProtoReflect.Descriptor instead.
+func (*GetAIV2ChatHistoryRequest) Descriptor() ([]byte, []int) {
+	return file_messenger_proto_rawDescGZIP(), []int{291}
+}
+
+func (x *GetAIV2ChatHistoryRequest) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+func (x *GetAIV2ChatHistoryRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+type AIV2ChatMessage struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	ChatId        string                 `protobuf:"bytes,2,opt,name=chat_id,json=chatId,proto3" json:"chat_id,omitempty"`
+	Role          string                 `protobuf:"bytes,3,opt,name=role,proto3" json:"role,omitempty"`
+	Content       string                 `protobuf:"bytes,4,opt,name=content,proto3" json:"content,omitempty"`
+	AgentId       string                 `protobuf:"bytes,5,opt,name=agent_id,json=agentId,proto3" json:"agent_id,omitempty"`
+	TokenCount    int32                  `protobuf:"varint,6,opt,name=token_count,json=tokenCount,proto3" json:"token_count,omitempty"`
+	ModelUsed     string                 `protobuf:"bytes,7,opt,name=model_used,json=modelUsed,proto3" json:"model_used,omitempty"`
+	CreatedAt     string                 `protobuf:"bytes,8,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AIV2ChatMessage) Reset() {
+	*x = AIV2ChatMessage{}
+	mi := &file_messenger_proto_msgTypes[292]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AIV2ChatMessage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AIV2ChatMessage) ProtoMessage() {}
+
+func (x *AIV2ChatMessage) ProtoReflect() protoreflect.Message {
+	mi := &file_messenger_proto_msgTypes[292]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AIV2ChatMessage.ProtoReflect.Descriptor instead.
+func (*AIV2ChatMessage) Descriptor() ([]byte, []int) {
+	return file_messenger_proto_rawDescGZIP(), []int{292}
+}
+
+func (x *AIV2ChatMessage) GetId() int64 {
+	if x != nil {
+		return x.Id
+	}
+	return 0
+}
+
+func (x *AIV2ChatMessage) GetChatId() string {
+	if x != nil {
+		return x.ChatId
+	}
+	return ""
+}
+
+func (x *AIV2ChatMessage) GetRole() string {
+	if x != nil {
+		return x.Role
+	}
+	return ""
+}
+
+func (x *AIV2ChatMessage) GetContent() string {
+	if x != nil {
+		return x.Content
+	}
+	return ""
+}
+
+func (x *AIV2ChatMessage) GetAgentId() string {
+	if x != nil {
+		return x.AgentId
+	}
+	return ""
+}
+
+func (x *AIV2ChatMessage) GetTokenCount() int32 {
+	if x != nil {
+		return x.TokenCount
+	}
+	return 0
+}
+
+func (x *AIV2ChatMessage) GetModelUsed() string {
+	if x != nil {
+		return x.ModelUsed
+	}
+	return ""
+}
+
+func (x *AIV2ChatMessage) GetCreatedAt() string {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return ""
+}
+
+type GetAIV2ChatHistoryResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Messages      []*AIV2ChatMessage     `protobuf:"bytes,1,rep,name=messages,proto3" json:"messages,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetAIV2ChatHistoryResponse) Reset() {
+	*x = GetAIV2ChatHistoryResponse{}
+	mi := &file_messenger_proto_msgTypes[293]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetAIV2ChatHistoryResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetAIV2ChatHistoryResponse) ProtoMessage() {}
+
+func (x *GetAIV2ChatHistoryResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_messenger_proto_msgTypes[293]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetAIV2ChatHistoryResponse.ProtoReflect.Descriptor instead.
+func (*GetAIV2ChatHistoryResponse) Descriptor() ([]byte, []int) {
+	return file_messenger_proto_rawDescGZIP(), []int{293}
+}
+
+func (x *GetAIV2ChatHistoryResponse) GetMessages() []*AIV2ChatMessage {
+	if x != nil {
+		return x.Messages
+	}
+	return nil
+}
+
+type ListAIV2ChatsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListAIV2ChatsRequest) Reset() {
+	*x = ListAIV2ChatsRequest{}
+	mi := &file_messenger_proto_msgTypes[294]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListAIV2ChatsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListAIV2ChatsRequest) ProtoMessage() {}
+
+func (x *ListAIV2ChatsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_messenger_proto_msgTypes[294]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListAIV2ChatsRequest.ProtoReflect.Descriptor instead.
+func (*ListAIV2ChatsRequest) Descriptor() ([]byte, []int) {
+	return file_messenger_proto_rawDescGZIP(), []int{294}
+}
+
+type AIV2ChatInfo struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	ChatType      string                 `protobuf:"bytes,3,opt,name=chat_type,json=chatType,proto3" json:"chat_type,omitempty"`
+	AgentId       string                 `protobuf:"bytes,4,opt,name=agent_id,json=agentId,proto3" json:"agent_id,omitempty"`
+	CreatedAt     string                 `protobuf:"bytes,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt     string                 `protobuf:"bytes,6,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AIV2ChatInfo) Reset() {
+	*x = AIV2ChatInfo{}
+	mi := &file_messenger_proto_msgTypes[295]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AIV2ChatInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AIV2ChatInfo) ProtoMessage() {}
+
+func (x *AIV2ChatInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_messenger_proto_msgTypes[295]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AIV2ChatInfo.ProtoReflect.Descriptor instead.
+func (*AIV2ChatInfo) Descriptor() ([]byte, []int) {
+	return file_messenger_proto_rawDescGZIP(), []int{295}
+}
+
+func (x *AIV2ChatInfo) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *AIV2ChatInfo) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *AIV2ChatInfo) GetChatType() string {
+	if x != nil {
+		return x.ChatType
+	}
+	return ""
+}
+
+func (x *AIV2ChatInfo) GetAgentId() string {
+	if x != nil {
+		return x.AgentId
+	}
+	return ""
+}
+
+func (x *AIV2ChatInfo) GetCreatedAt() string {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return ""
+}
+
+func (x *AIV2ChatInfo) GetUpdatedAt() string {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return ""
+}
+
+type ListAIV2ChatsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Chats         []*AIV2ChatInfo        `protobuf:"bytes,1,rep,name=chats,proto3" json:"chats,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListAIV2ChatsResponse) Reset() {
+	*x = ListAIV2ChatsResponse{}
+	mi := &file_messenger_proto_msgTypes[296]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListAIV2ChatsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListAIV2ChatsResponse) ProtoMessage() {}
+
+func (x *ListAIV2ChatsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_messenger_proto_msgTypes[296]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListAIV2ChatsResponse.ProtoReflect.Descriptor instead.
+func (*ListAIV2ChatsResponse) Descriptor() ([]byte, []int) {
+	return file_messenger_proto_rawDescGZIP(), []int{296}
+}
+
+func (x *ListAIV2ChatsResponse) GetChats() []*AIV2ChatInfo {
+	if x != nil {
+		return x.Chats
+	}
+	return nil
+}
+
 var File_messenger_proto protoreflect.FileDescriptor
 
 const file_messenger_proto_rawDesc = "" +
@@ -19177,12 +19537,42 @@ const file_messenger_proto_rawDesc = "" +
 	"\x17GetAIUsageStatsResponse\x12.\n" +
 	"\x05stats\x18\x01 \x03(\v2\x18.messenger.UsageStatInfoR\x05stats\x12!\n" +
 	"\ftotal_tokens\x18\x02 \x01(\x05R\vtotalTokens\x12%\n" +
-	"\x0etotal_requests\x18\x03 \x01(\x05R\rtotalRequests*-\n" +
+	"\x0etotal_requests\x18\x03 \x01(\x05R\rtotalRequests\"P\n" +
+	"\x19GetAIV2ChatHistoryRequest\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x14\n" +
+	"\x05limit\x18\x02 \x01(\x05R\x05limit\"\xe2\x01\n" +
+	"\x0fAIV2ChatMessage\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x17\n" +
+	"\achat_id\x18\x02 \x01(\tR\x06chatId\x12\x12\n" +
+	"\x04role\x18\x03 \x01(\tR\x04role\x12\x18\n" +
+	"\acontent\x18\x04 \x01(\tR\acontent\x12\x19\n" +
+	"\bagent_id\x18\x05 \x01(\tR\aagentId\x12\x1f\n" +
+	"\vtoken_count\x18\x06 \x01(\x05R\n" +
+	"tokenCount\x12\x1d\n" +
+	"\n" +
+	"model_used\x18\a \x01(\tR\tmodelUsed\x12\x1d\n" +
+	"\n" +
+	"created_at\x18\b \x01(\tR\tcreatedAt\"T\n" +
+	"\x1aGetAIV2ChatHistoryResponse\x126\n" +
+	"\bmessages\x18\x01 \x03(\v2\x1a.messenger.AIV2ChatMessageR\bmessages\"\x16\n" +
+	"\x14ListAIV2ChatsRequest\"\xa8\x01\n" +
+	"\fAIV2ChatInfo\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1b\n" +
+	"\tchat_type\x18\x03 \x01(\tR\bchatType\x12\x19\n" +
+	"\bagent_id\x18\x04 \x01(\tR\aagentId\x12\x1d\n" +
+	"\n" +
+	"created_at\x18\x05 \x01(\tR\tcreatedAt\x12\x1d\n" +
+	"\n" +
+	"updated_at\x18\x06 \x01(\tR\tupdatedAt\"F\n" +
+	"\x15ListAIV2ChatsResponse\x12-\n" +
+	"\x05chats\x18\x01 \x03(\v2\x17.messenger.AIV2ChatInfoR\x05chats*-\n" +
 	"\n" +
 	"TunnelMode\x12\x0f\n" +
 	"\vTUNNEL_NONE\x10\x00\x12\x0e\n" +
 	"\n" +
-	"TUNNEL_SSH\x10\x012\x9cR\n" +
+	"TUNNEL_SSH\x10\x012\xd3S\n" +
 	"\vChatService\x122\n" +
 	"\x04Chat\x12\x12.messenger.Message\x1a\x12.messenger.Message(\x010\x01\x12?\n" +
 	"\x06Typing\x12\x18.messenger.TypingRequest\x1a\x17.messenger.TypingSignal(\x010\x01\x12A\n" +
@@ -19320,7 +19710,9 @@ const file_messenger_proto_rawDesc = "" +
 	"\x0fGetAIAgentStats\x12!.messenger.GetAIAgentStatsRequest\x1a\".messenger.GetAIAgentStatsResponse\x12O\n" +
 	"\fShareAIAgent\x12\x1e.messenger.ShareAIAgentRequest\x1a\x1f.messenger.ShareAIAgentResponse\x12U\n" +
 	"\x0eInstallAIAgent\x12 .messenger.InstallAIAgentRequest\x1a!.messenger.InstallAIAgentResponse\x12X\n" +
-	"\x0fGetAIUsageStats\x12!.messenger.GetAIUsageStatsRequest\x1a\".messenger.GetAIUsageStatsResponse2\xe6\x03\n" +
+	"\x0fGetAIUsageStats\x12!.messenger.GetAIUsageStatsRequest\x1a\".messenger.GetAIUsageStatsResponse\x12a\n" +
+	"\x12GetAIV2ChatHistory\x12$.messenger.GetAIV2ChatHistoryRequest\x1a%.messenger.GetAIV2ChatHistoryResponse\x12R\n" +
+	"\rListAIV2Chats\x12\x1f.messenger.ListAIV2ChatsRequest\x1a .messenger.ListAIV2ChatsResponse2\xe6\x03\n" +
 	"\vAuthService\x12;\n" +
 	"\x06SignIn\x12\x18.messenger.SignInRequest\x1a\x17.messenger.AuthResponse\x12;\n" +
 	"\x06SignUp\x12\x18.messenger.SignUpRequest\x1a\x17.messenger.AuthResponse\x12A\n" +
@@ -19351,7 +19743,7 @@ func file_messenger_proto_rawDescGZIP() []byte {
 }
 
 var file_messenger_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_messenger_proto_msgTypes = make([]protoimpl.MessageInfo, 295)
+var file_messenger_proto_msgTypes = make([]protoimpl.MessageInfo, 301)
 var file_messenger_proto_goTypes = []any{
 	(TunnelMode)(0),                        // 0: messenger.TunnelMode
 	(CallMessage_Type)(0),                  // 1: messenger.CallMessage.Type
@@ -19646,31 +20038,37 @@ var file_messenger_proto_goTypes = []any{
 	(*GetAIUsageStatsRequest)(nil),         // 290: messenger.GetAIUsageStatsRequest
 	(*UsageStatInfo)(nil),                  // 291: messenger.UsageStatInfo
 	(*GetAIUsageStatsResponse)(nil),        // 292: messenger.GetAIUsageStatsResponse
-	nil,                                    // 293: messenger.DeployAgentTaskRequest.ParamsEntry
-	nil,                                    // 294: messenger.ServerNotification.MetadataEntry
-	nil,                                    // 295: messenger.GetUserSettingsResponse.CustomEntry
-	nil,                                    // 296: messenger.UpdateUserSettingsRequest.CustomEntry
-	(*timestamppb.Timestamp)(nil),          // 297: google.protobuf.Timestamp
+	(*GetAIV2ChatHistoryRequest)(nil),      // 293: messenger.GetAIV2ChatHistoryRequest
+	(*AIV2ChatMessage)(nil),                // 294: messenger.AIV2ChatMessage
+	(*GetAIV2ChatHistoryResponse)(nil),     // 295: messenger.GetAIV2ChatHistoryResponse
+	(*ListAIV2ChatsRequest)(nil),           // 296: messenger.ListAIV2ChatsRequest
+	(*AIV2ChatInfo)(nil),                   // 297: messenger.AIV2ChatInfo
+	(*ListAIV2ChatsResponse)(nil),          // 298: messenger.ListAIV2ChatsResponse
+	nil,                                    // 299: messenger.DeployAgentTaskRequest.ParamsEntry
+	nil,                                    // 300: messenger.ServerNotification.MetadataEntry
+	nil,                                    // 301: messenger.GetUserSettingsResponse.CustomEntry
+	nil,                                    // 302: messenger.UpdateUserSettingsRequest.CustomEntry
+	(*timestamppb.Timestamp)(nil),          // 303: google.protobuf.Timestamp
 }
 var file_messenger_proto_depIdxs = []int32{
-	297, // 0: messenger.Message.created_at:type_name -> google.protobuf.Timestamp
+	303, // 0: messenger.Message.created_at:type_name -> google.protobuf.Timestamp
 	3,   // 1: messenger.Message.reactions:type_name -> messenger.Reaction
 	3,   // 2: messenger.ReactionRequest.reaction:type_name -> messenger.Reaction
-	297, // 3: messenger.UserInfo.last_seen_at:type_name -> google.protobuf.Timestamp
+	303, // 3: messenger.UserInfo.last_seen_at:type_name -> google.protobuf.Timestamp
 	9,   // 4: messenger.GetAllUsersResponse.users:type_name -> messenger.UserInfo
-	297, // 5: messenger.GetAllUsersResponse.server_time:type_name -> google.protobuf.Timestamp
+	303, // 5: messenger.GetAllUsersResponse.server_time:type_name -> google.protobuf.Timestamp
 	20,  // 6: messenger.GetAllChatsResponse.chats:type_name -> messenger.ChatInfo
 	2,   // 7: messenger.GetHistoryResponse.messages:type_name -> messenger.Message
 	2,   // 8: messenger.DeleteMessagesRequest.messages:type_name -> messenger.Message
-	297, // 9: messenger.ChatInfo.created_at:type_name -> google.protobuf.Timestamp
-	297, // 10: messenger.ChatInfo.last_message_time:type_name -> google.protobuf.Timestamp
+	303, // 9: messenger.ChatInfo.created_at:type_name -> google.protobuf.Timestamp
+	303, // 10: messenger.ChatInfo.last_message_time:type_name -> google.protobuf.Timestamp
 	20,  // 11: messenger.GetChatsResponse.chats:type_name -> messenger.ChatInfo
-	297, // 12: messenger.GetUserProfileResponse.last_seen_at:type_name -> google.protobuf.Timestamp
+	303, // 12: messenger.GetUserProfileResponse.last_seen_at:type_name -> google.protobuf.Timestamp
 	61,  // 13: messenger.GetThemesResponse.custom_themes:type_name -> messenger.CustomTheme
 	61,  // 14: messenger.SaveThemeRequest.theme:type_name -> messenger.CustomTheme
 	77,  // 15: messenger.GetFCMLogsResponse.logs:type_name -> messenger.FCMLogEntry
 	2,   // 16: messenger.GetFavoritesResponse.messages:type_name -> messenger.Message
-	297, // 17: messenger.DeviceInfo.last_seen_at:type_name -> google.protobuf.Timestamp
+	303, // 17: messenger.DeviceInfo.last_seen_at:type_name -> google.protobuf.Timestamp
 	99,  // 18: messenger.GetDevicesResponse.devices:type_name -> messenger.DeviceInfo
 	1,   // 19: messenger.CallMessage.type:type_name -> messenger.CallMessage.Type
 	20,  // 20: messenger.SearchChatsResponse.chats:type_name -> messenger.ChatInfo
@@ -19683,28 +20081,28 @@ var file_messenger_proto_depIdxs = []int32{
 	159, // 27: messenger.ListAgentPresetsResponse.presets:type_name -> messenger.AgentPresetInfo
 	158, // 28: messenger.ListUserAgentsResponse.agents:type_name -> messenger.AgentInfo
 	176, // 29: messenger.ListRemoteAgentsResponse.agents:type_name -> messenger.RemoteAgentInfo
-	293, // 30: messenger.DeployAgentTaskRequest.params:type_name -> messenger.DeployAgentTaskRequest.ParamsEntry
+	299, // 30: messenger.DeployAgentTaskRequest.params:type_name -> messenger.DeployAgentTaskRequest.ParamsEntry
 	0,   // 31: messenger.DeployAgentTaskRequest.tunnel_mode:type_name -> messenger.TunnelMode
 	185, // 32: messenger.GetAIChatsResponse.chats:type_name -> messenger.AIChatInfo
 	191, // 33: messenger.GetBotCommandsResponse.commands:type_name -> messenger.BotCommandInfo
-	294, // 34: messenger.ServerNotification.metadata:type_name -> messenger.ServerNotification.MetadataEntry
+	300, // 34: messenger.ServerNotification.metadata:type_name -> messenger.ServerNotification.MetadataEntry
 	196, // 35: messenger.GetNotificationHistoryResponse.notifications:type_name -> messenger.ServerNotification
 	206, // 36: messenger.GetAIChatHistoryResponse.messages:type_name -> messenger.AIChatMessage
-	297, // 37: messenger.User.created_at:type_name -> google.protobuf.Timestamp
-	297, // 38: messenger.User.last_seen_at:type_name -> google.protobuf.Timestamp
+	303, // 37: messenger.User.created_at:type_name -> google.protobuf.Timestamp
+	303, // 38: messenger.User.last_seen_at:type_name -> google.protobuf.Timestamp
 	217, // 39: messenger.AuthResponse.user:type_name -> messenger.User
 	99,  // 40: messenger.SignInRequestV2.device:type_name -> messenger.DeviceInfo
 	99,  // 41: messenger.SignUpRequestV2.device:type_name -> messenger.DeviceInfo
 	217, // 42: messenger.AuthResponseV2.user:type_name -> messenger.User
 	229, // 43: messenger.UpdateProfileV2Response.profile:type_name -> messenger.GetProfileResponse
-	295, // 44: messenger.GetUserSettingsResponse.custom:type_name -> messenger.GetUserSettingsResponse.CustomEntry
-	296, // 45: messenger.UpdateUserSettingsRequest.custom:type_name -> messenger.UpdateUserSettingsRequest.CustomEntry
+	301, // 44: messenger.GetUserSettingsResponse.custom:type_name -> messenger.GetUserSettingsResponse.CustomEntry
+	302, // 45: messenger.UpdateUserSettingsRequest.custom:type_name -> messenger.UpdateUserSettingsRequest.CustomEntry
 	243, // 46: messenger.ChatV2Message.message:type_name -> messenger.MessageV2
 	241, // 47: messenger.ChatV2Message.typing:type_name -> messenger.ChatV2Typing
 	242, // 48: messenger.ChatV2Message.system:type_name -> messenger.ChatV2System
 	244, // 49: messenger.MessageV2.media:type_name -> messenger.MessageMedia
 	245, // 50: messenger.MessageV2.reply:type_name -> messenger.MessageReply
-	297, // 51: messenger.MessageV2.created_at:type_name -> google.protobuf.Timestamp
+	303, // 51: messenger.MessageV2.created_at:type_name -> google.protobuf.Timestamp
 	243, // 52: messenger.GetHistoryV2Response.messages:type_name -> messenger.MessageV2
 	244, // 53: messenger.SendMessageV2Request.media:type_name -> messenger.MessageMedia
 	243, // 54: messenger.SendMessageV2Response.message:type_name -> messenger.MessageV2
@@ -19717,287 +20115,293 @@ var file_messenger_proto_depIdxs = []int32{
 	280, // 61: messenger.GetAIAgentReviewsResponse.reviews:type_name -> messenger.AgentReviewInfo
 	268, // 62: messenger.ListMarketplaceAgentsResponse.agents:type_name -> messenger.AgentInfoV2
 	291, // 63: messenger.GetAIUsageStatsResponse.stats:type_name -> messenger.UsageStatInfo
-	2,   // 64: messenger.ChatService.Chat:input_type -> messenger.Message
-	97,  // 65: messenger.ChatService.Typing:input_type -> messenger.TypingRequest
-	108, // 66: messenger.ChatService.CallSession:input_type -> messenger.CallMessage
-	6,   // 67: messenger.ChatService.GetClients:input_type -> messenger.ClientListRequest
-	8,   // 68: messenger.ChatService.GetAllUsers:input_type -> messenger.GetAllUsersRequest
-	11,  // 69: messenger.ChatService.GetAllChats:input_type -> messenger.GetAllChatsRequest
-	14,  // 70: messenger.ChatService.GetHistory:input_type -> messenger.GetHistoryRequest
-	4,   // 71: messenger.ChatService.SetReaction:input_type -> messenger.ReactionRequest
-	16,  // 72: messenger.ChatService.DeleteMessages:input_type -> messenger.DeleteMessagesRequest
-	18,  // 73: messenger.ChatService.RegisterToken:input_type -> messenger.TokenRequest
-	21,  // 74: messenger.ChatService.GetChats:input_type -> messenger.GetChatsRequest
-	21,  // 75: messenger.ChatService.GetChatsV2:input_type -> messenger.GetChatsRequest
-	59,  // 76: messenger.ChatService.GetChatListVersion:input_type -> messenger.GetChatListVersionRequest
-	23,  // 77: messenger.ChatService.CreateDirectChat:input_type -> messenger.CreateDirectChatRequest
-	25,  // 78: messenger.ChatService.CreateGroupChat:input_type -> messenger.CreateGroupChatRequest
-	27,  // 79: messenger.ChatService.UpdateUsername:input_type -> messenger.UpdateUsernameRequest
-	29,  // 80: messenger.ChatService.UpdatePassword:input_type -> messenger.UpdatePasswordRequest
-	31,  // 81: messenger.ChatService.AdminUpdatePassword:input_type -> messenger.AdminUpdatePasswordRequest
-	33,  // 82: messenger.ChatService.MarkRead:input_type -> messenger.MarkReadRequest
-	35,  // 83: messenger.ChatService.UpdateAvatar:input_type -> messenger.UpdateAvatarRequest
-	37,  // 84: messenger.ChatService.UpdateProfile:input_type -> messenger.UpdateProfileRequest
-	39,  // 85: messenger.ChatService.GetUserProfile:input_type -> messenger.GetUserProfileRequest
-	41,  // 86: messenger.ChatService.GetUserAvatar:input_type -> messenger.GetUserAvatarRequest
-	43,  // 87: messenger.ChatService.AddParticipant:input_type -> messenger.AddParticipantRequest
-	45,  // 88: messenger.ChatService.RemoveParticipant:input_type -> messenger.RemoveParticipantRequest
-	47,  // 89: messenger.ChatService.EditMessage:input_type -> messenger.EditMessageRequest
-	70,  // 90: messenger.ChatService.UpdateChatName:input_type -> messenger.UpdateChatNameRequest
-	72,  // 91: messenger.ChatService.UpdateChatAvatar:input_type -> messenger.UpdateChatAvatarRequest
-	74,  // 92: messenger.ChatService.UpdateChatSettings:input_type -> messenger.UpdateChatSettingsRequest
-	49,  // 93: messenger.ChatService.DeleteChat:input_type -> messenger.DeleteChatRequest
-	51,  // 94: messenger.ChatService.DeleteProfile:input_type -> messenger.DeleteProfileRequest
-	53,  // 95: messenger.ChatService.AddContact:input_type -> messenger.AddContactRequest
-	55,  // 96: messenger.ChatService.RemoveContact:input_type -> messenger.RemoveContactRequest
-	57,  // 97: messenger.ChatService.GetContacts:input_type -> messenger.GetContactsRequest
-	62,  // 98: messenger.ChatService.GetThemes:input_type -> messenger.GetThemesRequest
-	64,  // 99: messenger.ChatService.SaveTheme:input_type -> messenger.SaveThemeRequest
-	66,  // 100: messenger.ChatService.SetCurrentTheme:input_type -> messenger.SetCurrentThemeRequest
-	68,  // 101: messenger.ChatService.DeleteTheme:input_type -> messenger.DeleteThemeRequest
-	76,  // 102: messenger.ChatService.GetFCMLogs:input_type -> messenger.GetFCMLogsRequest
-	79,  // 103: messenger.ChatService.SaveDraft:input_type -> messenger.SaveDraftRequest
-	81,  // 104: messenger.ChatService.GetDraft:input_type -> messenger.GetDraftRequest
-	83,  // 105: messenger.ChatService.DeleteDraft:input_type -> messenger.DeleteDraftRequest
-	85,  // 106: messenger.ChatService.GetMutedChats:input_type -> messenger.GetMutedChatsRequest
-	87,  // 107: messenger.ChatService.SetMutedChat:input_type -> messenger.SetMutedChatRequest
-	89,  // 108: messenger.ChatService.GetUserId:input_type -> messenger.GetUserIdRequest
-	91,  // 109: messenger.ChatService.AddFavorite:input_type -> messenger.AddFavoriteRequest
-	93,  // 110: messenger.ChatService.RemoveFavorite:input_type -> messenger.RemoveFavoriteRequest
-	95,  // 111: messenger.ChatService.GetFavorites:input_type -> messenger.GetFavoritesRequest
-	2,   // 112: messenger.ChatService.SaveFavoriteMessage:input_type -> messenger.Message
-	100, // 113: messenger.ChatService.GetDevices:input_type -> messenger.GetDevicesRequest
-	102, // 114: messenger.ChatService.DeleteDevice:input_type -> messenger.DeleteDeviceRequest
-	102, // 115: messenger.ChatService.DeleteOtherDevices:input_type -> messenger.DeleteDeviceRequest
-	104, // 116: messenger.ChatService.RequestPasswordReset:input_type -> messenger.RequestPasswordResetRequest
-	106, // 117: messenger.ChatService.ResetPassword:input_type -> messenger.ResetPasswordRequest
-	111, // 118: messenger.ChatService.PinChat:input_type -> messenger.PinChatRequest
-	113, // 119: messenger.ChatService.UnPinChat:input_type -> messenger.UnPinChatRequest
-	115, // 120: messenger.ChatService.SearchChats:input_type -> messenger.SearchChatsRequest
-	117, // 121: messenger.ChatService.ArchiveChat:input_type -> messenger.ArchiveChatRequest
-	119, // 122: messenger.ChatService.UnarchiveChat:input_type -> messenger.UnarchiveChatRequest
-	121, // 123: messenger.ChatService.PinMessage:input_type -> messenger.PinMessageRequest
-	123, // 124: messenger.ChatService.UnPinMessage:input_type -> messenger.UnPinMessageRequest
-	125, // 125: messenger.ChatService.GetPinnedMessages:input_type -> messenger.GetPinnedMessagesRequest
-	127, // 126: messenger.ChatService.CreateSecretChat:input_type -> messenger.CreateSecretChatRequest
-	129, // 127: messenger.ChatService.ExchangeSecretKey:input_type -> messenger.ExchangeSecretKeyRequest
-	131, // 128: messenger.ChatService.GetSecretChatKey:input_type -> messenger.GetSecretChatKeyRequest
-	144, // 129: messenger.ChatService.ChatWithOWL:input_type -> messenger.OWLRequest
-	133, // 130: messenger.ChatService.CreateOwlChat:input_type -> messenger.CreateOwlChatRequest
-	135, // 131: messenger.ChatService.DeleteOwlChat:input_type -> messenger.DeleteOwlChatRequest
-	137, // 132: messenger.ChatService.GetOwlHistory:input_type -> messenger.GetOwlHistoryRequest
-	140, // 133: messenger.ChatService.UpdateOwlSettings:input_type -> messenger.UpdateOwlSettingsRequest
-	141, // 134: messenger.ChatService.GetOwlSettings:input_type -> messenger.GetOwlSettingsRequest
-	153, // 135: messenger.ChatService.ChatWithOrchestrator:input_type -> messenger.OrchestratorRequest
-	156, // 136: messenger.ChatService.GetOrchestratorHistory:input_type -> messenger.GetOrchestratorHistoryRequest
-	160, // 137: messenger.ChatService.ListAgents:input_type -> messenger.ListAgentsRequest
-	162, // 138: messenger.ChatService.ListAgentPresets:input_type -> messenger.ListAgentPresetsRequest
-	164, // 139: messenger.ChatService.CreateAgent:input_type -> messenger.CreateAgentRequest
-	166, // 140: messenger.ChatService.UpdateAgent:input_type -> messenger.UpdateAgentRequest
-	168, // 141: messenger.ChatService.DeleteAgent:input_type -> messenger.DeleteAgentRequest
-	170, // 142: messenger.ChatService.ListUserAgents:input_type -> messenger.ListUserAgentsRequest
-	172, // 143: messenger.ChatService.CreateHermesSession:input_type -> messenger.CreateHermesSessionRequest
-	174, // 144: messenger.ChatService.DeleteHermesSession:input_type -> messenger.DeleteHermesSessionRequest
-	177, // 145: messenger.ChatService.ListRemoteAgents:input_type -> messenger.ListRemoteAgentsRequest
-	179, // 146: messenger.ChatService.DeployAgentTask:input_type -> messenger.DeployAgentTaskRequest
-	179, // 147: messenger.ChatService.DeployAgentTaskStream:input_type -> messenger.DeployAgentTaskRequest
-	182, // 148: messenger.ChatService.GetRemoteAgentStatus:input_type -> messenger.GetRemoteAgentStatusRequest
-	204, // 149: messenger.ChatService.ChatWithAI:input_type -> messenger.AIChatRequest
-	208, // 150: messenger.ChatService.GetAIChatHistory:input_type -> messenger.GetAIChatHistoryRequest
-	210, // 151: messenger.ChatService.GetAIChatSettings:input_type -> messenger.GetAIChatSettingsRequest
-	211, // 152: messenger.ChatService.UpdateAIChatSettings:input_type -> messenger.UpdateAIChatSettingsRequest
-	184, // 153: messenger.ChatService.GetAIChats:input_type -> messenger.GetAIChatsRequest
-	187, // 154: messenger.ChatService.RenameAIChat:input_type -> messenger.RenameAIChatRequest
-	109, // 155: messenger.ChatService.ChatWithPipeline:input_type -> messenger.PipelineRequest
-	213, // 156: messenger.ChatService.GetHermesSettings:input_type -> messenger.GetHermesSettingsRequest
-	215, // 157: messenger.ChatService.UpdateHermesSettings:input_type -> messenger.UpdateHermesSettingsRequest
-	189, // 158: messenger.ChatService.ProcessBotCommand:input_type -> messenger.BotCommandRequest
-	192, // 159: messenger.ChatService.GetBotCommands:input_type -> messenger.GetBotCommandsRequest
-	194, // 160: messenger.ChatService.GetOWLStatus:input_type -> messenger.OWLStatusRequest
-	197, // 161: messenger.ChatService.SubscribeNotifications:input_type -> messenger.SubscribeNotificationsRequest
-	198, // 162: messenger.ChatService.GetNotificationHistory:input_type -> messenger.GetNotificationHistoryRequest
-	200, // 163: messenger.ChatService.MarkNotificationsRead:input_type -> messenger.MarkNotificationReadRequest
-	202, // 164: messenger.ChatService.GetUnreadCount:input_type -> messenger.GetUnreadCountRequest
-	147, // 165: messenger.ChatService.GetFreeModels:input_type -> messenger.GetFreeModelsRequest
-	149, // 166: messenger.ChatService.SetFreeModel:input_type -> messenger.SetFreeModelRequest
-	151, // 167: messenger.ChatService.RemoveFreeModel:input_type -> messenger.RemoveFreeModelRequest
-	240, // 168: messenger.ChatService.ChatV2:input_type -> messenger.ChatV2Message
-	246, // 169: messenger.ChatService.GetHistoryV2:input_type -> messenger.GetHistoryV2Request
-	248, // 170: messenger.ChatService.SendMessageV2:input_type -> messenger.SendMessageV2Request
-	250, // 171: messenger.ChatService.EditMessageV2:input_type -> messenger.EditMessageV2Request
-	252, // 172: messenger.ChatService.DeleteMessageV2:input_type -> messenger.DeleteMessageV2Request
-	254, // 173: messenger.ChatService.SetReactionV2:input_type -> messenger.SetReactionV2Request
-	256, // 174: messenger.ChatService.ChatWithAIV2:input_type -> messenger.ChatWithAIV2Request
-	260, // 175: messenger.ChatService.CreateAIAgent:input_type -> messenger.CreateAIAgentRequest
-	262, // 176: messenger.ChatService.UpdateAIAgent:input_type -> messenger.UpdateAIAgentRequest
-	264, // 177: messenger.ChatService.DeleteAIAgent:input_type -> messenger.DeleteAIAgentRequest
-	266, // 178: messenger.ChatService.GetAIAgent:input_type -> messenger.GetAIAgentRequest
-	270, // 179: messenger.ChatService.ListAIAgents:input_type -> messenger.ListAIAgentsRequest
-	272, // 180: messenger.ChatService.CloneAIAgent:input_type -> messenger.CloneAIAgentRequest
-	274, // 181: messenger.ChatService.ListAITools:input_type -> messenger.ListAIToolsRequest
-	277, // 182: messenger.ChatService.RateAIAgent:input_type -> messenger.RateAIAgentRequest
-	279, // 183: messenger.ChatService.GetAIAgentReviews:input_type -> messenger.GetAIAgentReviewsRequest
-	282, // 184: messenger.ChatService.ListMarketplaceAgents:input_type -> messenger.ListMarketplaceAgentsRequest
-	284, // 185: messenger.ChatService.GetAIAgentStats:input_type -> messenger.GetAIAgentStatsRequest
-	286, // 186: messenger.ChatService.ShareAIAgent:input_type -> messenger.ShareAIAgentRequest
-	288, // 187: messenger.ChatService.InstallAIAgent:input_type -> messenger.InstallAIAgentRequest
-	290, // 188: messenger.ChatService.GetAIUsageStats:input_type -> messenger.GetAIUsageStatsRequest
-	218, // 189: messenger.AuthService.SignIn:input_type -> messenger.SignInRequest
-	219, // 190: messenger.AuthService.SignUp:input_type -> messenger.SignUpRequest
-	221, // 191: messenger.AuthService.SignInV2:input_type -> messenger.SignInRequestV2
-	222, // 192: messenger.AuthService.SignUpV2:input_type -> messenger.SignUpRequestV2
-	224, // 193: messenger.AuthService.RefreshToken:input_type -> messenger.RefreshTokenRequest
-	226, // 194: messenger.AuthService.SignOut:input_type -> messenger.SignOutRequest
-	227, // 195: messenger.AuthService.RevokeDevice:input_type -> messenger.RevokeDeviceRequest
-	228, // 196: messenger.ProfileService.GetProfile:input_type -> messenger.GetProfileRequest
-	230, // 197: messenger.ProfileService.UpdateProfile:input_type -> messenger.UpdateProfileV2Request
-	232, // 198: messenger.ProfileService.UpdateAvatar:input_type -> messenger.UpdateAvatarV2Request
-	234, // 199: messenger.ProfileService.DeleteProfile:input_type -> messenger.DeleteProfileV2Request
-	236, // 200: messenger.ProfileService.GetUserSettings:input_type -> messenger.GetUserSettingsRequest
-	238, // 201: messenger.ProfileService.UpdateUserSettings:input_type -> messenger.UpdateUserSettingsRequest
-	2,   // 202: messenger.ChatService.Chat:output_type -> messenger.Message
-	98,  // 203: messenger.ChatService.Typing:output_type -> messenger.TypingSignal
-	108, // 204: messenger.ChatService.CallSession:output_type -> messenger.CallMessage
-	7,   // 205: messenger.ChatService.GetClients:output_type -> messenger.ClientListResponse
-	10,  // 206: messenger.ChatService.GetAllUsers:output_type -> messenger.GetAllUsersResponse
-	12,  // 207: messenger.ChatService.GetAllChats:output_type -> messenger.GetAllChatsResponse
-	15,  // 208: messenger.ChatService.GetHistory:output_type -> messenger.GetHistoryResponse
-	5,   // 209: messenger.ChatService.SetReaction:output_type -> messenger.ReactionResponse
-	17,  // 210: messenger.ChatService.DeleteMessages:output_type -> messenger.DeleteMessagesResponse
-	19,  // 211: messenger.ChatService.RegisterToken:output_type -> messenger.TokenResponse
-	22,  // 212: messenger.ChatService.GetChats:output_type -> messenger.GetChatsResponse
-	22,  // 213: messenger.ChatService.GetChatsV2:output_type -> messenger.GetChatsResponse
-	60,  // 214: messenger.ChatService.GetChatListVersion:output_type -> messenger.GetChatListVersionResponse
-	24,  // 215: messenger.ChatService.CreateDirectChat:output_type -> messenger.CreateDirectChatResponse
-	26,  // 216: messenger.ChatService.CreateGroupChat:output_type -> messenger.CreateGroupChatResponse
-	28,  // 217: messenger.ChatService.UpdateUsername:output_type -> messenger.UpdateUsernameResponse
-	30,  // 218: messenger.ChatService.UpdatePassword:output_type -> messenger.UpdatePasswordResponse
-	32,  // 219: messenger.ChatService.AdminUpdatePassword:output_type -> messenger.AdminUpdatePasswordResponse
-	34,  // 220: messenger.ChatService.MarkRead:output_type -> messenger.MarkReadResponse
-	36,  // 221: messenger.ChatService.UpdateAvatar:output_type -> messenger.UpdateAvatarResponse
-	38,  // 222: messenger.ChatService.UpdateProfile:output_type -> messenger.UpdateProfileResponse
-	40,  // 223: messenger.ChatService.GetUserProfile:output_type -> messenger.GetUserProfileResponse
-	42,  // 224: messenger.ChatService.GetUserAvatar:output_type -> messenger.GetUserAvatarResponse
-	44,  // 225: messenger.ChatService.AddParticipant:output_type -> messenger.AddParticipantResponse
-	46,  // 226: messenger.ChatService.RemoveParticipant:output_type -> messenger.RemoveParticipantResponse
-	48,  // 227: messenger.ChatService.EditMessage:output_type -> messenger.EditMessageResponse
-	71,  // 228: messenger.ChatService.UpdateChatName:output_type -> messenger.UpdateChatNameResponse
-	73,  // 229: messenger.ChatService.UpdateChatAvatar:output_type -> messenger.UpdateChatAvatarResponse
-	75,  // 230: messenger.ChatService.UpdateChatSettings:output_type -> messenger.UpdateChatSettingsResponse
-	50,  // 231: messenger.ChatService.DeleteChat:output_type -> messenger.DeleteChatResponse
-	52,  // 232: messenger.ChatService.DeleteProfile:output_type -> messenger.DeleteProfileResponse
-	54,  // 233: messenger.ChatService.AddContact:output_type -> messenger.AddContactResponse
-	56,  // 234: messenger.ChatService.RemoveContact:output_type -> messenger.RemoveContactResponse
-	58,  // 235: messenger.ChatService.GetContacts:output_type -> messenger.GetContactsResponse
-	63,  // 236: messenger.ChatService.GetThemes:output_type -> messenger.GetThemesResponse
-	65,  // 237: messenger.ChatService.SaveTheme:output_type -> messenger.SaveThemeResponse
-	67,  // 238: messenger.ChatService.SetCurrentTheme:output_type -> messenger.SetCurrentThemeResponse
-	69,  // 239: messenger.ChatService.DeleteTheme:output_type -> messenger.DeleteThemeResponse
-	78,  // 240: messenger.ChatService.GetFCMLogs:output_type -> messenger.GetFCMLogsResponse
-	80,  // 241: messenger.ChatService.SaveDraft:output_type -> messenger.SaveDraftResponse
-	82,  // 242: messenger.ChatService.GetDraft:output_type -> messenger.GetDraftResponse
-	84,  // 243: messenger.ChatService.DeleteDraft:output_type -> messenger.DeleteDraftResponse
-	86,  // 244: messenger.ChatService.GetMutedChats:output_type -> messenger.GetMutedChatsResponse
-	88,  // 245: messenger.ChatService.SetMutedChat:output_type -> messenger.SetMutedChatResponse
-	90,  // 246: messenger.ChatService.GetUserId:output_type -> messenger.GetUserIdResponse
-	92,  // 247: messenger.ChatService.AddFavorite:output_type -> messenger.AddFavoriteResponse
-	94,  // 248: messenger.ChatService.RemoveFavorite:output_type -> messenger.RemoveFavoriteResponse
-	96,  // 249: messenger.ChatService.GetFavorites:output_type -> messenger.GetFavoritesResponse
-	92,  // 250: messenger.ChatService.SaveFavoriteMessage:output_type -> messenger.AddFavoriteResponse
-	101, // 251: messenger.ChatService.GetDevices:output_type -> messenger.GetDevicesResponse
-	103, // 252: messenger.ChatService.DeleteDevice:output_type -> messenger.DeleteDeviceResponse
-	103, // 253: messenger.ChatService.DeleteOtherDevices:output_type -> messenger.DeleteDeviceResponse
-	105, // 254: messenger.ChatService.RequestPasswordReset:output_type -> messenger.RequestPasswordResetResponse
-	107, // 255: messenger.ChatService.ResetPassword:output_type -> messenger.ResetPasswordResponse
-	112, // 256: messenger.ChatService.PinChat:output_type -> messenger.PinChatResponse
-	114, // 257: messenger.ChatService.UnPinChat:output_type -> messenger.UnPinChatResponse
-	116, // 258: messenger.ChatService.SearchChats:output_type -> messenger.SearchChatsResponse
-	118, // 259: messenger.ChatService.ArchiveChat:output_type -> messenger.ArchiveChatResponse
-	120, // 260: messenger.ChatService.UnarchiveChat:output_type -> messenger.UnarchiveChatResponse
-	122, // 261: messenger.ChatService.PinMessage:output_type -> messenger.PinMessageResponse
-	124, // 262: messenger.ChatService.UnPinMessage:output_type -> messenger.UnPinMessageResponse
-	126, // 263: messenger.ChatService.GetPinnedMessages:output_type -> messenger.GetPinnedMessagesResponse
-	128, // 264: messenger.ChatService.CreateSecretChat:output_type -> messenger.CreateSecretChatResponse
-	130, // 265: messenger.ChatService.ExchangeSecretKey:output_type -> messenger.ExchangeSecretKeyResponse
-	132, // 266: messenger.ChatService.GetSecretChatKey:output_type -> messenger.GetSecretChatKeyResponse
-	145, // 267: messenger.ChatService.ChatWithOWL:output_type -> messenger.OWLResponse
-	134, // 268: messenger.ChatService.CreateOwlChat:output_type -> messenger.CreateOwlChatResponse
-	136, // 269: messenger.ChatService.DeleteOwlChat:output_type -> messenger.DeleteOwlChatResponse
-	139, // 270: messenger.ChatService.GetOwlHistory:output_type -> messenger.GetOwlHistoryResponse
-	143, // 271: messenger.ChatService.UpdateOwlSettings:output_type -> messenger.UpdateOwlSettingsResponse
-	142, // 272: messenger.ChatService.GetOwlSettings:output_type -> messenger.GetOwlSettingsResponse
-	154, // 273: messenger.ChatService.ChatWithOrchestrator:output_type -> messenger.OrchestratorResponse
-	157, // 274: messenger.ChatService.GetOrchestratorHistory:output_type -> messenger.GetOrchestratorHistoryResponse
-	161, // 275: messenger.ChatService.ListAgents:output_type -> messenger.ListAgentsResponse
-	163, // 276: messenger.ChatService.ListAgentPresets:output_type -> messenger.ListAgentPresetsResponse
-	165, // 277: messenger.ChatService.CreateAgent:output_type -> messenger.CreateAgentResponse
-	167, // 278: messenger.ChatService.UpdateAgent:output_type -> messenger.UpdateAgentResponse
-	169, // 279: messenger.ChatService.DeleteAgent:output_type -> messenger.DeleteAgentResponse
-	171, // 280: messenger.ChatService.ListUserAgents:output_type -> messenger.ListUserAgentsResponse
-	173, // 281: messenger.ChatService.CreateHermesSession:output_type -> messenger.CreateHermesSessionResponse
-	175, // 282: messenger.ChatService.DeleteHermesSession:output_type -> messenger.DeleteHermesSessionResponse
-	178, // 283: messenger.ChatService.ListRemoteAgents:output_type -> messenger.ListRemoteAgentsResponse
-	180, // 284: messenger.ChatService.DeployAgentTask:output_type -> messenger.DeployAgentTaskResponse
-	181, // 285: messenger.ChatService.DeployAgentTaskStream:output_type -> messenger.DeployAgentTaskStreamResponse
-	183, // 286: messenger.ChatService.GetRemoteAgentStatus:output_type -> messenger.GetRemoteAgentStatusResponse
-	205, // 287: messenger.ChatService.ChatWithAI:output_type -> messenger.AIChatResponse
-	209, // 288: messenger.ChatService.GetAIChatHistory:output_type -> messenger.GetAIChatHistoryResponse
-	207, // 289: messenger.ChatService.GetAIChatSettings:output_type -> messenger.AIChatSettings
-	212, // 290: messenger.ChatService.UpdateAIChatSettings:output_type -> messenger.UpdateAIChatSettingsResponse
-	186, // 291: messenger.ChatService.GetAIChats:output_type -> messenger.GetAIChatsResponse
-	188, // 292: messenger.ChatService.RenameAIChat:output_type -> messenger.RenameAIChatResponse
-	110, // 293: messenger.ChatService.ChatWithPipeline:output_type -> messenger.PipelineResponse
-	214, // 294: messenger.ChatService.GetHermesSettings:output_type -> messenger.GetHermesSettingsResponse
-	216, // 295: messenger.ChatService.UpdateHermesSettings:output_type -> messenger.UpdateHermesSettingsResponse
-	190, // 296: messenger.ChatService.ProcessBotCommand:output_type -> messenger.BotCommandResponse
-	193, // 297: messenger.ChatService.GetBotCommands:output_type -> messenger.GetBotCommandsResponse
-	195, // 298: messenger.ChatService.GetOWLStatus:output_type -> messenger.OWLStatusResponse
-	196, // 299: messenger.ChatService.SubscribeNotifications:output_type -> messenger.ServerNotification
-	199, // 300: messenger.ChatService.GetNotificationHistory:output_type -> messenger.GetNotificationHistoryResponse
-	201, // 301: messenger.ChatService.MarkNotificationsRead:output_type -> messenger.MarkNotificationReadResponse
-	203, // 302: messenger.ChatService.GetUnreadCount:output_type -> messenger.GetUnreadCountResponse
-	148, // 303: messenger.ChatService.GetFreeModels:output_type -> messenger.GetFreeModelsResponse
-	150, // 304: messenger.ChatService.SetFreeModel:output_type -> messenger.SetFreeModelResponse
-	152, // 305: messenger.ChatService.RemoveFreeModel:output_type -> messenger.RemoveFreeModelResponse
-	240, // 306: messenger.ChatService.ChatV2:output_type -> messenger.ChatV2Message
-	247, // 307: messenger.ChatService.GetHistoryV2:output_type -> messenger.GetHistoryV2Response
-	249, // 308: messenger.ChatService.SendMessageV2:output_type -> messenger.SendMessageV2Response
-	251, // 309: messenger.ChatService.EditMessageV2:output_type -> messenger.EditMessageV2Response
-	253, // 310: messenger.ChatService.DeleteMessageV2:output_type -> messenger.DeleteMessageV2Response
-	255, // 311: messenger.ChatService.SetReactionV2:output_type -> messenger.SetReactionV2Response
-	257, // 312: messenger.ChatService.ChatWithAIV2:output_type -> messenger.ChatWithAIV2Response
-	261, // 313: messenger.ChatService.CreateAIAgent:output_type -> messenger.CreateAIAgentResponse
-	263, // 314: messenger.ChatService.UpdateAIAgent:output_type -> messenger.UpdateAIAgentResponse
-	265, // 315: messenger.ChatService.DeleteAIAgent:output_type -> messenger.DeleteAIAgentResponse
-	267, // 316: messenger.ChatService.GetAIAgent:output_type -> messenger.GetAIAgentResponse
-	271, // 317: messenger.ChatService.ListAIAgents:output_type -> messenger.ListAIAgentsResponse
-	273, // 318: messenger.ChatService.CloneAIAgent:output_type -> messenger.CloneAIAgentResponse
-	275, // 319: messenger.ChatService.ListAITools:output_type -> messenger.ListAIToolsResponse
-	278, // 320: messenger.ChatService.RateAIAgent:output_type -> messenger.RateAIAgentResponse
-	281, // 321: messenger.ChatService.GetAIAgentReviews:output_type -> messenger.GetAIAgentReviewsResponse
-	283, // 322: messenger.ChatService.ListMarketplaceAgents:output_type -> messenger.ListMarketplaceAgentsResponse
-	285, // 323: messenger.ChatService.GetAIAgentStats:output_type -> messenger.GetAIAgentStatsResponse
-	287, // 324: messenger.ChatService.ShareAIAgent:output_type -> messenger.ShareAIAgentResponse
-	289, // 325: messenger.ChatService.InstallAIAgent:output_type -> messenger.InstallAIAgentResponse
-	292, // 326: messenger.ChatService.GetAIUsageStats:output_type -> messenger.GetAIUsageStatsResponse
-	220, // 327: messenger.AuthService.SignIn:output_type -> messenger.AuthResponse
-	220, // 328: messenger.AuthService.SignUp:output_type -> messenger.AuthResponse
-	223, // 329: messenger.AuthService.SignInV2:output_type -> messenger.AuthResponseV2
-	223, // 330: messenger.AuthService.SignUpV2:output_type -> messenger.AuthResponseV2
-	225, // 331: messenger.AuthService.RefreshToken:output_type -> messenger.RefreshTokenResponse
-	220, // 332: messenger.AuthService.SignOut:output_type -> messenger.AuthResponse
-	220, // 333: messenger.AuthService.RevokeDevice:output_type -> messenger.AuthResponse
-	229, // 334: messenger.ProfileService.GetProfile:output_type -> messenger.GetProfileResponse
-	231, // 335: messenger.ProfileService.UpdateProfile:output_type -> messenger.UpdateProfileV2Response
-	233, // 336: messenger.ProfileService.UpdateAvatar:output_type -> messenger.UpdateAvatarV2Response
-	235, // 337: messenger.ProfileService.DeleteProfile:output_type -> messenger.DeleteProfileV2Response
-	237, // 338: messenger.ProfileService.GetUserSettings:output_type -> messenger.GetUserSettingsResponse
-	239, // 339: messenger.ProfileService.UpdateUserSettings:output_type -> messenger.UpdateUserSettingsResponse
-	202, // [202:340] is the sub-list for method output_type
-	64,  // [64:202] is the sub-list for method input_type
-	64,  // [64:64] is the sub-list for extension type_name
-	64,  // [64:64] is the sub-list for extension extendee
-	0,   // [0:64] is the sub-list for field type_name
+	294, // 64: messenger.GetAIV2ChatHistoryResponse.messages:type_name -> messenger.AIV2ChatMessage
+	297, // 65: messenger.ListAIV2ChatsResponse.chats:type_name -> messenger.AIV2ChatInfo
+	2,   // 66: messenger.ChatService.Chat:input_type -> messenger.Message
+	97,  // 67: messenger.ChatService.Typing:input_type -> messenger.TypingRequest
+	108, // 68: messenger.ChatService.CallSession:input_type -> messenger.CallMessage
+	6,   // 69: messenger.ChatService.GetClients:input_type -> messenger.ClientListRequest
+	8,   // 70: messenger.ChatService.GetAllUsers:input_type -> messenger.GetAllUsersRequest
+	11,  // 71: messenger.ChatService.GetAllChats:input_type -> messenger.GetAllChatsRequest
+	14,  // 72: messenger.ChatService.GetHistory:input_type -> messenger.GetHistoryRequest
+	4,   // 73: messenger.ChatService.SetReaction:input_type -> messenger.ReactionRequest
+	16,  // 74: messenger.ChatService.DeleteMessages:input_type -> messenger.DeleteMessagesRequest
+	18,  // 75: messenger.ChatService.RegisterToken:input_type -> messenger.TokenRequest
+	21,  // 76: messenger.ChatService.GetChats:input_type -> messenger.GetChatsRequest
+	21,  // 77: messenger.ChatService.GetChatsV2:input_type -> messenger.GetChatsRequest
+	59,  // 78: messenger.ChatService.GetChatListVersion:input_type -> messenger.GetChatListVersionRequest
+	23,  // 79: messenger.ChatService.CreateDirectChat:input_type -> messenger.CreateDirectChatRequest
+	25,  // 80: messenger.ChatService.CreateGroupChat:input_type -> messenger.CreateGroupChatRequest
+	27,  // 81: messenger.ChatService.UpdateUsername:input_type -> messenger.UpdateUsernameRequest
+	29,  // 82: messenger.ChatService.UpdatePassword:input_type -> messenger.UpdatePasswordRequest
+	31,  // 83: messenger.ChatService.AdminUpdatePassword:input_type -> messenger.AdminUpdatePasswordRequest
+	33,  // 84: messenger.ChatService.MarkRead:input_type -> messenger.MarkReadRequest
+	35,  // 85: messenger.ChatService.UpdateAvatar:input_type -> messenger.UpdateAvatarRequest
+	37,  // 86: messenger.ChatService.UpdateProfile:input_type -> messenger.UpdateProfileRequest
+	39,  // 87: messenger.ChatService.GetUserProfile:input_type -> messenger.GetUserProfileRequest
+	41,  // 88: messenger.ChatService.GetUserAvatar:input_type -> messenger.GetUserAvatarRequest
+	43,  // 89: messenger.ChatService.AddParticipant:input_type -> messenger.AddParticipantRequest
+	45,  // 90: messenger.ChatService.RemoveParticipant:input_type -> messenger.RemoveParticipantRequest
+	47,  // 91: messenger.ChatService.EditMessage:input_type -> messenger.EditMessageRequest
+	70,  // 92: messenger.ChatService.UpdateChatName:input_type -> messenger.UpdateChatNameRequest
+	72,  // 93: messenger.ChatService.UpdateChatAvatar:input_type -> messenger.UpdateChatAvatarRequest
+	74,  // 94: messenger.ChatService.UpdateChatSettings:input_type -> messenger.UpdateChatSettingsRequest
+	49,  // 95: messenger.ChatService.DeleteChat:input_type -> messenger.DeleteChatRequest
+	51,  // 96: messenger.ChatService.DeleteProfile:input_type -> messenger.DeleteProfileRequest
+	53,  // 97: messenger.ChatService.AddContact:input_type -> messenger.AddContactRequest
+	55,  // 98: messenger.ChatService.RemoveContact:input_type -> messenger.RemoveContactRequest
+	57,  // 99: messenger.ChatService.GetContacts:input_type -> messenger.GetContactsRequest
+	62,  // 100: messenger.ChatService.GetThemes:input_type -> messenger.GetThemesRequest
+	64,  // 101: messenger.ChatService.SaveTheme:input_type -> messenger.SaveThemeRequest
+	66,  // 102: messenger.ChatService.SetCurrentTheme:input_type -> messenger.SetCurrentThemeRequest
+	68,  // 103: messenger.ChatService.DeleteTheme:input_type -> messenger.DeleteThemeRequest
+	76,  // 104: messenger.ChatService.GetFCMLogs:input_type -> messenger.GetFCMLogsRequest
+	79,  // 105: messenger.ChatService.SaveDraft:input_type -> messenger.SaveDraftRequest
+	81,  // 106: messenger.ChatService.GetDraft:input_type -> messenger.GetDraftRequest
+	83,  // 107: messenger.ChatService.DeleteDraft:input_type -> messenger.DeleteDraftRequest
+	85,  // 108: messenger.ChatService.GetMutedChats:input_type -> messenger.GetMutedChatsRequest
+	87,  // 109: messenger.ChatService.SetMutedChat:input_type -> messenger.SetMutedChatRequest
+	89,  // 110: messenger.ChatService.GetUserId:input_type -> messenger.GetUserIdRequest
+	91,  // 111: messenger.ChatService.AddFavorite:input_type -> messenger.AddFavoriteRequest
+	93,  // 112: messenger.ChatService.RemoveFavorite:input_type -> messenger.RemoveFavoriteRequest
+	95,  // 113: messenger.ChatService.GetFavorites:input_type -> messenger.GetFavoritesRequest
+	2,   // 114: messenger.ChatService.SaveFavoriteMessage:input_type -> messenger.Message
+	100, // 115: messenger.ChatService.GetDevices:input_type -> messenger.GetDevicesRequest
+	102, // 116: messenger.ChatService.DeleteDevice:input_type -> messenger.DeleteDeviceRequest
+	102, // 117: messenger.ChatService.DeleteOtherDevices:input_type -> messenger.DeleteDeviceRequest
+	104, // 118: messenger.ChatService.RequestPasswordReset:input_type -> messenger.RequestPasswordResetRequest
+	106, // 119: messenger.ChatService.ResetPassword:input_type -> messenger.ResetPasswordRequest
+	111, // 120: messenger.ChatService.PinChat:input_type -> messenger.PinChatRequest
+	113, // 121: messenger.ChatService.UnPinChat:input_type -> messenger.UnPinChatRequest
+	115, // 122: messenger.ChatService.SearchChats:input_type -> messenger.SearchChatsRequest
+	117, // 123: messenger.ChatService.ArchiveChat:input_type -> messenger.ArchiveChatRequest
+	119, // 124: messenger.ChatService.UnarchiveChat:input_type -> messenger.UnarchiveChatRequest
+	121, // 125: messenger.ChatService.PinMessage:input_type -> messenger.PinMessageRequest
+	123, // 126: messenger.ChatService.UnPinMessage:input_type -> messenger.UnPinMessageRequest
+	125, // 127: messenger.ChatService.GetPinnedMessages:input_type -> messenger.GetPinnedMessagesRequest
+	127, // 128: messenger.ChatService.CreateSecretChat:input_type -> messenger.CreateSecretChatRequest
+	129, // 129: messenger.ChatService.ExchangeSecretKey:input_type -> messenger.ExchangeSecretKeyRequest
+	131, // 130: messenger.ChatService.GetSecretChatKey:input_type -> messenger.GetSecretChatKeyRequest
+	144, // 131: messenger.ChatService.ChatWithOWL:input_type -> messenger.OWLRequest
+	133, // 132: messenger.ChatService.CreateOwlChat:input_type -> messenger.CreateOwlChatRequest
+	135, // 133: messenger.ChatService.DeleteOwlChat:input_type -> messenger.DeleteOwlChatRequest
+	137, // 134: messenger.ChatService.GetOwlHistory:input_type -> messenger.GetOwlHistoryRequest
+	140, // 135: messenger.ChatService.UpdateOwlSettings:input_type -> messenger.UpdateOwlSettingsRequest
+	141, // 136: messenger.ChatService.GetOwlSettings:input_type -> messenger.GetOwlSettingsRequest
+	153, // 137: messenger.ChatService.ChatWithOrchestrator:input_type -> messenger.OrchestratorRequest
+	156, // 138: messenger.ChatService.GetOrchestratorHistory:input_type -> messenger.GetOrchestratorHistoryRequest
+	160, // 139: messenger.ChatService.ListAgents:input_type -> messenger.ListAgentsRequest
+	162, // 140: messenger.ChatService.ListAgentPresets:input_type -> messenger.ListAgentPresetsRequest
+	164, // 141: messenger.ChatService.CreateAgent:input_type -> messenger.CreateAgentRequest
+	166, // 142: messenger.ChatService.UpdateAgent:input_type -> messenger.UpdateAgentRequest
+	168, // 143: messenger.ChatService.DeleteAgent:input_type -> messenger.DeleteAgentRequest
+	170, // 144: messenger.ChatService.ListUserAgents:input_type -> messenger.ListUserAgentsRequest
+	172, // 145: messenger.ChatService.CreateHermesSession:input_type -> messenger.CreateHermesSessionRequest
+	174, // 146: messenger.ChatService.DeleteHermesSession:input_type -> messenger.DeleteHermesSessionRequest
+	177, // 147: messenger.ChatService.ListRemoteAgents:input_type -> messenger.ListRemoteAgentsRequest
+	179, // 148: messenger.ChatService.DeployAgentTask:input_type -> messenger.DeployAgentTaskRequest
+	179, // 149: messenger.ChatService.DeployAgentTaskStream:input_type -> messenger.DeployAgentTaskRequest
+	182, // 150: messenger.ChatService.GetRemoteAgentStatus:input_type -> messenger.GetRemoteAgentStatusRequest
+	204, // 151: messenger.ChatService.ChatWithAI:input_type -> messenger.AIChatRequest
+	208, // 152: messenger.ChatService.GetAIChatHistory:input_type -> messenger.GetAIChatHistoryRequest
+	210, // 153: messenger.ChatService.GetAIChatSettings:input_type -> messenger.GetAIChatSettingsRequest
+	211, // 154: messenger.ChatService.UpdateAIChatSettings:input_type -> messenger.UpdateAIChatSettingsRequest
+	184, // 155: messenger.ChatService.GetAIChats:input_type -> messenger.GetAIChatsRequest
+	187, // 156: messenger.ChatService.RenameAIChat:input_type -> messenger.RenameAIChatRequest
+	109, // 157: messenger.ChatService.ChatWithPipeline:input_type -> messenger.PipelineRequest
+	213, // 158: messenger.ChatService.GetHermesSettings:input_type -> messenger.GetHermesSettingsRequest
+	215, // 159: messenger.ChatService.UpdateHermesSettings:input_type -> messenger.UpdateHermesSettingsRequest
+	189, // 160: messenger.ChatService.ProcessBotCommand:input_type -> messenger.BotCommandRequest
+	192, // 161: messenger.ChatService.GetBotCommands:input_type -> messenger.GetBotCommandsRequest
+	194, // 162: messenger.ChatService.GetOWLStatus:input_type -> messenger.OWLStatusRequest
+	197, // 163: messenger.ChatService.SubscribeNotifications:input_type -> messenger.SubscribeNotificationsRequest
+	198, // 164: messenger.ChatService.GetNotificationHistory:input_type -> messenger.GetNotificationHistoryRequest
+	200, // 165: messenger.ChatService.MarkNotificationsRead:input_type -> messenger.MarkNotificationReadRequest
+	202, // 166: messenger.ChatService.GetUnreadCount:input_type -> messenger.GetUnreadCountRequest
+	147, // 167: messenger.ChatService.GetFreeModels:input_type -> messenger.GetFreeModelsRequest
+	149, // 168: messenger.ChatService.SetFreeModel:input_type -> messenger.SetFreeModelRequest
+	151, // 169: messenger.ChatService.RemoveFreeModel:input_type -> messenger.RemoveFreeModelRequest
+	240, // 170: messenger.ChatService.ChatV2:input_type -> messenger.ChatV2Message
+	246, // 171: messenger.ChatService.GetHistoryV2:input_type -> messenger.GetHistoryV2Request
+	248, // 172: messenger.ChatService.SendMessageV2:input_type -> messenger.SendMessageV2Request
+	250, // 173: messenger.ChatService.EditMessageV2:input_type -> messenger.EditMessageV2Request
+	252, // 174: messenger.ChatService.DeleteMessageV2:input_type -> messenger.DeleteMessageV2Request
+	254, // 175: messenger.ChatService.SetReactionV2:input_type -> messenger.SetReactionV2Request
+	256, // 176: messenger.ChatService.ChatWithAIV2:input_type -> messenger.ChatWithAIV2Request
+	260, // 177: messenger.ChatService.CreateAIAgent:input_type -> messenger.CreateAIAgentRequest
+	262, // 178: messenger.ChatService.UpdateAIAgent:input_type -> messenger.UpdateAIAgentRequest
+	264, // 179: messenger.ChatService.DeleteAIAgent:input_type -> messenger.DeleteAIAgentRequest
+	266, // 180: messenger.ChatService.GetAIAgent:input_type -> messenger.GetAIAgentRequest
+	270, // 181: messenger.ChatService.ListAIAgents:input_type -> messenger.ListAIAgentsRequest
+	272, // 182: messenger.ChatService.CloneAIAgent:input_type -> messenger.CloneAIAgentRequest
+	274, // 183: messenger.ChatService.ListAITools:input_type -> messenger.ListAIToolsRequest
+	277, // 184: messenger.ChatService.RateAIAgent:input_type -> messenger.RateAIAgentRequest
+	279, // 185: messenger.ChatService.GetAIAgentReviews:input_type -> messenger.GetAIAgentReviewsRequest
+	282, // 186: messenger.ChatService.ListMarketplaceAgents:input_type -> messenger.ListMarketplaceAgentsRequest
+	284, // 187: messenger.ChatService.GetAIAgentStats:input_type -> messenger.GetAIAgentStatsRequest
+	286, // 188: messenger.ChatService.ShareAIAgent:input_type -> messenger.ShareAIAgentRequest
+	288, // 189: messenger.ChatService.InstallAIAgent:input_type -> messenger.InstallAIAgentRequest
+	290, // 190: messenger.ChatService.GetAIUsageStats:input_type -> messenger.GetAIUsageStatsRequest
+	293, // 191: messenger.ChatService.GetAIV2ChatHistory:input_type -> messenger.GetAIV2ChatHistoryRequest
+	296, // 192: messenger.ChatService.ListAIV2Chats:input_type -> messenger.ListAIV2ChatsRequest
+	218, // 193: messenger.AuthService.SignIn:input_type -> messenger.SignInRequest
+	219, // 194: messenger.AuthService.SignUp:input_type -> messenger.SignUpRequest
+	221, // 195: messenger.AuthService.SignInV2:input_type -> messenger.SignInRequestV2
+	222, // 196: messenger.AuthService.SignUpV2:input_type -> messenger.SignUpRequestV2
+	224, // 197: messenger.AuthService.RefreshToken:input_type -> messenger.RefreshTokenRequest
+	226, // 198: messenger.AuthService.SignOut:input_type -> messenger.SignOutRequest
+	227, // 199: messenger.AuthService.RevokeDevice:input_type -> messenger.RevokeDeviceRequest
+	228, // 200: messenger.ProfileService.GetProfile:input_type -> messenger.GetProfileRequest
+	230, // 201: messenger.ProfileService.UpdateProfile:input_type -> messenger.UpdateProfileV2Request
+	232, // 202: messenger.ProfileService.UpdateAvatar:input_type -> messenger.UpdateAvatarV2Request
+	234, // 203: messenger.ProfileService.DeleteProfile:input_type -> messenger.DeleteProfileV2Request
+	236, // 204: messenger.ProfileService.GetUserSettings:input_type -> messenger.GetUserSettingsRequest
+	238, // 205: messenger.ProfileService.UpdateUserSettings:input_type -> messenger.UpdateUserSettingsRequest
+	2,   // 206: messenger.ChatService.Chat:output_type -> messenger.Message
+	98,  // 207: messenger.ChatService.Typing:output_type -> messenger.TypingSignal
+	108, // 208: messenger.ChatService.CallSession:output_type -> messenger.CallMessage
+	7,   // 209: messenger.ChatService.GetClients:output_type -> messenger.ClientListResponse
+	10,  // 210: messenger.ChatService.GetAllUsers:output_type -> messenger.GetAllUsersResponse
+	12,  // 211: messenger.ChatService.GetAllChats:output_type -> messenger.GetAllChatsResponse
+	15,  // 212: messenger.ChatService.GetHistory:output_type -> messenger.GetHistoryResponse
+	5,   // 213: messenger.ChatService.SetReaction:output_type -> messenger.ReactionResponse
+	17,  // 214: messenger.ChatService.DeleteMessages:output_type -> messenger.DeleteMessagesResponse
+	19,  // 215: messenger.ChatService.RegisterToken:output_type -> messenger.TokenResponse
+	22,  // 216: messenger.ChatService.GetChats:output_type -> messenger.GetChatsResponse
+	22,  // 217: messenger.ChatService.GetChatsV2:output_type -> messenger.GetChatsResponse
+	60,  // 218: messenger.ChatService.GetChatListVersion:output_type -> messenger.GetChatListVersionResponse
+	24,  // 219: messenger.ChatService.CreateDirectChat:output_type -> messenger.CreateDirectChatResponse
+	26,  // 220: messenger.ChatService.CreateGroupChat:output_type -> messenger.CreateGroupChatResponse
+	28,  // 221: messenger.ChatService.UpdateUsername:output_type -> messenger.UpdateUsernameResponse
+	30,  // 222: messenger.ChatService.UpdatePassword:output_type -> messenger.UpdatePasswordResponse
+	32,  // 223: messenger.ChatService.AdminUpdatePassword:output_type -> messenger.AdminUpdatePasswordResponse
+	34,  // 224: messenger.ChatService.MarkRead:output_type -> messenger.MarkReadResponse
+	36,  // 225: messenger.ChatService.UpdateAvatar:output_type -> messenger.UpdateAvatarResponse
+	38,  // 226: messenger.ChatService.UpdateProfile:output_type -> messenger.UpdateProfileResponse
+	40,  // 227: messenger.ChatService.GetUserProfile:output_type -> messenger.GetUserProfileResponse
+	42,  // 228: messenger.ChatService.GetUserAvatar:output_type -> messenger.GetUserAvatarResponse
+	44,  // 229: messenger.ChatService.AddParticipant:output_type -> messenger.AddParticipantResponse
+	46,  // 230: messenger.ChatService.RemoveParticipant:output_type -> messenger.RemoveParticipantResponse
+	48,  // 231: messenger.ChatService.EditMessage:output_type -> messenger.EditMessageResponse
+	71,  // 232: messenger.ChatService.UpdateChatName:output_type -> messenger.UpdateChatNameResponse
+	73,  // 233: messenger.ChatService.UpdateChatAvatar:output_type -> messenger.UpdateChatAvatarResponse
+	75,  // 234: messenger.ChatService.UpdateChatSettings:output_type -> messenger.UpdateChatSettingsResponse
+	50,  // 235: messenger.ChatService.DeleteChat:output_type -> messenger.DeleteChatResponse
+	52,  // 236: messenger.ChatService.DeleteProfile:output_type -> messenger.DeleteProfileResponse
+	54,  // 237: messenger.ChatService.AddContact:output_type -> messenger.AddContactResponse
+	56,  // 238: messenger.ChatService.RemoveContact:output_type -> messenger.RemoveContactResponse
+	58,  // 239: messenger.ChatService.GetContacts:output_type -> messenger.GetContactsResponse
+	63,  // 240: messenger.ChatService.GetThemes:output_type -> messenger.GetThemesResponse
+	65,  // 241: messenger.ChatService.SaveTheme:output_type -> messenger.SaveThemeResponse
+	67,  // 242: messenger.ChatService.SetCurrentTheme:output_type -> messenger.SetCurrentThemeResponse
+	69,  // 243: messenger.ChatService.DeleteTheme:output_type -> messenger.DeleteThemeResponse
+	78,  // 244: messenger.ChatService.GetFCMLogs:output_type -> messenger.GetFCMLogsResponse
+	80,  // 245: messenger.ChatService.SaveDraft:output_type -> messenger.SaveDraftResponse
+	82,  // 246: messenger.ChatService.GetDraft:output_type -> messenger.GetDraftResponse
+	84,  // 247: messenger.ChatService.DeleteDraft:output_type -> messenger.DeleteDraftResponse
+	86,  // 248: messenger.ChatService.GetMutedChats:output_type -> messenger.GetMutedChatsResponse
+	88,  // 249: messenger.ChatService.SetMutedChat:output_type -> messenger.SetMutedChatResponse
+	90,  // 250: messenger.ChatService.GetUserId:output_type -> messenger.GetUserIdResponse
+	92,  // 251: messenger.ChatService.AddFavorite:output_type -> messenger.AddFavoriteResponse
+	94,  // 252: messenger.ChatService.RemoveFavorite:output_type -> messenger.RemoveFavoriteResponse
+	96,  // 253: messenger.ChatService.GetFavorites:output_type -> messenger.GetFavoritesResponse
+	92,  // 254: messenger.ChatService.SaveFavoriteMessage:output_type -> messenger.AddFavoriteResponse
+	101, // 255: messenger.ChatService.GetDevices:output_type -> messenger.GetDevicesResponse
+	103, // 256: messenger.ChatService.DeleteDevice:output_type -> messenger.DeleteDeviceResponse
+	103, // 257: messenger.ChatService.DeleteOtherDevices:output_type -> messenger.DeleteDeviceResponse
+	105, // 258: messenger.ChatService.RequestPasswordReset:output_type -> messenger.RequestPasswordResetResponse
+	107, // 259: messenger.ChatService.ResetPassword:output_type -> messenger.ResetPasswordResponse
+	112, // 260: messenger.ChatService.PinChat:output_type -> messenger.PinChatResponse
+	114, // 261: messenger.ChatService.UnPinChat:output_type -> messenger.UnPinChatResponse
+	116, // 262: messenger.ChatService.SearchChats:output_type -> messenger.SearchChatsResponse
+	118, // 263: messenger.ChatService.ArchiveChat:output_type -> messenger.ArchiveChatResponse
+	120, // 264: messenger.ChatService.UnarchiveChat:output_type -> messenger.UnarchiveChatResponse
+	122, // 265: messenger.ChatService.PinMessage:output_type -> messenger.PinMessageResponse
+	124, // 266: messenger.ChatService.UnPinMessage:output_type -> messenger.UnPinMessageResponse
+	126, // 267: messenger.ChatService.GetPinnedMessages:output_type -> messenger.GetPinnedMessagesResponse
+	128, // 268: messenger.ChatService.CreateSecretChat:output_type -> messenger.CreateSecretChatResponse
+	130, // 269: messenger.ChatService.ExchangeSecretKey:output_type -> messenger.ExchangeSecretKeyResponse
+	132, // 270: messenger.ChatService.GetSecretChatKey:output_type -> messenger.GetSecretChatKeyResponse
+	145, // 271: messenger.ChatService.ChatWithOWL:output_type -> messenger.OWLResponse
+	134, // 272: messenger.ChatService.CreateOwlChat:output_type -> messenger.CreateOwlChatResponse
+	136, // 273: messenger.ChatService.DeleteOwlChat:output_type -> messenger.DeleteOwlChatResponse
+	139, // 274: messenger.ChatService.GetOwlHistory:output_type -> messenger.GetOwlHistoryResponse
+	143, // 275: messenger.ChatService.UpdateOwlSettings:output_type -> messenger.UpdateOwlSettingsResponse
+	142, // 276: messenger.ChatService.GetOwlSettings:output_type -> messenger.GetOwlSettingsResponse
+	154, // 277: messenger.ChatService.ChatWithOrchestrator:output_type -> messenger.OrchestratorResponse
+	157, // 278: messenger.ChatService.GetOrchestratorHistory:output_type -> messenger.GetOrchestratorHistoryResponse
+	161, // 279: messenger.ChatService.ListAgents:output_type -> messenger.ListAgentsResponse
+	163, // 280: messenger.ChatService.ListAgentPresets:output_type -> messenger.ListAgentPresetsResponse
+	165, // 281: messenger.ChatService.CreateAgent:output_type -> messenger.CreateAgentResponse
+	167, // 282: messenger.ChatService.UpdateAgent:output_type -> messenger.UpdateAgentResponse
+	169, // 283: messenger.ChatService.DeleteAgent:output_type -> messenger.DeleteAgentResponse
+	171, // 284: messenger.ChatService.ListUserAgents:output_type -> messenger.ListUserAgentsResponse
+	173, // 285: messenger.ChatService.CreateHermesSession:output_type -> messenger.CreateHermesSessionResponse
+	175, // 286: messenger.ChatService.DeleteHermesSession:output_type -> messenger.DeleteHermesSessionResponse
+	178, // 287: messenger.ChatService.ListRemoteAgents:output_type -> messenger.ListRemoteAgentsResponse
+	180, // 288: messenger.ChatService.DeployAgentTask:output_type -> messenger.DeployAgentTaskResponse
+	181, // 289: messenger.ChatService.DeployAgentTaskStream:output_type -> messenger.DeployAgentTaskStreamResponse
+	183, // 290: messenger.ChatService.GetRemoteAgentStatus:output_type -> messenger.GetRemoteAgentStatusResponse
+	205, // 291: messenger.ChatService.ChatWithAI:output_type -> messenger.AIChatResponse
+	209, // 292: messenger.ChatService.GetAIChatHistory:output_type -> messenger.GetAIChatHistoryResponse
+	207, // 293: messenger.ChatService.GetAIChatSettings:output_type -> messenger.AIChatSettings
+	212, // 294: messenger.ChatService.UpdateAIChatSettings:output_type -> messenger.UpdateAIChatSettingsResponse
+	186, // 295: messenger.ChatService.GetAIChats:output_type -> messenger.GetAIChatsResponse
+	188, // 296: messenger.ChatService.RenameAIChat:output_type -> messenger.RenameAIChatResponse
+	110, // 297: messenger.ChatService.ChatWithPipeline:output_type -> messenger.PipelineResponse
+	214, // 298: messenger.ChatService.GetHermesSettings:output_type -> messenger.GetHermesSettingsResponse
+	216, // 299: messenger.ChatService.UpdateHermesSettings:output_type -> messenger.UpdateHermesSettingsResponse
+	190, // 300: messenger.ChatService.ProcessBotCommand:output_type -> messenger.BotCommandResponse
+	193, // 301: messenger.ChatService.GetBotCommands:output_type -> messenger.GetBotCommandsResponse
+	195, // 302: messenger.ChatService.GetOWLStatus:output_type -> messenger.OWLStatusResponse
+	196, // 303: messenger.ChatService.SubscribeNotifications:output_type -> messenger.ServerNotification
+	199, // 304: messenger.ChatService.GetNotificationHistory:output_type -> messenger.GetNotificationHistoryResponse
+	201, // 305: messenger.ChatService.MarkNotificationsRead:output_type -> messenger.MarkNotificationReadResponse
+	203, // 306: messenger.ChatService.GetUnreadCount:output_type -> messenger.GetUnreadCountResponse
+	148, // 307: messenger.ChatService.GetFreeModels:output_type -> messenger.GetFreeModelsResponse
+	150, // 308: messenger.ChatService.SetFreeModel:output_type -> messenger.SetFreeModelResponse
+	152, // 309: messenger.ChatService.RemoveFreeModel:output_type -> messenger.RemoveFreeModelResponse
+	240, // 310: messenger.ChatService.ChatV2:output_type -> messenger.ChatV2Message
+	247, // 311: messenger.ChatService.GetHistoryV2:output_type -> messenger.GetHistoryV2Response
+	249, // 312: messenger.ChatService.SendMessageV2:output_type -> messenger.SendMessageV2Response
+	251, // 313: messenger.ChatService.EditMessageV2:output_type -> messenger.EditMessageV2Response
+	253, // 314: messenger.ChatService.DeleteMessageV2:output_type -> messenger.DeleteMessageV2Response
+	255, // 315: messenger.ChatService.SetReactionV2:output_type -> messenger.SetReactionV2Response
+	257, // 316: messenger.ChatService.ChatWithAIV2:output_type -> messenger.ChatWithAIV2Response
+	261, // 317: messenger.ChatService.CreateAIAgent:output_type -> messenger.CreateAIAgentResponse
+	263, // 318: messenger.ChatService.UpdateAIAgent:output_type -> messenger.UpdateAIAgentResponse
+	265, // 319: messenger.ChatService.DeleteAIAgent:output_type -> messenger.DeleteAIAgentResponse
+	267, // 320: messenger.ChatService.GetAIAgent:output_type -> messenger.GetAIAgentResponse
+	271, // 321: messenger.ChatService.ListAIAgents:output_type -> messenger.ListAIAgentsResponse
+	273, // 322: messenger.ChatService.CloneAIAgent:output_type -> messenger.CloneAIAgentResponse
+	275, // 323: messenger.ChatService.ListAITools:output_type -> messenger.ListAIToolsResponse
+	278, // 324: messenger.ChatService.RateAIAgent:output_type -> messenger.RateAIAgentResponse
+	281, // 325: messenger.ChatService.GetAIAgentReviews:output_type -> messenger.GetAIAgentReviewsResponse
+	283, // 326: messenger.ChatService.ListMarketplaceAgents:output_type -> messenger.ListMarketplaceAgentsResponse
+	285, // 327: messenger.ChatService.GetAIAgentStats:output_type -> messenger.GetAIAgentStatsResponse
+	287, // 328: messenger.ChatService.ShareAIAgent:output_type -> messenger.ShareAIAgentResponse
+	289, // 329: messenger.ChatService.InstallAIAgent:output_type -> messenger.InstallAIAgentResponse
+	292, // 330: messenger.ChatService.GetAIUsageStats:output_type -> messenger.GetAIUsageStatsResponse
+	295, // 331: messenger.ChatService.GetAIV2ChatHistory:output_type -> messenger.GetAIV2ChatHistoryResponse
+	298, // 332: messenger.ChatService.ListAIV2Chats:output_type -> messenger.ListAIV2ChatsResponse
+	220, // 333: messenger.AuthService.SignIn:output_type -> messenger.AuthResponse
+	220, // 334: messenger.AuthService.SignUp:output_type -> messenger.AuthResponse
+	223, // 335: messenger.AuthService.SignInV2:output_type -> messenger.AuthResponseV2
+	223, // 336: messenger.AuthService.SignUpV2:output_type -> messenger.AuthResponseV2
+	225, // 337: messenger.AuthService.RefreshToken:output_type -> messenger.RefreshTokenResponse
+	220, // 338: messenger.AuthService.SignOut:output_type -> messenger.AuthResponse
+	220, // 339: messenger.AuthService.RevokeDevice:output_type -> messenger.AuthResponse
+	229, // 340: messenger.ProfileService.GetProfile:output_type -> messenger.GetProfileResponse
+	231, // 341: messenger.ProfileService.UpdateProfile:output_type -> messenger.UpdateProfileV2Response
+	233, // 342: messenger.ProfileService.UpdateAvatar:output_type -> messenger.UpdateAvatarV2Response
+	235, // 343: messenger.ProfileService.DeleteProfile:output_type -> messenger.DeleteProfileV2Response
+	237, // 344: messenger.ProfileService.GetUserSettings:output_type -> messenger.GetUserSettingsResponse
+	239, // 345: messenger.ProfileService.UpdateUserSettings:output_type -> messenger.UpdateUserSettingsResponse
+	206, // [206:346] is the sub-list for method output_type
+	66,  // [66:206] is the sub-list for method input_type
+	66,  // [66:66] is the sub-list for extension type_name
+	66,  // [66:66] is the sub-list for extension extendee
+	0,   // [0:66] is the sub-list for field type_name
 }
 
 func init() { file_messenger_proto_init() }
@@ -20025,7 +20429,7 @@ func file_messenger_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_messenger_proto_rawDesc), len(file_messenger_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   295,
+			NumMessages:   301,
 			NumExtensions: 0,
 			NumServices:   3,
 		},

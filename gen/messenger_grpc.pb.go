@@ -144,6 +144,8 @@ const (
 	ChatService_ShareAIAgent_FullMethodName           = "/messenger.ChatService/ShareAIAgent"
 	ChatService_InstallAIAgent_FullMethodName         = "/messenger.ChatService/InstallAIAgent"
 	ChatService_GetAIUsageStats_FullMethodName        = "/messenger.ChatService/GetAIUsageStats"
+	ChatService_GetAIV2ChatHistory_FullMethodName     = "/messenger.ChatService/GetAIV2ChatHistory"
+	ChatService_ListAIV2Chats_FullMethodName          = "/messenger.ChatService/ListAIV2Chats"
 )
 
 // ChatServiceClient is the client API for ChatService service.
@@ -291,6 +293,9 @@ type ChatServiceClient interface {
 	ShareAIAgent(ctx context.Context, in *ShareAIAgentRequest, opts ...grpc.CallOption) (*ShareAIAgentResponse, error)
 	InstallAIAgent(ctx context.Context, in *InstallAIAgentRequest, opts ...grpc.CallOption) (*InstallAIAgentResponse, error)
 	GetAIUsageStats(ctx context.Context, in *GetAIUsageStatsRequest, opts ...grpc.CallOption) (*GetAIUsageStatsResponse, error)
+	// === AI Chat v2 ===
+	GetAIV2ChatHistory(ctx context.Context, in *GetAIV2ChatHistoryRequest, opts ...grpc.CallOption) (*GetAIV2ChatHistoryResponse, error)
+	ListAIV2Chats(ctx context.Context, in *ListAIV2ChatsRequest, opts ...grpc.CallOption) (*ListAIV2ChatsResponse, error)
 }
 
 type chatServiceClient struct {
@@ -1626,6 +1631,26 @@ func (c *chatServiceClient) GetAIUsageStats(ctx context.Context, in *GetAIUsageS
 	return out, nil
 }
 
+func (c *chatServiceClient) GetAIV2ChatHistory(ctx context.Context, in *GetAIV2ChatHistoryRequest, opts ...grpc.CallOption) (*GetAIV2ChatHistoryResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetAIV2ChatHistoryResponse)
+	err := c.cc.Invoke(ctx, ChatService_GetAIV2ChatHistory_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) ListAIV2Chats(ctx context.Context, in *ListAIV2ChatsRequest, opts ...grpc.CallOption) (*ListAIV2ChatsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListAIV2ChatsResponse)
+	err := c.cc.Invoke(ctx, ChatService_ListAIV2Chats_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ChatServiceServer is the server API for ChatService service.
 // All implementations must embed UnimplementedChatServiceServer
 // for forward compatibility.
@@ -1771,6 +1796,9 @@ type ChatServiceServer interface {
 	ShareAIAgent(context.Context, *ShareAIAgentRequest) (*ShareAIAgentResponse, error)
 	InstallAIAgent(context.Context, *InstallAIAgentRequest) (*InstallAIAgentResponse, error)
 	GetAIUsageStats(context.Context, *GetAIUsageStatsRequest) (*GetAIUsageStatsResponse, error)
+	// === AI Chat v2 ===
+	GetAIV2ChatHistory(context.Context, *GetAIV2ChatHistoryRequest) (*GetAIV2ChatHistoryResponse, error)
+	ListAIV2Chats(context.Context, *ListAIV2ChatsRequest) (*ListAIV2ChatsResponse, error)
 	mustEmbedUnimplementedChatServiceServer()
 }
 
@@ -2155,6 +2183,12 @@ func (UnimplementedChatServiceServer) InstallAIAgent(context.Context, *InstallAI
 }
 func (UnimplementedChatServiceServer) GetAIUsageStats(context.Context, *GetAIUsageStatsRequest) (*GetAIUsageStatsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetAIUsageStats not implemented")
+}
+func (UnimplementedChatServiceServer) GetAIV2ChatHistory(context.Context, *GetAIV2ChatHistoryRequest) (*GetAIV2ChatHistoryResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetAIV2ChatHistory not implemented")
+}
+func (UnimplementedChatServiceServer) ListAIV2Chats(context.Context, *ListAIV2ChatsRequest) (*ListAIV2ChatsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListAIV2Chats not implemented")
 }
 func (UnimplementedChatServiceServer) mustEmbedUnimplementedChatServiceServer() {}
 func (UnimplementedChatServiceServer) testEmbeddedByValue()                     {}
@@ -4334,6 +4368,42 @@ func _ChatService_GetAIUsageStats_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ChatService_GetAIV2ChatHistory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetAIV2ChatHistoryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).GetAIV2ChatHistory(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_GetAIV2ChatHistory_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).GetAIV2ChatHistory(ctx, req.(*GetAIV2ChatHistoryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_ListAIV2Chats_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListAIV2ChatsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).ListAIV2Chats(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_ListAIV2Chats_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).ListAIV2Chats(ctx, req.(*ListAIV2ChatsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ChatService_ServiceDesc is the grpc.ServiceDesc for ChatService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -4796,6 +4866,14 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetAIUsageStats",
 			Handler:    _ChatService_GetAIUsageStats_Handler,
+		},
+		{
+			MethodName: "GetAIV2ChatHistory",
+			Handler:    _ChatService_GetAIV2ChatHistory_Handler,
+		},
+		{
+			MethodName: "ListAIV2Chats",
+			Handler:    _ChatService_ListAIV2Chats_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

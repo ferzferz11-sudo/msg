@@ -139,7 +139,7 @@ func (g *AIGateway) Chat(ctx context.Context, req *ChatRequest, streamFn StreamF
 		if !finished {
 			fullResponse += token
 		}
-		return streamFn(token, finished, "")
+		return streamFn(token, finished, "", agent.ID, agent.Name)
 	})
 
 	// 10. Refund on error
@@ -150,7 +150,7 @@ func (g *AIGateway) Chat(ctx context.Context, req *ChatRequest, streamFn StreamF
 
 	// 10.5 Send image URL if present (e.g. Reve image generation)
 	if execResult != nil && execResult.ImageURL != "" {
-		if err := streamFn("", true, execResult.ImageURL); err != nil {
+		if err := streamFn("", true, execResult.ImageURL, agent.ID, agent.Name); err != nil {
 			logger.Warnf("[AI] streamFn image: %v", err)
 		}
 	}
@@ -184,7 +184,8 @@ type ChatRequest struct {
 
 // StreamFn is the callback for streaming tokens. token="" + finished=true signals end.
 // imageURL is set when the agent produces an image (e.g. Reve).
-type StreamFn func(token string, finished bool, imageURL string) error
+// agentID and agentName identify which agent produced this token.
+type StreamFn func(token string, finished bool, imageURL string, agentID string, agentName string) error
 
 func (g *AIGateway) loadOrCreateChat(ctx context.Context, req *ChatRequest) (*AIChatV2, error) {
 	if req.ChatID != "" {
