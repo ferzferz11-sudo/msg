@@ -2,8 +2,8 @@
 
 Документация по AI-сервисам: AI Gateway v2, провайдеры, маркетплейс.
 
-**Обновлено:** 2026-06-21
-**Версия:** v1.3.0.19
+**Обновлено:** 2026-06-22
+**Версия:** v1.3.0.20
 
 ---
 
@@ -116,7 +116,9 @@
 
 | Хендлер | Описание |
 |---------|----------|
-| `ChatWithAIV2` | Единый AI чат (simple/agent/pipeline) |
+| `ChatWithAIV2` | Единый AI чат (simple/agent/pipeline) — теперь в каждом токене `agent_id` и `agent_name` |
+| `GetAIV2ChatHistory` | История AI чата с `agent_id`, `token_count`, `model_used` на сообщение |
+| `ListAIV2Chats` | Список всех AI v2 чатов пользователя |
 | `CreateAIAgent` | Создание агента |
 | `UpdateAIAgent` | Обновление агента |
 | `DeleteAIAgent` | Удаление агента |
@@ -124,6 +126,31 @@
 | `ListAIAgents` | Список агентов (свои + пресеты + публичные) |
 | `CloneAIAgent` | Клонирование агента |
 | `ListAITools` | Список доступных инструментов |
+
+---
+
+## Мультиагентные чаты (клиентская маршрутизация)
+
+Для групповых AI чатов с несколькими агентами клиент отправляет отдельные `ChatWithAIV2` запросы для каждого агента:
+
+1. Клиент хранит список `agent_ids` для чата
+2. При отправке сообщения:
+   ```kotlin
+   for (agentId in agentIds) {
+       scope.launch {
+           chatStub.chatWithAIV2(ChatWithAIV2Request {
+               sessionId = sessionId
+               message = message
+               this.agentId = agentId
+               images = images
+           }).collect { response ->
+               // response.agent_id и response.agent_name идентифицируют агента
+           }
+       }
+   }
+   ```
+3. Каждый ответ помечен `agent_id` в `ChatWithAIV2Response`
+4. UI отображает ответы от разных агентов с именами/цветами
 
 ---
 

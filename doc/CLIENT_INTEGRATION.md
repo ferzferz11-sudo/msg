@@ -1,6 +1,6 @@
 # Lavender Messenger — Client Integration Guide
 
-**Server:** v1.3.0.19 | **Protocol:** gRPC + Protocol Buffers | **Date:** 2026-06-21
+**Server:** v1.3.0.20 | **Protocol:** gRPC + Protocol Buffers | **Date:** 2026-06-22
 
 This document covers everything a client needs to integrate with the Lavender Messenger server. Platform-agnostic — applies to Android, iOS, Web, Desktop, or any gRPC-capable client.
 
@@ -26,8 +26,8 @@ GET http://<host>:<port>/info
 Response:
 ```json
 {
-  "version": "1.3.0.19",
-  "time": "2026-06-20T18:00:00Z",
+  "version": "1.3.0.20",
+  "time": "2026-06-22T11:00:00Z",
   "services": {
     "auth": "2.0",
     "chat": "2.0",
@@ -841,12 +841,13 @@ message ChatWithAIV2Response {
   string token = 1;          // streaming token
   bool finished = 2;         // true = response complete
   string error = 3;          // error message (if any)
-  string agent_id = 4;       // which agent answered
-  string agent_name = 5;     // display name
+  string agent_id = 4;       // which agent answered (now populated in every token)
+  string agent_name = 5;     // display name (now populated in every token)
   repeated ToolCallRequestV2 tool_calls = 6;  // tool execution requests
   bool has_rag_context = 7;  // RAG was used
   string model_used = 8;     // model name
   int32 token_count = 9;     // token count
+  string image_url = 10;     // image URL (for Reve image generation)
 }
 ```
 
@@ -901,6 +902,83 @@ rpc ShareAIAgent(ShareAIAgentRequest) returns (ShareAIAgentResponse);
 rpc InstallAIAgent(InstallAIAgentRequest) returns (InstallAIAgentResponse);
 rpc GetAIUsageStats(GetAIUsageStatsRequest) returns (GetAIUsageStatsResponse);
 ```
+
+### AI Chat v2 History & List
+
+#### GetAIV2ChatHistory
+
+Load chat history with agent metadata per message.
+
+```protobuf
+rpc GetAIV2ChatHistory(GetAIV2ChatHistoryRequest) returns (GetAIV2ChatHistoryResponse);
+
+message GetAIV2ChatHistoryRequest {
+  string session_id = 1;  // AI chat session ID
+  int32 limit = 2;        // max messages (default 50)
+}
+
+message AIV2ChatMessage {
+  int64 id = 1;
+  string chat_id = 2;
+  string role = 3;         // "user" or "assistant"
+  string content = 4;
+  string agent_id = 5;     // which agent produced this message
+  int32 token_count = 6;
+  string model_used = 7;
+  string created_at = 8;   // ISO 8601
+}
+
+message GetAIV2ChatHistoryResponse {
+  repeated AIV2ChatMessage messages = 1;
+}
+```
+
+#### ListAIV2Chats
+
+List all AI v2 chats for the current user.
+
+```protobuf
+rpc ListAIV2Chats(ListAIV2ChatsRequest) returns (ListAIV2ChatsResponse);
+
+message ListAIV2ChatsRequest {}
+
+message AIV2ChatInfo {
+  string id = 1;
+  string name = 2;
+  string chat_type = 3;   // "simple", "agent", "pipeline", "multi_agent"
+  string agent_id = 4;
+  string created_at = 5;  // ISO 8601
+  string updated_at = 6;  // ISO 8601
+}
+
+message ListAIV2ChatsResponse {
+  repeated AIV2ChatInfo chats = 1;
+}
+```
+
+### Multi-Agent Chat (Client-Side Routing)
+
+For group AI chats with multiple agents, the client sends separate `ChatWithAIV2` requests for each agent and aggregates responses:
+
+```kotlin
+// Client-side multi-agent routing
+for (agentId in selectedAgentIds) {
+    scope.launch {
+        val stream = chatStub.chatWithAIV2(ChatWithAIV2Request {
+            sessionId = sessionId
+            message = userMessage
+            this.agentId = agentId
+            images = userImages
+        })
+        stream.collect { response ->
+            // response.agent_id and response.agent_name identify the agent
+            // UI renders responses from different agents with agent names/colors
+        }
+    }
+}
+```
+
+**Each response token now includes `agent_id` and `agent_name`**, so the client can attribute tokens to the correct agent in the UI.
 
 ### AI Limits
 
