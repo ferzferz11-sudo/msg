@@ -1,5 +1,13 @@
 # Лава — Server Changelog
 
+## [1.3.0.22] - 2026-06-22
+
+### Bug Fixes
+- **ListAIAgents invalid UUID** — added UUID validation to all AI v2 handlers to prevent PostgreSQL crash when `userID` is empty or not a valid UUID. All handlers now use `requireValidAIV2UserID()` which validates UUID format before any SQL query.
+- **AI v2 auth hardened** — all 13 AI v2 handlers now validate `userID` is a proper UUID before database access.
+
+---
+
 ## [1.3.0.21] - 2026-06-22
 
 ### Bug Fixes

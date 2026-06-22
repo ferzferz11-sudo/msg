@@ -16,9 +16,9 @@ import (
 // ======= ChatWithAIV2 =======
 
 func (s *server) ChatWithAIV2(req *gen.ChatWithAIV2Request, stream gen.ChatService_ChatWithAIV2Server) error {
-	userID := getAIV2UserID(stream.Context())
-	if userID == "" {
-		return status.Error(codes.Unauthenticated, "unauthorized")
+	userID, err := requireValidAIV2UserID(stream.Context())
+	if err != nil {
+		return err
 	}
 
 	gateway := s.aiGateway
@@ -35,7 +35,7 @@ func (s *server) ChatWithAIV2(req *gen.ChatWithAIV2Request, stream gen.ChatServi
 
 	logger.Infof("[AI] ChatWithAIV2: user=%s agent=%s session=%s msg=%dchars", userID, req.AgentId, req.SessionId, len(req.Message))
 
-	err := gateway.Chat(stream.Context(), chatReq, func(token string, finished bool, imageURL string, agentID string, agentName string) error {
+	err = gateway.Chat(stream.Context(), chatReq, func(token string, finished bool, imageURL string, agentID string, agentName string) error {
 		return stream.Send(&gen.ChatWithAIV2Response{
 			Token:     token,
 			Finished:  finished,
@@ -59,8 +59,8 @@ func (s *server) ChatWithAIV2(req *gen.ChatWithAIV2Request, stream gen.ChatServi
 // ======= Agent CRUD =======
 
 func (s *server) CreateAIAgent(ctx context.Context, req *gen.CreateAIAgentRequest) (*gen.CreateAIAgentResponse, error) {
-	userID := getAIV2UserID(ctx)
-	if userID == "" {
+	userID, err := requireValidAIV2UserID(ctx)
+	if err != nil {
 		return &gen.CreateAIAgentResponse{Error: "unauthorized"}, nil
 	}
 
@@ -116,7 +116,7 @@ func (s *server) CreateAIAgent(ctx context.Context, req *gen.CreateAIAgentReques
 		agent.Temperature = 0.7
 	}
 
-	err := s.db.CreateAgentV2(agent)
+	err = s.db.CreateAgentV2(agent)
 	if err != nil {
 		return &gen.CreateAIAgentResponse{Error: err.Error()}, nil
 	}
@@ -130,8 +130,8 @@ func (s *server) CreateAIAgent(ctx context.Context, req *gen.CreateAIAgentReques
 }
 
 func (s *server) UpdateAIAgent(ctx context.Context, req *gen.UpdateAIAgentRequest) (*gen.UpdateAIAgentResponse, error) {
-	userID := getAIV2UserID(ctx)
-	if userID == "" {
+	userID, err := requireValidAIV2UserID(ctx)
+	if err != nil {
 		return &gen.UpdateAIAgentResponse{Error: "unauthorized"}, nil
 	}
 
@@ -187,8 +187,8 @@ func (s *server) UpdateAIAgent(ctx context.Context, req *gen.UpdateAIAgentReques
 }
 
 func (s *server) DeleteAIAgent(ctx context.Context, req *gen.DeleteAIAgentRequest) (*gen.DeleteAIAgentResponse, error) {
-	userID := getAIV2UserID(ctx)
-	if userID == "" {
+	userID, err := requireValidAIV2UserID(ctx)
+	if err != nil {
 		return &gen.DeleteAIAgentResponse{Error: "unauthorized"}, nil
 	}
 
@@ -226,8 +226,8 @@ func (s *server) GetAIAgent(ctx context.Context, req *gen.GetAIAgentRequest) (*g
 }
 
 func (s *server) ListAIAgents(ctx context.Context, req *gen.ListAIAgentsRequest) (*gen.ListAIAgentsResponse, error) {
-	userID := getAIV2UserID(ctx)
-	if userID == "" {
+	userID, err := requireValidAIV2UserID(ctx)
+	if err != nil {
 		return &gen.ListAIAgentsResponse{}, nil
 	}
 
@@ -247,8 +247,8 @@ func (s *server) ListAIAgents(ctx context.Context, req *gen.ListAIAgentsRequest)
 }
 
 func (s *server) CloneAIAgent(ctx context.Context, req *gen.CloneAIAgentRequest) (*gen.CloneAIAgentResponse, error) {
-	userID := getAIV2UserID(ctx)
-	if userID == "" {
+	userID, err := requireValidAIV2UserID(ctx)
+	if err != nil {
 		return &gen.CloneAIAgentResponse{Error: "unauthorized"}, nil
 	}
 
@@ -317,8 +317,8 @@ func (s *server) ListAITools(ctx context.Context, req *gen.ListAIToolsRequest) (
 // ======= Marketplace Handlers =======
 
 func (s *server) RateAIAgent(ctx context.Context, req *gen.RateAIAgentRequest) (*gen.RateAIAgentResponse, error) {
-	userID := getAIV2UserID(ctx)
-	if userID == "" {
+	userID, err := requireValidAIV2UserID(ctx)
+	if err != nil {
 		return &gen.RateAIAgentResponse{Error: "unauthorized"}, nil
 	}
 
@@ -439,8 +439,8 @@ func (s *server) GetAIAgentStats(ctx context.Context, req *gen.GetAIAgentStatsRe
 }
 
 func (s *server) ShareAIAgent(ctx context.Context, req *gen.ShareAIAgentRequest) (*gen.ShareAIAgentResponse, error) {
-	userID := getAIV2UserID(ctx)
-	if userID == "" {
+	userID, err := requireValidAIV2UserID(ctx)
+	if err != nil {
 		return &gen.ShareAIAgentResponse{Error: "unauthorized"}, nil
 	}
 
@@ -470,8 +470,8 @@ func (s *server) ShareAIAgent(ctx context.Context, req *gen.ShareAIAgentRequest)
 }
 
 func (s *server) InstallAIAgent(ctx context.Context, req *gen.InstallAIAgentRequest) (*gen.InstallAIAgentResponse, error) {
-	userID := getAIV2UserID(ctx)
-	if userID == "" {
+	userID, err := requireValidAIV2UserID(ctx)
+	if err != nil {
 		return &gen.InstallAIAgentResponse{Error: "unauthorized"}, nil
 	}
 
@@ -525,8 +525,8 @@ func (s *server) InstallAIAgent(ctx context.Context, req *gen.InstallAIAgentRequ
 }
 
 func (s *server) GetAIUsageStats(ctx context.Context, req *gen.GetAIUsageStatsRequest) (*gen.GetAIUsageStatsResponse, error) {
-	userID := getAIV2UserID(ctx)
-	if userID == "" {
+	userID, err := requireValidAIV2UserID(ctx)
+	if err != nil {
 		return &gen.GetAIUsageStatsResponse{}, nil
 	}
 
@@ -604,11 +604,26 @@ func getAIV2UserID(ctx context.Context) string {
 	return GetUserID(ctx)
 }
 
+// requireValidAIV2UserID extracts user ID from context and validates it's a non-empty UUID.
+// Returns userID and nil on success, or empty string and error on failure.
+func requireValidAIV2UserID(ctx context.Context) (string, error) {
+	userID := getAIV2UserID(ctx)
+	if userID == "" {
+		logger.Warnf("[AI] requireValidAIV2UserID: empty userID")
+		return "", status.Error(codes.Unauthenticated, "unauthorized")
+	}
+	if _, err := uuid.Parse(userID); err != nil {
+		logger.Warnf("[AI] requireValidAIV2UserID: invalid userID=%q err=%v", userID, err)
+		return "", status.Error(codes.Unauthenticated, "invalid user id")
+	}
+	return userID, nil
+}
+
 // ======= AI Chat Settings (per-session user API key & model override) =======
 
 func (s *server) GetAIChatSettings(ctx context.Context, req *gen.GetAIChatSettingsRequest) (*gen.AIChatSettings, error) {
-	userID := getAIV2UserID(ctx)
-	if userID == "" {
+	userID, err := requireValidAIV2UserID(ctx)
+	if err != nil {
 		return &gen.AIChatSettings{}, nil
 	}
 
@@ -642,8 +657,8 @@ func (s *server) GetAIChatSettings(ctx context.Context, req *gen.GetAIChatSettin
 }
 
 func (s *server) UpdateAIChatSettings(ctx context.Context, req *gen.UpdateAIChatSettingsRequest) (*gen.UpdateAIChatSettingsResponse, error) {
-	userID := getAIV2UserID(ctx)
-	if userID == "" {
+	userID, err := requireValidAIV2UserID(ctx)
+	if err != nil {
 		return &gen.UpdateAIChatSettingsResponse{Success: false, Message: "unauthorized"}, nil
 	}
 
@@ -690,8 +705,8 @@ func (s *server) UpdateAIChatSettings(ctx context.Context, req *gen.UpdateAIChat
 // ======= AI Chat v2 History & List =======
 
 func (s *server) GetAIV2ChatHistory(ctx context.Context, req *gen.GetAIV2ChatHistoryRequest) (*gen.GetAIV2ChatHistoryResponse, error) {
-	userID := getAIV2UserID(ctx)
-	if userID == "" {
+	userID, err := requireValidAIV2UserID(ctx)
+	if err != nil {
 		return &gen.GetAIV2ChatHistoryResponse{}, nil
 	}
 
@@ -731,8 +746,8 @@ func (s *server) GetAIV2ChatHistory(ctx context.Context, req *gen.GetAIV2ChatHis
 }
 
 func (s *server) ListAIV2Chats(ctx context.Context, req *gen.ListAIV2ChatsRequest) (*gen.ListAIV2ChatsResponse, error) {
-	userID := getAIV2UserID(ctx)
-	if userID == "" {
+	userID, err := requireValidAIV2UserID(ctx)
+	if err != nil {
 		return &gen.ListAIV2ChatsResponse{}, nil
 	}
 
