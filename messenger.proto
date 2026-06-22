@@ -1647,6 +1647,7 @@ message ChatV2Message {
   // Auth (first message only)
   string jwt_token = 1;
   string room_id = 2;
+  string client_version = 3;  // Client application version (for last_client_version tracking)
 
   oneof payload {
     MessageV2 message = 10;

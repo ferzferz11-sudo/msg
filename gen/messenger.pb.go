@@ -14282,8 +14282,9 @@ func (x *UpdateUserSettingsResponse) GetMessage() string {
 type ChatV2Message struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Auth (first message only)
-	JwtToken string `protobuf:"bytes,1,opt,name=jwt_token,json=jwtToken,proto3" json:"jwt_token,omitempty"`
-	RoomId   string `protobuf:"bytes,2,opt,name=room_id,json=roomId,proto3" json:"room_id,omitempty"`
+	JwtToken      string `protobuf:"bytes,1,opt,name=jwt_token,json=jwtToken,proto3" json:"jwt_token,omitempty"`
+	RoomId        string `protobuf:"bytes,2,opt,name=room_id,json=roomId,proto3" json:"room_id,omitempty"`
+	ClientVersion string `protobuf:"bytes,3,opt,name=client_version,json=clientVersion,proto3" json:"client_version,omitempty"` // Client application version (for last_client_version tracking)
 	// Types that are valid to be assigned to Payload:
 	//
 	//	*ChatV2Message_Message
@@ -14334,6 +14335,13 @@ func (x *ChatV2Message) GetJwtToken() string {
 func (x *ChatV2Message) GetRoomId() string {
 	if x != nil {
 		return x.RoomId
+	}
+	return ""
+}
+
+func (x *ChatV2Message) GetClientVersion() string {
+	if x != nil {
+		return x.ClientVersion
 	}
 	return ""
 }
@@ -19248,10 +19256,11 @@ const file_messenger_proto_rawDesc = "" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"P\n" +
 	"\x1aUpdateUserSettingsResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage\"\xe8\x01\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"\x8f\x02\n" +
 	"\rChatV2Message\x12\x1b\n" +
 	"\tjwt_token\x18\x01 \x01(\tR\bjwtToken\x12\x17\n" +
-	"\aroom_id\x18\x02 \x01(\tR\x06roomId\x120\n" +
+	"\aroom_id\x18\x02 \x01(\tR\x06roomId\x12%\n" +
+	"\x0eclient_version\x18\x03 \x01(\tR\rclientVersion\x120\n" +
 	"\amessage\x18\n" +
 	" \x01(\v2\x14.messenger.MessageV2H\x00R\amessage\x121\n" +
 	"\x06typing\x18\v \x01(\v2\x17.messenger.ChatV2TypingH\x00R\x06typing\x121\n" +

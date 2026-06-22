@@ -752,6 +752,15 @@ func (s *server) ChatV2(stream gen.ChatService_ChatV2Server) error {
 			s.hub.SetV2Room(stream, currentRoom)
 			s.hub.ClearGracePeriod(connectedUser)
 			logger.Infof("[ChatV2] %s connected to room %s", connectedUser, currentRoom)
+
+			// Update last_client_version and last_seen_at
+			if msg.ClientVersion != "" {
+				_ = s.db.UpdateClientVersion(connectedUser, msg.ClientVersion)
+				s.hub.SetClientVersion(connectedUserID, msg.ClientVersion)
+			} else {
+				_ = s.db.UpdateLastSeen(connectedUser)
+			}
+
 			continue
 		}
 
@@ -778,6 +787,14 @@ func (s *server) ChatV2(stream gen.ChatService_ChatV2Server) error {
 			}
 			if v2msg.RoomId == "" {
 				continue
+			}
+
+			// Update last_seen_at on every message
+			if msg.ClientVersion != "" {
+				_ = s.db.UpdateClientVersion(connectedUser, msg.ClientVersion)
+				s.hub.SetClientVersion(connectedUserID, msg.ClientVersion)
+			} else {
+				_ = s.db.UpdateLastSeen(connectedUser)
 			}
 
 			// Save to DB

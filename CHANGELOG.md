@@ -1,5 +1,13 @@
 # Лава — Server Changelog
 
+## [1.3.0.21] - 2026-06-22
+
+### Bug Fixes
+- **ChatV2 last_seen_at** — `user_chat_metadata.last_seen_at` and `users.last_seen_at` now update correctly when clients use ChatV2 stream (previously only worked with v1 Chat stream).
+- **ChatV2 last_client_version** — `users.last_client_version` now updates on ChatV2 connect and every message (added `client_version` field to `ChatV2Message` proto).
+
+---
+
 ## [1.3.0.20] - 2026-06-22
 
 ### Features
