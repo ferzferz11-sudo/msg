@@ -259,7 +259,7 @@ func (d *DB) GetAgentV2(id string) (*AgentV2, error) {
 	var a AgentV2
 	var pcJSON, rcJSON string
 	var toolWL []string
-	query := `SELECT id, name, description, provider_type, provider_config, system_prompt, model, max_tokens, temperature, tools_enabled, tool_whitelist, rag_enabled, rag_config, rate_limit, is_preset, is_public, is_active, COALESCE(created_by,''), install_count, avg_rating, review_count, tags, original_agent_id, version, share_code, created_at, updated_at
+	query := `SELECT id, name, description, provider_type, provider_config, system_prompt, model, max_tokens, temperature, tools_enabled, tool_whitelist, rag_enabled, rag_config, rate_limit, is_preset, is_public, is_active, COALESCE(created_by::text,''), install_count, avg_rating, review_count, tags, original_agent_id, version, share_code, created_at, updated_at
 		FROM agents_v2 WHERE id = $1 AND is_active = TRUE`
 	err := d.QueryRow(query, id).Scan(&a.ID, &a.Name, &a.Description, &a.ProviderType, &pcJSON, &a.SystemPrompt, &a.Model, &a.MaxTokens, &a.Temperature, &a.ToolsEnabled, &toolWL, &a.RAGEnabled, &rcJSON, &a.RateLimit, &a.IsPreset, &a.IsPublic, &a.IsActive, &a.CreatedBy, &a.InstallCount, &a.AvgRating, &a.ReviewCount, &a.Tags, &a.OriginalAgentID, &a.Version, &a.ShareCode, &a.CreatedAt, &a.UpdatedAt)
 	if err != nil {
@@ -276,11 +276,11 @@ func (d *DB) ListAgentsV2(userID string, includePublic bool) ([]*AgentV2, error)
 	var args []any
 	if includePublic {
 		if userID == "" {
-			query = `SELECT id, name, description, provider_type, provider_config, system_prompt, model, max_tokens, temperature, tools_enabled, tool_whitelist, rag_enabled, rag_config, rate_limit, is_preset, is_public, is_active, COALESCE(created_by,''), install_count, avg_rating, review_count, tags, original_agent_id, version, share_code, created_at, updated_at
+			query = `SELECT id, name, description, provider_type, provider_config, system_prompt, model, max_tokens, temperature, tools_enabled, tool_whitelist, rag_enabled, rag_config, rate_limit, is_preset, is_public, is_active, COALESCE(created_by::text,''), install_count, avg_rating, review_count, tags, original_agent_id, version, share_code, created_at, updated_at
 				FROM agents_v2 WHERE is_active = TRUE AND is_public = TRUE ORDER BY is_preset DESC, name ASC`
 			args = []any{}
 		} else {
-			query = `SELECT id, name, description, provider_type, provider_config, system_prompt, model, max_tokens, temperature, tools_enabled, tool_whitelist, rag_enabled, rag_config, rate_limit, is_preset, is_public, is_active, COALESCE(created_by,''), install_count, avg_rating, review_count, tags, original_agent_id, version, share_code, created_at, updated_at
+			query = `SELECT id, name, description, provider_type, provider_config, system_prompt, model, max_tokens, temperature, tools_enabled, tool_whitelist, rag_enabled, rag_config, rate_limit, is_preset, is_public, is_active, COALESCE(created_by::text,''), install_count, avg_rating, review_count, tags, original_agent_id, version, share_code, created_at, updated_at
 				FROM agents_v2 WHERE is_active = TRUE AND (created_by = $1::uuid OR is_public = TRUE) ORDER BY is_preset DESC, name ASC`
 			args = []any{userID}
 		}
@@ -288,7 +288,7 @@ func (d *DB) ListAgentsV2(userID string, includePublic bool) ([]*AgentV2, error)
 		if userID == "" {
 			return []*AgentV2{}, nil
 		}
-		query = `SELECT id, name, description, provider_type, provider_config, system_prompt, model, max_tokens, temperature, tools_enabled, tool_whitelist, rag_enabled, rag_config, rate_limit, is_preset, is_public, is_active, COALESCE(created_by,''), install_count, avg_rating, review_count, tags, original_agent_id, version, share_code, created_at, updated_at
+		query = `SELECT id, name, description, provider_type, provider_config, system_prompt, model, max_tokens, temperature, tools_enabled, tool_whitelist, rag_enabled, rag_config, rate_limit, is_preset, is_public, is_active, COALESCE(created_by::text,''), install_count, avg_rating, review_count, tags, original_agent_id, version, share_code, created_at, updated_at
 			FROM agents_v2 WHERE is_active = TRUE AND created_by = $1::uuid ORDER BY name ASC`
 		args = []any{userID}
 	}
@@ -296,13 +296,13 @@ func (d *DB) ListAgentsV2(userID string, includePublic bool) ([]*AgentV2, error)
 }
 
 func (d *DB) ListPresetAgentsV2() ([]*AgentV2, error) {
-	query := `SELECT id, name, description, provider_type, provider_config, system_prompt, model, max_tokens, temperature, tools_enabled, tool_whitelist, rag_enabled, rag_config, rate_limit, is_preset, is_public, is_active, COALESCE(created_by,''), install_count, avg_rating, review_count, tags, original_agent_id, version, share_code, created_at, updated_at
+	query := `SELECT id, name, description, provider_type, provider_config, system_prompt, model, max_tokens, temperature, tools_enabled, tool_whitelist, rag_enabled, rag_config, rate_limit, is_preset, is_public, is_active, COALESCE(created_by::text,''), install_count, avg_rating, review_count, tags, original_agent_id, version, share_code, created_at, updated_at
 		FROM agents_v2 WHERE is_active = TRUE AND is_preset = TRUE ORDER BY name ASC`
 	return d.scanAgents(query)
 }
 
 func (d *DB) ListAllActiveAgentsV2() ([]*AgentV2, error) {
-	query := `SELECT id, name, description, provider_type, provider_config, system_prompt, model, max_tokens, temperature, tools_enabled, tool_whitelist, rag_enabled, rag_config, rate_limit, is_preset, is_public, is_active, COALESCE(created_by,''), install_count, avg_rating, review_count, tags, original_agent_id, version, share_code, created_at, updated_at
+	query := `SELECT id, name, description, provider_type, provider_config, system_prompt, model, max_tokens, temperature, tools_enabled, tool_whitelist, rag_enabled, rag_config, rate_limit, is_preset, is_public, is_active, COALESCE(created_by::text,''), install_count, avg_rating, review_count, tags, original_agent_id, version, share_code, created_at, updated_at
 		FROM agents_v2 WHERE is_active = TRUE ORDER BY is_preset DESC, name ASC`
 	return d.scanAgents(query)
 }
@@ -423,7 +423,7 @@ func GetAgentV2FromDB(d *sql.DB, id string) (*AgentV2, error) {
 	var a AgentV2
 	var pcJSON, rcJSON string
 	var toolWL []string
-	query := `SELECT id, name, description, provider_type, provider_config, system_prompt, model, max_tokens, temperature, tools_enabled, tool_whitelist, rag_enabled, rag_config, rate_limit, is_preset, is_public, is_active, COALESCE(created_by,''), install_count, avg_rating, review_count, tags, original_agent_id, version, share_code, created_at, updated_at
+	query := `SELECT id, name, description, provider_type, provider_config, system_prompt, model, max_tokens, temperature, tools_enabled, tool_whitelist, rag_enabled, rag_config, rate_limit, is_preset, is_public, is_active, COALESCE(created_by::text,''), install_count, avg_rating, review_count, tags, original_agent_id, version, share_code, created_at, updated_at
 		FROM agents_v2 WHERE id = $1 AND is_active = TRUE`
 	err := d.QueryRow(query, id).Scan(&a.ID, &a.Name, &a.Description, &a.ProviderType, &pcJSON, &a.SystemPrompt, &a.Model, &a.MaxTokens, &a.Temperature, &a.ToolsEnabled, &toolWL, &a.RAGEnabled, &rcJSON, &a.RateLimit, &a.IsPreset, &a.IsPublic, &a.IsActive, &a.CreatedBy, &a.InstallCount, &a.AvgRating, &a.ReviewCount, &a.Tags, &a.OriginalAgentID, &a.Version, &a.ShareCode, &a.CreatedAt, &a.UpdatedAt)
 	if err != nil {
@@ -559,7 +559,7 @@ func (d *DB) ListMarketplaceAgents(query string, limit, offset int) ([]*AgentV2,
 	if limit <= 0 {
 		limit = 20
 	}
-	sqlQuery := `SELECT id, name, description, provider_type, provider_config, system_prompt, model, max_tokens, temperature, tools_enabled, tool_whitelist, rag_enabled, rag_config, rate_limit, is_preset, is_public, is_active, COALESCE(created_by,''), install_count, avg_rating, review_count, tags, original_agent_id, version, share_code, created_at, updated_at
+	sqlQuery := `SELECT id, name, description, provider_type, provider_config, system_prompt, model, max_tokens, temperature, tools_enabled, tool_whitelist, rag_enabled, rag_config, rate_limit, is_preset, is_public, is_active, COALESCE(created_by::text,''), install_count, avg_rating, review_count, tags, original_agent_id, version, share_code, created_at, updated_at
 		FROM agents_v2 WHERE is_active = TRUE AND is_public = TRUE`
 	var args []any
 	if query != "" {
@@ -578,7 +578,7 @@ func (d *DB) GetAgentByShareCode(shareCode string) (*AgentV2, error) {
 	var a AgentV2
 	var pcJSON, rcJSON string
 	var toolWL []string
-	query := `SELECT id, name, description, provider_type, provider_config, system_prompt, model, max_tokens, temperature, tools_enabled, tool_whitelist, rag_enabled, rag_config, rate_limit, is_preset, is_public, is_active, COALESCE(created_by,''), install_count, avg_rating, review_count, tags, original_agent_id, version, share_code, created_at, updated_at
+	query := `SELECT id, name, description, provider_type, provider_config, system_prompt, model, max_tokens, temperature, tools_enabled, tool_whitelist, rag_enabled, rag_config, rate_limit, is_preset, is_public, is_active, COALESCE(created_by::text,''), install_count, avg_rating, review_count, tags, original_agent_id, version, share_code, created_at, updated_at
 		FROM agents_v2 WHERE share_code = $1 AND is_active = TRUE`
 	err := d.QueryRow(query, shareCode).Scan(&a.ID, &a.Name, &a.Description, &a.ProviderType, &pcJSON, &a.SystemPrompt, &a.Model, &a.MaxTokens, &a.Temperature, &a.ToolsEnabled, &toolWL, &a.RAGEnabled, &rcJSON, &a.RateLimit, &a.IsPreset, &a.IsPublic, &a.IsActive, &a.CreatedBy, &a.InstallCount, &a.AvgRating, &a.ReviewCount, &a.Tags, &a.OriginalAgentID, &a.Version, &a.ShareCode, &a.CreatedAt, &a.UpdatedAt)
 	if err != nil {
