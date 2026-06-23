@@ -275,10 +275,19 @@ func (d *DB) ListAgentsV2(userID string, includePublic bool) ([]*AgentV2, error)
 	var query string
 	var args []any
 	if includePublic {
-		query = `SELECT id, name, description, provider_type, provider_config, system_prompt, model, max_tokens, temperature, tools_enabled, tool_whitelist, rag_enabled, rag_config, rate_limit, is_preset, is_public, is_active, COALESCE(created_by,''), install_count, avg_rating, review_count, tags, original_agent_id, version, share_code, created_at, updated_at
-			FROM agents_v2 WHERE is_active = TRUE AND (created_by = $1::uuid OR is_public = TRUE) ORDER BY is_preset DESC, name ASC`
-		args = []any{userID}
+		if userID == "" {
+			query = `SELECT id, name, description, provider_type, provider_config, system_prompt, model, max_tokens, temperature, tools_enabled, tool_whitelist, rag_enabled, rag_config, rate_limit, is_preset, is_public, is_active, COALESCE(created_by,''), install_count, avg_rating, review_count, tags, original_agent_id, version, share_code, created_at, updated_at
+				FROM agents_v2 WHERE is_active = TRUE AND is_public = TRUE ORDER BY is_preset DESC, name ASC`
+			args = []any{}
+		} else {
+			query = `SELECT id, name, description, provider_type, provider_config, system_prompt, model, max_tokens, temperature, tools_enabled, tool_whitelist, rag_enabled, rag_config, rate_limit, is_preset, is_public, is_active, COALESCE(created_by,''), install_count, avg_rating, review_count, tags, original_agent_id, version, share_code, created_at, updated_at
+				FROM agents_v2 WHERE is_active = TRUE AND (created_by = $1::uuid OR is_public = TRUE) ORDER BY is_preset DESC, name ASC`
+			args = []any{userID}
+		}
 	} else {
+		if userID == "" {
+			return []*AgentV2{}, nil
+		}
 		query = `SELECT id, name, description, provider_type, provider_config, system_prompt, model, max_tokens, temperature, tools_enabled, tool_whitelist, rag_enabled, rag_config, rate_limit, is_preset, is_public, is_active, COALESCE(created_by,''), install_count, avg_rating, review_count, tags, original_agent_id, version, share_code, created_at, updated_at
 			FROM agents_v2 WHERE is_active = TRUE AND created_by = $1::uuid ORDER BY name ASC`
 		args = []any{userID}

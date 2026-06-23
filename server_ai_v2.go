@@ -228,11 +228,15 @@ func (s *server) GetAIAgent(ctx context.Context, req *gen.GetAIAgentRequest) (*g
 func (s *server) ListAIAgents(ctx context.Context, req *gen.ListAIAgentsRequest) (*gen.ListAIAgentsResponse, error) {
 	userID, err := requireValidAIV2UserID(ctx)
 	if err != nil {
+		logger.Warnf("[AI] ListAgents: auth failed err=%v", err)
 		return &gen.ListAIAgentsResponse{}, nil
 	}
 
+	logger.Infof("[AI] ListAgents: user=%s includePublic=%v", userID, req.IncludePublic)
+
 	agents, err := s.db.ListAgentsV2(userID, req.IncludePublic)
 	if err != nil {
+		logger.Errorf("[AI] ListAgents: db error user=%s err=%v", userID, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
