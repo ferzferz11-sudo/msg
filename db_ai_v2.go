@@ -261,15 +261,17 @@ func (d *DB) GetAgentV2(id string) (*AgentV2, error) {
 	var a AgentV2
 	var pcJSON, rcJSON string
 	toolWL := pq.StringArray{}
+	tags := pq.StringArray{}
 	query := `SELECT id, name, description, provider_type, provider_config, system_prompt, model, max_tokens, temperature, tools_enabled, tool_whitelist, rag_enabled, rag_config, rate_limit, is_preset, is_public, is_active, COALESCE(created_by::text,''), install_count, avg_rating, review_count, tags, original_agent_id, version, share_code, created_at, updated_at
 		FROM agents_v2 WHERE id = $1 AND is_active = TRUE`
-	err := d.QueryRow(query, id).Scan(&a.ID, &a.Name, &a.Description, &a.ProviderType, &pcJSON, &a.SystemPrompt, &a.Model, &a.MaxTokens, &a.Temperature, &a.ToolsEnabled, &toolWL, &a.RAGEnabled, &rcJSON, &a.RateLimit, &a.IsPreset, &a.IsPublic, &a.IsActive, &a.CreatedBy, &a.InstallCount, &a.AvgRating, &a.ReviewCount, &a.Tags, &a.OriginalAgentID, &a.Version, &a.ShareCode, &a.CreatedAt, &a.UpdatedAt)
+	err := d.QueryRow(query, id).Scan(&a.ID, &a.Name, &a.Description, &a.ProviderType, &pcJSON, &a.SystemPrompt, &a.Model, &a.MaxTokens, &a.Temperature, &a.ToolsEnabled, &toolWL, &a.RAGEnabled, &rcJSON, &a.RateLimit, &a.IsPreset, &a.IsPublic, &a.IsActive, &a.CreatedBy, &a.InstallCount, &a.AvgRating, &a.ReviewCount, &tags, &a.OriginalAgentID, &a.Version, &a.ShareCode, &a.CreatedAt, &a.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
 	json.Unmarshal([]byte(pcJSON), &a.ProviderConfig)
 	json.Unmarshal([]byte(rcJSON), &a.RAGConfig)
 	a.ToolWhitelist = []string(toolWL)
+	a.Tags = []string(tags)
 	return &a, nil
 }
 
@@ -340,7 +342,8 @@ func (d *DB) scanAgents(query string, args ...any) ([]*AgentV2, error) {
 		var a AgentV2
 		var pcJSON, rcJSON string
 		toolWL := pq.StringArray{}
-		if err := rows.Scan(&a.ID, &a.Name, &a.Description, &a.ProviderType, &pcJSON, &a.SystemPrompt, &a.Model, &a.MaxTokens, &a.Temperature, &a.ToolsEnabled, &toolWL, &a.RAGEnabled, &rcJSON, &a.RateLimit, &a.IsPreset, &a.IsPublic, &a.IsActive, &a.CreatedBy, &a.InstallCount, &a.AvgRating, &a.ReviewCount, &a.Tags, &a.OriginalAgentID, &a.Version, &a.ShareCode, &a.CreatedAt, &a.UpdatedAt); err != nil {
+		tags := pq.StringArray{}
+		if err := rows.Scan(&a.ID, &a.Name, &a.Description, &a.ProviderType, &pcJSON, &a.SystemPrompt, &a.Model, &a.MaxTokens, &a.Temperature, &a.ToolsEnabled, &toolWL, &a.RAGEnabled, &rcJSON, &a.RateLimit, &a.IsPreset, &a.IsPublic, &a.IsActive, &a.CreatedBy, &a.InstallCount, &a.AvgRating, &a.ReviewCount, &tags, &a.OriginalAgentID, &a.Version, &a.ShareCode, &a.CreatedAt, &a.UpdatedAt); err != nil {
 			return nil, err
 		}
 		a.ProviderConfig = make(map[string]any)
@@ -348,6 +351,7 @@ func (d *DB) scanAgents(query string, args ...any) ([]*AgentV2, error) {
 		a.RAGConfig = make(map[string]any)
 		json.Unmarshal([]byte(rcJSON), &a.RAGConfig)
 		a.ToolWhitelist = []string(toolWL)
+		a.Tags = []string(tags)
 		agents = append(agents, &a)
 	}
 	return agents, nil
@@ -425,15 +429,17 @@ func GetAgentV2FromDB(d *sql.DB, id string) (*AgentV2, error) {
 	var a AgentV2
 	var pcJSON, rcJSON string
 	toolWL := pq.StringArray{}
+	tags := pq.StringArray{}
 	query := `SELECT id, name, description, provider_type, provider_config, system_prompt, model, max_tokens, temperature, tools_enabled, tool_whitelist, rag_enabled, rag_config, rate_limit, is_preset, is_public, is_active, COALESCE(created_by::text,''), install_count, avg_rating, review_count, tags, original_agent_id, version, share_code, created_at, updated_at
 		FROM agents_v2 WHERE id = $1 AND is_active = TRUE`
-	err := d.QueryRow(query, id).Scan(&a.ID, &a.Name, &a.Description, &a.ProviderType, &pcJSON, &a.SystemPrompt, &a.Model, &a.MaxTokens, &a.Temperature, &a.ToolsEnabled, &toolWL, &a.RAGEnabled, &rcJSON, &a.RateLimit, &a.IsPreset, &a.IsPublic, &a.IsActive, &a.CreatedBy, &a.InstallCount, &a.AvgRating, &a.ReviewCount, &a.Tags, &a.OriginalAgentID, &a.Version, &a.ShareCode, &a.CreatedAt, &a.UpdatedAt)
+	err := d.QueryRow(query, id).Scan(&a.ID, &a.Name, &a.Description, &a.ProviderType, &pcJSON, &a.SystemPrompt, &a.Model, &a.MaxTokens, &a.Temperature, &a.ToolsEnabled, &toolWL, &a.RAGEnabled, &rcJSON, &a.RateLimit, &a.IsPreset, &a.IsPublic, &a.IsActive, &a.CreatedBy, &a.InstallCount, &a.AvgRating, &a.ReviewCount, &tags, &a.OriginalAgentID, &a.Version, &a.ShareCode, &a.CreatedAt, &a.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
 	json.Unmarshal([]byte(pcJSON), &a.ProviderConfig)
 	json.Unmarshal([]byte(rcJSON), &a.RAGConfig)
 	a.ToolWhitelist = []string(toolWL)
+	a.Tags = []string(tags)
 	return &a, nil
 }
 
@@ -580,15 +586,17 @@ func (d *DB) GetAgentByShareCode(shareCode string) (*AgentV2, error) {
 	var a AgentV2
 	var pcJSON, rcJSON string
 	toolWL := pq.StringArray{}
+	tags := pq.StringArray{}
 	query := `SELECT id, name, description, provider_type, provider_config, system_prompt, model, max_tokens, temperature, tools_enabled, tool_whitelist, rag_enabled, rag_config, rate_limit, is_preset, is_public, is_active, COALESCE(created_by::text,''), install_count, avg_rating, review_count, tags, original_agent_id, version, share_code, created_at, updated_at
 		FROM agents_v2 WHERE share_code = $1 AND is_active = TRUE`
-	err := d.QueryRow(query, shareCode).Scan(&a.ID, &a.Name, &a.Description, &a.ProviderType, &pcJSON, &a.SystemPrompt, &a.Model, &a.MaxTokens, &a.Temperature, &a.ToolsEnabled, &toolWL, &a.RAGEnabled, &rcJSON, &a.RateLimit, &a.IsPreset, &a.IsPublic, &a.IsActive, &a.CreatedBy, &a.InstallCount, &a.AvgRating, &a.ReviewCount, &a.Tags, &a.OriginalAgentID, &a.Version, &a.ShareCode, &a.CreatedAt, &a.UpdatedAt)
+	err := d.QueryRow(query, shareCode).Scan(&a.ID, &a.Name, &a.Description, &a.ProviderType, &pcJSON, &a.SystemPrompt, &a.Model, &a.MaxTokens, &a.Temperature, &a.ToolsEnabled, &toolWL, &a.RAGEnabled, &rcJSON, &a.RateLimit, &a.IsPreset, &a.IsPublic, &a.IsActive, &a.CreatedBy, &a.InstallCount, &a.AvgRating, &a.ReviewCount, &tags, &a.OriginalAgentID, &a.Version, &a.ShareCode, &a.CreatedAt, &a.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
 	json.Unmarshal([]byte(pcJSON), &a.ProviderConfig)
 	json.Unmarshal([]byte(rcJSON), &a.RAGConfig)
 	a.ToolWhitelist = []string(toolWL)
+	a.Tags = []string(tags)
 	return &a, nil
 }
 
