@@ -1,5 +1,13 @@
 # Лава — Server Changelog
 
+## [1.3.0.23] - 2026-06-23
+
+### Bug Fixes
+- **ListAIAgents UUID fix** — replaced `[]string` with `pq.StringArray` for scanning PostgreSQL text arrays (`tool_whitelist`, `tags`). Fixes `pq: invalid input syntax for type uuid` errors.
+- **COALESCE cast** — `COALESCE(created_by::text,'')` prevents UUID cast errors when `created_by` is NULL.
+
+---
+
 ## [1.3.0.22] - 2026-06-22
 
 ### Bug Fixes

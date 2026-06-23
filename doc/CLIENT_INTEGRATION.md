@@ -1,6 +1,6 @@
 # Lavender Messenger — Client Integration Guide
 
-**Server:** v1.3.0.21 | **Protocol:** gRPC + Protocol Buffers | **Date:** 2026-06-22
+**Server:** v1.3.0.23 | **Protocol:** gRPC + Protocol Buffers | **Date:** 2026-06-23
 
 This document covers everything a client needs to integrate with the Lavender Messenger server. Platform-agnostic — applies to Android, iOS, Web, Desktop, or any gRPC-capable client.
 
@@ -26,8 +26,8 @@ GET http://<host>:<port>/info
 Response:
 ```json
 {
-  "version": "1.3.0.21",
-  "time": "2026-06-22T13:00:00Z",
+  "version": "1.3.0.23",
+  "time": "2026-06-23T22:00:00Z",
   "services": {
     "auth": "2.0",
     "chat": "2.0",
