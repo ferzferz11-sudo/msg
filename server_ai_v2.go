@@ -579,6 +579,14 @@ func agentToProto(a *AgentV2) *gen.AgentInfoV2 {
 		SupportsStreaming: true,
 		MaxTokens:         int32(a.MaxTokens),
 	}
+
+	pcJSON := ""
+	if a.ProviderConfig != nil {
+		if b, err := json.Marshal(a.ProviderConfig); err == nil {
+			pcJSON = string(b)
+		}
+	}
+
 	return &gen.AgentInfoV2{
 		Id:              a.ID,
 		Name:            a.Name,
@@ -601,6 +609,7 @@ func agentToProto(a *AgentV2) *gen.AgentInfoV2 {
 		OriginalAgentId: a.OriginalAgentID,
 		Version:         int32(a.Version),
 		ShareCode:       a.ShareCode,
+		ProviderConfig:  pcJSON,
 	}
 }
 

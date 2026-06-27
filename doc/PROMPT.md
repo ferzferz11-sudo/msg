@@ -1,4 +1,4 @@
-# Промпт для серверных сессий — v1.3.0.19
+# Промпт для серверных сессий — v1.3.0.24
 
 **Дата:** 2026-06-21 | **Ветка:** feat/1.3.0.x
 **Статус:** Messages v2 deployed to prod. ChatV2 stream, GetHistoryV2, SendMessageV2, Edit/Delete/ReactionV2. Dual-write active.

@@ -1875,6 +1875,7 @@ message AgentInfoV2 {
   string original_agent_id = 19;
   int32 version = 20;
   string share_code = 21;
+  string provider_config = 22;  // JSON string — API key, model override etc.
 }
 
 message AgentCapabilitiesV2 {

@@ -65,16 +65,28 @@ run_delete() {
     TOTAL_DELETED=$((TOTAL_DELETED + count))
 }
 
-# === 1. Orphaned messages ===
+# === 1. Orphaned messages (v1 + v2) ===
 echo "=== 1. Orphaned messages ==="
 
-run_delete "messages without chat" \
+run_delete "messages (v1) without chat" \
     "SELECT COUNT(*) FROM messages WHERE NOT EXISTS (SELECT 1 FROM chats c WHERE c.id = messages.room_id)" \
     "DELETE FROM messages WHERE NOT EXISTS (SELECT 1 FROM chats c WHERE c.id = messages.room_id)"
+
+run_delete "messages_v2 without chat" \
+    "SELECT COUNT(*) FROM messages_v2 WHERE NOT EXISTS (SELECT 1 FROM chats c WHERE c.id = messages_v2.room_id)" \
+    "DELETE FROM messages_v2 WHERE NOT EXISTS (SELECT 1 FROM chats c WHERE c.id = messages_v2.room_id)"
+
+run_delete "messages_v2 with empty text and no media" \
+    "SELECT COUNT(*) FROM messages_v2 WHERE length(COALESCE(text, '')) = 0 AND (media_url IS NULL OR media_url = '') AND content_type = 'text'" \
+    "DELETE FROM messages_v2 WHERE length(COALESCE(text, '')) = 0 AND (media_url IS NULL OR media_url = '') AND content_type = 'text'"
 
 run_delete "reactions without message" \
     "SELECT COUNT(*) FROM reactions WHERE NOT EXISTS (SELECT 1 FROM messages m WHERE m.message_id = reactions.message_id)" \
     "DELETE FROM reactions WHERE NOT EXISTS (SELECT 1 FROM messages m WHERE m.message_id = reactions.message_id)"
+
+run_delete "pinned_messages without chat" \
+    "SELECT COUNT(*) FROM pinned_messages WHERE NOT EXISTS (SELECT 1 FROM chats c WHERE c.id = pinned_messages.room_id)" \
+    "DELETE FROM pinned_messages WHERE NOT EXISTS (SELECT 1 FROM chats c WHERE c.id = pinned_messages.room_id)"
 
 run_delete "favorites without chat" \
     "SELECT COUNT(*) FROM favorites WHERE NOT EXISTS (SELECT 1 FROM chats c WHERE c.id = favorites.room_id)" \
@@ -94,6 +106,14 @@ run_delete "muted_chats without chat" \
 run_delete "user_chat_metadata without chat" \
     "SELECT COUNT(*) FROM user_chat_metadata WHERE NOT EXISTS (SELECT 1 FROM chats c WHERE c.id = user_chat_metadata.room_id)" \
     "DELETE FROM user_chat_metadata WHERE NOT EXISTS (SELECT 1 FROM chats c WHERE c.id = user_chat_metadata.room_id)"
+
+run_delete "chat_list_v2 without chat" \
+    "SELECT COUNT(*) FROM chat_list_v2 WHERE NOT EXISTS (SELECT 1 FROM chats c WHERE c.id = chat_list_v2.chat_id)" \
+    "DELETE FROM chat_list_v2 WHERE NOT EXISTS (SELECT 1 FROM chats c WHERE c.id = chat_list_v2.chat_id)"
+
+run_delete "chat_list_v2 without user" \
+    "SELECT COUNT(*) FROM chat_list_v2 WHERE NOT EXISTS (SELECT 1 FROM users u WHERE u.id = chat_list_v2.user_id)" \
+    "DELETE FROM chat_list_v2 WHERE NOT EXISTS (SELECT 1 FROM users u WHERE u.id = chat_list_v2.user_id)"
 
 echo ""
 echo "=== 3. Orphaned secret chat + AI records ==="
@@ -119,7 +139,42 @@ run_delete "calls without chat" \
     "DELETE FROM calls WHERE NOT EXISTS (SELECT 1 FROM chats c WHERE c.id = calls.chat_id)"
 
 echo ""
-echo "=== 4. Orphaned Hermes records ==="
+echo "=== 4. AI v2 orphaned records ==="
+
+run_delete "ai_messages_v2 without chat" \
+    "SELECT COUNT(*) FROM ai_messages_v2 WHERE NOT EXISTS (SELECT 1 FROM ai_chats_v2 ac WHERE ac.id = ai_messages_v2.chat_id)" \
+    "DELETE FROM ai_messages_v2 WHERE NOT EXISTS (SELECT 1 FROM ai_chats_v2 ac WHERE ac.id = ai_messages_v2.chat_id)"
+
+run_delete "ai_chats_v2 without user" \
+    "SELECT COUNT(*) FROM ai_chats_v2 WHERE NOT EXISTS (SELECT 1 FROM users u WHERE u.id = ai_chats_v2.user_id)" \
+    "DELETE FROM ai_chats_v2 WHERE NOT EXISTS (SELECT 1 FROM users u WHERE u.id = ai_chats_v2.user_id)"
+
+run_delete "ai_messages_v2 with empty content" \
+    "SELECT COUNT(*) FROM ai_messages_v2 WHERE length(COALESCE(content, '')) = 0" \
+    "DELETE FROM ai_messages_v2 WHERE length(COALESCE(content, '')) = 0"
+
+run_delete "agent_reviews without agent" \
+    "SELECT COUNT(*) FROM agent_reviews WHERE NOT EXISTS (SELECT 1 FROM agents_v2 a WHERE a.id = agent_reviews.agent_id)" \
+    "DELETE FROM agent_reviews WHERE NOT EXISTS (SELECT 1 FROM agents_v2 a WHERE a.id = agent_reviews.agent_id)"
+
+run_delete "agent_tokens without agent" \
+    "SELECT COUNT(*) FROM agent_tokens WHERE NOT EXISTS (SELECT 1 FROM agents_v2 a WHERE a.id = agent_tokens.agent_id)" \
+    "DELETE FROM agent_tokens WHERE NOT EXISTS (SELECT 1 FROM agents_v2 a WHERE a.id = agent_tokens.agent_id)"
+
+run_delete "agents_v2 without creator (non-preset)" \
+    "SELECT COUNT(*) FROM agents_v2 WHERE is_preset = FALSE AND created_by IS NOT NULL AND NOT EXISTS (SELECT 1 FROM users u WHERE u.id = agents_v2.created_by)" \
+    "DELETE FROM agents_v2 WHERE is_preset = FALSE AND created_by IS NOT NULL AND NOT EXISTS (SELECT 1 FROM users u WHERE u.id = agents_v2.created_by)"
+
+run_delete "ai_rate_limits without agent" \
+    "SELECT COUNT(*) FROM ai_rate_limits WHERE NOT EXISTS (SELECT 1 FROM agents_v2 a WHERE a.id = ai_rate_limits.agent_id)" \
+    "DELETE FROM ai_rate_limits WHERE NOT EXISTS (SELECT 1 FROM agents_v2 a WHERE a.id = ai_rate_limits.agent_id)"
+
+run_delete "ai_usage_stats without user" \
+    "SELECT COUNT(*) FROM ai_usage_stats WHERE NOT EXISTS (SELECT 1 FROM users u WHERE u.id = ai_usage_stats.user_id)" \
+    "DELETE FROM ai_usage_stats WHERE NOT EXISTS (SELECT 1 FROM users u WHERE u.id = ai_usage_stats.user_id)"
+
+echo ""
+echo "=== 5. Orphaned Hermes records ==="
 
 run_delete "hermes_messages without session" \
     "SELECT COUNT(*) FROM hermes_messages WHERE NOT EXISTS (SELECT 1 FROM hermes_sessions hs WHERE hs.id = hermes_messages.session_id)" \
@@ -137,8 +192,16 @@ run_delete "hermes_custom_agents without user" \
     "SELECT COUNT(*) FROM hermes_custom_agents WHERE NOT EXISTS (SELECT 1 FROM users u WHERE u.id = hermes_custom_agents.created_by)" \
     "DELETE FROM hermes_custom_agents WHERE NOT EXISTS (SELECT 1 FROM users u WHERE u.id = hermes_custom_agents.created_by)"
 
+run_delete "hermes_remote_tasks without agent" \
+    "SELECT COUNT(*) FROM hermes_remote_tasks WHERE NOT EXISTS (SELECT 1 FROM hermes_remote_agents a WHERE a.id = hermes_remote_tasks.agent_id)" \
+    "DELETE FROM hermes_remote_tasks WHERE NOT EXISTS (SELECT 1 FROM hermes_remote_agents a WHERE a.id = hermes_remote_tasks.agent_id)"
+
+run_delete "hermes_remote_agents stale (>7 days no heartbeat)" \
+    "SELECT COUNT(*) FROM hermes_remote_agents WHERE last_heartbeat < NOW() - INTERVAL '7 days'" \
+    "DELETE FROM hermes_remote_agents WHERE last_heartbeat < NOW() - INTERVAL '7 days'"
+
 echo ""
-echo "=== 5. Orphaned user records ==="
+echo "=== 6. Orphaned user records ==="
 
 run_delete "user_tokens without user" \
     "SELECT COUNT(*) FROM user_tokens WHERE NOT EXISTS (SELECT 1 FROM users u WHERE u.id = user_tokens.user_id)" \
@@ -152,6 +215,10 @@ run_delete "user_themes without user" \
     "SELECT COUNT(*) FROM user_themes WHERE NOT EXISTS (SELECT 1 FROM users u WHERE u.id = user_themes.user_id)" \
     "DELETE FROM user_themes WHERE NOT EXISTS (SELECT 1 FROM users u WHERE u.id = user_themes.user_id)"
 
+run_delete "user_settings without user" \
+    "SELECT COUNT(*) FROM user_settings WHERE NOT EXISTS (SELECT 1 FROM users u WHERE u.id = user_settings.user_id)" \
+    "DELETE FROM user_settings WHERE NOT EXISTS (SELECT 1 FROM users u WHERE u.id = user_settings.user_id)"
+
 run_delete "contacts without user" \
     "SELECT COUNT(*) FROM contacts WHERE NOT EXISTS (SELECT 1 FROM users u WHERE u.id = contacts.user_id)" \
     "DELETE FROM contacts WHERE NOT EXISTS (SELECT 1 FROM users u WHERE u.id = contacts.user_id)"
@@ -161,7 +228,7 @@ run_delete "password_reset_tokens without user" \
     "DELETE FROM password_reset_tokens WHERE NOT EXISTS (SELECT 1 FROM users u WHERE u.id = password_reset_tokens.user_id)"
 
 echo ""
-echo "=== 6. Stale data cleanup ==="
+echo "=== 7. Stale data cleanup ==="
 
 run_delete "password_reset_tokens > 24h" \
     "SELECT COUNT(*) FROM password_reset_tokens WHERE created_at < NOW() - INTERVAL '24 hours'" \
@@ -176,21 +243,19 @@ run_delete "expired user_devices (refresh_token_expires_at < now)" \
     "UPDATE user_devices SET is_active = FALSE WHERE refresh_token_expires_at < NOW() AND is_active = TRUE"
 
 echo ""
-echo "=== 7. File resources cleanup ==="
+echo "=== 8. File resources cleanup ==="
 
 if [ "$SKIP_FILES" = true ]; then
     echo "  Skipped (--skip-files)"
 else
     UPLOAD_DIR="/root/LavenderMessenger/run/uploads"
     if [ -d "$UPLOAD_DIR" ]; then
-        # Get all filenames and referenced filenames, compare
         ALL_FILES=$(find "$UPLOAD_DIR" -type f -printf '%f\n' 2>/dev/null | sort -u)
         TOTAL_FILES=$(echo "$ALL_FILES" | grep -c . || echo "0")
 
         if [ "$TOTAL_FILES" = "0" ]; then
             echo "  ✅ No files in $UPLOAD_DIR"
         else
-            # Single query to get all referenced filenames
             REFERENCED=$($PSQL -c "
                 SELECT DISTINCT filename FROM (
                     SELECT unnest(string_to_array(COALESCE(avatar_url, ''), '/')) AS filename FROM users
@@ -200,6 +265,10 @@ else
                     SELECT unnest(string_to_array(COALESCE(image_url, ''), '/')) FROM messages
                     UNION ALL
                     SELECT unnest(string_to_array(COALESCE(voice_url, ''), '/')) FROM messages
+                    UNION ALL
+                    SELECT unnest(string_to_array(COALESCE(media_url, ''), '/')) FROM messages_v2
+                    UNION ALL
+                    SELECT unnest(string_to_array(COALESCE(media_url, ''), '/')) FROM ai_messages_v2 WHERE images IS NOT NULL
                 ) sub WHERE filename != '' AND filename LIKE '%.%'
             " 2>/dev/null | sort -u)
 
@@ -227,7 +296,7 @@ else
 fi
 
 echo ""
-echo "=== 8. VACUUM / ANALYZE ==="
+echo "=== 9. VACUUM / ANALYZE ==="
 
 if [ "$SKIP_VACUUM" = true ]; then
     echo "  Skipped (--skip-vacuum)"
@@ -239,7 +308,7 @@ else
 fi
 
 echo ""
-echo "=== 9. Summary ==="
+echo "=== 10. Summary ==="
 
 echo "  Table sizes:"
 $PSQL -c "

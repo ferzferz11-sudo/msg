@@ -1,5 +1,15 @@
 # Лава — Server Changelog
 
+## [1.3.0.24] - 2026-06-27
+
+### Features
+- **AgentInfoV2 provider_config** — `AgentInfoV2` now returns `provider_config` (JSON string) in all RPCs (Create, Get, List, Clone, Marketplace). Clients can read API keys, model overrides, and other provider-specific config.
+
+### Improvements
+- **DB maintenance script** — updated `db_maintenance.sh` with `messages_v2`, AI v2 tables (`ai_messages_v2`, `ai_chats_v2`, `agents_v2`, `agent_tokens`, `agent_reviews`, `ai_rate_limits`, `ai_usage_stats`), `pinned_messages`, `chat_list_v2`, `user_settings`, `hermes_remote_agents/tasks`. Added empty text message cleanup for `messages_v2`.
+
+---
+
 ## [1.3.0.23] - 2026-06-23
 
 ### Bug Fixes

@@ -16321,6 +16321,7 @@ type AgentInfoV2 struct {
 	OriginalAgentId string                 `protobuf:"bytes,19,opt,name=original_agent_id,json=originalAgentId,proto3" json:"original_agent_id,omitempty"`
 	Version         int32                  `protobuf:"varint,20,opt,name=version,proto3" json:"version,omitempty"`
 	ShareCode       string                 `protobuf:"bytes,21,opt,name=share_code,json=shareCode,proto3" json:"share_code,omitempty"`
+	ProviderConfig  string                 `protobuf:"bytes,22,opt,name=provider_config,json=providerConfig,proto3" json:"provider_config,omitempty"` // JSON string — API key, model override etc.
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -16498,6 +16499,13 @@ func (x *AgentInfoV2) GetVersion() int32 {
 func (x *AgentInfoV2) GetShareCode() string {
 	if x != nil {
 		return x.ShareCode
+	}
+	return ""
+}
+
+func (x *AgentInfoV2) GetProviderConfig() string {
+	if x != nil {
+		return x.ProviderConfig
 	}
 	return ""
 }
@@ -19426,7 +19434,7 @@ const file_messenger_proto_rawDesc = "" +
 	"\x11GetAIAgentRequest\x12\x19\n" +
 	"\bagent_id\x18\x01 \x01(\tR\aagentId\"B\n" +
 	"\x12GetAIAgentResponse\x12,\n" +
-	"\x05agent\x18\x01 \x01(\v2\x16.messenger.AgentInfoV2R\x05agent\"\xb7\x05\n" +
+	"\x05agent\x18\x01 \x01(\v2\x16.messenger.AgentInfoV2R\x05agent\"\xe0\x05\n" +
 	"\vAgentInfoV2\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
@@ -19454,7 +19462,8 @@ const file_messenger_proto_rawDesc = "" +
 	"\x11original_agent_id\x18\x13 \x01(\tR\x0foriginalAgentId\x12\x18\n" +
 	"\aversion\x18\x14 \x01(\x05R\aversion\x12\x1d\n" +
 	"\n" +
-	"share_code\x18\x15 \x01(\tR\tshareCode\"\xb3\x01\n" +
+	"share_code\x18\x15 \x01(\tR\tshareCode\x12'\n" +
+	"\x0fprovider_config\x18\x16 \x01(\tR\x0eproviderConfig\"\xb3\x01\n" +
 	"\x13AgentCapabilitiesV2\x12'\n" +
 	"\x0fsupports_images\x18\x01 \x01(\bR\x0esupportsImages\x12%\n" +
 	"\x0esupports_tools\x18\x02 \x01(\bR\rsupportsTools\x12-\n" +
