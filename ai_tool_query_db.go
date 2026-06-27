@@ -57,7 +57,10 @@ func (t *queryDatabaseTool) Execute(ctx context.Context, args map[string]any) (s
 		"DROP", "DELETE", "INSERT", "UPDATE", "ALTER", "TRUNCATE", "CREATE",
 		"EXEC", "EXECUTE", "INTO", "GRANT", "REVOKE",
 		"PG_READ_FILE", "PG_WRITE_FILE", "DBLINK", "COPY",
-		"pg_", "information_schema",
+		"pg_", "information_schema", "pg_catalog",
+		"pg_stat_", "pg_tables", "pg_class", "pg_namespace",
+		"pg_roles", "pg_authid", "pg_shdescription",
+		"WITH", "RECURSIVE",
 	}
 	for _, d := range dangerous {
 		if strings.Contains(trimmed, d) {
@@ -68,7 +71,9 @@ func (t *queryDatabaseTool) Execute(ctx context.Context, args map[string]any) (s
 	// Block access to sensitive tables
 	blockedTables := []string{
 		"users", "user_tokens", "user_devices", "user_chat_metadata",
-		"password_reset_tokens", "ai_usage_stats",
+		"password_reset_tokens", "ai_usage_stats", "ai_messages_v2",
+		"ai_chats_v2", "ai_agents_v2", "device_auth_log",
+		"hermes_sessions", "hermes_messages", "hermes_agent_runs",
 	}
 	for _, t := range blockedTables {
 		if strings.Contains(trimmed, strings.ToUpper(t)) {

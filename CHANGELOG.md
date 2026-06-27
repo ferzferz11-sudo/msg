@@ -1,5 +1,30 @@
 # Лава — Server Changelog
 
+## [1.3.0.28] - 2026-06-27
+
+### Security Fixes
+- **Auth rate limiting** — SignInV2/SignUpV2 now rate-limited to 10 requests/min per IP (anti-brute-force)
+- **gRPC reflection disabled in prod** — reflection only available on dev environment
+- **CORS headers** — HTTP server now returns `Access-Control-Allow-Origin: *` for web clients
+- **DB error leak fix** — SignUpV2 no longer exposes internal DB errors to clients
+- **query_database hardened** — blocklist expanded: `WITH`, `RECURSIVE`, `pg_catalog`, `pg_stat_*`, `ai_*` tables, `hermes_*` tables
+
+### Bug Fixes
+- **ChatList v2 migration fix** — `CREATE INDEX` on `messages_v2` instead of dropped `messages` table (was causing error on startup)
+- **getRateLimiter race condition** — double-check lock pattern prevents lost updates under concurrent access
+- **SetReactionV2 race condition** — replaced read-modify-write with PostgreSQL atomic `jsonb_set` (concurrent reactions no longer overwrite each other)
+- **indexMessage goroutine leak** — added 30s context timeout to background RAG indexing goroutines
+- **json.Unmarshal error handling** — push notification code now handles parse errors for chat participants
+
+### Performance
+- **Push notifications optimized** — batch query `GetPushTokensByUsernames` replaces `GetAllUsers` (O(1) DB query instead of full table scan)
+- **New DB method** — `GetPushTokensByUsernames()` fetches push tokens for specific users only
+
+### Documentation
+- Updated ARCHITECTURE.md, TESTING.md, PROMPT.md, PITFALLS.md to v1.3.0.28
+
+---
+
 ## [1.3.0.27] - 2026-06-27
 
 ### Cleanup: v1 Messages Removed

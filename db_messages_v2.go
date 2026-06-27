@@ -3,7 +3,6 @@ package main
 import (
 	"database/sql"
 	"encoding/base64"
-	"encoding/json"
 	"time"
 )
 
@@ -142,27 +141,18 @@ func (db *DB) DeleteMessageV2(ids []string) error {
 
 // SetReactionV2 sets or removes a reaction on a message. emoji="" removes.
 func (db *DB) SetReactionV2(messageID, userID, emoji string) (string, error) {
-	// Read current reactions
-	var reactionsJSON string
-	err := db.QueryRow(`SELECT COALESCE(reactions, '{}') FROM messages_v2 WHERE id = $1`, messageID).Scan(&reactionsJSON)
-	if err != nil {
-		return "", err
-	}
-
-	var reactions map[string]string
-	if err := json.Unmarshal([]byte(reactionsJSON), &reactions); err != nil {
-		reactions = make(map[string]string)
-	}
-
+	var resultJSON string
 	if emoji == "" {
-		delete(reactions, userID)
-	} else {
-		reactions[userID] = emoji
+		err := db.QueryRow(`
+			UPDATE messages_v2 SET reactions = reactions - $1 WHERE id = $2
+			RETURNING COALESCE(reactions, '{}')`, userID, messageID).Scan(&resultJSON)
+		return resultJSON, err
 	}
 
-	newJSON, _ := json.Marshal(reactions)
-	_, err = db.Exec(`UPDATE messages_v2 SET reactions = $1 WHERE id = $2`, string(newJSON), messageID)
-	return string(newJSON), err
+	err := db.QueryRow(`
+		UPDATE messages_v2 SET reactions = reactions || jsonb_build_object($1, $2) WHERE id = $3
+		RETURNING COALESCE(reactions, '{}')`, userID, emoji, messageID).Scan(&resultJSON)
+	return resultJSON, err
 }
 
 // GetMessagesV2ByIDs returns messages by a list of IDs (for reactions batch load).

@@ -152,7 +152,7 @@ func StartHTTPServerAndReturn(port string) *http.Server {
 
 	srv := &http.Server{
 		Addr:    "0.0.0.0:" + port,
-		Handler: nil,
+		Handler: corsMiddleware(http.DefaultServeMux),
 	}
 
 	logger.Infof("HTTP server started on port %s", port)
@@ -540,4 +540,20 @@ func turnCredentialsHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(servers)
+}
+
+func corsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		w.Header().Set("Access-Control-Max-Age", "86400")
+
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
 }

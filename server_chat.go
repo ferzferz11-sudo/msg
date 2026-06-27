@@ -371,46 +371,41 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 		// This ensures users in background receive notifications
 		// Skip push for favorites and other virtual rooms
 		if !strings.HasPrefix(roomID, "favorites_") {
-			// CRITICAL: Check if sender wants to notify others
 			senderNotifiesOthers := s.db.GetUserPushStatus(msg.User)
 			if !senderNotifiesOthers {
 				logger.Infof("Push skip: %s has disabled outgoing notifications", msg.User)
 			} else {
-				// Get chat participants ONCE (not per user)
 				chat, err := s.db.GetChat(roomID)
 				if err != nil {
 					logger.Errorf("Failed to get chat for push: %v", err)
 				} else {
 					var participants []string
-					json.Unmarshal([]byte(chat.Participants), &participants)
-
-					// Build participant set for O(1) lookup
-					participantSet := make(map[string]bool, len(participants))
-					for _, p := range participants {
-						participantSet[p] = true
+					if err := json.Unmarshal([]byte(chat.Participants), &participants); err != nil {
+						logger.Errorf("Failed to parse chat participants: %v", err)
+						continue
 					}
 
-					// Get all users, but only send to participants
-					allUsers, err := s.db.GetAllUsers()
-					if err != nil {
-						logger.Errorf("Failed to get all users for push notifications: %v", err)
-					} else {
-						var targets []pushTarget
-						for _, user := range allUsers {
-							if user.Username == msg.User {
-								continue
-							}
-							if !participantSet[user.Username] {
-								continue
-							}
-
-							targets = append(targets, pushTarget{
-								UserId:   user.UserId,
-								Username: user.Username,
-							})
+					// Filter out sender
+					var recipients []string
+					for _, p := range participants {
+						if p != msg.User {
+							recipients = append(recipients, p)
 						}
+					}
 
-						if len(targets) > 0 {
+					if len(recipients) > 0 {
+						// Batch query push tokens for participants only
+						dbTargets, err := s.db.GetPushTokensByUsernames(recipients)
+						if err != nil {
+							logger.Errorf("Failed to get push tokens: %v", err)
+						} else if len(dbTargets) > 0 {
+							var targets []pushTarget
+							for _, t := range dbTargets {
+								targets = append(targets, pushTarget{
+									UserId:   t.UserId,
+									Username: t.Username,
+								})
+							}
 							pushText := msg.Text
 							if chat.IsSecret {
 								pushText = "New encrypted message"

@@ -208,9 +208,11 @@ func main() {
 		logger.Info("ServerService registered (dev)")
 	}
 
-	// Enable gRPC server reflection (for grpcurl, debugging)
-	reflection.Register(s)
-	logger.Info("gRPC reflection enabled")
+	// Enable gRPC server reflection (for grpcurl, debugging) — dev only
+	if appEnv == "dev" {
+		reflection.Register(s)
+		logger.Info("gRPC reflection enabled (dev)")
+	}
 
 	// Log server startup information
 	logger.Infof("Listening clients at %v", lis.Addr())

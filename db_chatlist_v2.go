@@ -134,8 +134,8 @@ func MigrateChatListV2(db *sql.DB) {
 		`CREATE INDEX IF NOT EXISTS idx_user_chat_metadata_pinned ON user_chat_metadata(user_id, pinned) WHERE pinned = TRUE`,
 		// Index for muted chats
 		`CREATE INDEX IF NOT EXISTS idx_muted_chats_user ON muted_chats(user_id)`,
-		// Composite index for unread count CTE (messages by room + username + time)
-		`CREATE INDEX IF NOT EXISTS idx_messages_room_username_time ON messages(room_id, username, created_at)`,
+		// Composite index for unread count CTE (messages by room + sender + time)
+		`CREATE INDEX IF NOT EXISTS idx_messages_v2_room_sender_time ON messages_v2(room_id, sender_id, created_at)`,
 		// GIN index for chats participant_ids array containment check
 		`CREATE INDEX IF NOT EXISTS idx_chats_participant_ids ON chats USING GIN(participant_ids)`,
 		// Index for chat list ordering by last_message_time

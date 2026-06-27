@@ -264,13 +264,18 @@ func (g *AIGateway) getRateLimiter(agent *AgentV2) *RedisRateLimiter {
 		return limiter
 	}
 
+	g.mu.Lock()
+	limiter, ok = g.rateLimiters[key]
+	if ok {
+		g.mu.Unlock()
+		return limiter
+	}
+
 	limit := 10
 	if agent.RateLimit != nil {
 		limit = *agent.RateLimit
 	}
 	limiter = NewRedisRateLimiter(limit, time.Minute, "rl:ai:"+agent.ID+":")
-
-	g.mu.Lock()
 	g.rateLimiters[key] = limiter
 	g.mu.Unlock()
 	return limiter
@@ -321,7 +326,7 @@ func (g *AIGateway) saveUserMessage(ctx context.Context, chatID, message string)
 		Content: message,
 	})
 	if err == nil {
-		go g.indexMessage(context.Background(), chatID, "user", "", message)
+		go g.indexMessageWithTimeout(chatID, "user", "", message)
 	}
 	return err
 }
@@ -335,7 +340,13 @@ func (g *AIGateway) saveAssistantMessage(ctx context.Context, chatID, agentID, c
 		TokenCount: tokenCount,
 		ModelUsed:  modelUsed,
 	})
-	go g.indexMessage(context.Background(), chatID, "assistant", agentID, content)
+	go g.indexMessageWithTimeout(chatID, "assistant", agentID, content)
+}
+
+func (g *AIGateway) indexMessageWithTimeout(chatID, role, agentID, content string) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	g.indexMessage(ctx, chatID, role, agentID, content)
 }
 
 func (g *AIGateway) indexMessage(ctx context.Context, chatID, role, agentID, content string) {

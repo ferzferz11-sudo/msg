@@ -489,8 +489,43 @@ func (db *DB) SetUserPushStatusByUserID(userID string, enabled bool) error {
 
 func (db *DB) GetUserIdByEmail(email string) (string, error) {
 	var id string
-	err := db.QueryRow(`SELECT id::text FROM users WHERE email=$1`, email).Scan(&id)
+	err := db.QueryRow(`SELECT id::text FROM users WHERE email=$1`, &id).Scan(&id)
 	return id, err
+}
+
+type PushTarget struct {
+	UserId   string
+	Username string
+	Token    string
+}
+
+func (db *DB) GetPushTokensByUsernames(usernames []string) ([]PushTarget, error) {
+	if len(usernames) == 0 {
+		return nil, nil
+	}
+
+	rows, err := db.Query(`
+		SELECT u.id::text, u.username, COALESCE(ut.fcm_token, '')
+		FROM users u
+		JOIN user_tokens ut ON ut.username = u.username
+		WHERE u.username = ANY($1) AND ut.push_enabled = true AND ut.fcm_token != ''`,
+		usernames)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var targets []PushTarget
+	for rows.Next() {
+		var t PushTarget
+		if err := rows.Scan(&t.UserId, &t.Username, &t.Token); err != nil {
+			continue
+		}
+		if t.Token != "" {
+			targets = append(targets, t)
+		}
+	}
+	return targets, rows.Err()
 }
 
 func (db *DB) CreatePasswordResetToken(token, userId string, expiresAt time.Time) error {
