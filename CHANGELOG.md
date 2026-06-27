@@ -1,5 +1,16 @@
 # Лава — Server Changelog
 
+## [1.3.0.27] - 2026-06-27
+
+### Cleanup: v1 Messages Removed
+- **Dropped tables**: `messages` and `reactions` tables removed from database
+- **Removed v1 DB functions**: SaveMessage, GetMessages, GetMessageByUUID, DeleteMessageByUUID, DeleteMessageByID, GetMessagesByUserAndTime, UpdateMessageText, GetMessageImageURL, CleanupEmptyMessages, GetChatMessages, SetReaction, SetReactionByUserID, RemoveReactionByUserID
+- **Removed v1 migrations**: CREATE TABLE messages, ALTER TABLE messages, CREATE TABLE reactions from db.go
+- **Cleaned up references**: db_users.go (delete user), db_chats.go (delete chat) no longer reference v1 tables
+- All message operations now use messages_v2 exclusively
+
+---
+
 ## [1.3.0.26] - 2026-06-27
 
 ### Backward Compatibility

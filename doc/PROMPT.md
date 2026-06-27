@@ -1,7 +1,7 @@
-# Промпт для серверных сессий — v1.3.0.26
+# Промпт для серверных сессий — v1.3.0.27
 
 **Дата:** 2026-06-27 | **Ветка:** feat/1.3.0.x
-**Статус:** Messages v1→v2 migration complete. v1 RPCs rewritten to v2 internally (backward compat). All data in messages_v2.
+**Статус:** v1 messages tables dropped. All operations use messages_v2. v1 RPCs deprecated but functional.
 
 ---
 
@@ -9,8 +9,8 @@
 
 | | Версия | Статус |
 |---|--------|--------|
-| **Сервер prod** | v1.3.0.26 | ✅ Работает на порту 50051 |
-| **Сервер dev** | v1.3.0.26 | ✅ Работает на порту 50052 |
+| **Сервер prod** | v1.3.0.27 | ✅ Работает на порту 50051 |
+| **Сервер dev** | v1.3.0.27 | ✅ Работает на порту 50052 |
 
 **Android:** `/root/msg.client.android` — документация там, сборка ТОЛЬКО локально.
 

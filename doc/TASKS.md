@@ -1,6 +1,6 @@
 # Лава — Задачи
 
-**Версия:** v1.3.0.26
+**Версия:** v1.3.0.27
 **Ветка:** feat/1.3.0.x
 **Обновлено:** 2026-06-27
 
@@ -16,6 +16,7 @@
 
 | Версия | Описание |
 |--------|----------|
+| v1.3.0.27 | v1 messages tables dropped, v1 DB functions removed |
 | v1.3.0.26 | v1 RPCs rewritten to v2 internally (backward compat), marked deprecated |
 | v1.3.0.25 | Messages v1→v2 migration complete, SearchMessages RPC, dual-write removed |
 | v1.3.0.19 | Messages v2: MessageV2 proto, ChatV2 stream, cursor pagination, JSONB reactions, dual-write |

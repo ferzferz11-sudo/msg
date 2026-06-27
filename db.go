@@ -68,25 +68,6 @@ func ConnectDB() (*DB, error) {
 			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='last_client_version') THEN ALTER TABLE users ADD COLUMN last_client_version VARCHAR(50); END IF;
 		END $$;`,
 
-		// --- Messages ---
-		`CREATE TABLE IF NOT EXISTS messages (id SERIAL PRIMARY KEY, message_id VARCHAR(255) UNIQUE, username VARCHAR(255) NOT NULL, encrypted_text BYTEA NOT NULL, created_at TIMESTAMP NOT NULL)`,
-		`DO $$ BEGIN
-			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='room_id') THEN ALTER TABLE messages ADD COLUMN room_id VARCHAR(255) DEFAULT ''; END IF;
-			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='is_read') THEN ALTER TABLE messages ADD COLUMN is_read BOOLEAN DEFAULT FALSE; END IF;
-			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='image_url') THEN ALTER TABLE messages ADD COLUMN image_url VARCHAR(512) DEFAULT ''; END IF;
-			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='image_urls') THEN ALTER TABLE messages ADD COLUMN image_urls TEXT DEFAULT '[]'; END IF;
-			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='edited') THEN ALTER TABLE messages ADD COLUMN edited BOOLEAN DEFAULT FALSE; END IF;
-			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='voice_url') THEN ALTER TABLE messages ADD COLUMN voice_url VARCHAR(512); END IF;
-			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='duration') THEN ALTER TABLE messages ADD COLUMN duration INTEGER DEFAULT 0; END IF;
-			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='replied_to_message_id') THEN ALTER TABLE messages ADD COLUMN replied_to_message_id VARCHAR(255); END IF;
-			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='replied_to_user') THEN ALTER TABLE messages ADD COLUMN replied_to_user VARCHAR(255); END IF;
-			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='replied_to_text') THEN ALTER TABLE messages ADD COLUMN replied_to_text TEXT; END IF;
-			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='user_id') THEN ALTER TABLE messages ADD COLUMN user_id UUID; END IF;
-		END $$;`,
-		`CREATE INDEX IF NOT EXISTS idx_messages_room ON messages(room_id, created_at)`,
-		`CREATE INDEX IF NOT EXISTS idx_messages_user_id ON messages(user_id)`,
-		`CREATE INDEX IF NOT EXISTS idx_messages_username_time ON messages(username, created_at)`,
-
 		// --- Messages v2 ---
 		`CREATE TABLE IF NOT EXISTS messages_v2 (
 			id              VARCHAR(255) PRIMARY KEY,
@@ -126,9 +107,6 @@ func ConnectDB() (*DB, error) {
 
 		// --- Contacts ---
 		`CREATE TABLE IF NOT EXISTS contacts (id SERIAL PRIMARY KEY, username VARCHAR(255) NOT NULL, contact_username VARCHAR(255) NOT NULL, user_id UUID, contact_user_id UUID, created_at TIMESTAMP NOT NULL DEFAULT NOW(), UNIQUE(username, contact_username))`,
-
-		// --- Reactions ---
-		`CREATE TABLE IF NOT EXISTS reactions (message_id VARCHAR(255) NOT NULL, username VARCHAR(255) NOT NULL, emoji VARCHAR(255) NOT NULL, user_id UUID, created_at TIMESTAMP NOT NULL DEFAULT NOW(), UNIQUE(message_id, username))`,
 
 		// --- User Tokens (Push) ---
 		`CREATE TABLE IF NOT EXISTS user_tokens (username VARCHAR(255) PRIMARY KEY, fcm_token TEXT, push_enabled BOOLEAN DEFAULT TRUE, updated_at TIMESTAMP, user_id UUID)`,
