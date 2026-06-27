@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -135,6 +136,15 @@ func (s *server) SendMessageV2(ctx context.Context, req *gen.SendMessageV2Reques
 		RoomId: req.RoomId,
 	})
 
+	// Broadcast actual message via ChatV2 stream (real-time delivery)
+	v2Msg := rowToProtoV2(row)
+	wrappedMsg := &gen.ChatV2Message{
+		Payload: &gen.ChatV2Message_Message{Message: v2Msg},
+	}
+	for _, target := range s.hub.SnapshotRoomStreams(req.RoomId) {
+		_ = target.Send(wrappedMsg)
+	}
+
 	return &gen.SendMessageV2Response{
 		Message: rowToProtoV2(row),
 		Success: true,
@@ -263,6 +273,47 @@ func (s *server) SetReactionV2(ctx context.Context, req *gen.SetReactionV2Reques
 		Success:   true,
 		Reactions: []byte(reactionsJSON),
 	}, nil
+}
+
+// SearchMessages searches messages in a chat or across all user's chats.
+func (s *server) SearchMessages(ctx context.Context, req *gen.SearchMessagesRequest) (*gen.SearchMessagesResponse, error) {
+	userID := GetUserID(ctx)
+	if userID == "" {
+		return nil, status.Errorf(codes.Unauthenticated, "unauthorized")
+	}
+
+	query := strings.TrimSpace(req.GetQuery())
+	if query == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "query is required")
+	}
+
+	roomID := req.GetRoomId()
+	limit := int(req.GetLimit())
+	if limit <= 0 {
+		limit = 20
+	}
+	if limit > 100 {
+		limit = 100
+	}
+
+	results, err := s.db.SearchMessages(userID, roomID, query, limit)
+	if err != nil {
+		logger.Errorf("SearchMessages: %v", err)
+		return nil, status.Errorf(codes.Internal, "search failed: %v", err)
+	}
+
+	var protoResults []*gen.SearchResult
+	for _, r := range results {
+		protoResults = append(protoResults, &gen.SearchResult{
+			MessageId: r.MessageID,
+			RoomId:    r.RoomID,
+			Username:  r.Username,
+			Preview:   r.Preview,
+			CreatedAt: r.CreatedAt,
+		})
+	}
+
+	return &gen.SearchMessagesResponse{Messages: protoResults}, nil
 }
 
 // rowToProtoV2 converts a DB row to proto MessageV2.
