@@ -1011,6 +1011,32 @@ By default, all clients use the **server's OpenRouter API key** — no payment r
 2. Agent's `provider_config.api_key` → agent-specific key
 3. Server's `OPENROUTER_API_KEY` env var → **free tier (default)**
 
+### AgentInfoV2 — provider_config
+
+All agent RPCs (`CreateAIAgent`, `GetAIAgent`, `ListAIAgents`, `CloneAIAgent`, `ListMarketplaceAgents`) return `AgentInfoV2` which now includes `provider_config`:
+
+```protobuf
+message AgentInfoV2 {
+  // ... fields 1-21 ...
+  string share_code = 21;
+  string provider_config = 22;  // JSON string
+}
+```
+
+**`provider_config` examples:**
+
+Preset agent:
+```json
+{"api_key_source": "server", "default_model": "reve-2.0"}
+```
+
+User agent with custom key:
+```json
+{"api_key": "sk-or-v1-...", "default_model": "anthropic/claude-sonnet-4"}
+```
+
+**Client usage:** Parse `provider_config` as JSON to read API keys, model overrides, and other provider-specific settings. Mask API keys in UI (`sk-...xxxx`).
+
 ### AI Chat Settings (Per-Session)
 
 Each AI chat session can have its own API key and model override. This allows users to use their own OpenRouter key for paid models while defaulting to free models.
