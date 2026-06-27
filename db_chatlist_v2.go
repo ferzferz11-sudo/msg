@@ -189,12 +189,12 @@ func (db *DB) SearchChats(userID, query string, limit, offset int) ([]ChatV2Row,
 			SELECT username FROM users WHERE id = $2::uuid
 		),
 		unread_counts AS (
-			SELECT m.room_id, COUNT(*) as count
-			FROM messages m
-			LEFT JOIN user_last_read ulr ON ulr.room_id = m.room_id
-			WHERE m.username != (SELECT username FROM user_info)
-			AND m.created_at > ulr.last_read
-			GROUP BY m.room_id
+			SELECT mv.room_id, COUNT(*) as count
+			FROM messages_v2 mv
+			LEFT JOIN user_last_read ulr ON ulr.room_id = mv.room_id
+			WHERE mv.sender_id != $2::uuid
+			AND mv.created_at > ulr.last_read
+			GROUP BY mv.room_id
 		)
 		SELECT DISTINCT c.id, c.name, c.type, c.participants, c.created_at,
 		       COALESCE(c.creator_username, ''), COALESCE(c.creator_id::text, ''),
@@ -325,12 +325,12 @@ func (db *DB) GetUserChatsV2Cursor(userID, username string, limit int, cursor, f
 			SELECT room_id, COALESCE(last_read_at, '1970-01-01') as last_read FROM user_chat_metadata WHERE user_id = $1::uuid
 		),
 		unread_counts AS (
-			SELECT m.room_id, COUNT(*) as count
-			FROM messages m
-			LEFT JOIN user_last_read ulr ON ulr.room_id = m.room_id
-			WHERE m.username != $3
-			AND m.created_at > ulr.last_read
-			GROUP BY m.room_id
+			SELECT mv.room_id, COUNT(*) as count
+			FROM messages_v2 mv
+			LEFT JOIN user_last_read ulr ON ulr.room_id = mv.room_id
+			WHERE mv.sender_id != $1::uuid
+			AND mv.created_at > ulr.last_read
+			GROUP BY mv.room_id
 		)
 		SELECT c.id, c.name, c.type, c.participants, c.created_at,
 		       COALESCE(c.creator_username, ''), COALESCE(c.creator_id::text, ''),
@@ -527,9 +527,10 @@ func (db *DB) GetPinnedMessages(userID, chatID string, limit, offset int) ([]Pin
 		limit = 100
 	}
 	rows, err := db.Query(`
-		SELECT pm.message_id, pm.pinned_at, m.username, m.encrypted_text, m.created_at
+		SELECT pm.message_id, pm.pinned_at, COALESCE(u.username, mv.sender_id::text), mv.text, mv.created_at
 		FROM pinned_messages pm
-		JOIN messages m ON m.message_id = pm.message_id AND m.room_id = pm.room_id
+		JOIN messages_v2 mv ON mv.id = pm.message_id AND mv.room_id = pm.room_id
+		LEFT JOIN users u ON u.id = mv.sender_id
 		WHERE pm.user_id = $1::uuid AND pm.room_id = $2
 		ORDER BY pm.pinned_at DESC
 		LIMIT $3 OFFSET $4`,
@@ -542,13 +543,11 @@ func (db *DB) GetPinnedMessages(userID, chatID string, limit, offset int) ([]Pin
 	var result []PinnedMessageRow
 	for rows.Next() {
 		var r PinnedMessageRow
-		var encText []byte
-		err := rows.Scan(&r.MessageID, &r.PinnedAt, &r.User, &encText, &r.CreatedAt)
+		err := rows.Scan(&r.MessageID, &r.PinnedAt, &r.User, &r.Text, &r.CreatedAt)
 		if err != nil {
 			logger.Errorf("GetPinnedMessages scan error: %v", err)
 			continue
 		}
-		r.Text, _ = decrypt(encText)
 		result = append(result, r)
 	}
 	return result, nil

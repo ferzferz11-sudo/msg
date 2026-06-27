@@ -1,5 +1,23 @@
 # Лава — Server Changelog
 
+## [1.3.0.25] - 2026-06-27
+
+### Migration: Messages v1 → v2 (complete)
+- **SQL migration script** — `scripts/migrate_v1_to_v2.sql` converts all v1 messages to v2 (idempotent, ON CONFLICT DO NOTHING). Handles orphaned users with `[deleted]` system user.
+- **DB queries switched to v2** — unread counts (`db_chats.go`, `db_chatlist_v2.go`), pinned messages, favorites, delete chat all use `messages_v2` table.
+- **Dual-write removed** — `server_chat.go` no longer writes to v1 `messages` table. All message writes go to `messages_v2` only.
+- **AI tool updated** — `ai_tool_search_messages.go` now queries `messages_v2` instead of `messages`.
+- **SearchMessages v2-only** — `db_messages_v2.go` SearchMessages removed UNION ALL with v1, queries only `messages_v2`.
+
+### New Features
+- **SearchMessages RPC** — new gRPC endpoint for message search (single chat or cross-chat). Uses cursor-based results from `messages_v2`.
+
+### Client Migration Prompts
+- `doc/PROMPT_MIGRATE_V2.md` — Android client migration guide (RPC map, proto definitions, implementation steps)
+- Web client migration prompt created in separate repo
+
+---
+
 ## [1.3.0.24] - 2026-06-27
 
 ### Features

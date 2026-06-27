@@ -129,6 +129,7 @@ const (
 	ChatService_EditMessageV2_FullMethodName          = "/messenger.ChatService/EditMessageV2"
 	ChatService_DeleteMessageV2_FullMethodName        = "/messenger.ChatService/DeleteMessageV2"
 	ChatService_SetReactionV2_FullMethodName          = "/messenger.ChatService/SetReactionV2"
+	ChatService_SearchMessages_FullMethodName         = "/messenger.ChatService/SearchMessages"
 	ChatService_ChatWithAIV2_FullMethodName           = "/messenger.ChatService/ChatWithAIV2"
 	ChatService_CreateAIAgent_FullMethodName          = "/messenger.ChatService/CreateAIAgent"
 	ChatService_UpdateAIAgent_FullMethodName          = "/messenger.ChatService/UpdateAIAgent"
@@ -276,6 +277,8 @@ type ChatServiceClient interface {
 	EditMessageV2(ctx context.Context, in *EditMessageV2Request, opts ...grpc.CallOption) (*EditMessageV2Response, error)
 	DeleteMessageV2(ctx context.Context, in *DeleteMessageV2Request, opts ...grpc.CallOption) (*DeleteMessageV2Response, error)
 	SetReactionV2(ctx context.Context, in *SetReactionV2Request, opts ...grpc.CallOption) (*SetReactionV2Response, error)
+	// === Message Search ===
+	SearchMessages(ctx context.Context, in *SearchMessagesRequest, opts ...grpc.CallOption) (*SearchMessagesResponse, error)
 	// === AI Services v2 ===
 	ChatWithAIV2(ctx context.Context, in *ChatWithAIV2Request, opts ...grpc.CallOption) (grpc.ServerStreamingClient[ChatWithAIV2Response], error)
 	CreateAIAgent(ctx context.Context, in *CreateAIAgentRequest, opts ...grpc.CallOption) (*CreateAIAgentResponse, error)
@@ -1472,6 +1475,16 @@ func (c *chatServiceClient) SetReactionV2(ctx context.Context, in *SetReactionV2
 	return out, nil
 }
 
+func (c *chatServiceClient) SearchMessages(ctx context.Context, in *SearchMessagesRequest, opts ...grpc.CallOption) (*SearchMessagesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SearchMessagesResponse)
+	err := c.cc.Invoke(ctx, ChatService_SearchMessages_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *chatServiceClient) ChatWithAIV2(ctx context.Context, in *ChatWithAIV2Request, opts ...grpc.CallOption) (grpc.ServerStreamingClient[ChatWithAIV2Response], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	stream, err := c.cc.NewStream(ctx, &ChatService_ServiceDesc.Streams[10], ChatService_ChatWithAIV2_FullMethodName, cOpts...)
@@ -1779,6 +1792,8 @@ type ChatServiceServer interface {
 	EditMessageV2(context.Context, *EditMessageV2Request) (*EditMessageV2Response, error)
 	DeleteMessageV2(context.Context, *DeleteMessageV2Request) (*DeleteMessageV2Response, error)
 	SetReactionV2(context.Context, *SetReactionV2Request) (*SetReactionV2Response, error)
+	// === Message Search ===
+	SearchMessages(context.Context, *SearchMessagesRequest) (*SearchMessagesResponse, error)
 	// === AI Services v2 ===
 	ChatWithAIV2(*ChatWithAIV2Request, grpc.ServerStreamingServer[ChatWithAIV2Response]) error
 	CreateAIAgent(context.Context, *CreateAIAgentRequest) (*CreateAIAgentResponse, error)
@@ -2138,6 +2153,9 @@ func (UnimplementedChatServiceServer) DeleteMessageV2(context.Context, *DeleteMe
 }
 func (UnimplementedChatServiceServer) SetReactionV2(context.Context, *SetReactionV2Request) (*SetReactionV2Response, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetReactionV2 not implemented")
+}
+func (UnimplementedChatServiceServer) SearchMessages(context.Context, *SearchMessagesRequest) (*SearchMessagesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SearchMessages not implemented")
 }
 func (UnimplementedChatServiceServer) ChatWithAIV2(*ChatWithAIV2Request, grpc.ServerStreamingServer[ChatWithAIV2Response]) error {
 	return status.Error(codes.Unimplemented, "method ChatWithAIV2 not implemented")
@@ -4105,6 +4123,24 @@ func _ChatService_SetReactionV2_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ChatService_SearchMessages_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SearchMessagesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).SearchMessages(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_SearchMessages_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).SearchMessages(ctx, req.(*SearchMessagesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ChatService_ChatWithAIV2_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(ChatWithAIV2Request)
 	if err := stream.RecvMsg(m); err != nil {
@@ -4810,6 +4846,10 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SetReactionV2",
 			Handler:    _ChatService_SetReactionV2_Handler,
+		},
+		{
+			MethodName: "SearchMessages",
+			Handler:    _ChatService_SearchMessages_Handler,
 		},
 		{
 			MethodName: "CreateAIAgent",

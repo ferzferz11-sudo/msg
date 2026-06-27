@@ -204,11 +204,11 @@ func (db *DB) GetFavorites(uid string) ([]MessageRow, error) {
 		_ = db.QueryRow(`SELECT username FROM users WHERE id = $1::uuid OR username = $1`, uid).Scan(&username)
 	}
 
-	q := `SELECT COALESCE(m.message_id, ''), m.username, m.encrypted_text, COALESCE(f.created_at, m.created_at), COALESCE(m.replied_to_message_id, ''), COALESCE(m.replied_to_user, ''), COALESCE(m.replied_to_text, ''), COALESCE(m.room_id, ''), COALESCE(m.is_read, FALSE) as is_read, COALESCE(u.avatar_url, ''), COALESCE(m.image_url, ''), COALESCE(m.image_urls, '[]'), COALESCE(m.edited, false), COALESCE(m.voice_url, ''), COALESCE(m.duration, 0), COALESCE(m.is_e2ee, false)
-	      FROM messages m
-	      LEFT JOIN users u ON m.user_id = u.id
-	      LEFT JOIN favorites f ON f.message_id = m.message_id AND f.user_id = (SELECT id FROM users WHERE username = $1::text)
-	      WHERE m.room_id = 'favorites_' || $1::text OR (f.message_id IS NOT NULL AND f.user_id = (SELECT id FROM users WHERE username = $1::text))
+	q := `SELECT COALESCE(mv.id, ''), COALESCE(u.username, mv.sender_id::text), mv.text, COALESCE(f.created_at, mv.created_at), mv.reply_to_id, '', COALESCE(mv.reply_preview, ''), mv.room_id, mv.is_read, COALESCE(u.avatar_url, ''), mv.media_url, COALESCE(mv.media_urls, '[]')::text, mv.edited, '', mv.duration, mv.is_e2ee
+	      FROM messages_v2 mv
+	      LEFT JOIN users u ON mv.sender_id = u.id
+	      LEFT JOIN favorites f ON f.message_id = mv.id AND f.user_id = (SELECT id FROM users WHERE username = $1::text)
+	      WHERE mv.room_id = 'favorites_' || $1::text OR (f.message_id IS NOT NULL AND f.user_id = (SELECT id FROM users WHERE username = $1::text))
 	      ORDER BY 4 ASC`
 	rows, err := db.Query(q, username)
 	if err != nil {

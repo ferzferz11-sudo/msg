@@ -1,7 +1,7 @@
-# Промпт для серверных сессий — v1.3.0.24
+# Промпт для серверных сессий — v1.3.0.25
 
-**Дата:** 2026-06-21 | **Ветка:** feat/1.3.0.x
-**Статус:** Messages v2 deployed to prod. ChatV2 stream, GetHistoryV2, SendMessageV2, Edit/Delete/ReactionV2. Dual-write active.
+**Дата:** 2026-06-27 | **Ветка:** feat/1.3.0.x
+**Статус:** Messages v1→v2 migration complete. Dual-write removed. All messages now in messages_v2 only. SearchMessages RPC added.
 
 ---
 
@@ -9,8 +9,8 @@
 
 | | Версия | Статус |
 |---|--------|--------|
-| **Сервер prod** | v1.3.0.19 | ✅ Работает на порту 50051 |
-| **Сервер dev** | v1.3.0.19 | ✅ Работает на порту 50052 |
+| **Сервер prod** | v1.3.0.25 | ✅ Работает на порту 50051 |
+| **Сервер dev** | v1.3.0.25 | ✅ Работает на порту 50052 |
 
 **Android:** `/root/msg.client.android` — документация там, сборка ТОЛЬКО локально.
 
@@ -42,7 +42,7 @@ db_ai_v2.go, db_auth_devices.go, db_hermes.go
 server_chat.go             — Chat/Typing/CallSession streams + ChatV2 stream
 server_chatlist_v2.go      — GetChatsV2, Pin/Unpin, Search, Archive
 server_messages.go         — History, reactions, editing (v1)
-server_messages_v2.go      — GetHistoryV2, SendMessageV2, Edit/Delete/ReactionV2
+server_messages_v2.go      — GetHistoryV2, SendMessageV2, Edit/Delete/ReactionV2, SearchMessages
 server_push.go             — FCM push, call push
 server_contacts.go, server_themes.go, server_drafts.go, server_muted.go, server_favorites.go
 server_profile.go, server_profile_v2.go (ProfileService), server_management.go, server_remote.go

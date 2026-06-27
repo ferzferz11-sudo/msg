@@ -231,3 +231,70 @@ func base64Decode(s string) string {
 	}
 	return string(b)
 }
+
+// SearchResultRow represents a single search result.
+type SearchResultRow struct {
+	MessageID string
+	RoomID    string
+	Username  string
+	Preview   string
+	CreatedAt string
+}
+
+// SearchMessages searches messages in messages_v2 table.
+func (db *DB) SearchMessages(userID, roomID, query string, limit int) ([]SearchResultRow, error) {
+	var rows *sql.Rows
+	var err error
+
+	if roomID != "" {
+		rows, err = db.Query(`
+			SELECT mv.id, mv.room_id,
+				COALESCE(u.username, mv.sender_id::text) as username,
+				mv.created_at::text,
+				LEFT(CASE
+					WHEN mv.text != '' THEN mv.text
+					WHEN mv.content_type = 'image' THEN '[image]'
+					WHEN mv.content_type = 'voice' THEN '[voice]'
+					WHEN mv.content_type = 'file' THEN '[file]'
+					ELSE ''
+				END, 200) as preview
+			FROM messages_v2 mv
+			LEFT JOIN users u ON u.id = mv.sender_id
+			WHERE mv.room_id = $1 AND mv.text ILIKE '%' || $2 || '%'
+			ORDER BY mv.created_at DESC
+			LIMIT $3`, roomID, query, limit)
+	} else {
+		rows, err = db.Query(`
+			SELECT mv.id, mv.room_id,
+				COALESCE(u.username, mv.sender_id::text) as username,
+				mv.created_at::text,
+				LEFT(CASE
+					WHEN mv.text != '' THEN mv.text
+					WHEN mv.content_type = 'image' THEN '[image]'
+					WHEN mv.content_type = 'voice' THEN '[voice]'
+					WHEN mv.content_type = 'file' THEN '[file]'
+					ELSE ''
+				END, 200) as preview
+			FROM messages_v2 mv
+			INNER JOIN chats c ON c.id = mv.room_id
+			LEFT JOIN users u ON u.id = mv.sender_id
+			WHERE c.participants::text LIKE '%' || $1 || '%'
+				AND mv.text ILIKE '%' || $2 || '%'
+			ORDER BY mv.created_at DESC
+			LIMIT $3`, userID, query, limit)
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var results []SearchResultRow
+	for rows.Next() {
+		var r SearchResultRow
+		if err := rows.Scan(&r.MessageID, &r.RoomID, &r.Username, &r.CreatedAt, &r.Preview); err != nil {
+			continue
+		}
+		results = append(results, r)
+	}
+	return results, nil
+}

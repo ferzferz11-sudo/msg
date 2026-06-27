@@ -1,8 +1,8 @@
 # Лава — Задачи
 
-**Версия:** v1.3.0.19
+**Версия:** v1.3.0.25
 **Ветка:** feat/1.3.0.x
-**Обновлено:** 2026-06-21
+**Обновлено:** 2026-06-27
 
 ---
 
@@ -16,6 +16,7 @@
 
 | Версия | Описание |
 |--------|----------|
+| v1.3.0.25 | Messages v1→v2 migration complete, SearchMessages RPC, dual-write removed |
 | v1.3.0.19 | Messages v2: MessageV2 proto, ChatV2 stream, cursor pagination, JSONB reactions, dual-write |
 | v1.3.0.18 | Reve Image Generation, image_url in ChatWithAIV2Response |
 | v1.3.0.16 | RAG message indexing, JWT rotation, upload validation, DeleteProfile cascade, dead code removal |

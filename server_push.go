@@ -312,9 +312,19 @@ func (s *server) saveConferenceSystemMessage(roomID, text, senderName, senderId 
 		uid = senderId
 	}
 
-	encryptedText, _ := encrypt(displayText)
-
-	err := s.db.SaveMessage(msgId, user, uid, encryptedText, createdAt, "", "", "", roomID, "", "[]", "", 0)
+	v2Row := &MessageRowV2{
+		ID:          msgId,
+		RoomID:      roomID,
+		SenderID:    uid,
+		ContentType: "text",
+		Text:        displayText,
+		IsRead:      false,
+		CreatedAt:   createdAt,
+	}
+	if uid == "" {
+		v2Row.SenderID = "00000000-0000-0000-0000-000000000000"
+	}
+	err := s.db.SaveMessageV2(v2Row)
 	if err != nil {
 		logger.Infof("[CONF] Failed to save call system message: %v", err)
 		return
@@ -428,8 +438,19 @@ func (s *server) saveCallSystemMessage(u1, u2, icon, text, senderName, senderId 
 	createdAt := time.Now().UTC()
 	displayText := icon + " " + text
 
-	encryptedText, _ := encrypt(displayText)
-	err = s.db.SaveMessage(msgId, senderName, senderId, encryptedText, createdAt, "", "", "", chatID, "", "[]", "", 0)
+	v2Row := &MessageRowV2{
+		ID:          msgId,
+		RoomID:      chatID,
+		SenderID:    senderId,
+		ContentType: "text",
+		Text:        displayText,
+		IsRead:      false,
+		CreatedAt:   createdAt,
+	}
+	if senderId == "" {
+		v2Row.SenderID = "00000000-0000-0000-0000-000000000000"
+	}
+	err = s.db.SaveMessageV2(v2Row)
 	if err != nil {
 		logger.Infof("[CALL] Failed to save call system message: %v", err)
 		return

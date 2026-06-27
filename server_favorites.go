@@ -3,6 +3,7 @@ package main
 import (
 	"LavenderMessenger/gen"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"os"
 	"time"
@@ -119,27 +120,43 @@ func (s *server) SaveFavoriteMessage(ctx context.Context, req *gen.Message) (*ge
 	req.Id = uuid.New().String()
 	req.CreatedAt = timestamppb.Now()
 
-	// 2. Encrypt text
-	encryptedText, err := encrypt(req.Text)
-	if err != nil {
-		return &gen.AddFavoriteResponse{Success: false, Message: "encryption failed"}, nil
-	}
-
 	// 3. Get User UUID
 	userID, err := s.db.GetUserIdByUsername(req.User)
 	if err != nil {
 		return &gen.AddFavoriteResponse{Success: false, Message: "user not found"}, nil
 	}
 
-	// 4. Save message to DB in a special "favorites" room for consistency
+	// 4. Save message to messages_v2 in a special "favorites" room for consistency
 	// Room ID is "favorites_" + username
 	favRoomID := "favorites_" + req.User
-	imageURLsJSON := "[]"
-	if len(req.ImageUrls) > 0 {
-		imageURLsBytes, _ := json.Marshal(req.ImageUrls)
-		imageURLsJSON = string(imageURLsBytes)
+	v2Row := &MessageRowV2{
+		ID:          req.Id,
+		RoomID:      favRoomID,
+		SenderID:    req.UserId,
+		ContentType: "text",
+		Text:        req.Text,
+		IsRead:      true,
+		CreatedAt:   req.CreatedAt.AsTime(),
 	}
-	err = s.db.SaveMessage(req.Id, req.User, req.UserId, encryptedText, req.CreatedAt.AsTime(), req.RepliedToMessageId, req.RepliedToUser, req.RepliedToText, favRoomID, req.ImageUrl, imageURLsJSON, req.VoiceUrl, req.Duration)
+	if req.ImageUrl != "" {
+		v2Row.MediaURL = req.ImageUrl
+		v2Row.ContentType = "image"
+	}
+	if len(req.ImageUrls) > 0 {
+		b, _ := json.Marshal(req.ImageUrls)
+		v2Row.MediaURLs = string(b)
+		v2Row.ContentType = "image"
+	}
+	if req.VoiceUrl != "" {
+		v2Row.MediaURL = req.VoiceUrl
+		v2Row.Duration = req.Duration
+		v2Row.ContentType = "voice"
+	}
+	if req.RepliedToMessageId != "" {
+		v2Row.ReplyToID = sql.NullString{String: req.RepliedToMessageId, Valid: true}
+		v2Row.ReplyPreview = sql.NullString{String: req.RepliedToText, Valid: true}
+	}
+	err = s.db.SaveMessageV2(v2Row)
 	if err != nil {
 		return &gen.AddFavoriteResponse{Success: false, Message: "failed to save message"}, nil
 	}

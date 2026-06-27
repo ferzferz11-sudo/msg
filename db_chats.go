@@ -81,12 +81,12 @@ func (db *DB) GetUserChats(uid, user string) ([]struct {
 		SELECT room_id, COALESCE(last_read_at, '1970-01-01') as last_read FROM user_chat_metadata WHERE user_id = $2::uuid
 	),
 	unread_counts AS (
-		SELECT m.room_id, COUNT(*) as count
-		FROM messages m
-		LEFT JOIN user_last_read ulr ON ulr.room_id = m.room_id
-		WHERE m.username != $1
-		AND m.created_at > ulr.last_read
-		GROUP BY m.room_id
+		SELECT mv.room_id, COUNT(*) as count
+		FROM messages_v2 mv
+		LEFT JOIN user_last_read ulr ON ulr.room_id = mv.room_id
+		WHERE mv.sender_id != $2::uuid
+		AND mv.created_at > ulr.last_read
+		GROUP BY mv.room_id
 	)
 	SELECT c.id, c.name, c.type, c.participants, c.created_at,
 	       COALESCE(uc.count, 0),
@@ -142,12 +142,12 @@ func (db *DB) GetUserChatsByUserID(userID string) ([]struct {
 		SELECT room_id, COALESCE(last_read_at, '1970-01-01') as last_read FROM user_chat_metadata WHERE user_id = $1::uuid
 	),
 	unread_counts AS (
-		SELECT m.room_id, COUNT(*) as count
-		FROM messages m
-		LEFT JOIN user_last_read ulr ON ulr.room_id = m.room_id
-		WHERE m.user_id != $1::uuid
-		AND m.created_at > ulr.last_read
-		GROUP BY m.room_id
+		SELECT mv.room_id, COUNT(*) as count
+		FROM messages_v2 mv
+		LEFT JOIN user_last_read ulr ON ulr.room_id = mv.room_id
+		WHERE mv.sender_id != $1::uuid
+		AND mv.created_at > ulr.last_read
+		GROUP BY mv.room_id
 	)
 	SELECT c.id, c.name, c.type, c.participants, c.created_at,
 	       COALESCE(uc.count, 0),
@@ -283,6 +283,7 @@ func (db *DB) DeleteChat(id string) error {
 	}
 	defer tx.Rollback()
 
+	_, _ = tx.Exec(`DELETE FROM messages_v2 WHERE room_id = $1`, id)
 	_, _ = tx.Exec(`DELETE FROM messages WHERE room_id = $1`, id)
 	_, _ = tx.Exec(`DELETE FROM user_chat_metadata WHERE room_id = $1`, id)
 	_, _ = tx.Exec(`DELETE FROM muted_chats WHERE room_id = $1`, id)

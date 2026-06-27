@@ -1,6 +1,6 @@
 # Lavender Messenger — Client Integration Guide
 
-**Server:** v1.3.0.23 | **Protocol:** gRPC + Protocol Buffers | **Date:** 2026-06-23
+**Server:** v1.3.0.25 | **Protocol:** gRPC + Protocol Buffers | **Date:** 2026-06-27
 
 This document covers everything a client needs to integrate with the Lavender Messenger server. Platform-agnostic — applies to Android, iOS, Web, Desktop, or any gRPC-capable client.
 
@@ -26,7 +26,7 @@ GET http://<host>:<port>/info
 Response:
 ```json
 {
-  "version": "1.3.0.23",
+  "version": "1.3.0.25",
   "time": "2026-06-23T22:00:00Z",
   "services": {
     "auth": "2.0",
@@ -614,6 +614,37 @@ message SetReactionV2Response {
   bytes reactions = 2;    // updated reactions JSON
 }
 ```
+
+### SearchMessages
+
+Search messages inside a specific chat or across all user's chats.
+
+```protobuf
+rpc SearchMessages(SearchMessagesRequest) returns (SearchMessagesResponse);
+
+message SearchMessagesRequest {
+  string room_id = 1;       // optional: limit to specific chat (empty = all user's chats)
+  string query = 2;         // search keyword (required, non-empty)
+  int32 limit = 3;          // max results (default 20, max 100)
+}
+
+message SearchMessagesResponse {
+  repeated SearchResult messages = 1;
+}
+
+message SearchResult {
+  string message_id = 1;
+  string room_id = 2;
+  string username = 3;      // sender
+  string preview = 4;       // text snippet (first 200 chars)
+  string created_at = 5;    // ISO 8601
+}
+```
+
+**Usage:**
+- Single chat search: set `room_id` to the chat ID
+- Cross-chat search: leave `room_id` empty (searches all chats where user is participant)
+- Results are ordered by `created_at` DESC (newest first)
 
 ---
 

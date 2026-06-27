@@ -309,71 +309,43 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 			// Still broadcast but don't save to DB
 			logger.Infof("Skipping join message from DB save: %s", msg.Text)
 		} else {
-			// For E2EE messages, client already encrypted the payload
-			// Don't double-encrypt with server key
-			var encryptedText []byte
-			if msg.IsE2Ee {
-				encryptedText = []byte(msg.E2EePayload)
-			} else {
-				var err error
-				encryptedText, err = encrypt(msg.Text)
-				if err != nil {
-					logger.Errorf("Failed to encrypt message: %v", err)
-					continue
+			// Save message to messages_v2
+			if connectedUserID != "" {
+				v2Row := &MessageRowV2{
+					ID:          msg.Id,
+					RoomID:      roomID,
+					SenderID:    connectedUserID,
+					ContentType: "text",
+					IsRead:      strings.HasPrefix(roomID, "favorites_"),
+					IsE2EE:      msg.IsE2Ee,
+					CreatedAt:   msg.CreatedAt.AsTime(),
 				}
-			}
-
-			// Save encrypted message to database with UUID
-			imageURL := msg.ImageUrl
-			imageURLsJSON := "[]"
-			if len(msg.ImageUrls) > 0 {
-				imageURLsBytes, _ := json.Marshal(msg.ImageUrls)
-				imageURLsJSON = string(imageURLsBytes)
-			}
-			voiceURL := msg.VoiceUrl
-			duration := msg.Duration
-			err = s.db.SaveMessage(msg.Id, msg.User, msg.UserId, encryptedText, msg.CreatedAt.AsTime(), msg.RepliedToMessageId, msg.RepliedToUser, msg.RepliedToText, roomID, imageURL, imageURLsJSON, voiceURL, duration, msg.IsE2Ee)
-			if err != nil {
-				logger.Errorf("Failed to save msg: %v", err)
-			} else {
-				logger.Infof("Msg saved: %s (%s)", msg.Id, roomID)
-
-				// Dual-write: also save to messages_v2 for gradual migration
-				if connectedUserID != "" {
-					v2Row := &MessageRowV2{
-						ID:          msg.Id,
-						RoomID:      roomID,
-						SenderID:    connectedUserID,
-						ContentType: "text",
-						IsRead:      strings.HasPrefix(roomID, "favorites_"),
-						IsE2EE:      msg.IsE2Ee,
-						CreatedAt:   msg.CreatedAt.AsTime(),
-					}
-					if msg.IsE2Ee {
-						v2Row.E2EEPayload = []byte(msg.E2EePayload)
-					} else {
-						v2Row.Text = msg.Text
-					}
-					if imageURL != "" {
-						v2Row.MediaURL = imageURL
-						v2Row.ContentType = "image"
-					} else if len(msg.ImageUrls) > 0 {
-						v2Row.MediaURL = msg.ImageUrls[0]
-						b, _ := json.Marshal(msg.ImageUrls)
-						v2Row.MediaURLs = string(b)
-						v2Row.ContentType = "image"
-					} else if voiceURL != "" {
-						v2Row.MediaURL = voiceURL
-						v2Row.Duration = duration
-						v2Row.ContentType = "voice"
-					}
-					if msg.RepliedToMessageId != "" {
-						v2Row.ReplyToID = sql.NullString{String: msg.RepliedToMessageId, Valid: true}
-						v2Row.ReplyPreview = sql.NullString{String: msg.RepliedToText, Valid: true}
-					}
-					if err := s.db.SaveMessageV2(v2Row); err != nil {
-						logger.Warnf("Dual-write v2 failed for %s: %v", msg.Id, err)
-					}
+				if msg.IsE2Ee {
+					v2Row.E2EEPayload = []byte(msg.E2EePayload)
+				} else {
+					v2Row.Text = msg.Text
+				}
+				if msg.ImageUrl != "" {
+					v2Row.MediaURL = msg.ImageUrl
+					v2Row.ContentType = "image"
+				} else if len(msg.ImageUrls) > 0 {
+					v2Row.MediaURL = msg.ImageUrls[0]
+					b, _ := json.Marshal(msg.ImageUrls)
+					v2Row.MediaURLs = string(b)
+					v2Row.ContentType = "image"
+				} else if msg.VoiceUrl != "" {
+					v2Row.MediaURL = msg.VoiceUrl
+					v2Row.Duration = msg.Duration
+					v2Row.ContentType = "voice"
+				}
+				if msg.RepliedToMessageId != "" {
+					v2Row.ReplyToID = sql.NullString{String: msg.RepliedToMessageId, Valid: true}
+					v2Row.ReplyPreview = sql.NullString{String: msg.RepliedToText, Valid: true}
+				}
+				if err := s.db.SaveMessageV2(v2Row); err != nil {
+					logger.Errorf("Failed to save v2 msg: %v", err)
+				} else {
+					logger.Infof("Msg saved: %s (%s)", msg.Id, roomID)
 				}
 			}
 		}
