@@ -1,14 +1,23 @@
 package main
 
+// server_messages.go — v1 RPC handlers (DEPRECATED)
+// These handlers are kept for backward compatibility with old clients.
+// Internally they read/write messages_v2 and convert to v1 proto format.
+// New clients should use GetHistoryV2, SendMessageV2, EditMessageV2, DeleteMessageV2, SetReactionV2.
+
 import (
 	"LavenderMessenger/gen"
 	"context"
-	"encoding/base64"
 	"encoding/json"
+	"strings"
 
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+// GetHistory returns messages for a room. DEPRECATED: use GetHistoryV2.
+// Reads from messages_v2 and converts to v1 proto format.
 func (s *server) GetHistory(_ context.Context, req *gen.GetHistoryRequest) (*gen.GetHistoryResponse, error) {
 	limit := int(req.Limit)
 	if limit <= 0 {
@@ -20,404 +29,310 @@ func (s *server) GetHistory(_ context.Context, req *gen.GetHistoryRequest) (*gen
 		return &gen.GetHistoryResponse{Messages: nil}, nil
 	}
 
-	rawMessages, err := s.db.GetMessages(limit, roomID)
+	// Read from messages_v2 using cursor-based pagination (latest messages)
+	rows, _, err := s.db.GetMessagesV2Cursor(roomID, limit, "")
 	if err != nil {
-		logger.Errorf("Error fetching history: %v", err)
-		return nil, err
+		logger.Errorf("GetHistory(v2): %v", err)
+		return nil, status.Errorf(codes.Internal, "failed to get history: %v", err)
 	}
 
-	// Check if this is a secret chat (for backward compat with old messages without is_e2ee flag)
-	chat, chatErr := s.db.GetChat(roomID)
-	isSecretChat := chatErr == nil && chat.IsSecret
-
 	var messages []*gen.Message
-	// Проходим в обратном порядке, чтобы сообщения были от старых к новым
-	for i := len(rawMessages) - 1; i >= 0; i-- {
-		m := rawMessages[i]
+	// rows are already in DESC order from cursor, reverse to get ASC for v1 compat
+	for i := len(rows) - 1; i >= 0; i-- {
+		m := &rows[i]
 
-		// Check if encrypted data is empty
-		if len(m.Encrypted) == 0 {
-			logger.Warnf("Warning: message %s has empty encrypted data", m.MessageID)
-			continue // Skip messages with no encrypted data
-		}
-
-		// For E2EE messages, skip server-side decryption — client handles it
-		// Use per-message flag if set, otherwise fall back to chat-level check for old messages
-		msgIsE2EE := m.IsE2EE || isSecretChat
-		var decryptedText string
-		if msgIsE2EE {
-			// Server cannot decrypt E2EE messages, client handles decryption
-			decryptedText = ""
-		} else {
-			// Расшифровываем текст из базы
-			var err error
-			decryptedText, err = decrypt(m.Encrypted)
-			if err != nil {
-				msgType := "text"
-				if m.VoiceURL != "" {
-					msgType = "voice"
-				} else if m.ImageURL != "" {
-					msgType = "image"
-				}
-				logger.Infof("Failed to decrypt %s message %s (User: %s, Room: %s): %v", msgType, m.MessageID, m.Username, m.RoomID, err)
-
-				// Show user-friendly error in the chat
-				decryptedText = "не удалось расшифровать"
+		// Resolve sender username
+		username := m.SenderName
+		if username == "" {
+			_ = s.db.QueryRow(`SELECT username FROM users WHERE id = $1::uuid`, m.SenderID).Scan(&username)
+			if username == "" {
+				username = m.SenderID
 			}
 		}
 
-		// Check if decrypted text is empty (skip ONLY if NO media and NOT E2EE)
-		if decryptedText == "" && m.ImageURL == "" && m.VoiceURL == "" && !msgIsE2EE {
-			logger.Warnf("Warning: message %s decrypted to empty string, skipping", m.MessageID)
-			continue
-		}
-
-		// Получаем реакции для сообщения
-		rawReactions, _ := s.db.GetReactionsForMessage(m.MessageID)
+		// Convert reactions JSONB to v1 format
 		var reactions []*gen.Reaction
-		for _, r := range rawReactions {
-			reactions = append(reactions, &gen.Reaction{
-				User:  r.Username,
-				Emoji: r.Emoji,
-			})
+		if m.Reactions != "" && m.Reactions != "{}" {
+			var reactionMap map[string]string
+			if json.Unmarshal([]byte(m.Reactions), &reactionMap) == nil {
+				for uid, emoji := range reactionMap {
+					reactions = append(reactions, &gen.Reaction{User: uid, Emoji: emoji})
+				}
+			}
 		}
 
-		// Parse image URLs from JSON
+		// Parse media URLs
 		var imageURLs []string
-		if m.ImageURLs != "" && m.ImageURLs != "[]" {
-			json.Unmarshal([]byte(m.ImageURLs), &imageURLs)
+		if m.MediaURLs != "" && m.MediaURLs != "[]" {
+			json.Unmarshal([]byte(m.MediaURLs), &imageURLs)
 		}
 
+		// Map content_type to v1 fields
+		text := m.Text
+		imageURL := ""
+		voiceURL := ""
+		duration := m.Duration
+
+		switch m.ContentType {
+		case "image":
+			imageURL = m.MediaURL
+			text = ""
+		case "voice":
+			voiceURL = m.MediaURL
+			text = ""
+		case "file":
+			imageURL = m.MediaURL
+			text = ""
+		case "deleted":
+			text = "[deleted]"
+		}
+
+		// Handle reply
+		repliedToID := ""
+		repliedToUser := ""
+		repliedToText := ""
+		if m.ReplyToID.Valid {
+			repliedToID = m.ReplyToID.String
+			repliedToText = m.ReplyPreview.String
+		}
+
+		// E2EE
 		e2eePayload := ""
-		if msgIsE2EE {
-			// Server stores raw bytes of the base64-encoded ciphertext.
-			// Base64-encode on read to guarantee valid UTF-8 for proto string field.
-			e2eePayload = base64.StdEncoding.EncodeToString(m.Encrypted)
+		if m.IsE2EE {
+			e2eePayload = string(m.E2EEPayload)
 		}
 
 		messages = append(messages, &gen.Message{
-			Id:                 m.MessageID,
-			User:               m.Username,
-			Text:               decryptedText,
+			Id:                 m.ID,
+			User:               username,
+			Text:               text,
 			CreatedAt:          timestamppb.New(m.CreatedAt),
 			Reactions:          reactions,
-			RepliedToMessageId: m.RepliedToMessageID,
-			RepliedToUser:      m.RepliedToUser,
-			RepliedToText:      m.RepliedToText,
+			RepliedToMessageId: repliedToID,
+			RepliedToUser:      repliedToUser,
+			RepliedToText:      repliedToText,
 			RoomId:             m.RoomID,
 			IsRead:             m.IsRead,
-			AvatarUrl:          m.AvatarURL,
-			ImageUrl:           m.ImageURL,
+			ImageUrl:           imageURL,
 			ImageUrls:          imageURLs,
 			Edited:             m.Edited,
-			VoiceUrl:           m.VoiceURL,
-			Duration:           m.Duration,
-			IsE2Ee:             msgIsE2EE,
-			E2EePayload:        e2eePayload,
-		})
-	}
-
-	return &gen.GetHistoryResponse{
-		Messages: messages,
-	}, nil
-}
-
-func (s *server) SetReaction(_ context.Context, req *gen.ReactionRequest) (*gen.ReactionResponse, error) {
-	// Получаем оригинальное сообщение для логирования текста
-	var msgText string = "..."
-	var isSecretMsg bool
-	m, err := s.db.GetMessageByUUID(req.MessageId)
-	if err == nil {
-		// Check if message is in a secret chat — don't try to decrypt E2EE messages
-		if m.RoomID != "" {
-			if chat, chatErr := s.db.GetChat(m.RoomID); chatErr == nil && chat.IsSecret {
-				isSecretMsg = true
-			}
-		}
-		if !isSecretMsg {
-			decryptedText, err := decrypt(m.Encrypted)
-			if err == nil {
-				if len(decryptedText) > 15 {
-					msgText = decryptedText[:15] + "..."
-				} else {
-					msgText = decryptedText
-				}
-			}
-		} else {
-			msgText = "[E2EE]"
-		}
-	}
-
-	logger.Infof("[Reaction] %s on %s (%s) by %s", req.Reaction.Emoji, req.MessageId, msgText, req.Reaction.User)
-
-	err = s.db.SetReaction(req.MessageId, req.Reaction.User, req.Reaction.Emoji)
-	if err != nil {
-		logger.Infof("Failed to set reaction: %v", err)
-		return &gen.ReactionResponse{Success: false}, err
-	}
-
-	// Broadcast the updated message to all clients in the room
-	// 1. Get the full message from DB
-	if m.MessageID != "" { // m is already fetched above
-		// 2. Decrypt text (skip for E2EE — client handles it)
-		decryptIsE2EE := m.IsE2EE
-		if !decryptIsE2EE && m.RoomID != "" {
-			if chat, chatErr := s.db.GetChat(m.RoomID); chatErr == nil && chat.IsSecret {
-				decryptIsE2EE = true
-			}
-		}
-		var decryptedText string
-		if decryptIsE2EE {
-			decryptedText = string(m.Encrypted)
-		} else {
-			decryptedText, _ = decrypt(m.Encrypted)
-		}
-
-		// 3. Get all reactions
-		rawReactions, _ := s.db.GetReactionsForMessage(m.MessageID)
-		var reactions []*gen.Reaction
-		for _, r := range rawReactions {
-			reactions = append(reactions, &gen.Reaction{
-				User:  r.Username,
-				Emoji: r.Emoji,
-			})
-		}
-
-		// Parse image URLs from JSON
-		var imageURLs []string
-		if m.ImageURLs != "" && m.ImageURLs != "[]" {
-			json.Unmarshal([]byte(m.ImageURLs), &imageURLs)
-		}
-
-		// 4. Create message object for broadcast
-		msg := &gen.Message{
-			Id:                 m.MessageID,
-			User:               m.Username,
-			Text:               decryptedText,
-			CreatedAt:          timestamppb.New(m.CreatedAt),
-			Reactions:          reactions,
-			RepliedToMessageId: m.RepliedToMessageID,
-			RepliedToUser:      m.RepliedToUser,
-			RepliedToText:      m.RepliedToText,
-			RoomId:             m.RoomID,
-			IsRead:             m.IsRead,
-			AvatarUrl:          m.AvatarURL,
-			ImageUrl:           m.ImageURL,
-			ImageUrls:          imageURLs,
-			Edited:             m.Edited,
-			VoiceUrl:           m.VoiceURL,
-			Duration:           m.Duration,
-		}
-
-		// 5. Broadcast to everyone in the room
-		logger.Infof("Broadcasting updated message %s with reactions to room %s", msg.Id, msg.RoomId)
-		s.hub.Broadcast(msg)
-	}
-
-	return &gen.ReactionResponse{Success: true}, nil
-}
-
-func (s *server) DeleteMessages(_ context.Context, req *gen.DeleteMessagesRequest) (*gen.DeleteMessagesResponse, error) {
-	var anyDeleted bool
-	for _, msg := range req.Messages {
-		if msg == nil {
-			continue
-		}
-
-		// Permission check: only sender or group admin or chat participant (for SYSTEM messages) can delete
-		canDelete := false
-		if msg.User == req.RequesterUsername {
-			canDelete = true
-		} else if msg.RoomId != "" {
-			chat, err := s.db.GetChat(msg.RoomId)
-			if err == nil {
-				// Group admin can delete any message
-				if chat.CreatorUsername == req.RequesterUsername {
-					canDelete = true
-				} else if msg.User == "SYSTEM" {
-					// Any participant can delete SYSTEM messages in the chat
-					var participants []string
-					if json.Unmarshal([]byte(chat.Participants), &participants) == nil {
-						for _, p := range participants {
-							if p == req.RequesterUsername {
-								canDelete = true
-								break
-							}
-						}
-					}
-				}
-			}
-		}
-
-		if !canDelete {
-			logger.Infof("Unauthorized delete attempt by %s for message in %s", req.RequesterUsername, msg.RoomId)
-			continue
-		}
-
-		// Try deleting by ID first if available
-		if msg.Id != "" {
-			// Get full message with image URLs before deletion
-			fullMsg, err := s.db.GetMessageByUUID(msg.Id)
-			if err != nil {
-				logger.Infof("Failed to get message %s: %v", msg.Id, err)
-			} else {
-				// Delete single image file if exists
-				if fullMsg.ImageURL != "" {
-					if err := DeleteImageFile(fullMsg.ImageURL); err != nil {
-						logger.Infof("Failed to delete image file for message %s: %v", msg.Id, err)
-						// Continue with message deletion even if image deletion fails
-					}
-				}
-
-				// Delete all gallery images if exists
-				if fullMsg.ImageURLs != "" && fullMsg.ImageURLs != "[]" {
-					var imageURLs []string
-					if err := json.Unmarshal([]byte(fullMsg.ImageURLs), &imageURLs); err == nil {
-						for _, url := range imageURLs {
-							if err := DeleteImageFile(url); err != nil {
-								logger.Infof("Failed to delete gallery image file for message %s: %v", msg.Id, err)
-								// Continue with message deletion even if image deletion fails
-							}
-						}
-					}
-				}
-			}
-
-			err = s.db.DeleteMessageByUUID(msg.Id)
-			if err == nil {
-				anyDeleted = true
-				logger.Infof("Deleted message by ID: %s", msg.Id)
-
-				// Increment chat list version for all participants to trigger cache refresh
-				_ = s.db.IncrementParticipantsChatListVersion(msg.RoomId)
-
-				// Broadcast deletion to the room
-				s.hub.Broadcast(&gen.Message{
-					User:   "SYSTEM",
-					Text:   "DELETE_MESSAGE:" + msg.Id,
-					RoomId: msg.RoomId,
-				})
-				continue
-			}
-		}
-
-		// Fallback to time/user match if ID fails or is missing
-		targetTime := msg.CreatedAt.AsTime()
-		candidates, err := s.db.GetMessagesByUserAndTime(msg.User, targetTime)
-		if err != nil {
-			logger.Infof("Failed to find message for deletion: %v", err)
-			continue
-		}
-
-		for _, candidate := range candidates {
-			decryptedText, err := decrypt(candidate.Encrypted)
-			if err != nil {
-				continue
-			}
-
-			if decryptedText == msg.Text {
-				// Delete single image file if candidate has one
-				if candidate.ImageURL != "" {
-					if err := DeleteImageFile(candidate.ImageURL); err != nil {
-						logger.Infof("Failed to delete image file for candidate message: %v", err)
-						// Continue with message deletion even if image deletion fails
-					}
-				}
-
-				// Delete all gallery images if candidate has them
-				if candidate.ImageURLs != "" && candidate.ImageURLs != "[]" {
-					var imageURLs []string
-					if err := json.Unmarshal([]byte(candidate.ImageURLs), &imageURLs); err == nil {
-						for _, url := range imageURLs {
-							if err := DeleteImageFile(url); err != nil {
-								logger.Infof("Failed to delete gallery image file for candidate message: %v", err)
-								// Continue with message deletion even if image deletion fails
-							}
-						}
-					}
-				}
-
-				err = s.db.DeleteMessageByID(candidate.ID)
-				if err == nil {
-					anyDeleted = true
-					logger.Infof("Deleted message by content from %s", msg.User)
-
-					// Increment chat list version for all participants to trigger cache refresh
-					_ = s.db.IncrementParticipantsChatListVersion(candidate.RoomID)
-
-					// Broadcast deletion to the room
-					s.hub.Broadcast(&gen.Message{
-						User:   "SYSTEM",
-						Text:   "DELETE_MESSAGE:" + candidate.MessageID,
-						RoomId: candidate.RoomID,
-					})
-				}
-				break
-			}
-		}
-	}
-
-	return &gen.DeleteMessagesResponse{Success: anyDeleted}, nil
-}
-
-func (s *server) EditMessage(_ context.Context, req *gen.EditMessageRequest) (*gen.EditMessageResponse, error) {
-	if req.MessageId == "" {
-		return &gen.EditMessageResponse{Success: false, Message: "Message ID is required"}, nil
-	}
-
-	err := s.db.UpdateMessageText(req.MessageId, req.Text)
-	if err != nil {
-		logger.Infof("Failed to edit message %s: %v", req.MessageId, err)
-		return &gen.EditMessageResponse{Success: false, Message: err.Error()}, nil
-	}
-
-	// Broadcast the updated message
-	m, err := s.db.GetMessageByUUID(req.MessageId)
-	if err == nil {
-		// Increment chat list version for all participants to trigger cache refresh
-		_ = s.db.IncrementParticipantsChatListVersion(m.RoomID)
-
-		decryptedText := ""
-		e2eePayload := ""
-		if m.IsE2EE {
-			e2eePayload = string(m.Encrypted)
-		} else {
-			decryptedText, _ = decrypt(m.Encrypted)
-		}
-		rawReactions, _ := s.db.GetReactionsForMessage(m.MessageID)
-		var reactions []*gen.Reaction
-		for _, r := range rawReactions {
-			reactions = append(reactions, &gen.Reaction{User: r.Username, Emoji: r.Emoji})
-		}
-
-		// Parse image URLs from JSON
-		var imageURLs []string
-		if m.ImageURLs != "" && m.ImageURLs != "[]" {
-			json.Unmarshal([]byte(m.ImageURLs), &imageURLs)
-		}
-
-		s.hub.Broadcast(&gen.Message{
-			Id:                 m.MessageID,
-			User:               m.Username,
-			Text:               decryptedText,
-			CreatedAt:          timestamppb.New(m.CreatedAt),
-			Reactions:          reactions,
-			RepliedToMessageId: m.RepliedToMessageID,
-			RepliedToUser:      m.RepliedToUser,
-			RepliedToText:      m.RepliedToText,
-			RoomId:             m.RoomID,
-			IsRead:             m.IsRead,
-			AvatarUrl:          m.AvatarURL,
-			ImageUrl:           m.ImageURL,
-			ImageUrls:          imageURLs,
-			Edited:             m.Edited,
-			VoiceUrl:           m.VoiceURL,
-			Duration:           m.Duration,
+			VoiceUrl:           voiceURL,
+			Duration:           duration,
 			IsE2Ee:             m.IsE2EE,
 			E2EePayload:        e2eePayload,
 		})
 	}
 
+	return &gen.GetHistoryResponse{Messages: messages}, nil
+}
+
+// SetReaction sets or removes a reaction. DEPRECATED: use SetReactionV2.
+// Uses messages_v2.reactions JSONB internally.
+func (s *server) SetReaction(_ context.Context, req *gen.ReactionRequest) (*gen.ReactionResponse, error) {
+	if req.MessageId == "" || req.Reaction == nil {
+		return &gen.ReactionResponse{Success: false}, nil
+	}
+
+	logger.Infof("[Reaction] %s on %s by %s", req.Reaction.Emoji, req.MessageId, req.Reaction.User)
+
+	// Use v2 internally
+	reactionsJSON, err := s.db.SetReactionV2(req.MessageId, req.Reaction.User, req.Reaction.Emoji)
+	if err != nil {
+		logger.Infof("Failed to set reaction: %v", err)
+		return &gen.ReactionResponse{Success: false}, err
+	}
+
+	// Get message for broadcast
+	msg, err := s.db.GetMessageV2ByUUID(req.MessageId)
+	if err == nil {
+		// Resolve username
+		username := msg.SenderName
+		if username == "" {
+			_ = s.db.QueryRow(`SELECT username FROM users WHERE id = $1::uuid`, msg.SenderID).Scan(&username)
+			if username == "" {
+				username = msg.SenderID
+			}
+		}
+
+		// Convert reactions to v1 format
+		var reactions []*gen.Reaction
+		if reactionsJSON != "" && reactionsJSON != "{}" {
+			var reactionMap map[string]string
+			if json.Unmarshal([]byte(reactionsJSON), &reactionMap) == nil {
+				for uid, emoji := range reactionMap {
+					reactions = append(reactions, &gen.Reaction{User: uid, Emoji: emoji})
+				}
+			}
+		}
+
+		// Map content
+		text := msg.Text
+		imageURL := ""
+		voiceURL := ""
+		switch msg.ContentType {
+		case "image":
+			imageURL = msg.MediaURL
+		case "voice":
+			voiceURL = msg.MediaURL
+		}
+
+		s.hub.Broadcast(&gen.Message{
+			Id:          msg.ID,
+			User:        username,
+			Text:        text,
+			CreatedAt:   timestamppb.New(msg.CreatedAt),
+			Reactions:   reactions,
+			RoomId:      msg.RoomID,
+			IsRead:      msg.IsRead,
+			ImageUrl:    imageURL,
+			VoiceUrl:    voiceURL,
+			Duration:    msg.Duration,
+			Edited:      msg.Edited,
+		})
+	}
+
+	return &gen.ReactionResponse{Success: true}, nil
+}
+
+// DeleteMessages deletes messages. DEPRECATED: use DeleteMessageV2.
+// Uses soft delete in messages_v2 internally.
+func (s *server) DeleteMessages(_ context.Context, req *gen.DeleteMessagesRequest) (*gen.DeleteMessagesResponse, error) {
+	var messageIDs []string
+
+	for _, msg := range req.Messages {
+		if msg == nil {
+			continue
+		}
+
+		// Try to find by ID first
+		if msg.Id != "" {
+			// Verify the message exists in v2
+			v2Msg, err := s.db.GetMessageV2ByUUID(msg.Id)
+			if err == nil {
+				// Permission check
+				canDelete := false
+				if v2Msg.SenderID == req.RequesterUsername {
+					canDelete = true
+				} else if msg.RoomId != "" {
+					chat, chatErr := s.db.GetChat(msg.RoomId)
+					if chatErr == nil && chat.CreatorUsername == req.RequesterUsername {
+						canDelete = true
+					}
+				}
+				if canDelete {
+					messageIDs = append(messageIDs, msg.Id)
+				}
+			}
+		}
+	}
+
+	if len(messageIDs) == 0 {
+		return &gen.DeleteMessagesResponse{Success: false}, nil
+	}
+
+	// Soft delete via v2
+	if err := s.db.DeleteMessageV2(messageIDs); err != nil {
+		return &gen.DeleteMessagesResponse{Success: false}, nil
+	}
+
+	// Broadcast deletions
+	for _, id := range messageIDs {
+		v2Msg, err := s.db.GetMessageV2ByUUID(id)
+		if err == nil {
+			_ = s.db.IncrementParticipantsChatListVersion(v2Msg.RoomID)
+			s.hub.Broadcast(&gen.Message{
+				User:   "SYSTEM",
+				Text:   "DELETE_MESSAGE:" + id,
+				RoomId: v2Msg.RoomID,
+			})
+		}
+	}
+
+	return &gen.DeleteMessagesResponse{Success: true}, nil
+}
+
+// EditMessage edits a message. DEPRECATED: use EditMessageV2.
+// Uses messages_v2.text internally.
+func (s *server) EditMessage(_ context.Context, req *gen.EditMessageRequest) (*gen.EditMessageResponse, error) {
+	if req.MessageId == "" {
+		return &gen.EditMessageResponse{Success: false, Message: "Message ID is required"}, nil
+	}
+
+	// Use v2 internally
+	if err := s.db.EditMessageV2(req.MessageId, req.Text); err != nil {
+		logger.Infof("Failed to edit message %s: %v", req.MessageId, err)
+		return &gen.EditMessageResponse{Success: false, Message: err.Error()}, nil
+	}
+
+	// Get updated message for broadcast
+	msg, err := s.db.GetMessageV2ByUUID(req.MessageId)
+	if err == nil {
+		_ = s.db.IncrementParticipantsChatListVersion(msg.RoomID)
+
+		// Resolve username
+		username := msg.SenderName
+		if username == "" {
+			_ = s.db.QueryRow(`SELECT username FROM users WHERE id = $1::uuid`, msg.SenderID).Scan(&username)
+			if username == "" {
+				username = msg.SenderID
+			}
+		}
+
+		// Convert reactions
+		var reactions []*gen.Reaction
+		if msg.Reactions != "" && msg.Reactions != "{}" {
+			var reactionMap map[string]string
+			if json.Unmarshal([]byte(msg.Reactions), &reactionMap) == nil {
+				for uid, emoji := range reactionMap {
+					reactions = append(reactions, &gen.Reaction{User: uid, Emoji: emoji})
+				}
+			}
+		}
+
+		// Map content
+		text := msg.Text
+		imageURL := ""
+		voiceURL := ""
+		switch msg.ContentType {
+		case "image":
+			imageURL = msg.MediaURL
+		case "voice":
+			voiceURL = msg.MediaURL
+		}
+
+		// Handle reply
+		repliedToID := ""
+		repliedToText := ""
+		if msg.ReplyToID.Valid {
+			repliedToID = msg.ReplyToID.String
+			repliedToText = msg.ReplyPreview.String
+		}
+
+		s.hub.Broadcast(&gen.Message{
+			Id:                 msg.ID,
+			User:               username,
+			Text:               text,
+			CreatedAt:          timestamppb.New(msg.CreatedAt),
+			Reactions:          reactions,
+			RepliedToMessageId: repliedToID,
+			RepliedToText:      repliedToText,
+			RoomId:             msg.RoomID,
+			IsRead:             msg.IsRead,
+			ImageUrl:           imageURL,
+			Edited:             true,
+			VoiceUrl:           voiceURL,
+			Duration:           msg.Duration,
+		})
+	}
+
 	logger.Infof("Edited message %s", req.MessageId)
 	return &gen.EditMessageResponse{Success: true, Message: "Message edited successfully"}, nil
+}
+
+// trimString trims a string to maxLen characters.
+func trimString(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	return strings.TrimSpace(s[:maxLen]) + "..."
 }

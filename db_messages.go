@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
 	"strings"
 	"time"
 )
@@ -101,17 +102,24 @@ func (db *DB) RemoveReactionByUserID(mid, userID string) error {
 	return err
 }
 
+// GetReactionsForMessage reads reactions from messages_v2.reactions JSONB.
+// Deprecated: reactions are now stored inline in messages_v2.
 func (db *DB) GetReactionsForMessage(mid string) ([]struct{ Username, Emoji string }, error) {
-	rows, err := db.Query(`SELECT username, emoji FROM reactions WHERE message_id=$1`, mid)
+	var reactionsJSON string
+	err := db.QueryRow(`SELECT reactions FROM messages_v2 WHERE id = $1`, mid).Scan(&reactionsJSON)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	if reactionsJSON == "" || reactionsJSON == "{}" {
+		return nil, nil
+	}
+	var reactionMap map[string]string
+	if err := json.Unmarshal([]byte(reactionsJSON), &reactionMap); err != nil {
+		return nil, err
+	}
 	var res []struct{ Username, Emoji string }
-	for rows.Next() {
-		var r struct{ Username, Emoji string }
-		rows.Scan(&r.Username, &r.Emoji)
-		res = append(res, r)
+	for uid, emoji := range reactionMap {
+		res = append(res, struct{ Username, Emoji string }{Username: uid, Emoji: emoji})
 	}
 	return res, nil
 }
@@ -171,8 +179,9 @@ func (db *DB) GetMessageImageURL(mid string) (string, error) {
 	return u, nil
 }
 
+// GetChatMessagesImageURLs returns image URLs for a room. Reads from messages_v2.
 func (db *DB) GetChatMessagesImageURLs(room string) ([]string, error) {
-	rows, _ := db.Query(`SELECT image_url FROM messages WHERE room_id=$1 AND image_url!=''`, room)
+	rows, _ := db.Query(`SELECT media_url FROM messages_v2 WHERE room_id=$1 AND content_type='image' AND media_url!=''`, room)
 	var res []string
 	if rows != nil {
 		defer rows.Close()

@@ -159,8 +159,11 @@ type ChatServiceClient interface {
 	GetClients(ctx context.Context, in *ClientListRequest, opts ...grpc.CallOption) (*ClientListResponse, error)
 	GetAllUsers(ctx context.Context, in *GetAllUsersRequest, opts ...grpc.CallOption) (*GetAllUsersResponse, error)
 	GetAllChats(ctx context.Context, in *GetAllChatsRequest, opts ...grpc.CallOption) (*GetAllChatsResponse, error)
+	// DEPRECATED: use GetHistoryV2 instead
 	GetHistory(ctx context.Context, in *GetHistoryRequest, opts ...grpc.CallOption) (*GetHistoryResponse, error)
+	// DEPRECATED: use SetReactionV2 instead
 	SetReaction(ctx context.Context, in *ReactionRequest, opts ...grpc.CallOption) (*ReactionResponse, error)
+	// DEPRECATED: use DeleteMessageV2 instead
 	DeleteMessages(ctx context.Context, in *DeleteMessagesRequest, opts ...grpc.CallOption) (*DeleteMessagesResponse, error)
 	RegisterToken(ctx context.Context, in *TokenRequest, opts ...grpc.CallOption) (*TokenResponse, error)
 	GetChats(ctx context.Context, in *GetChatsRequest, opts ...grpc.CallOption) (*GetChatsResponse, error)
@@ -178,6 +181,7 @@ type ChatServiceClient interface {
 	GetUserAvatar(ctx context.Context, in *GetUserAvatarRequest, opts ...grpc.CallOption) (*GetUserAvatarResponse, error)
 	AddParticipant(ctx context.Context, in *AddParticipantRequest, opts ...grpc.CallOption) (*AddParticipantResponse, error)
 	RemoveParticipant(ctx context.Context, in *RemoveParticipantRequest, opts ...grpc.CallOption) (*RemoveParticipantResponse, error)
+	// DEPRECATED: use EditMessageV2 instead
 	EditMessage(ctx context.Context, in *EditMessageRequest, opts ...grpc.CallOption) (*EditMessageResponse, error)
 	UpdateChatName(ctx context.Context, in *UpdateChatNameRequest, opts ...grpc.CallOption) (*UpdateChatNameResponse, error)
 	UpdateChatAvatar(ctx context.Context, in *UpdateChatAvatarRequest, opts ...grpc.CallOption) (*UpdateChatAvatarResponse, error)
@@ -1674,8 +1678,11 @@ type ChatServiceServer interface {
 	GetClients(context.Context, *ClientListRequest) (*ClientListResponse, error)
 	GetAllUsers(context.Context, *GetAllUsersRequest) (*GetAllUsersResponse, error)
 	GetAllChats(context.Context, *GetAllChatsRequest) (*GetAllChatsResponse, error)
+	// DEPRECATED: use GetHistoryV2 instead
 	GetHistory(context.Context, *GetHistoryRequest) (*GetHistoryResponse, error)
+	// DEPRECATED: use SetReactionV2 instead
 	SetReaction(context.Context, *ReactionRequest) (*ReactionResponse, error)
+	// DEPRECATED: use DeleteMessageV2 instead
 	DeleteMessages(context.Context, *DeleteMessagesRequest) (*DeleteMessagesResponse, error)
 	RegisterToken(context.Context, *TokenRequest) (*TokenResponse, error)
 	GetChats(context.Context, *GetChatsRequest) (*GetChatsResponse, error)
@@ -1693,6 +1700,7 @@ type ChatServiceServer interface {
 	GetUserAvatar(context.Context, *GetUserAvatarRequest) (*GetUserAvatarResponse, error)
 	AddParticipant(context.Context, *AddParticipantRequest) (*AddParticipantResponse, error)
 	RemoveParticipant(context.Context, *RemoveParticipantRequest) (*RemoveParticipantResponse, error)
+	// DEPRECATED: use EditMessageV2 instead
 	EditMessage(context.Context, *EditMessageRequest) (*EditMessageResponse, error)
 	UpdateChatName(context.Context, *UpdateChatNameRequest) (*UpdateChatNameResponse, error)
 	UpdateChatAvatar(context.Context, *UpdateChatAvatarRequest) (*UpdateChatAvatarResponse, error)

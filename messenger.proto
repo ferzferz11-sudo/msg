@@ -656,8 +656,11 @@ service ChatService {
   rpc GetClients(ClientListRequest) returns (ClientListResponse);
   rpc GetAllUsers(GetAllUsersRequest) returns (GetAllUsersResponse);
   rpc GetAllChats(GetAllChatsRequest) returns (GetAllChatsResponse);
+  // DEPRECATED: use GetHistoryV2 instead
   rpc GetHistory(GetHistoryRequest) returns (GetHistoryResponse);
+  // DEPRECATED: use SetReactionV2 instead
   rpc SetReaction(ReactionRequest) returns (ReactionResponse);
+  // DEPRECATED: use DeleteMessageV2 instead
   rpc DeleteMessages(DeleteMessagesRequest) returns (DeleteMessagesResponse);
   rpc RegisterToken(TokenRequest) returns (TokenResponse);
   rpc GetChats(GetChatsRequest) returns (GetChatsResponse);
@@ -675,6 +678,7 @@ service ChatService {
   rpc GetUserAvatar(GetUserAvatarRequest) returns (GetUserAvatarResponse);
   rpc AddParticipant(AddParticipantRequest) returns (AddParticipantResponse);
   rpc RemoveParticipant(RemoveParticipantRequest) returns (RemoveParticipantResponse);
+  // DEPRECATED: use EditMessageV2 instead
   rpc EditMessage(EditMessageRequest) returns (EditMessageResponse);
   rpc UpdateChatName(UpdateChatNameRequest) returns (UpdateChatNameResponse);
   rpc UpdateChatAvatar(UpdateChatAvatarRequest) returns (UpdateChatAvatarResponse);

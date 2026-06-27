@@ -1,5 +1,15 @@
 # Лава — Server Changelog
 
+## [1.3.0.26] - 2026-06-27
+
+### Backward Compatibility
+- **v1 RPCs rewritten to use v2 internally** — GetHistory, SetReaction, DeleteMessages, EditMessage now read/write messages_v2 and convert to v1 proto format. Old clients continue to work.
+- **v1 RPCs marked as DEPRECATED** in proto — new clients should use v2 equivalents.
+- **GetReactionsForMessage** reads from messages_v2.reactions JSONB instead of reactions table.
+- **GetChatMessagesImageURLs** reads from messages_v2 instead of messages.
+
+---
+
 ## [1.3.0.25] - 2026-06-27
 
 ### Migration: Messages v1 → v2 (complete)
