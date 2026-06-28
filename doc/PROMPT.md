@@ -1,7 +1,7 @@
 # Промпт для серверных сессий — v1.3.0.31
 
 **Дата:** 2026-06-28 | **Ветка:** feat/1.3.0.x
-**Статус:** GetAdminUserList RPC, BroadcastGlobalV2 for online status, reaction broadcast fix for ChatV2.
+**Статус:** v1.3.0.31 задеплоен. Все фичи работают.
 
 ---
 
@@ -11,6 +11,7 @@
 |---|--------|--------|
 | **Сервер prod** | v1.3.0.31 | ✅ Работает на порту 50051 |
 | **Сервер dev** | v1.3.0.31 | ✅ Работает на порту 50052 |
+| **Web клиент** | v0.1.9.0 | ✅ https://13.140.25.249/web/ |
 
 **Android:** `/root/msg.client.android` — документация там, сборка ТОЛЬКО локально.
 
@@ -21,8 +22,8 @@
 ### Файлы сервера
 ```
 main.go                    — Entry point, gRPC, GracefulStop
-server.go                  — Server struct, helpers
-hub.go                     — Connection management
+server.go                  — Server struct, helpers (v1.3.0.31)
+hub.go                     — Connection management + BroadcastV2Reaction
 
 === AI Services v2 ===
 ai_v2.go                   — AI Gateway: sessions, streaming, RAG
@@ -41,7 +42,7 @@ db_ai_v2.go, db_auth_devices.go, db_hermes.go
 === Handlers ===
 server_chat.go             — Chat/Typing/CallSession streams + ChatV2 stream
 server_chatlist_v2.go      — GetChatsV2, Pin/Unpin, Search, Archive
-server_messages.go         — History, reactions, editing (v1)
+server_messages.go         — History, reactions, editing (v1 deprecated)
 server_messages_v2.go      — GetHistoryV2, SendMessageV2, Edit/Delete/ReactionV2, SearchMessages
 server_push.go             — FCM push, call push
 server_contacts.go, server_themes.go, server_drafts.go, server_muted.go, server_favorites.go
@@ -60,7 +61,7 @@ secret_chat.go, bot_commands.go, http_server.go, email.go, crypto.go
 5. DB миграции: `IF NOT EXISTS`, NEVER `DROP`
 6. Коммитить после каждого изменения
 7. **Актуальный код сервера всегда доступен локально** — перед работой всегда читай файлы из `/Users/paveld/LavenderMessenger-server/`, НЕ полагайся на кеш или предыдущие версии
-7. **Стабильность > фичи** — деплоим на prod, ошибки критичны
+8. **Стабильность > фичи** — деплоим на prod, ошибки критичны
 
 ---
 
