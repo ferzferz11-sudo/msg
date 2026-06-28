@@ -1,5 +1,26 @@
 # Лава — Server Changelog
 
+## [1.3.0.31] - 2026-06-28
+
+### Features
+- **GetAdminUserList RPC** — new admin panel endpoint with extended user info: last message, chat count, real-time online status, client version. Cursor-based pagination, search by username/email, sorting by last_message/last_seen/username. Admin-only (is_super_admin check).
+- **AdminUserInfo proto** — new message type with 13 fields: user_id, username, avatar, email, is_super_admin, last_client_version, last_seen_at, is_online, last_message_text/time/username, chat_count.
+
+### Bug Fixes
+- **Reaction broadcast for ChatV2 stream** — `SetReactionV2` now sends `REACTION_V2` system message to both v1 (Chat) and v2 (ChatV2) clients via new `BroadcastV2Reaction` method. Previously only v1 clients received reaction updates.
+- **Online status for ChatV2 clients** — `broadcastOnlineUsers` now sends `ONLINE_USERS_UPDATE` to both v1 and v2 clients via `BroadcastGlobalV2`. Android clients on ChatV2 stream now receive online status updates.
+- **Shutdown broadcast for ChatV2** — `BroadcastShutdown` now sends `SERVER_SHUTTINGDOWN` to v2 clients as well.
+
+### Improvements
+- **Hub.GetOnlineUserSet** — new method returns `map[string]bool` of online user IDs for O(1) lookup (used by admin panel for real-time online status).
+- **Hub.BroadcastGlobalV2** — new method sends system messages to all connected ChatV2 clients (used for online status, shutdown, reactions).
+
+### Documentation
+- Updated CLIENT_INTEGRATION.md with GetAdminUserList, ChatV2System types, reaction broadcast fix
+- Cleaned up prompt files (PROMPT_ADMIN_USER_LIST.md, PROMPT_REACTIONS_FIX.md, PROMPT_v1.3.1.06.md)
+
+---
+
 ## [1.3.0.28] - 2026-06-27
 
 ### Security Fixes

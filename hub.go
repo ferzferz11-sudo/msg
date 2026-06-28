@@ -492,6 +492,29 @@ func (h *Hub) BroadcastGlobal(msg *gen.Message) {
 	}
 }
 
+// BroadcastGlobalV2 sends a system message to all connected ChatV2 clients.
+func (h *Hub) BroadcastGlobalV2(systemType, systemMessage string) {
+	h.mu.RLock()
+	var targets []gen.ChatService_ChatV2Server
+	for stream := range h.v2Clients {
+		targets = append(targets, stream)
+	}
+	h.mu.RUnlock()
+
+	wrappedMsg := &gen.ChatV2Message{
+		Payload: &gen.ChatV2Message_System{
+			System: &gen.ChatV2System{
+				Type:    systemType,
+				Message: systemMessage,
+			},
+		},
+	}
+
+	for _, stream := range targets {
+		_ = stream.Send(wrappedMsg)
+	}
+}
+
 // BroadcastShutdown sends SERVER_SHUTTINGDOWN to all connected clients
 func (h *Hub) BroadcastShutdown() {
 	msg := &gen.Message{
@@ -500,6 +523,7 @@ func (h *Hub) BroadcastShutdown() {
 		RoomId: "",
 	}
 	h.BroadcastGlobal(msg)
+	h.BroadcastGlobalV2("SERVER_SHUTTINGDOWN", "")
 }
 
 // Broadcast sends a message to all connected clients in the same room

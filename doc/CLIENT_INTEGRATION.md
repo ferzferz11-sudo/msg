@@ -1,6 +1,6 @@
 # Lavender Messenger — Client Integration Guide
 
-**Server:** v1.3.0.28 | **Protocol:** gRPC + Protocol Buffers | **Date:** 2026-06-27
+**Server:** v1.3.0.31 | **Protocol:** gRPC + Protocol Buffers | **Date:** 2026-06-28
 
 This document covers everything a client needs to integrate with the Lavender Messenger server. Platform-agnostic — applies to Android, iOS, Web, Desktop, or any gRPC-capable client.
 
@@ -239,16 +239,24 @@ Message {
 }
 ```
 
-### System Messages
+### System Messages (ChatV2)
 
-The server sends system messages with `user = "SYSTEM"`:
+ChatV2 stream receives system messages via `ChatV2System`:
 
-| Text | Meaning |
-|------|---------|
-| `SERVER_SHUTTINGDOWN` | Server is about to restart (graceful shutdown) |
-| `SERVER_INFO:<version>` | Sent after successful auth |
-| `FORCE_DISCONNECT:<username>` | User was deleted or kicked |
-| `AUTH_FAILED` | Authentication failed |
+| Type | Message | Meaning |
+|------|---------|---------|
+| `AUTH_FAILED` | `"invalid token"` | Authentication failed |
+| `AUTH_REQUIRED` | `"send jwt_token first"` | No auth token provided |
+| `SERVER_SHUTTINGDOWN` | `""` | Server is about to restart |
+| `ONLINE_USERS_UPDATE` | `["uuid1","uuid2",...]` | JSON array of online user IDs |
+| `REACTION_V2` | `"messageId\|reactionsJSON"` | Reaction update (pipe-separated) |
+
+**REACTION_V2 parsing:**
+```kotlin
+val parts = systemMessage.split("|", limit = 2)
+val messageId = parts[0]
+val reactions = JSON.parseObject(parts[1]) // {"userId":"emoji",...}
+```
 
 ### Typing Indicator
 
@@ -483,7 +491,7 @@ message ChatV2Typing {
 }
 
 message ChatV2System {
-  string type = 1;    // "AUTH_FAILED", "AUTH_REQUIRED", "SERVER_SHUTTINGDOWN"
+  string type = 1;    // "AUTH_FAILED", "AUTH_REQUIRED", "SERVER_SHUTTINGDOWN", "ONLINE_USERS_UPDATE", "REACTION_V2"
   string message = 2;
 }
 ```
@@ -761,6 +769,48 @@ message UserInfo {
   bool is_super_admin = 7;
 }
 ```
+
+### GetAdminUserList (Admin Panel)
+
+Extended user list with last message, chat count, and real-time online status. Admin-only (requires `is_super_admin`).
+
+```protobuf
+rpc GetAdminUserList(GetAdminUserListRequest) returns (GetAdminUserListResponse);
+
+message GetAdminUserListRequest {
+  string query = 1;       // search by username/email (empty = all)
+  string cursor = 2;      // cursor-based pagination (from previous response)
+  int32 limit = 3;        // max results (default 50, max 200)
+  string sort_by = 4;     // "last_message" (default), "last_seen", "username"
+}
+
+message GetAdminUserListResponse {
+  repeated AdminUserInfo users = 1;
+  string next_cursor = 2;  // pass as cursor in next request
+  bool has_more = 3;
+  Timestamp server_time = 4;
+}
+
+message AdminUserInfo {
+  string user_id = 1;
+  string username = 2;
+  string avatar_url = 3;
+  string full_avatar_url = 4;
+  string email = 5;
+  bool is_super_admin = 6;
+  string last_client_version = 7;
+  Timestamp last_seen_at = 8;
+  bool is_online = 9;               // real-time from hub
+  string last_message_text = 10;    // truncated to 100 chars
+  Timestamp last_message_time = 11;
+  string last_message_username = 12;
+  int32 chat_count = 13;
+}
+```
+
+**Pagination:** Cursor-based. First request: `cursor = ""`. Response includes `next_cursor`. Stop when `has_more = false`.
+
+**Online status:** `is_online` is real-time from the hub (WebSocket/gRPC connection status), not from `last_seen_at` (which may be stale).
 
 ### Other User RPCs
 

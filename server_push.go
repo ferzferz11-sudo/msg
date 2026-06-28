@@ -563,6 +563,8 @@ func (s *server) sendCallPushNotification(receiverId, senderName, callId string)
 func (s *server) broadcastOnlineUsers() {
 	users := s.hub.GetOnlineUsers()
 	usersJson, _ := json.Marshal(users)
+
+	// Send to v1 clients (ChatStream)
 	msg := &gen.Message{
 		User:      "SYSTEM",
 		Text:      "ONLINE_USERS_UPDATE:" + string(usersJson),
@@ -570,6 +572,9 @@ func (s *server) broadcastOnlineUsers() {
 		CreatedAt: timestamppb.Now(),
 	}
 	s.hub.BroadcastGlobal(msg)
+
+	// Send to v2 clients (ChatV2)
+	s.hub.BroadcastGlobalV2("ONLINE_USERS_UPDATE", string(usersJson))
 }
 
 func durationPtr(d time.Duration) *time.Duration {

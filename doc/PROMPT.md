@@ -1,7 +1,7 @@
-# Промпт для серверных сессий — v1.3.0.29
+# Промпт для серверных сессий — v1.3.0.31
 
-**Дата:** 2026-06-27 | **Ветка:** feat/1.3.0.x
-**Статус:** v1 messages tables dropped. All operations use messages_v2. v1 RPCs deprecated but functional.
+**Дата:** 2026-06-28 | **Ветка:** feat/1.3.0.x
+**Статус:** GetAdminUserList RPC, reaction broadcast fix for ChatV2, online status fix for v2 clients.
 
 ---
 
