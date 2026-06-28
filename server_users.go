@@ -236,3 +236,51 @@ func decodeAdminCursor(cursor string) (time.Time, string, bool) {
 	}
 	return c.LastMessageTime, c.Username, true
 }
+
+func (s *server) GetAdminUserSessions(ctx context.Context, req *gen.GetAdminUserSessionsRequest) (*gen.GetAdminUserSessionsResponse, error) {
+	userID := GetUserID(ctx)
+	if userID == "" {
+		return nil, status.Error(codes.Unauthenticated, "unauthorized")
+	}
+	if !s.db.IsSuperAdmin(userID) {
+		return nil, status.Error(codes.PermissionDenied, "admin access required")
+	}
+
+	targetUserID := req.GetUserId()
+	if targetUserID == "" {
+		return nil, status.Error(codes.InvalidArgument, "user_id is required")
+	}
+
+	devices, err := s.db.GetUserActiveSessions(targetUserID)
+	if err != nil {
+		logger.Errorf("GetAdminUserSessions DB error: %v", err)
+		return nil, status.Error(codes.Internal, "failed to fetch sessions")
+	}
+
+	// Enrich with online status from hub
+	onlineSet := s.hub.GetOnlineUserSet()
+
+	var sessions []*gen.AdminUserSession
+	for _, d := range devices {
+		var lastSeen *timestamppb.Timestamp
+		if !d.LastSeenAt.IsZero() {
+			lastSeen = timestamppb.New(d.LastSeenAt)
+		}
+
+		isOnline := onlineSet[targetUserID]
+
+		sessions = append(sessions, &gen.AdminUserSession{
+			DeviceId:      d.DeviceID,
+			DeviceName:    d.DeviceName,
+			DeviceType:    d.DeviceType,
+			ClientVersion: d.ClientVersion,
+			IpAddress:     d.IPAddress,
+			LastSeenAt:    lastSeen,
+			IsOnline:      isOnline,
+		})
+	}
+
+	return &gen.GetAdminUserSessionsResponse{
+		Sessions: sessions,
+	}, nil
+}

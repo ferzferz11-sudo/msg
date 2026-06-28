@@ -819,6 +819,7 @@ service ChatService {
 
   // === Admin User List ===
   rpc GetAdminUserList(GetAdminUserListRequest) returns (GetAdminUserListResponse);
+  rpc GetAdminUserSessions(GetAdminUserSessionsRequest) returns (GetAdminUserSessionsResponse);
 }
 
 // ======= AI Pipeline Messages =======
@@ -2113,6 +2114,26 @@ message GetAdminUserListResponse {
   string next_cursor = 2;
   bool has_more = 3;
   google.protobuf.Timestamp server_time = 4;
+}
+
+// ======= Admin User Sessions Messages =======
+
+message AdminUserSession {
+  string device_id = 1;
+  string device_name = 2;
+  string device_type = 3;
+  string client_version = 4;
+  string ip_address = 5;
+  google.protobuf.Timestamp last_seen_at = 6;
+  bool is_online = 7;
+}
+
+message GetAdminUserSessionsRequest {
+  string user_id = 1;
+}
+
+message GetAdminUserSessionsResponse {
+  repeated AdminUserSession sessions = 1;
 }
 
 service ProfileService {

@@ -148,6 +148,7 @@ const (
 	ChatService_GetAIV2ChatHistory_FullMethodName     = "/messenger.ChatService/GetAIV2ChatHistory"
 	ChatService_ListAIV2Chats_FullMethodName          = "/messenger.ChatService/ListAIV2Chats"
 	ChatService_GetAdminUserList_FullMethodName       = "/messenger.ChatService/GetAdminUserList"
+	ChatService_GetAdminUserSessions_FullMethodName   = "/messenger.ChatService/GetAdminUserSessions"
 )
 
 // ChatServiceClient is the client API for ChatService service.
@@ -306,6 +307,7 @@ type ChatServiceClient interface {
 	ListAIV2Chats(ctx context.Context, in *ListAIV2ChatsRequest, opts ...grpc.CallOption) (*ListAIV2ChatsResponse, error)
 	// === Admin User List ===
 	GetAdminUserList(ctx context.Context, in *GetAdminUserListRequest, opts ...grpc.CallOption) (*GetAdminUserListResponse, error)
+	GetAdminUserSessions(ctx context.Context, in *GetAdminUserSessionsRequest, opts ...grpc.CallOption) (*GetAdminUserSessionsResponse, error)
 }
 
 type chatServiceClient struct {
@@ -1681,6 +1683,16 @@ func (c *chatServiceClient) GetAdminUserList(ctx context.Context, in *GetAdminUs
 	return out, nil
 }
 
+func (c *chatServiceClient) GetAdminUserSessions(ctx context.Context, in *GetAdminUserSessionsRequest, opts ...grpc.CallOption) (*GetAdminUserSessionsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetAdminUserSessionsResponse)
+	err := c.cc.Invoke(ctx, ChatService_GetAdminUserSessions_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ChatServiceServer is the server API for ChatService service.
 // All implementations must embed UnimplementedChatServiceServer
 // for forward compatibility.
@@ -1837,6 +1849,7 @@ type ChatServiceServer interface {
 	ListAIV2Chats(context.Context, *ListAIV2ChatsRequest) (*ListAIV2ChatsResponse, error)
 	// === Admin User List ===
 	GetAdminUserList(context.Context, *GetAdminUserListRequest) (*GetAdminUserListResponse, error)
+	GetAdminUserSessions(context.Context, *GetAdminUserSessionsRequest) (*GetAdminUserSessionsResponse, error)
 	mustEmbedUnimplementedChatServiceServer()
 }
 
@@ -2233,6 +2246,9 @@ func (UnimplementedChatServiceServer) ListAIV2Chats(context.Context, *ListAIV2Ch
 }
 func (UnimplementedChatServiceServer) GetAdminUserList(context.Context, *GetAdminUserListRequest) (*GetAdminUserListResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetAdminUserList not implemented")
+}
+func (UnimplementedChatServiceServer) GetAdminUserSessions(context.Context, *GetAdminUserSessionsRequest) (*GetAdminUserSessionsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetAdminUserSessions not implemented")
 }
 func (UnimplementedChatServiceServer) mustEmbedUnimplementedChatServiceServer() {}
 func (UnimplementedChatServiceServer) testEmbeddedByValue()                     {}
@@ -4484,6 +4500,24 @@ func _ChatService_GetAdminUserList_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ChatService_GetAdminUserSessions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetAdminUserSessionsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).GetAdminUserSessions(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_GetAdminUserSessions_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).GetAdminUserSessions(ctx, req.(*GetAdminUserSessionsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ChatService_ServiceDesc is the grpc.ServiceDesc for ChatService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -4962,6 +4996,10 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetAdminUserList",
 			Handler:    _ChatService_GetAdminUserList_Handler,
+		},
+		{
+			MethodName: "GetAdminUserSessions",
+			Handler:    _ChatService_GetAdminUserSessions_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

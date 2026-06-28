@@ -1,5 +1,17 @@
 # Лава — Server Changelog
 
+## [1.3.0.34] - 2026-06-28
+
+### Features
+- **GetAdminUserSessions RPC** — new admin panel endpoint to view all active device sessions for a user. Returns device_id, device_name, device_type, client_version, ip_address, last_seen_at, is_online. Sessions from last 24 hours.
+- **AdminUserSession proto** — new message type with 7 fields for device session info.
+
+### Improvements
+- **DB.GetUserActiveSessions** — new method queries `user_devices` for sessions seen in last 24 hours.
+- **Hub enrichment** — sessions are enriched with real-time online status from hub.
+
+---
+
 ## [1.3.0.33] - 2026-06-28
 
 ### Bug Fixes
