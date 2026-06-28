@@ -1,5 +1,17 @@
 # Лава — Server Changelog
 
+## [1.3.0.32] - 2026-06-28
+
+### Cleanup
+- **Deleted messages cleanup** — removed 8 orphaned `content_type='deleted'` records from `messages_v2`. Server now fully deletes records instead of marking them.
+- **Deleted messages doc** — added `CLIENT_DELETE_MESSAGE_v2.md` with client instructions for delete behavior.
+
+### Documentation
+- Added Hermes ACP to CLIENT_INTEGRATION.md (preset agents table + full section)
+- All prompt files cleaned up (PROMPT_ADMIN_USER_LIST.md, PROMPT_REACTIONS_FIX.md, PROMPT_v1.3.1.06.md, PROMPT_HERMES_ACP.md)
+
+---
+
 ## [1.3.0.31] - 2026-06-28
 
 ### Features
