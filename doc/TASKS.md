@@ -23,6 +23,7 @@
 
 | Версия | Описание |
 |--------|----------|
+| v1.3.0.31 | BroadcastGlobalV2 for online status, BroadcastShutdown for v2, reaction broadcast to ChatV2 stream, GetAdminUserList RPC |
 | v1.3.0.29 | Hermes ACP provider (JSON-RPC 2.0, persistent sessions), crypto + AI v2 tests (98), last_seen_at tracking, 11 preset agents |
 | v1.3.0.27 | v1 messages tables dropped, v1 DB functions removed |
 | v1.3.0.26 | v1 RPCs rewritten to v2 internally (backward compat), marked deprecated |
@@ -59,10 +60,15 @@
 
 ## Следующая сессия
 
-### T1: Admin User List (сервер + клиент)
+### T1: Admin Panel — SuperAdminActivity (клиент)
 
-См. `doc/PROMPT_ADMIN_USER_LIST.md` — полная спецификация:
-- Новый RPC `GetAdminUserList` с cursor-based пагинацией
-- Расширенная информация: версия клиента, последнее сообщение, количество чатов, онлайн-статус
-- Сервер: proto + DB + handler + hub method
+См. `doc/PROMPT_ADMIN_USER_LIST.md`:
 - Клиент: SuperAdminActivity обновление
+- Новый RPC `GetAdminUserList` уже реализован на сервере (v1.3.0.31)
+
+### T2: Web клиент — документация и оптимизация
+
+Обновить `LavenderMessenger-web/doc/`:
+- Обновить ARCHITECTURE.md с учётом reactions, auth interceptor, ChatV2 stream
+- Добавить описание токен-рефреша и interceptor'а
+- Обновить API.md с новыми реакциями
