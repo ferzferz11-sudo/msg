@@ -4,7 +4,12 @@ import (
 	"LavenderMessenger/gen"
 	"context"
 	"database/sql"
+	"encoding/base64"
+	"encoding/json"
+	"time"
 
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -115,4 +120,119 @@ func (s *server) GetUserAvatar(_ context.Context, req *gen.GetUserAvatarRequest)
 	}
 
 	return &gen.GetUserAvatarResponse{AvatarUrl: avatarURL, FullAvatarUrl: fullAvatarURL}, nil
+}
+
+func (s *server) GetAdminUserList(ctx context.Context, req *gen.GetAdminUserListRequest) (*gen.GetAdminUserListResponse, error) {
+	userID := GetUserID(ctx)
+	if userID == "" {
+		return nil, status.Error(codes.Unauthenticated, "unauthorized")
+	}
+	if !s.db.IsSuperAdmin(userID) {
+		return nil, status.Error(codes.PermissionDenied, "admin access required")
+	}
+
+	query := req.GetQuery()
+	limit := int(req.GetLimit())
+	if limit <= 0 {
+		limit = 50
+	}
+	if limit > 200 {
+		limit = 200
+	}
+	sortBy := req.GetSortBy()
+
+	// Decode cursor
+	var lastMessageTime *time.Time
+	var lastUsername string
+	if cursor := req.GetCursor(); cursor != "" {
+		t, u, ok := decodeAdminCursor(cursor)
+		if ok {
+			lastMessageTime = &t
+			lastUsername = u
+		}
+	}
+
+	rows, err := s.db.GetAdminUserList(query, limit, sortBy, lastMessageTime, lastUsername)
+	if err != nil {
+		logger.Errorf("GetAdminUserList DB error: %v", err)
+		return nil, status.Error(codes.Internal, "failed to fetch user list")
+	}
+
+	// Online status from hub (by userId)
+	onlineSet := s.hub.GetOnlineUserSet()
+
+	var users []*gen.AdminUserInfo
+	for _, r := range rows {
+		var lastSeen *timestamppb.Timestamp
+		if r.LastSeenAt.Valid {
+			lastSeen = timestamppb.New(r.LastSeenAt.Time)
+		}
+		var lastMsgTime *timestamppb.Timestamp
+		if r.LastMessageTime.Valid {
+			lastMsgTime = timestamppb.New(r.LastMessageTime.Time)
+		}
+
+		isOnline := onlineSet[r.UserId]
+
+		users = append(users, &gen.AdminUserInfo{
+			UserId:             r.UserId,
+			Username:           r.Username,
+			AvatarUrl:          r.AvatarURL,
+			FullAvatarUrl:      r.FullAvatarURL,
+			Email:              r.Email,
+			IsSuperAdmin:       r.IsSuperAdmin,
+			LastClientVersion:  r.LastClientVersion,
+			LastSeenAt:         lastSeen,
+			IsOnline:           isOnline,
+			LastMessageText:    r.LastMessageText,
+			LastMessageTime:    lastMsgTime,
+			LastMessageUsername: r.LastMessageUsername,
+			ChatCount:          r.ChatCount,
+		})
+	}
+
+	hasMore := len(users) > limit
+	if hasMore {
+		users = users[:limit]
+	}
+
+	var nextCursor string
+	if hasMore && len(users) > 0 {
+		last := users[len(users)-1]
+		if last.LastMessageTime != nil {
+			nextCursor = encodeAdminCursor(last.LastMessageTime.AsTime(), last.Username)
+		}
+	}
+
+	return &gen.GetAdminUserListResponse{
+		Users:      users,
+		NextCursor: nextCursor,
+		HasMore:    hasMore,
+		ServerTime: timestamppb.Now(),
+	}, nil
+}
+
+type adminCursor struct {
+	LastMessageTime time.Time `json:"t"`
+	Username        string    `json:"u"`
+}
+
+func encodeAdminCursor(t time.Time, username string) string {
+	data, _ := json.Marshal(adminCursor{LastMessageTime: t, Username: username})
+	return base64.URLEncoding.EncodeToString(data)
+}
+
+func decodeAdminCursor(cursor string) (time.Time, string, bool) {
+	if cursor == "" {
+		return time.Time{}, "", false
+	}
+	data, err := base64.URLEncoding.DecodeString(cursor)
+	if err != nil {
+		return time.Time{}, "", false
+	}
+	var c adminCursor
+	if err := json.Unmarshal(data, &c); err != nil {
+		return time.Time{}, "", false
+	}
+	return c.LastMessageTime, c.Username, true
 }

@@ -630,3 +630,106 @@ func (db *DB) SetMutedChatByUserID(uid, room string, m bool) error {
 func (db *DB) SetMutedChat(uid, room string, m bool) error {
 	return db.SetMutedChatByUserID(uid, room, m)
 }
+
+type AdminUserRow struct {
+	UserId, Username, AvatarURL, FullAvatarURL, Email, LastClientVersion string
+	LastSeenAt                                                          sql.NullTime
+	IsSuperAdmin                                                        bool
+	LastMessageText, LastMessageUsername                                 string
+	LastMessageTime                                                     sql.NullTime
+	ChatCount                                                           int32
+}
+
+func (db *DB) GetAdminUserList(query string, limit int, sortBy string, lastMessageTime *time.Time, lastUsername string) ([]AdminUserRow, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+	if limit > 200 {
+		limit = 200
+	}
+
+	baseQuery := `
+		WITH user_last_messages AS (
+			SELECT
+				m.sender_id,
+				m.text,
+				m.created_at,
+				ROW_NUMBER() OVER (PARTITION BY m.sender_id ORDER BY m.created_at DESC) as rn
+			FROM messages_v2 m
+			WHERE m.text != '[deleted]' AND m.text != ''
+		),
+		user_chat_counts AS (
+			SELECT
+				uc.user_id,
+				COUNT(DISTINCT uc.room_id) as chat_count
+			FROM user_chat_metadata uc
+			GROUP BY uc.user_id
+		)
+		SELECT
+			u.id,
+			u.username,
+			COALESCE(u.avatar_url, ''),
+			COALESCE(u.full_avatar_url, ''),
+			COALESCE(u.email, ''),
+			COALESCE(u.is_super_admin, FALSE),
+			COALESCE(u.last_client_version, ''),
+			u.last_seen_at,
+			COALESCE(LEFT(lm.text, 100), '') as last_message_text,
+			lm.created_at as last_message_time,
+			COALESCE(lm_sender.username, '') as last_message_username,
+			COALESCE(cc.chat_count, 0) as chat_count
+		FROM users u
+		LEFT JOIN user_last_messages lm ON lm.sender_id = u.id AND lm.rn = 1
+		LEFT JOIN users lm_sender ON lm_sender.id = lm.sender_id
+		LEFT JOIN user_chat_counts cc ON cc.user_id = u.id
+		WHERE ($1::text = '' OR u.username ILIKE '%' || $1 || '%' OR u.email ILIKE '%' || $1 || '%')`
+
+	var cursorClause string
+	args := []interface{}{query}
+
+	if lastMessageTime != nil {
+		cursorClause = ` AND (
+			lm.created_at < $2::timestamp
+			OR (lm.created_at = $2::timestamp AND u.username > $3::text)
+			OR lm.created_at IS NULL
+		)`
+		args = append(args, *lastMessageTime, lastUsername)
+	}
+
+	var orderBy string
+	switch sortBy {
+	case "last_seen":
+		orderBy = ` ORDER BY u.last_seen_at DESC NULLS LAST, u.username ASC`
+	case "username":
+		orderBy = ` ORDER BY u.username ASC`
+	default: // "last_message"
+		orderBy = ` ORDER BY lm.created_at DESC NULLS LAST, u.username ASC`
+	}
+
+	limitArg := len(args) + 1
+	args = append(args, limit+1)
+
+	fullQuery := baseQuery + cursorClause + orderBy + fmt.Sprintf(` LIMIT $%d`, limitArg)
+
+	rows, err := db.Query(fullQuery, args...)
+	if err != nil {
+		return nil, fmt.Errorf("GetAdminUserList query error: %w", err)
+	}
+	defer rows.Close()
+
+	var res []AdminUserRow
+	for rows.Next() {
+		var u AdminUserRow
+		err := rows.Scan(
+			&u.UserId, &u.Username, &u.AvatarURL, &u.FullAvatarURL,
+			&u.Email, &u.IsSuperAdmin, &u.LastClientVersion,
+			&u.LastSeenAt, &u.LastMessageText, &u.LastMessageTime,
+			&u.LastMessageUsername, &u.ChatCount,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("GetAdminUserList scan error: %w", err)
+		}
+		res = append(res, u)
+	}
+	return res, nil
+}

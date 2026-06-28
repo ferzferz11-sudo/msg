@@ -816,6 +816,9 @@ service ChatService {
   // === AI Chat v2 ===
   rpc GetAIV2ChatHistory(GetAIV2ChatHistoryRequest) returns (GetAIV2ChatHistoryResponse);
   rpc ListAIV2Chats(ListAIV2ChatsRequest) returns (ListAIV2ChatsResponse);
+
+  // === Admin User List ===
+  rpc GetAdminUserList(GetAdminUserListRequest) returns (GetAdminUserListResponse);
 }
 
 // ======= AI Pipeline Messages =======
@@ -2071,6 +2074,45 @@ message AIV2ChatInfo {
 
 message ListAIV2ChatsResponse {
   repeated AIV2ChatInfo chats = 1;
+}
+
+// ======= Admin User List Messages =======
+
+message AdminUserInfo {
+  // Base info
+  string user_id = 1;
+  string username = 2;
+  string avatar_url = 3;
+  string full_avatar_url = 4;
+  string email = 5;
+  bool is_super_admin = 6;
+
+  // Version & activity
+  string last_client_version = 7;
+  google.protobuf.Timestamp last_seen_at = 8;
+  bool is_online = 9;
+
+  // Last message
+  string last_message_text = 10;
+  google.protobuf.Timestamp last_message_time = 11;
+  string last_message_username = 12;
+
+  // Stats
+  int32 chat_count = 13;
+}
+
+message GetAdminUserListRequest {
+  string query = 1;
+  string cursor = 2;
+  int32 limit = 3;
+  string sort_by = 4;
+}
+
+message GetAdminUserListResponse {
+  repeated AdminUserInfo users = 1;
+  string next_cursor = 2;
+  bool has_more = 3;
+  google.protobuf.Timestamp server_time = 4;
 }
 
 service ProfileService {
