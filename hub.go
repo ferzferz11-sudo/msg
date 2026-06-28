@@ -426,6 +426,56 @@ func (h *Hub) IsUserOnline(userId, username string) bool {
 	return false
 }
 
+// GetOnlineUserSet returns a map of userId -> true for all currently connected users.
+// Used by admin panel for real-time online status.
+func (h *Hub) GetOnlineUserSet() map[string]bool {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	online := make(map[string]bool)
+	for uid := range h.userIdSet {
+		if uid != "" {
+			online[uid] = true
+		}
+	}
+	for username := range h.usernameSet {
+		if username != "" {
+			online[username] = true
+		}
+	}
+	return online
+}
+
+// BroadcastV2Reaction sends a REACTION_V2 system message to all ChatV2 clients in the same room.
+// payload format: "messageID|reactionsJSON"
+func (h *Hub) BroadcastV2Reaction(roomID, messageID, reactionsJSON string) {
+	if roomID == "" || messageID == "" {
+		return
+	}
+
+	h.mu.RLock()
+	var targets []gen.ChatService_ChatV2Server
+	for stream, room := range h.v2Rooms {
+		if room == roomID {
+			targets = append(targets, stream)
+		}
+	}
+	h.mu.RUnlock()
+
+	payload := messageID + "|" + reactionsJSON
+	wrappedMsg := &gen.ChatV2Message{
+		Payload: &gen.ChatV2Message_System{
+			System: &gen.ChatV2System{
+				Type:    "REACTION_V2",
+				Message: payload,
+			},
+		},
+	}
+
+	for _, stream := range targets {
+		_ = stream.Send(wrappedMsg)
+	}
+}
+
 // BroadcastGlobal sends a message to all connected and authenticated clients
 func (h *Hub) BroadcastGlobal(msg *gen.Message) {
 	h.mu.RLock()

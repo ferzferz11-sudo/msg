@@ -285,6 +285,7 @@ func (s *server) SetReactionV2(ctx context.Context, req *gen.SetReactionV2Reques
 			Text:   "REACTION_V2:" + req.MessageId,
 			RoomId: msg.RoomID,
 		})
+		s.hub.BroadcastV2Reaction(msg.RoomID, req.MessageId, reactionsJSON)
 	}
 
 	return &gen.SetReactionV2Response{
