@@ -1086,6 +1086,7 @@ By default, all clients use the **server's OpenRouter API key** — no payment r
 | `translator` | Translator | `meta-llama/llama-3.3-70b-instruct:free` | ❌ | ❌ | Translation |
 | `vision` | Vision | `google/gemma-4-26b-a4b-it:free` | ✅ | ❌ | Image analysis |
 | `reve` | Reve Image | `reve-2.0` | ❌ | ❌ | AI image generation |
+| `hermes` | Hermes Agent | `hermes-local` (ACP) | ✅ | ❌ | AI coding agent (persistent sessions) |
 
 **Key resolution priority:**
 1. User's own API key (set via `UpdateAIChatSettings`) → **unlocks paid models**
@@ -1207,6 +1208,45 @@ ChatWithAIV2Response {
 - Input formats: WEBP, JPEG, PNG, GIF, TIFF, AVIF
 - `test_time_scaling`: 1–15 (higher = better quality, more credits)
 - Post-processing: upscale (1–4×), remove_background, fit_image
+
+### Hermes Agent (ACP)
+
+Hermes Agent runs as a child process via ACP (Agent Client Protocol). Each user gets a persistent session that survives across messages.
+
+**How it works:**
+1. Client sends `ChatWithAIV2` with `agent_id = "hermes"`
+2. Server starts `hermes acp` subprocess (or reuses existing session)
+3. Communication via stdin/stdout JSON-RPC 2.0
+4. Streaming tokens returned via `ChatWithAIV2Response`
+
+**Key features:**
+- **Persistent sessions** — Hermes maintains context across messages (30min timeout)
+- **Tool calling** — can read/write files, run commands, query databases
+- **Isolation** — each user has separate `hermes acp` process via `exec.CommandContext`
+- **Auto-cleanup** — inactive sessions expire after 30 minutes
+
+**Client handling:**
+```protobuf
+// ChatWithAIV2 request for Hermes
+ChatWithAIV2Request {
+  session_id: "ai-chat-abc123"   // reuse existing session
+  message: "Fix the bug in auth.go"
+  agent_id: "hermes"
+}
+
+// Response streams tokens like any other agent
+ChatWithAIV2Response {
+  token: "I'll analyze the auth.go file...",
+  finished: false,
+  agent_id: "hermes",
+  agent_name: "Hermes Agent"
+}
+```
+
+**Provider config:**
+```json
+{"api_key_source": "server", "hermes_path": "/usr/local/bin/hermes"}
+```
 
 ---
 
