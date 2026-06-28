@@ -1,4 +1,4 @@
-# Промпт для серверных сессий — v1.3.0.28
+# Промпт для серверных сессий — v1.3.0.29
 
 **Дата:** 2026-06-27 | **Ветка:** feat/1.3.0.x
 **Статус:** v1 messages tables dropped. All operations use messages_v2. v1 RPCs deprecated but functional.
@@ -28,7 +28,7 @@ hub.go                     — Connection management
 ai_v2.go                   — AI Gateway: sessions, streaming, RAG
 ai_router.go               — Hybrid router
 ai_agent_executor.go       — Agent execution + tool calling
-ai_provider*.go            — 7 providers (openrouter, mimo, local, webhook, ws, subprocess, mcp)
+ai_provider*.go            — 9 providers (openrouter, mimo, local, hermes_acp, webhook, ws, subprocess, mcp, reve)
 ai_tool*.go                — 6 tools + registry
 server_ai_v2.go            — 15 gRPC handlers
 rate_limiter.go            — Rate limiter + OpenRouter calls

@@ -113,6 +113,11 @@ func (s *server) SendMessageV2(ctx context.Context, req *gen.SendMessageV2Reques
 		return &gen.SendMessageV2Response{Success: false, Error: err.Error()}, nil
 	}
 
+	// Update last_seen_at when user sends a message via unary RPC
+	if username := GetUsername(ctx); username != "" {
+		_ = s.db.UpdateLastSeen(username)
+	}
+
 	// Update chat last message
 	preview := row.Text
 	if len(preview) > 500 {
@@ -172,7 +177,12 @@ func (s *server) EditMessageV2(ctx context.Context, req *gen.EditMessageV2Reques
 	}
 
 	if err := s.db.EditMessageV2(req.MessageId, req.Text); err != nil {
+		logger.Errorf("EditMessageV2: %v", err)
 		return &gen.EditMessageV2Response{Success: false, Message: err.Error()}, nil
+	}
+
+	if username := GetUsername(ctx); username != "" {
+		_ = s.db.UpdateLastSeen(username)
 	}
 
 	// Broadcast edit notification
@@ -227,6 +237,10 @@ func (s *server) DeleteMessageV2(ctx context.Context, req *gen.DeleteMessageV2Re
 		return &gen.DeleteMessageV2Response{Success: false}, nil
 	}
 
+	if username := GetUsername(ctx); username != "" {
+		_ = s.db.UpdateLastSeen(username)
+	}
+
 	// Broadcast delete notifications
 	for _, id := range canDelete {
 		msg, err := s.db.GetMessageV2ByUUID(id)
@@ -257,6 +271,10 @@ func (s *server) SetReactionV2(ctx context.Context, req *gen.SetReactionV2Reques
 	reactionsJSON, err := s.db.SetReactionV2(req.MessageId, userID, req.Emoji)
 	if err != nil {
 		return &gen.SetReactionV2Response{Success: false}, nil
+	}
+
+	if username := GetUsername(ctx); username != "" {
+		_ = s.db.UpdateLastSeen(username)
 	}
 
 	// Broadcast reaction update via system message

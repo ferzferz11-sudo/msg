@@ -216,10 +216,15 @@ func seedPresetAgents(db *sql.DB) error {
 		{"translator", "Translator", "Multi-language translation (free)", "openrouter", "meta-llama/llama-3.3-70b-instruct:free", "You are a professional translator. Translate text accurately between languages, preserving meaning and tone.", false, false},
 		{"vision", "Vision", "Image analysis and visual Q&A (free)", "openrouter", "google/gemma-4-26b-a4b-it:free", "You are a visual assistant. Analyze images, describe what you see, answer questions about visual content.", true, false},
 		{"reve", "Reve Image", "AI image generation (text-to-image, edit, remix)", "reve", "reve-2.0", "You are Reve, an AI image generation assistant. Generate images based on user descriptions. Be creative and detailed in your prompts.", false, false},
+		{"hermes", "Hermes Agent", "Hermes Agent with ACP — persistent sessions, tool calling", "hermes_acp", "hermes-local", "You are Hermes, an AI coding agent. You can read/write files, run commands, and help with software development. Be helpful, accurate, and proactive.", true, false},
 	}
 
 	for _, p := range presets {
 		pc := map[string]any{"api_key_source": "server", "default_model": p.model}
+		// Add hermes_path for hermes_acp provider
+		if p.provider == "hermes_acp" {
+			pc["hermes_path"] = findHermesBinary()
+		}
 		pcJSON, _ := json.Marshal(pc)
 		query := `INSERT INTO agents_v2 (id, name, description, provider_type, provider_config, system_prompt, model, tools_enabled, rag_enabled, is_preset, is_public, is_active)
 			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, TRUE, TRUE, TRUE)

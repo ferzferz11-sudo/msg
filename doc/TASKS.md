@@ -1,14 +1,21 @@
 # Лава — Задачи
 
-**Версия:** v1.3.0.28
+**Версия:** v1.3.0.29
 **Ветка:** feat/1.3.0.x
-**Обновлено:** 2026-06-27
+**Обновлено:** 2026-06-28
 
 ---
 
-## ✅ Серверная часть завершена (50/50 задач)
+## ✅ Серверная часть завершена (50/50 задач + 2 test suites + Hermes ACP)
 
 Прогресс: **100%**
+
+### Тесты (crypto + AI v2)
+
+| Файл | Что тестирует | Тестов |
+|------|--------------|--------|
+| `crypto_test.go` | encrypt/decrypt (roundtrip, unicode, markers, tamper), HashPassword/CheckPassword, GenerateResetToken, getSecretKey | 22 |
+| `ai_v2_test.go` | ProviderRegistry, ToolRegistry (whitelist, cache), HybridRouter (keywords, binding), AgentExecutor (mock provider, tool calls, model override), resolveAPIKey, toolCache (TTL, LRU, concurrent), isURLSafe SSRF, OpenRouter SSE streaming, query_database security, all tool interfaces | 76 |
 
 ---
 
@@ -16,6 +23,7 @@
 
 | Версия | Описание |
 |--------|----------|
+| v1.3.0.29 | Hermes ACP provider (JSON-RPC 2.0, persistent sessions), crypto + AI v2 tests (98), last_seen_at tracking, 11 preset agents |
 | v1.3.0.27 | v1 messages tables dropped, v1 DB functions removed |
 | v1.3.0.26 | v1 RPCs rewritten to v2 internally (backward compat), marked deprecated |
 | v1.3.0.25 | Messages v1→v2 migration complete, SearchMessages RPC, dual-write removed |
@@ -49,6 +57,12 @@
 
 ---
 
-## Нет активных задач
+## Следующая сессия
 
-Серверная часть Lavender Messenger завершена.
+### T1: Admin User List (сервер + клиент)
+
+См. `doc/PROMPT_ADMIN_USER_LIST.md` — полная спецификация:
+- Новый RPC `GetAdminUserList` с cursor-based пагинацией
+- Расширенная информация: версия клиента, последнее сообщение, количество чатов, онлайн-статус
+- Сервер: proto + DB + handler + hub method
+- Клиент: SuperAdminActivity обновление

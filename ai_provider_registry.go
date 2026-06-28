@@ -29,6 +29,7 @@ func NewProviderRegistry() *ProviderRegistry {
 	r.Register("subprocess", newSubprocessProvider)
 	r.Register("mcp", newMCPProvider)
 	r.Register("reve", newReveProvider)
+	r.Register("hermes_acp", newHermesACPProvider)
 	return r
 }
 

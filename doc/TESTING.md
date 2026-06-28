@@ -31,6 +31,8 @@ go test -coverprofile=/tmp/cover.out -count=1 . && go tool cover -func=/tmp/cove
 
 | Файл | Что тестирует | Тестов |
 |------|--------------|--------|
+| `crypto_test.go` | AES encrypt/decrypt, HashPassword/CheckPassword, GenerateResetToken, getSecretKey | 22 |
+| `ai_v2_test.go` | ProviderRegistry, ToolRegistry, HybridRouter, AgentExecutor, resolveAPIKey, toolCache, isURLSafe SSRF, OpenRouter SSE, query_database security, tool interfaces | 76 |
 | `auth_jwt_test.go` | JWT generation, validation, expiry, tamper | 2 |
 | `auth_service_test.go` | AuthService v2 (SignInV2, SignUpV2, TokenPair) + v1 compat | 20 |
 | `owl_test.go` | OWL rate limiter, mock OpenRouter API, streaming | 15 |
@@ -42,7 +44,7 @@ go test -coverprofile=/tmp/cover.out -count=1 . && go tool cover -func=/tmp/cove
 | `messages_v2_test.go` | Messages v2: CRUD, cursor pagination, reactions | TBD |
 | `core/rag/memory/memory_test.go` | In-memory RAG: embeddings, vector DB, pipeline | 4 |
 
-**Всего:** ~88+ тестов (все проходят)
+**Всего:** ~186+ тестов (все проходят)
 
 ---
 
@@ -340,6 +342,193 @@ go test -v -count=1 LavenderMessenger
 go build ./...
 go vet ./...
 ```
+
+---
+
+## crypto_test.go (22 теста)
+
+### AES Encrypt/Decrypt (9)
+
+| Тест | Что проверяет |
+|------|--------------|
+| `TestEncryptDecrypt_RoundTrip` | Полный цикл encrypt→decrypt |
+| `TestEncryptDecrypt_EmptyString` | Пустая строка |
+| `TestEncryptDecrypt_Unicode` | Unicode (кириллица, эмодзи,日本語) |
+| `TestEncrypt_WrongKeyLength` | Ключ < 32 байт → ошибка |
+| `TestDecrypt_WrongKeyLength` | Ключ < 32 байт → ошибка |
+| `TestDecrypt_TooShortCiphertext` | Шифротекст < nonce size → ошибка |
+| `TestDecrypt_TamperedCiphertext` | Подмена байта → ошибка |
+| `TestDecrypt_ServiceMarkers` | SERVICE_VOICE_MSG, SERVICE_MEDIA_MSG, FIXED_BY_MAINTENANCE и др. |
+| `TestEncrypt_DifferentCiphertextEachTime` | Random nonce → разный шифротекст |
+
+### HashPassword/CheckPassword (5)
+
+| Тест | Что проверяет |
+|------|--------------|
+| `TestHashPassword_CheckPassword_Success` | Хеширование + проверка пароля |
+| `TestHashPassword_CheckPassword_WrongPassword` | Неверный пароль → false |
+| `TestHashPassword_CheckPassword_EmptyPassword` | Пустой пароль |
+| `TestHashPassword_DifferentHashesSamePassword` | bcrypt random salt |
+| `TestHashPassword_HashFormat` | Префикс $2a$ или $2b$ |
+
+### GenerateResetToken (3)
+
+| Тест | Что проверяет |
+|------|--------------|
+| `TestGenerateResetToken_Length` | 64 hex chars (32 bytes) |
+| `TestGenerateResetToken_HexFormat` | Только 0-9, a-f |
+| `TestGenerateResetToken_Unique` | Уникальность токенов |
+
+### getSecretKey (5)
+
+| Тест | Что проверяет |
+|------|--------------|
+| `TestGetSecretKey_Valid` | 32-byte key → ok |
+| `TestGetSecretKey_TooShort` | < 32 → ошибка |
+| `TestGetSecretKey_Empty` | Пустой env → ошибка |
+| `TestGetSecretKey_TooLong` | > 32 → ошибка |
+
+---
+
+## ai_v2_test.go (76 тестов)
+
+### Mock Infrastructure
+
+- `mockProvider` — in-memory AgentProvider с настраиваемым каналом StreamChunk
+- `mockTool` — in-memory Tool с настраиваемой executeFunc
+
+### ProviderRegistry (4)
+
+| Тест | Что проверяет |
+|------|--------------|
+| `TestProviderRegistry_AllBuiltInRegistered` | 8 built-in провайдеров зарегистрированы |
+| `TestProviderRegistry_CreateUnknown` | Неизвестный тип → ошибка |
+| `TestProviderRegistry_RegisterCustom` | Кастомный провайдер |
+| `TestProviderRegistry_ConcurrentRegister` | 10 goroutines регистрация |
+
+### ToolRegistry (8)
+
+| Тест | Что проверяет |
+|------|--------------|
+| `TestToolRegistry_RegisterAndGet` | Регистрация + получение |
+| `TestToolRegistry_GetNotFound` | Несуществующий инструмент |
+| `TestToolRegistry_GetAll` | Все инструменты |
+| `TestToolRegistry_Execute` | Выполнение инструмента |
+| `TestToolRegistry_Execute_NotFound` | toolNotFoundError |
+| `TestToolRegistry_GetDefs_Whitelist` | Фильтрация по whitelist |
+| `TestToolRegistry_GetDefs_NoWhitelist` | Все инструменты без whitelist |
+| `TestToolRegistry_ListInfo` | Метаданные инструментов |
+
+### HybridRouter (8)
+
+| Тест | Что проверяет |
+|------|--------------|
+| `TestHybridRouter_BoundAgent` | Привязанный агент |
+| `TestHybridRouter_ExplicitAgent` | Явно указанный агент |
+| `TestHybridRouter_BoundOverExplicit` | Bound > Explicit |
+| `TestHybridRouter_KeywordCode` | "bug", "debug" → developer |
+| `TestHybridRouter_KeywordDeploy` | "deploy", "server" → devops |
+| `TestHybridRouter_KeywordTranslate` | "переведи" → translator |
+| `TestHybridRouter_KeywordWrite` | "story", "creative" → writer |
+| `TestHybridRouter_DefaultAssistant` | Без совпадений → assistant |
+
+### AgentExecutor (5)
+
+| Тест | Что проверяет |
+|------|--------------|
+| `TestAgentExecutor_SimpleResponse` | Mock провайдер, простой ответ |
+| `TestAgentExecutor_WithToolCalls` | Tool calling loop |
+| `TestAgentExecutor_ModelOverride` | Настройки пользователя перезаписывают модель |
+| `TestAgentExecutor_CloseProvider` | Провайдер закрывается после Execute |
+| `TestAgentExecutor_UnknownProvider` | Неизвестный тип → ошибка |
+
+### resolveAPIKey (5)
+
+| Тест | Что проверяет |
+|------|--------------|
+| `TestResolveAPIKey_FromSettings` | Ключ из настроек пользователя |
+| `TestResolveAPIKey_FromAgentConfig` | Ключ из provider_config |
+| `TestResolveAPIKey_FromEnv` | Ключ из env var |
+| `TestResolveAPIKey_PrioritySettingsOverAgent` | Settings > AgentConfig |
+| `TestResolveAPIKey_NoKey` | Нет ключа → пустая строка |
+
+### ToolCache (6)
+
+| Тест | Что проверяет |
+|------|--------------|
+| `TestToolCache_SetGet` | Базовый set/get |
+| `TestToolCache_Expiry` | TTL expiration |
+| `TestToolCache_MaxSize` | LRU eviction |
+| `TestToolCache_ConcurrentAccess` | 100 goroutines |
+| `TestCachedTool_CachesResult` | Кеширование (1 call, 2 get) |
+| `TestCachedTool_DifferentKeys` | Разные ключи → разные вызовы |
+
+### isURLSafe / SSRF (10)
+
+| Тест | Что проверяет |
+|------|--------------|
+| `TestIsURLSafe_ValidHTTPS` | https://example.com → ok |
+| `TestIsURLSafe_ValidHTTP` | http://example.com → ok |
+| `TestIsURLSafe_FTPBlocked` | ftp:// → blocked |
+| `TestIsURLSafe_LocalhostBlocked` | localhost → blocked |
+| `TestIsURLSafe_IP127Blocked` | 127.0.0.1 → blocked |
+| `TestIsURLSafe_IPv6LoopbackBlocked` | [::1] → blocked |
+| `TestIsURLSafe_MetadataEndpointBlocked` | 169.254.169.254 → blocked |
+| `TestIsURLSafe_GoogleMetadataBlocked` | metadata.google.internal → blocked |
+| `TestIsURLSafe_EmptyURL` | Пустой URL → error |
+| `TestIsURLSafe_NoScheme` | Без scheme → error |
+
+### OpenRouter Provider (7)
+
+| Тест | Что проверяет |
+|------|--------------|
+| `TestOpenRouterProvider_SSEStreamParsing` | SSE stream → content chunks |
+| `TestOpenRouterProvider_NoAPIKey` | Нет ключа → ошибка |
+| `TestOpenRouterProvider_Capabilities` | Images, Tools, Streaming |
+| `TestOpenRouterProvider_HealthCheck` | Ключ есть → ok |
+| `TestOpenRouterProvider_HealthCheck_NoKey` | Нет ключа → error |
+| `TestMockOpenRouterAPI_SSE` | Mock SSE endpoint |
+| `TestMockOpenRouterAPI_ToolCalls` | Tool calls в SSE stream |
+| `TestMockOpenRouterAPI_HTTPError` | 429 → ошибка |
+
+### query_database Security (4)
+
+| Тест | Что проверяет |
+|------|--------------|
+| `TestQueryDatabaseTool_Security_OnlySelect` | DROP/DELETE/INSERT → blocked |
+| `TestQueryDatabaseTool_Security_NonSelectRejected` | Все не-SELECT → blocked |
+| `TestQueryDatabaseTool_Security_BlockedKeywords` | WITH, RECURSIVE, pg_* → blocked |
+| `TestQueryDatabaseTool_Security_BlockedTables` | users, hermes_sessions → blocked |
+| `TestQueryDatabaseTool_EmptyQuery` | Пустой query → error |
+
+### Tool Interfaces (6)
+
+| Тест | Что проверяет |
+|------|--------------|
+| `TestWebFetchTool_EmptyURL` | Пустой URL → error |
+| `TestWebFetchTool_BlockedLocalhost` | localhost → blocked |
+| `TestWebSearchTool_EmptyQuery` | Пустой query → error |
+| `TestWebSearchTool_MockServer` | Tool interface check |
+| `TestSearchMessagesTool_EmptyQuery` | Пустой query → error |
+| `TestSearchMessagesTool_ParameterSchema` | JSON Schema parameters |
+| `TestSearchUsersTool_EmptyQuery` | Пустой query → error |
+| `TestGetChatInfoTool_EmptyChatID` | Пустой chat_id → error |
+
+### AIGateway Helpers (3)
+
+| Тест | Что проверяет |
+|------|--------------|
+| `TestAIGateway_GenerateChatName` | simple/agent/pipeline/unknown |
+| `TestAIGateway_GetUserLock` | Per-user mutex (same=match, diff=miss) |
+| `TestAIGateway_RecordUsage_ZeroTokens` | 0 tokens → no-op |
+
+### Utility Functions (3)
+
+| Тест | Что проверяет |
+|------|--------------|
+| `TestConvertMessages` | AIMessageInput → map |
+| `TestConvertToolDefs` | ToolDefInput → map |
+| `TestJoinStrings` | joinStrings helper |
 
 ---
 

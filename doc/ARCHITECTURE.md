@@ -73,10 +73,11 @@
 | `ai_router.go` | Hybrid router (keyword + LLM fallback) |
 | `ai_agent_executor.go` | Agent execution + tool calling loop (max 10 iterations) |
 | `ai_provider.go` | AgentProvider interface + StreamUsage |
-| `ai_provider_registry.go` | Provider factory registry (7 types) |
+| `ai_provider_registry.go` | Provider factory registry (8 types) |
 | `ai_provider_openrouter.go` | OpenRouter provider (SSE streaming + usage parsing) |
 | `ai_provider_mimo.go` | MiMo provider (HTTP + deep integration) |
-| `ai_provider_local.go` | Local Hermes provider (subprocess) |
+| `ai_provider_local.go` | Local Hermes provider (subprocess, one-shot) |
+| `ai_provider_hermes_acp.go` | Hermes ACP provider (JSON-RPC 2.0, persistent sessions, sync.Map) |
 | `ai_provider_webhook.go` | Webhook provider (HTTP POST) |
 | `ai_provider_websocket.go` | WebSocket provider (gorilla/websocket) |
 | `ai_provider_subprocess.go` | Subprocess provider (stdin/stdout) |
@@ -202,9 +203,9 @@ Health endpoint returns 503 `{"status":"shutting_down"}` during shutdown window.
 ```
 
 **3 chat types:** simple (direct LLM), agent (multi-agent routing), pipeline (RAG + tools)
-**7 providers:** openrouter, local, mimo, webhook, websocket, subprocess, mcp
+**9 providers:** openrouter, local, mimo, hermes_acp, webhook, websocket, subprocess, mcp, reve
 **6 tools:** search_messages, search_users, web_search, web_fetch, get_chat_info, query_database
-**8 presets:** mimo, assistant, developer, devops, architect, writer, analyst, translator
+**11 presets:** mimo, assistant, developer, devops, architect, writer, analyst, translator, vision, reve, hermes
 
 ---
 
