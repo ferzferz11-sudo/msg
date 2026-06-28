@@ -36,5 +36,6 @@
 - При работе с AI: `AI_SERVICES.md`
 - При деплое: `RELEASE.md`
 - Версия сервера в `server.go`
+- **Актуальный код сервера всегда доступен локально** — перед работой всегда читай файлы из `/Users/paveld/LavenderMessenger-server/`
 - Android: `/root/msg.client.android/doc/` — документация клиента
 - ⚠️ Android собирается ТОЛЬКО локально (нет памяти на сервере)

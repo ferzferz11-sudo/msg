@@ -1,7 +1,7 @@
 # Промпт для серверных сессий — v1.3.0.31
 
 **Дата:** 2026-06-28 | **Ветка:** feat/1.3.0.x
-**Статус:** GetAdminUserList RPC, reaction broadcast fix for ChatV2, online status fix for v2 clients.
+**Статус:** GetAdminUserList RPC, BroadcastGlobalV2 for online status, reaction broadcast fix for ChatV2.
 
 ---
 
@@ -9,8 +9,8 @@
 
 | | Версия | Статус |
 |---|--------|--------|
-| **Сервер prod** | v1.3.0.28 | ✅ Работает на порту 50051 |
-| **Сервер dev** | v1.3.0.28 | ✅ Работает на порту 50052 |
+| **Сервер prod** | v1.3.0.31 | ✅ Работает на порту 50051 |
+| **Сервер dev** | v1.3.0.31 | ✅ Работает на порту 50052 |
 
 **Android:** `/root/msg.client.android` — документация там, сборка ТОЛЬКО локально.
 
@@ -59,6 +59,7 @@ secret_chat.go, bot_commands.go, http_server.go, email.go, crypto.go
 4. Auth context → `GetUserID(ctx)`, NEVER `req.UserId`
 5. DB миграции: `IF NOT EXISTS`, NEVER `DROP`
 6. Коммитить после каждого изменения
+7. **Актуальный код сервера всегда доступен локально** — перед работой всегда читай файлы из `/Users/paveld/LavenderMessenger-server/`, НЕ полагайся на кеш или предыдущие версии
 7. **Стабильность > фичи** — деплоим на prod, ошибки критичны
 
 ---
