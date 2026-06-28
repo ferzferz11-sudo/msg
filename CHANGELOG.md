@@ -10,14 +10,16 @@
 - **Reaction broadcast for ChatV2 stream** — `SetReactionV2` now sends `REACTION_V2` system message to both v1 (Chat) and v2 (ChatV2) clients via new `BroadcastV2Reaction` method. Previously only v1 clients received reaction updates.
 - **Online status for ChatV2 clients** — `broadcastOnlineUsers` now sends `ONLINE_USERS_UPDATE` to both v1 and v2 clients via `BroadcastGlobalV2`. Android clients on ChatV2 stream now receive online status updates.
 - **Shutdown broadcast for ChatV2** — `BroadcastShutdown` now sends `SERVER_SHUTTINGDOWN` to v2 clients as well.
+- **Deleted messages cleanup** — removed 8 orphaned `content_type='deleted'` records from `messages_v2`. Server now fully deletes records instead of marking them.
 
 ### Improvements
 - **Hub.GetOnlineUserSet** — new method returns `map[string]bool` of online user IDs for O(1) lookup (used by admin panel for real-time online status).
 - **Hub.BroadcastGlobalV2** — new method sends system messages to all connected ChatV2 clients (used for online status, shutdown, reactions).
 
 ### Documentation
-- Updated CLIENT_INTEGRATION.md with GetAdminUserList, ChatV2System types, reaction broadcast fix
-- Cleaned up prompt files (PROMPT_ADMIN_USER_LIST.md, PROMPT_REACTIONS_FIX.md, PROMPT_v1.3.1.06.md)
+- Updated CLIENT_INTEGRATION.md with GetAdminUserList, ChatV2System types, reaction broadcast fix, Hermes ACP
+- Added CLIENT_DELETE_MESSAGE_v2.md — client instructions for delete behavior
+- Cleaned up prompt files (PROMPT_ADMIN_USER_LIST.md, PROMPT_REACTIONS_FIX.md, PROMPT_v1.3.1.06.md, PROMPT_HERMES_ACP.md)
 
 ---
 
