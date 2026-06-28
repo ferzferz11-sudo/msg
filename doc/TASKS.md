@@ -72,7 +72,16 @@
 - Убрать проверку `content_type == 'deleted'` (таких записей больше нет)
 - Сервер физически удаляет записи из messages_v2
 
-### T3: Web — E2EE Secret Chat UI
+### T3: Web — Admin Panel (как на Android)
+
+Новый RPC `GetAdminUserList` уже реализован на сервере (v1.3.0.31).
+Нужно создать web-клиент:
+- Доступ: только для `isSuperAdmin` пользователей
+- Экран: список пользователей с пагинацией (cursor-based)
+- Информация: username, avatar, email, isSuperAdmin, lastClientVersion, lastSeenAt, isOnline, lastMessageText, lastMessageTime, chatCount
+- Действия: поиск, сортировка, клик на пользователя → профиль
+
+### T4: Web — E2EE Secret Chat UI
 
 См. `doc/PROMPT_NEXT_SESSION.md` в веб-проекте:
 - Secret Chat Creation Flow
