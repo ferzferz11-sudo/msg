@@ -198,7 +198,7 @@ func (s *server) EditMessageV2(ctx context.Context, req *gen.EditMessageV2Reques
 	return &gen.EditMessageV2Response{Success: true, Message: "edited"}, nil
 }
 
-// DeleteMessageV2 deletes messages (soft delete).
+// DeleteMessageV2 permanently deletes messages from the database.
 func (s *server) DeleteMessageV2(ctx context.Context, req *gen.DeleteMessageV2Request) (*gen.DeleteMessageV2Response, error) {
 	userID := GetUserID(ctx)
 	if userID == "" {

@@ -129,12 +129,12 @@ func (db *DB) EditMessageV2(id, text string) error {
 	return err
 }
 
-// DeleteMessageV2 soft-deletes messages by setting content_type to 'deleted'.
+// DeleteMessageV2 permanently deletes messages from the database.
 func (db *DB) DeleteMessageV2(ids []string) error {
 	if len(ids) == 0 {
 		return nil
 	}
-	query := `UPDATE messages_v2 SET content_type = 'deleted', text = '', media_url = '', media_urls = '[]', duration = 0, e2ee_payload = NULL, reactions = '{}' WHERE id = ANY($1)`
+	query := `DELETE FROM messages_v2 WHERE id = ANY($1)`
 	_, err := db.Exec(query, ids)
 	return err
 }

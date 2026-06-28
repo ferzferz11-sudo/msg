@@ -195,7 +195,6 @@ func (s *server) SetReaction(_ context.Context, req *gen.ReactionRequest) (*gen.
 }
 
 // DeleteMessages deletes messages. DEPRECATED: use DeleteMessageV2.
-// Uses soft delete in messages_v2 internally.
 func (s *server) DeleteMessages(_ context.Context, req *gen.DeleteMessagesRequest) (*gen.DeleteMessagesResponse, error) {
 	var messageIDs []string
 

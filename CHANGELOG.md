@@ -1,5 +1,12 @@
 # Лава — Server Changelog
 
+## [1.3.0.33] - 2026-06-28
+
+### Bug Fixes
+- **DeleteMessageV2: hard delete** — `DeleteMessageV2` now permanently deletes records from `messages_v2` (was soft delete with `content_type='deleted'`). No more orphaned deleted records in the database.
+
+---
+
 ## [1.3.0.32] - 2026-06-28
 
 ### Cleanup
