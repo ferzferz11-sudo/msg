@@ -50,19 +50,19 @@ func (db *DB) GetChatMessagesImageURLs(room string) ([]string, error) {
 	return res, nil
 }
 
-// GetFavorites returns favorite messages from messages_v2.
+// GetFavorites returns favorite messages from messages_v2 via the favorites table.
 func (db *DB) GetFavorites(uid string) ([]MessageRow, error) {
 	username := uid
 	if len(uid) > 20 {
 		_ = db.QueryRow(`SELECT username FROM users WHERE id = $1::uuid OR username = $1`, uid).Scan(&username)
 	}
 
-	q := `SELECT COALESCE(mv.id, ''), COALESCE(u.username, mv.sender_id::text), mv.text, COALESCE(f.created_at, mv.created_at), mv.reply_to_id, '', COALESCE(mv.reply_preview, ''), mv.room_id, mv.is_read, COALESCE(u.avatar_url, ''), mv.media_url, COALESCE(mv.media_urls, '[]')::text, mv.edited, '', mv.duration, mv.is_e2ee
-	      FROM messages_v2 mv
+	q := `SELECT mv.id, COALESCE(u.username, mv.sender_id::text), mv.text, mv.created_at, mv.reply_to_id, '', COALESCE(mv.reply_preview, ''), mv.room_id, mv.is_read, COALESCE(u.avatar_url, ''), mv.media_url, COALESCE(mv.media_urls, '[]')::text, mv.edited, '', mv.duration, mv.is_e2ee
+	      FROM favorites f
+	      JOIN messages_v2 mv ON mv.id = f.message_id
 	      LEFT JOIN users u ON mv.sender_id = u.id
-	      LEFT JOIN favorites f ON f.message_id = mv.id AND f.user_id = (SELECT id FROM users WHERE username = $1::text)
-	      WHERE mv.room_id = 'favorites_' || $1::text OR (f.message_id IS NOT NULL AND f.user_id = (SELECT id FROM users WHERE username = $1::text))
-	      ORDER BY 4 ASC`
+	      WHERE f.user_id = (SELECT id FROM users WHERE username = $1::text)
+	      ORDER BY f.created_at ASC`
 	rows, err := db.Query(q, username)
 	if err != nil {
 		return nil, err

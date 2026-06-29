@@ -3,12 +3,10 @@ package main
 import (
 	"LavenderMessenger/gen"
 	"context"
-	"database/sql"
 	"encoding/json"
 	"os"
 	"time"
 
-	"github.com/google/uuid"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -116,61 +114,18 @@ func (s *server) SaveFavoriteMessage(ctx context.Context, req *gen.Message) (*ge
 		return &gen.AddFavoriteResponse{Success: false, Message: "username required"}, nil
 	}
 
-	// 1. Generate ID and Timestamp
-	req.Id = uuid.New().String()
-	req.CreatedAt = timestamppb.Now()
-
-	// 3. Get User UUID
+	// Get User UUID
 	userID, err := s.db.GetUserIdByUsername(req.User)
 	if err != nil {
 		return &gen.AddFavoriteResponse{Success: false, Message: "user not found"}, nil
 	}
 
-	// 4. Save message to messages_v2 in a special "favorites" room for consistency
-	// Room ID is "favorites_" + username
-	favRoomID := "favorites_" + req.User
-	v2Row := &MessageRowV2{
-		ID:          req.Id,
-		RoomID:      favRoomID,
-		SenderID:    req.UserId,
-		ContentType: "text",
-		Text:        req.Text,
-		IsRead:      true,
-		CreatedAt:   req.CreatedAt.AsTime(),
-	}
-	if req.ImageUrl != "" {
-		v2Row.MediaURL = req.ImageUrl
-		v2Row.ContentType = "image"
-	}
-	if len(req.ImageUrls) > 0 {
-		b, _ := json.Marshal(req.ImageUrls)
-		v2Row.MediaURLs = string(b)
-		v2Row.ContentType = "image"
-	}
-	if req.VoiceUrl != "" {
-		v2Row.MediaURL = req.VoiceUrl
-		v2Row.Duration = req.Duration
-		v2Row.ContentType = "voice"
-	}
-	if req.RepliedToMessageId != "" {
-		v2Row.ReplyToID = sql.NullString{String: req.RepliedToMessageId, Valid: true}
-		v2Row.ReplyPreview = sql.NullString{String: req.RepliedToText, Valid: true}
-	}
-	err = s.db.SaveMessageV2(v2Row)
-	if err != nil {
-		return &gen.AddFavoriteResponse{Success: false, Message: "failed to save message"}, nil
-	}
-
-	// 5. Add to favorites table
+	// Add to favorites table only — no copy in messages_v2
+	// This preserves the original message ID so reactions work correctly
 	err = s.db.AddFavorite(userID, req.Id)
 	if err != nil {
 		return &gen.AddFavoriteResponse{Success: false, Message: "failed to link favorite"}, nil
 	}
-
-	// 6. Broadcast to favorites room for live update
-	// Get reactions for the message we just saved (should be empty but good for consistency)
-	req.RoomId = favRoomID
-	s.hub.Broadcast(req)
 
 	return &gen.AddFavoriteResponse{Success: true}, nil
 }

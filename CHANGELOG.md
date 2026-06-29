@@ -1,5 +1,13 @@
 # Лава — Server Changelog
 
+## [1.3.0.37] - 2026-06-29
+
+### Bug Fixes
+- **Favorites reactions fix** — `SaveFavoriteMessage` no longer creates a copy in messages_v2 with a new UUID. Now only adds to the favorites table, preserving the original message ID. Reactions on favorited messages now work correctly.
+- **GetFavorites query** — reads original messages from messages_v2 via the favorites table instead of from `favorites_<username>` room.
+
+---
+
 ## [1.3.0.36] - 2026-06-29
 
 ### Bug Fixes
