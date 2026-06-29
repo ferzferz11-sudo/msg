@@ -1,7 +1,7 @@
-# Промпт для серверных сессий — v1.3.0.36
+# Промпт для серверных сессий — v1.3.0.38
 
 **Дата:** 2026-06-29 | **Ветка:** feat/1.3.0.x
-**Статус:** v1.3.0.36 задеплоен. Admin panel fixes, last_seen_at heartbeat, Firebase path fix.
+**Статус:** v1.3.0.38 задеплоен. Reaction tests added, favorites fix, admin panel fixes.
 
 ---
 

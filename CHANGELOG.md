@@ -1,5 +1,12 @@
 # Лава — Server Changelog
 
+## [1.3.0.38] - 2026-06-29
+
+### Tests
+- **Reaction tests** — 15 new tests for reactions, favorites, admin cursors, and broadcastV2Reaction payload format. Covers: JSON encoding/decoding, empty reactions, invalid JSON, payload parsing, cursor round-trip, favorites ID preservation, rowToProtoV2 reactions.
+
+---
+
 ## [1.3.0.37] - 2026-06-29
 
 ### Bug Fixes
