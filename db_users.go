@@ -664,6 +664,12 @@ func (db *DB) GetAdminUserList(query string, limit int, sortBy string, lastMessa
 				COUNT(DISTINCT uc.room_id) as chat_count
 			FROM user_chat_metadata uc
 			GROUP BY uc.user_id
+		),
+		user_latest_device AS (
+			SELECT DISTINCT ON (user_id) user_id, client_version
+			FROM user_devices
+			WHERE client_version IS NOT NULL AND client_version != ''
+			ORDER BY user_id, last_seen_at DESC
 		)
 		SELECT
 			u.id,
@@ -672,13 +678,14 @@ func (db *DB) GetAdminUserList(query string, limit int, sortBy string, lastMessa
 			COALESCE(u.full_avatar_url, ''),
 			COALESCE(u.email, ''),
 			COALESCE(u.is_super_admin, FALSE),
-			COALESCE(u.last_client_version, ''),
+			COALESCE(d.client_version, '') as last_client_version,
 			u.last_seen_at,
 			COALESCE(LEFT(lm.text, 100), '') as last_message_text,
 			lm.created_at as last_message_time,
 			COALESCE(lm_sender.username, '') as last_message_username,
 			COALESCE(cc.chat_count, 0) as chat_count
 		FROM users u
+		LEFT JOIN user_latest_device d ON d.user_id = u.id
 		LEFT JOIN user_last_messages lm ON lm.sender_id = u.id AND lm.rn = 1
 		LEFT JOIN users lm_sender ON lm_sender.id = lm.sender_id
 		LEFT JOIN user_chat_counts cc ON cc.user_id = u.id

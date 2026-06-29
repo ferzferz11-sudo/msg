@@ -32,7 +32,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const ServerVersion = "1.3.0.35"
+const ServerVersion = "1.3.0.36"
 
 // Service versions for client capability negotiation.
 // Service versions for client capability negotiation.

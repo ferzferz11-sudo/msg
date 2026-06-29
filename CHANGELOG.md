@@ -1,5 +1,12 @@
 # Лава — Server Changelog
 
+## [1.3.0.36] - 2026-06-29
+
+### Bug Fixes
+- **Admin panel client version** — `GetAdminUserList` now reads `last_client_version` from `user_devices` (most recent device) instead of `users` table. Shows correct version in admin panel.
+
+---
+
 ## [1.3.0.35] - 2026-06-29
 
 ### Bug Fixes
