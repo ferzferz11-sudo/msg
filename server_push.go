@@ -521,7 +521,7 @@ func (s *server) handleAbruptDisconnect(userId string) {
 	}
 }
 
-func (s *server) sendCallPushNotification(receiverId, senderName, callId string) {
+func (s *server) sendCallPushNotification(receiverId, senderId, callId string) {
 	if s.firebaseApp == nil {
 		return
 	}
@@ -538,14 +538,12 @@ func (s *server) sendCallPushNotification(receiverId, senderName, callId string)
 		return
 	}
 
-	senderUsername := resolveDisplayName(s.db, senderName)
-
 	message := &messaging.Message{
 		Token: token,
 		Data: map[string]string{
 			"type":      "VOIP_CALL",
 			"call_id":   callId,
-			"sender_id": senderUsername,
+			"sender_id": senderId,
 		},
 		Android: &messaging.AndroidConfig{
 			Priority: "high",

@@ -522,6 +522,13 @@ func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
 		// Handle database updates based on message type
 		switch msg.Type {
 		case gen.CallMessage_INITIATE:
+			if !isUUID(msg.ReceiverId) {
+				uid, err := s.db.GetUserIDByUsername(msg.ReceiverId)
+				if err == nil && uid != "" {
+					msg.ReceiverId = uid
+					msg.ReceiverName = resolveDisplayName(s.db, uid)
+				}
+			}
 			callId, err := s.db.CreateCall(msg.SenderId, msg.ReceiverId, "video", "")
 			if err != nil {
 				logger.Errorf("[CALL] Failed to create call in DB: %v", err)
@@ -541,7 +548,7 @@ func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
 			msg.ReceiverId = originalReceiver
 
 			// 3. Send push to wake up receiver
-			s.sendCallPushNotification(msg.ReceiverId, msg.SenderName, msg.CallId)
+			s.sendCallPushNotification(msg.ReceiverId, msg.SenderId, msg.CallId)
 
 			// 4. Add system message to chat
 			s.saveCallSystemMessage(senderName, receiverName, "📹", "Видеозвонок", senderName, msg.SenderId)
