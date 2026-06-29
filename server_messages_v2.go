@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"log"
 	"strings"
 	"time"
 
@@ -268,10 +269,14 @@ func (s *server) SetReactionV2(ctx context.Context, req *gen.SetReactionV2Reques
 		return &gen.SetReactionV2Response{Success: false}, nil
 	}
 
+	log.Printf("[SetReactionV2] START: messageId=%s userID=%s emoji=%q", req.MessageId, userID, req.Emoji)
+
 	reactionsJSON, err := s.db.SetReactionV2(req.MessageId, userID, req.Emoji)
 	if err != nil {
+		log.Printf("[SetReactionV2] FAILED: messageId=%s userID=%s emoji=%q err=%v", req.MessageId, userID, req.Emoji, err)
 		return &gen.SetReactionV2Response{Success: false}, nil
 	}
+	log.Printf("[SetReactionV2] OK: messageId=%s reactions=%s", req.MessageId, reactionsJSON)
 
 	if username := GetUsername(ctx); username != "" {
 		_ = s.db.UpdateLastSeen(username)

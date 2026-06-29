@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"encoding/base64"
+	"log"
 	"time"
 )
 
@@ -143,15 +144,23 @@ func (db *DB) DeleteMessageV2(ids []string) error {
 func (db *DB) SetReactionV2(messageID, userID, emoji string) (string, error) {
 	var resultJSON string
 	if emoji == "" {
+		log.Printf("[SetReactionV2] DB REMOVE: id=%s userID=%s", messageID, userID)
 		err := db.QueryRow(`
 			UPDATE messages_v2 SET reactions = reactions - $1 WHERE id = $2
 			RETURNING COALESCE(reactions, '{}')`, userID, messageID).Scan(&resultJSON)
+		if err != nil {
+			log.Printf("[SetReactionV2] DB REMOVE FAILED: id=%s err=%v", messageID, err)
+		}
 		return resultJSON, err
 	}
 
+	log.Printf("[SetReactionV2] DB SET: id=%s userID=%s emoji=%s", messageID, userID, emoji)
 	err := db.QueryRow(`
 		UPDATE messages_v2 SET reactions = reactions || jsonb_build_object($1, $2) WHERE id = $3
 		RETURNING COALESCE(reactions, '{}')`, userID, emoji, messageID).Scan(&resultJSON)
+	if err != nil {
+		log.Printf("[SetReactionV2] DB SET FAILED: id=%s err=%v", messageID, err)
+	}
 	return resultJSON, err
 }
 

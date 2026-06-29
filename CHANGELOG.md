@@ -1,5 +1,12 @@
 # Лава — Server Changelog
 
+## [1.3.0.39] - 2026-06-29
+
+### Debug
+- **SetReactionV2 logging** — added debug logging to handler and DB function for diagnosing reaction failures.
+
+---
+
 ## [1.3.0.38] - 2026-06-29
 
 ### Tests
