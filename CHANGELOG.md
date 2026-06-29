@@ -1,5 +1,13 @@
 # Лава — Server Changelog
 
+## [1.3.0.35] - 2026-06-29
+
+### Bug Fixes
+- **last_seen_at fix** — `UpdateLastSeen` now called on every message (not just when `clientVersion` is empty). Fixes admin panel showing stale "5 hours ago" when user is online.
+- **ChatV2 heartbeat** — new goroutine updates `last_seen_at` every 60 seconds while stream is active. Users no longer appear offline while reading chats.
+
+---
+
 ## [1.3.0.34] - 2026-06-28
 
 ### Features

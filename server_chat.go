@@ -117,11 +117,10 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 			logger.Infof("Auth success: %s (JWT) v=%s%s signal=%s", connectedUser, clientVer, deviceInfo, msg.RoomId)
 
 			// Update last client version and last seen timestamp in DB
+			_ = s.db.UpdateLastSeen(connectedUser)
 			if msg.ClientVersion != "" {
 				_ = s.db.UpdateClientVersion(connectedUser, msg.ClientVersion)
 				s.hub.SetClientVersion(connectedUserID, msg.ClientVersion)
-			} else {
-				_ = s.db.UpdateLastSeen(connectedUser)
 			}
 
 			// Send server info
@@ -216,11 +215,10 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 
 		// Update last_seen_at on every message
 		if s.hub.IsAuthenticated(stream) && connectedUser != "" {
+			_ = s.db.UpdateLastSeen(connectedUser)
 			if msg.ClientVersion != "" {
 				_ = s.db.UpdateClientVersion(connectedUser, msg.ClientVersion)
 				s.hub.SetClientVersion(connectedUserID, msg.ClientVersion)
-			} else {
-				_ = s.db.UpdateLastSeen(connectedUser)
 			}
 		}
 
@@ -721,12 +719,27 @@ func (s *server) ChatV2(stream gen.ChatService_ChatV2Server) error {
 			logger.Infof("[ChatV2] %s connected to room %s", connectedUser, currentRoom)
 
 			// Update last_client_version and last_seen_at
+			_ = s.db.UpdateLastSeen(connectedUser)
 			if msg.ClientVersion != "" {
 				_ = s.db.UpdateClientVersion(connectedUser, msg.ClientVersion)
 				s.hub.SetClientVersion(connectedUserID, msg.ClientVersion)
-			} else {
-				_ = s.db.UpdateLastSeen(connectedUser)
 			}
+
+			// Start heartbeat goroutine
+			go func() {
+				ticker := time.NewTicker(60 * time.Second)
+				defer ticker.Stop()
+				for {
+					select {
+					case <-ticker.C:
+						if connectedUser != "" {
+							_ = s.db.UpdateLastSeen(connectedUser)
+						}
+					case <-stream.Context().Done():
+						return
+					}
+				}
+			}()
 
 			continue
 		}
@@ -757,11 +770,10 @@ func (s *server) ChatV2(stream gen.ChatService_ChatV2Server) error {
 			}
 
 			// Update last_seen_at on every message
+			_ = s.db.UpdateLastSeen(connectedUser)
 			if msg.ClientVersion != "" {
 				_ = s.db.UpdateClientVersion(connectedUser, msg.ClientVersion)
 				s.hub.SetClientVersion(connectedUserID, msg.ClientVersion)
-			} else {
-				_ = s.db.UpdateLastSeen(connectedUser)
 			}
 
 			// Save to DB
