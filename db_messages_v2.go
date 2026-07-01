@@ -139,6 +139,43 @@ func (db *DB) DeleteMessageV2(ids []string) error {
 	return err
 }
 
+// UpdateChatLastMessage recalculates and updates the last message fields in chats table
+// after a message is deleted or edited.
+func (db *DB) UpdateChatLastMessage(roomID string) {
+	var text, senderName, contentType string
+	var createdAt time.Time
+	var hasImage bool
+
+	err := db.QueryRow(`
+		SELECT COALESCE(m.text, ''), COALESCE(u.username, ''), m.created_at, m.content_type
+		FROM messages_v2 m
+		LEFT JOIN users u ON u.id = m.sender_id::uuid
+		WHERE m.room_id = $1
+		ORDER BY m.created_at DESC
+		LIMIT 1
+	`, roomID).Scan(&text, &senderName, &createdAt, &contentType)
+
+	if err != nil {
+		// No messages left — clear last message
+		db.Exec(`UPDATE chats SET last_message_text = '', last_message_time = NULL, last_message_username = '', last_message_has_image = FALSE WHERE id = $1`, roomID)
+		return
+	}
+
+	preview := text
+	if len(preview) > 500 {
+		preview = preview[:500]
+	}
+	if contentType == "image" {
+		preview = "Image"
+		hasImage = true
+	} else if contentType == "voice" {
+		preview = "Voice message"
+	}
+
+	db.Exec(`UPDATE chats SET last_message_text = $1, last_message_time = $2, last_message_username = $3, last_message_has_image = $4 WHERE id = $5`,
+		preview, createdAt, senderName, hasImage, roomID)
+}
+
 // SetReactionV2 sets or removes a reaction on a message. emoji="" removes.
 func (db *DB) SetReactionV2(messageID, userID, emoji string) (string, error) {
 	var resultJSON string

@@ -1,5 +1,19 @@
 # Лава — Server Changelog
 
+## [1.3.0.42] - 2026-07-02
+
+### Bug Fixes
+- **Chat last message not updating after delete** — `DeleteMessageV2` now recalculates `last_message_text` in `chats` table after deleting messages. Previously, deleted message text persisted as the last message in chat list.
+- **Chat last message not updating after edit** — `EditMessageV2` now updates `last_message_text` if the edited message was the last one in the chat.
+- **Refresh token missing username** — `RefreshToken` RPC now resolves username from DB when refresh token lacks it (old tokens). Prevents empty username in ChatV2 connections.
+- **FCM call push missing sender name** — `sendCallPushNotification` now includes `sender_name` in payload. Client shows caller name instead of UUID.
+
+### Improvements
+- **Call signal delivery logging** — all call signals (ACCEPT, ANSWER, ICE_CANDIDATE, etc.) now log `delivered: true/false` for debugging call routing issues.
+- **`UpdateChatLastMessage` DB method** — new helper recalculates last message from `messages_v2` table, used by delete and edit handlers.
+
+---
+
 ## [1.3.0.41] - 2026-07-02
 
 ### Bug Fixes

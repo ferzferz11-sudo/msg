@@ -194,6 +194,13 @@ func (s *server) EditMessageV2(ctx context.Context, req *gen.EditMessageV2Reques
 			Text:   "EDIT_MESSAGE_V2:" + req.MessageId,
 			RoomId: updated.RoomID,
 		})
+
+		// Update last message in chat if this was the last message
+		var lastMsgID string
+		_ = s.db.QueryRow(`SELECT id FROM messages_v2 WHERE room_id = $1 ORDER BY created_at DESC LIMIT 1`, updated.RoomID).Scan(&lastMsgID)
+		if lastMsgID == req.MessageId {
+			s.db.UpdateChatLastMessage(updated.RoomID)
+		}
 	}
 
 	return &gen.EditMessageV2Response{Success: true, Message: "edited"}, nil
@@ -234,12 +241,26 @@ func (s *server) DeleteMessageV2(ctx context.Context, req *gen.DeleteMessageV2Re
 		return &gen.DeleteMessageV2Response{Success: false}, nil
 	}
 
+	// Collect room IDs before deletion
+	updatedRooms := make(map[string]bool)
+	for _, id := range canDelete {
+		msg, err := s.db.GetMessageV2ByUUID(id)
+		if err == nil {
+			updatedRooms[msg.RoomID] = true
+		}
+	}
+
 	if err := s.db.DeleteMessageV2(canDelete); err != nil {
 		return &gen.DeleteMessageV2Response{Success: false}, nil
 	}
 
 	if username := GetUsername(ctx); username != "" {
 		_ = s.db.UpdateLastSeen(username)
+	}
+
+	// Update last message in chat after deletion
+	for roomID := range updatedRooms {
+		s.db.UpdateChatLastMessage(roomID)
 	}
 
 	// Broadcast delete notifications
