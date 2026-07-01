@@ -360,7 +360,11 @@ func (a *authServerV2) RefreshToken(ctx context.Context, req *gen.RefreshTokenRe
 		return &gen.RefreshTokenResponse{}, fmt.Errorf("refresh token revoked or expired")
 	}
 
+	// Refresh token may not have username (old tokens) — resolve from DB
 	username := claims.Username
+	if username == "" {
+		username, _ = a.db.GetUsernameByID(claims.UserID)
+	}
 
 	// Generate new token pair (rotation: new refresh token)
 	accessToken, refreshToken, accessExp, refreshExp, err := GenerateTokenPair(claims.UserID, username, claims.DeviceID)

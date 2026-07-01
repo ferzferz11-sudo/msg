@@ -537,6 +537,8 @@ func (s *server) sendCallPushNotification(receiverId, senderId, callId string) {
 		return
 	}
 
+	senderName := resolveDisplayName(s.db, senderId)
+
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	client, err := s.firebaseApp.Messaging(ctx)
@@ -547,9 +549,10 @@ func (s *server) sendCallPushNotification(receiverId, senderId, callId string) {
 	message := &messaging.Message{
 		Token: token,
 		Data: map[string]string{
-			"type":      "VOIP_CALL",
-			"call_id":   callId,
-			"sender_id": senderId,
+			"type":        "VOIP_CALL",
+			"call_id":     callId,
+			"sender_id":   senderId,
+			"sender_name": senderName,
 		},
 		Android: &messaging.AndroidConfig{
 			Priority: "high",
@@ -560,7 +563,7 @@ func (s *server) sendCallPushNotification(receiverId, senderId, callId string) {
 	if err != nil {
 		s.logFCM("ERROR", "Call Push to %s failed: %v", receiverId, err)
 	} else {
-		s.logFCM("SUCCESS", "Call Push sent to %s", receiverId)
+		s.logFCM("SUCCESS", "Call Push sent to %s (from %s)", receiverId, senderName)
 	}
 }
 

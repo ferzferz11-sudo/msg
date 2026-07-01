@@ -12,6 +12,7 @@ type authDB interface {
 	GetUserPasswordHash(user string) (string, error)
 	SaveUserWithEmail(user, hash, email string) error
 	GetUserIdByUsername(user string) (string, error)
+	GetUsernameByID(uid string) (string, error)
 	GetUserAvatar(user string) (string, error)
 	UpdateLastSeen(user string) error
 	queryUserProfile(username string) (email, bio, status string, createdAt, lastSeenAt time.Time, err error)

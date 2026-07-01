@@ -80,6 +80,7 @@ func GenerateTokenPair(userID, username, deviceID string) (accessToken, refreshT
 	refreshJTI := uuid.New().String()
 	refreshClaims := authClaims{
 		UserID:   userID,
+		Username: username,
 		DeviceID: deviceID,
 		Type:     "refresh",
 		RegisteredClaims: jwt.RegisteredClaims{

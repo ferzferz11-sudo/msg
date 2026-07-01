@@ -665,10 +665,11 @@ func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
 			continue
 		}
 
-		// Broadcast WebRTC signals (OFFER, ANSWER, ICE) to partner
+		// Broadcast WebRTC signals (OFFER, ANSWER, ICE, ACCEPT, REJECT, HANGUP) to partner
 		delivered := s.hub.BroadcastCall(msg)
+		logger.Infof("[CALL] Signal %s delivered to %s: %v", msg.Type.String(), msg.ReceiverId, delivered)
 		if !delivered {
-			logger.Warnf("[CALL] Warning: Signal %s not delivered to %s (offline)",
+			logger.Warnf("[CALL] WARNING: Signal %s NOT delivered to %s — receiver has no active call stream",
 				msg.Type.String(), msg.ReceiverId)
 			if msg.Type == gen.CallMessage_HANGUP || msg.Type == gen.CallMessage_REJECT {
 				s.sendCallEndedPushNotification(msg.ReceiverId, msg.SenderId, msg.CallId)
