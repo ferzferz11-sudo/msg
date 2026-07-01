@@ -344,6 +344,18 @@ func (s *server) Chat(stream gen.ChatService_ChatServer) error {
 					logger.Errorf("Failed to save v2 msg: %v", err)
 				} else {
 					logger.Infof("Msg saved: %s (%s)", msg.Id, roomID)
+					preview := v2Row.Text
+					if len(preview) > 500 {
+						preview = preview[:500]
+					}
+					if v2Row.ContentType == "image" {
+						preview = "Image"
+					} else if v2Row.ContentType == "voice" {
+						preview = "Voice message"
+					}
+					_, _ = s.db.Exec(`UPDATE chats SET last_message_text=$1, last_message_time=$2, last_message_username=$3, last_message_has_image=$4 WHERE id=$5`,
+						preview, v2Row.CreatedAt, connectedUser, v2Row.ContentType == "image", v2Row.RoomID)
+					_ = s.db.IncrementParticipantsChatListVersion(v2Row.RoomID)
 				}
 			}
 		}

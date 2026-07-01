@@ -330,6 +330,9 @@ func (s *server) saveConferenceSystemMessage(roomID, text, senderName, senderId 
 		return
 	}
 
+	_, _ = s.db.Exec(`UPDATE chats SET last_message_text=$1, last_message_time=$2, last_message_username=$3, last_message_has_image=$4 WHERE id=$5`,
+		displayText, createdAt, user, false, roomID)
+
 	broadcastMsg := &gen.Message{
 		Id:        msgId,
 		User:      user,
@@ -455,6 +458,9 @@ func (s *server) saveCallSystemMessage(u1, u2, icon, text, senderName, senderId 
 		logger.Infof("[CALL] Failed to save call system message: %v", err)
 		return
 	}
+
+	_, _ = s.db.Exec(`UPDATE chats SET last_message_text=$1, last_message_time=$2, last_message_username=$3, last_message_has_image=$4 WHERE id=$5`,
+		displayText, createdAt, senderName, false, chatID)
 
 	broadcastMsg := &gen.Message{
 		Id:        msgId,
