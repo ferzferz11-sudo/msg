@@ -1,5 +1,12 @@
 # Лава — Server Changelog
 
+## [1.3.0.41] - 2026-07-02
+
+### Bug Fixes
+- **Call HANGUP push for offline callee** — when caller hangs up and callee's call stream is not registered in `callStreams` (e.g., callee was woken via FCM push), the HANGUP signal was silently lost. Now sends a `CALL_ENDED` FCM push notification to the callee when `BroadcastCall` fails to deliver HANGUP or REJECT signals.
+
+---
+
 ## [1.3.0.40] - 2026-07-01
 
 ### Bug Fixes

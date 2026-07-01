@@ -564,6 +564,39 @@ func (s *server) sendCallPushNotification(receiverId, senderId, callId string) {
 	}
 }
 
+func (s *server) sendCallEndedPushNotification(receiverId, senderId, callId string) {
+	if s.firebaseApp == nil {
+		return
+	}
+	token, err := s.db.GetUserTokenByUserID(receiverId)
+	if err != nil || token == "" || token == "DISABLED" {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	client, err := s.firebaseApp.Messaging(ctx)
+	if err != nil {
+		return
+	}
+	message := &messaging.Message{
+		Token: token,
+		Data: map[string]string{
+			"type":      "CALL_ENDED",
+			"call_id":   callId,
+			"sender_id": senderId,
+		},
+		Android: &messaging.AndroidConfig{
+			Priority: "high",
+		},
+	}
+	_, err = client.Send(ctx, message)
+	if err != nil {
+		s.logFCM("ERROR", "Call Ended Push to %s failed: %v", receiverId, err)
+	} else {
+		s.logFCM("SUCCESS", "Call Ended Push sent to %s", receiverId)
+	}
+}
+
 func (s *server) broadcastOnlineUsers() {
 	users := s.hub.GetOnlineUsers()
 	usersJson, _ := json.Marshal(users)

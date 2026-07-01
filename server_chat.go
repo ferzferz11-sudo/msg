@@ -670,6 +670,9 @@ func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
 		if !delivered {
 			logger.Warnf("[CALL] Warning: Signal %s not delivered to %s (offline)",
 				msg.Type.String(), msg.ReceiverId)
+			if msg.Type == gen.CallMessage_HANGUP || msg.Type == gen.CallMessage_REJECT {
+				s.sendCallEndedPushNotification(msg.ReceiverId, msg.SenderId, msg.CallId)
+			}
 		}
 	}
 }
