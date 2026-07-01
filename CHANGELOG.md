@@ -1,5 +1,13 @@
 # Лава — Server Changelog
 
+## [1.3.0.40] - 2026-07-01
+
+### Bug Fixes
+- **Chat list sorting fix** — v1 ChatStream handler saved messages to `messages_v2` but never updated `chats.last_message_time`, causing chats to appear at wrong positions. Now updates `last_message_text`, `last_message_time`, `last_message_username`, `last_message_has_image` on every message save. Same fix applied to `saveConferenceSystemMessage` and `saveCallSystemMessage`.
+- **Call routing UUID fix** — client sends username as `ReceiverId` but `callStreams` stores UUID, causing `BroadcastCall` to miss the target. Now resolves username→UUID via `GetUserIDByUsername` in INITIATE handler. FCM push now sends UUID as `sender_id` instead of username.
+
+---
+
 ## [1.3.0.39] - 2026-06-29
 
 ### Debug
