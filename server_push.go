@@ -548,6 +548,10 @@ func (s *server) sendCallPushNotification(receiverId, senderId, callId string) {
 
 	message := &messaging.Message{
 		Token: token,
+		Notification: &messaging.Notification{
+			Title: "Входящий звонок",
+			Body:  senderName + " звонит вам",
+		},
 		Data: map[string]string{
 			"type":        "VOIP_CALL",
 			"call_id":     callId,
@@ -556,6 +560,11 @@ func (s *server) sendCallPushNotification(receiverId, senderId, callId string) {
 		},
 		Android: &messaging.AndroidConfig{
 			Priority: "high",
+			Notification: &messaging.AndroidNotification{
+				ChannelID: "lavender_calls",
+				Priority:  messaging.PriorityMax,
+				Sound:     "default",
+			},
 		},
 	}
 
@@ -583,6 +592,10 @@ func (s *server) sendCallEndedPushNotification(receiverId, senderId, callId stri
 	}
 	message := &messaging.Message{
 		Token: token,
+		Notification: &messaging.Notification{
+			Title: "Звонок завершён",
+			Body:  "Звонок окончен",
+		},
 		Data: map[string]string{
 			"type":      "CALL_ENDED",
 			"call_id":   callId,
@@ -590,6 +603,11 @@ func (s *server) sendCallEndedPushNotification(receiverId, senderId, callId stri
 		},
 		Android: &messaging.AndroidConfig{
 			Priority: "high",
+			Notification: &messaging.AndroidNotification{
+				ChannelID: "lavender_calls",
+				Priority:  messaging.PriorityMax,
+				Sound:     "default",
+			},
 		},
 	}
 	_, err = client.Send(ctx, message)

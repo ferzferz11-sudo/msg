@@ -1,5 +1,12 @@
 # Лава — Server Changelog
 
+## [1.3.1.17] - 2026-07-02
+
+### Bug Fixes
+- **FCM push for calls not showing on Xiaomi/MIUI** — `sendCallPushNotification()` and `sendCallEndedPushNotification()` now include `Notification` payload with title/body + `AndroidNotification` with `ChannelId: "lavender_calls"` and `Priority: max`. Previously sent data-only FCM pushes which don't wake apps or show system notifications on Xiaomi MIUI. Now works like regular message pushes (channel `lavender_calls`, high priority, default sound).
+
+---
+
 ## [1.3.0.42] - 2026-07-02
 
 ### Bug Fixes
