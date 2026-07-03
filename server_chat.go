@@ -821,10 +821,11 @@ func (s *server) ChatV2(stream gen.ChatService_ChatV2Server) error {
 				}
 				row.Duration = c.Media.Duration
 				row.ContentType = c.Media.Type
-			case *gen.MessageV2_Reply:
-				row.ReplyToID = sql.NullString{String: c.Reply.MessageId, Valid: true}
-				row.ReplyPreview = sql.NullString{String: c.Reply.Preview, Valid: true}
-				row.ContentType = "text"
+			}
+
+			if v2msg.Reply != nil {
+				row.ReplyToID = sql.NullString{String: v2msg.Reply.MessageId, Valid: true}
+				row.ReplyPreview = sql.NullString{String: v2msg.Reply.Preview, Valid: true}
 			}
 
 			if v2msg.IsE2Ee {

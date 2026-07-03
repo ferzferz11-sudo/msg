@@ -93,6 +93,9 @@ func ConnectDB() (*DB, error) {
 		`DO $$ BEGIN
 			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages_v2' AND column_name='reply_preview') THEN ALTER TABLE messages_v2 ADD COLUMN reply_preview TEXT DEFAULT ''; END IF;
 		END $$;`,
+		`DO $$ BEGIN
+			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages_v2' AND column_name='mentions') THEN ALTER TABLE messages_v2 ADD COLUMN mentions TEXT DEFAULT '[]'; END IF;
+		END $$;`,
 
 		// --- Chats ---
 		`CREATE TABLE IF NOT EXISTS chats (id VARCHAR(255) PRIMARY KEY, name VARCHAR(255) NOT NULL, type VARCHAR(50) NOT NULL, participants TEXT NOT NULL, creator_username VARCHAR(255), created_at TIMESTAMP NOT NULL DEFAULT NOW(), avatar_url TEXT DEFAULT '', full_avatar_url TEXT DEFAULT '')`,

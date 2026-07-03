@@ -159,12 +159,11 @@ func TestRowToProtoV2_Reply(t *testing.T) {
 		t.Fatal("rowToProtoV2 returned nil")
 	}
 
-	replyContent, ok := proto.Content.(*gen.MessageV2_Reply)
-	if !ok {
-		t.Fatal("expected reply content")
+	if proto.Reply == nil {
+		t.Fatal("expected reply to be set")
 	}
-	if replyContent.Reply.MessageId != "orig-msg-123" {
-		t.Errorf("expected reply message_id orig-msg-123, got %s", replyContent.Reply.MessageId)
+	if proto.Reply.MessageId != "orig-msg-123" {
+		t.Errorf("expected reply message_id orig-msg-123, got %s", proto.Reply.MessageId)
 	}
 }
 

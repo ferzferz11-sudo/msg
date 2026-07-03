@@ -129,6 +129,14 @@ func (m *mockAuthDB) UpdateDeviceLastSeen(userID, deviceID string) error {
 }
 func (m *mockAuthDB) LogAuthEvent(userID, deviceID, action, ipAddress, clientVersion string, success bool, errorMessage string) {
 }
+func (m *mockAuthDB) GetUsernameByID(uid string) (string, error) {
+	for _, u := range m.users {
+		if u.id == uid {
+			return u.username, nil
+		}
+	}
+	return "", nil
+}
 
 // ===== V2 Auth Tests =====
 

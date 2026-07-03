@@ -14507,14 +14507,15 @@ type MessageV2 struct {
 	//
 	//	*MessageV2_Text
 	//	*MessageV2_Media
-	//	*MessageV2_Reply
 	Content       isMessageV2_Content    `protobuf_oneof:"content"`
+	Reply         *MessageReply          `protobuf:"bytes,12,opt,name=reply,proto3" json:"reply,omitempty"`
 	Edited        bool                   `protobuf:"varint,20,opt,name=edited,proto3" json:"edited,omitempty"`
 	IsRead        bool                   `protobuf:"varint,21,opt,name=is_read,json=isRead,proto3" json:"is_read,omitempty"`
 	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,22,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	Reactions     []byte                 `protobuf:"bytes,23,opt,name=reactions,proto3" json:"reactions,omitempty"`
 	IsE2Ee        bool                   `protobuf:"varint,30,opt,name=is_e2ee,json=isE2ee,proto3" json:"is_e2ee,omitempty"`
 	E2EePayload   string                 `protobuf:"bytes,31,opt,name=e2ee_payload,json=e2eePayload,proto3" json:"e2ee_payload,omitempty"`
+	Mentions      []string               `protobuf:"bytes,40,rep,name=mentions,proto3" json:"mentions,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -14597,9 +14598,7 @@ func (x *MessageV2) GetMedia() *MessageMedia {
 
 func (x *MessageV2) GetReply() *MessageReply {
 	if x != nil {
-		if x, ok := x.Content.(*MessageV2_Reply); ok {
-			return x.Reply
-		}
+		return x.Reply
 	}
 	return nil
 }
@@ -14646,6 +14645,13 @@ func (x *MessageV2) GetE2EePayload() string {
 	return ""
 }
 
+func (x *MessageV2) GetMentions() []string {
+	if x != nil {
+		return x.Mentions
+	}
+	return nil
+}
+
 type isMessageV2_Content interface {
 	isMessageV2_Content()
 }
@@ -14658,15 +14664,9 @@ type MessageV2_Media struct {
 	Media *MessageMedia `protobuf:"bytes,11,opt,name=media,proto3,oneof"`
 }
 
-type MessageV2_Reply struct {
-	Reply *MessageReply `protobuf:"bytes,12,opt,name=reply,proto3,oneof"`
-}
-
 func (*MessageV2_Text) isMessageV2_Content() {}
 
 func (*MessageV2_Media) isMessageV2_Content() {}
-
-func (*MessageV2_Reply) isMessageV2_Content() {}
 
 type MessageMedia struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -14919,6 +14919,7 @@ type SendMessageV2Request struct {
 	ReplyToId     string                         `protobuf:"bytes,4,opt,name=reply_to_id,json=replyToId,proto3" json:"reply_to_id,omitempty"`
 	IsE2Ee        bool                           `protobuf:"varint,5,opt,name=is_e2ee,json=isE2ee,proto3" json:"is_e2ee,omitempty"`
 	E2EePayload   string                         `protobuf:"bytes,6,opt,name=e2ee_payload,json=e2eePayload,proto3" json:"e2ee_payload,omitempty"`
+	Mentions      []string                       `protobuf:"bytes,7,rep,name=mentions,proto3" json:"mentions,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -15004,6 +15005,13 @@ func (x *SendMessageV2Request) GetE2EePayload() string {
 		return x.E2EePayload
 	}
 	return ""
+}
+
+func (x *SendMessageV2Request) GetMentions() []string {
+	if x != nil {
+		return x.Mentions
+	}
+	return nil
 }
 
 type isSendMessageV2Request_Content interface {
@@ -19918,22 +19926,23 @@ const file_messenger_proto_rawDesc = "" +
 	"\tis_typing\x18\x01 \x01(\bR\bisTyping\"<\n" +
 	"\fChatV2System\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage\"\x9a\x03\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"\xb4\x03\n" +
 	"\tMessageV2\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
 	"\aroom_id\x18\x02 \x01(\tR\x06roomId\x12\x1b\n" +
 	"\tsender_id\x18\x03 \x01(\tR\bsenderId\x12\x14\n" +
 	"\x04text\x18\n" +
 	" \x01(\tH\x00R\x04text\x12/\n" +
-	"\x05media\x18\v \x01(\v2\x17.messenger.MessageMediaH\x00R\x05media\x12/\n" +
-	"\x05reply\x18\f \x01(\v2\x17.messenger.MessageReplyH\x00R\x05reply\x12\x16\n" +
+	"\x05media\x18\v \x01(\v2\x17.messenger.MessageMediaH\x00R\x05media\x12-\n" +
+	"\x05reply\x18\f \x01(\v2\x17.messenger.MessageReplyR\x05reply\x12\x16\n" +
 	"\x06edited\x18\x14 \x01(\bR\x06edited\x12\x17\n" +
 	"\ais_read\x18\x15 \x01(\bR\x06isRead\x129\n" +
 	"\n" +
 	"created_at\x18\x16 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12\x1c\n" +
 	"\treactions\x18\x17 \x01(\fR\treactions\x12\x17\n" +
 	"\ais_e2ee\x18\x1e \x01(\bR\x06isE2ee\x12!\n" +
-	"\fe2ee_payload\x18\x1f \x01(\tR\ve2eePayloadB\t\n" +
+	"\fe2ee_payload\x18\x1f \x01(\tR\ve2eePayload\x12\x1a\n" +
+	"\bmentions\x18( \x03(\tR\bmentionsB\t\n" +
 	"\acontent\"d\n" +
 	"\fMessageMedia\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x10\n" +
@@ -19952,14 +19961,15 @@ const file_messenger_proto_rawDesc = "" +
 	"\bmessages\x18\x01 \x03(\v2\x14.messenger.MessageV2R\bmessages\x12\x1f\n" +
 	"\vnext_cursor\x18\x02 \x01(\tR\n" +
 	"nextCursor\x12\x19\n" +
-	"\bhas_more\x18\x03 \x01(\bR\ahasMore\"\xdd\x01\n" +
+	"\bhas_more\x18\x03 \x01(\bR\ahasMore\"\xf9\x01\n" +
 	"\x14SendMessageV2Request\x12\x17\n" +
 	"\aroom_id\x18\x01 \x01(\tR\x06roomId\x12\x14\n" +
 	"\x04text\x18\x02 \x01(\tH\x00R\x04text\x12/\n" +
 	"\x05media\x18\x03 \x01(\v2\x17.messenger.MessageMediaH\x00R\x05media\x12\x1e\n" +
 	"\vreply_to_id\x18\x04 \x01(\tR\treplyToId\x12\x17\n" +
 	"\ais_e2ee\x18\x05 \x01(\bR\x06isE2ee\x12!\n" +
-	"\fe2ee_payload\x18\x06 \x01(\tR\ve2eePayloadB\t\n" +
+	"\fe2ee_payload\x18\x06 \x01(\tR\ve2eePayload\x12\x1a\n" +
+	"\bmentions\x18\a \x03(\tR\bmentionsB\t\n" +
 	"\acontent\"w\n" +
 	"\x15SendMessageV2Response\x12.\n" +
 	"\amessage\x18\x01 \x01(\v2\x14.messenger.MessageV2R\amessage\x12\x18\n" +
@@ -21160,7 +21170,6 @@ func file_messenger_proto_init() {
 	file_messenger_proto_msgTypes[241].OneofWrappers = []any{
 		(*MessageV2_Text)(nil),
 		(*MessageV2_Media)(nil),
-		(*MessageV2_Reply)(nil),
 	}
 	file_messenger_proto_msgTypes[246].OneofWrappers = []any{
 		(*SendMessageV2Request_Text)(nil),

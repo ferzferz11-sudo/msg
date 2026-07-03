@@ -93,7 +93,6 @@ func (s *server) SendMessageV2(ctx context.Context, req *gen.SendMessageV2Reques
 
 	if req.ReplyToId != "" {
 		row.ReplyToID = sql.NullString{String: req.ReplyToId, Valid: true}
-		// Resolve reply preview
 		orig, err := s.db.GetMessageV2ByUUID(req.ReplyToId)
 		if err == nil {
 			preview := orig.Text
@@ -107,6 +106,11 @@ func (s *server) SendMessageV2(ctx context.Context, req *gen.SendMessageV2Reques
 			}
 			row.ReplyPreview = sql.NullString{String: preview, Valid: true}
 		}
+	}
+
+	if len(req.Mentions) > 0 {
+		b, _ := json.Marshal(req.Mentions)
+		row.Mentions = sql.NullString{String: string(b), Valid: true}
 	}
 
 	if err := s.db.SaveMessageV2(row); err != nil {
@@ -399,16 +403,21 @@ func rowToProtoV2(r *MessageRowV2) *gen.MessageV2 {
 	}
 
 	if r.ReplyToID.Valid {
-		m.Content = &gen.MessageV2_Reply{
-			Reply: &gen.MessageReply{
-				MessageId: r.ReplyToID.String,
-				Preview:   r.ReplyPreview.String,
-			},
+		m.Reply = &gen.MessageReply{
+			MessageId: r.ReplyToID.String,
+			Preview:   r.ReplyPreview.String,
 		}
 	}
 
 	if r.Reactions != "" && r.Reactions != "{}" {
 		m.Reactions = []byte(r.Reactions)
+	}
+
+	if r.Mentions.Valid && r.Mentions.String != "" && r.Mentions.String != "[]" {
+		var mentions []string
+		if err := json.Unmarshal([]byte(r.Mentions.String), &mentions); err == nil {
+			m.Mentions = mentions
+		}
 	}
 
 	return m

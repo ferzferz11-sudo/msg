@@ -1684,8 +1684,9 @@ message MessageV2 {
   oneof content {
     string text = 10;
     MessageMedia media = 11;
-    MessageReply reply = 12;
   }
+
+  MessageReply reply = 12;
 
   bool edited = 20;
   bool is_read = 21;
@@ -1694,6 +1695,8 @@ message MessageV2 {
 
   bool is_e2ee = 30;
   string e2ee_payload = 31;
+
+  repeated string mentions = 40;
 }
 
 message MessageMedia {
@@ -1729,6 +1732,7 @@ message SendMessageV2Request {
   string reply_to_id = 4;
   bool is_e2ee = 5;
   string e2ee_payload = 6;
+  repeated string mentions = 7;
 }
 
 message SendMessageV2Response {
