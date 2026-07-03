@@ -659,5 +659,3 @@ func (db *DB) DeleteServer(id string) error {
 	_, err = db.Exec(`DELETE FROM servers WHERE id = $1`, id)
 	return err
 }
-
-

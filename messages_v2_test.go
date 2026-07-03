@@ -114,13 +114,13 @@ func TestRowToProtoV2_Media(t *testing.T) {
 
 func TestRowToProtoV2_E2EE(t *testing.T) {
 	row := &MessageRowV2{
-		ID:           "msg-e2ee",
-		RoomID:       "room-3",
-		SenderID:     "user-uuid-789",
-		ContentType:  "text",
-		IsE2EE:       true,
-		E2EEPayload:  []byte("encrypted-data-here"),
-		CreatedAt:    time.Now().UTC(),
+		ID:          "msg-e2ee",
+		RoomID:      "room-3",
+		SenderID:    "user-uuid-789",
+		ContentType: "text",
+		IsE2EE:      true,
+		E2EEPayload: []byte("encrypted-data-here"),
+		CreatedAt:   time.Now().UTC(),
 	}
 
 	proto := rowToProtoV2(row)
@@ -144,14 +144,15 @@ func TestRowToProtoV2_Nil(t *testing.T) {
 
 func TestRowToProtoV2_Reply(t *testing.T) {
 	row := &MessageRowV2{
-		ID:           "msg-reply",
-		RoomID:       "room-4",
-		SenderID:     "user-uuid-reply",
-		ContentType:  "text",
-		Text:         "This is a reply",
-		ReplyToID:    sql.NullString{String: "orig-msg-123", Valid: true},
-		ReplyPreview: sql.NullString{String: "Original message text...", Valid: true},
-		CreatedAt:    time.Now().UTC(),
+		ID:            "msg-reply",
+		RoomID:        "room-4",
+		SenderID:      "user-uuid-reply",
+		ContentType:   "text",
+		Text:          "This is a reply",
+		ReplyToID:     sql.NullString{String: "orig-msg-123", Valid: true},
+		ReplyPreview:  sql.NullString{String: "Original message text...", Valid: true},
+		ReplySenderID: sql.NullString{String: "orig-sender-uuid", Valid: true},
+		CreatedAt:     time.Now().UTC(),
 	}
 
 	proto := rowToProtoV2(row)
@@ -164,6 +165,9 @@ func TestRowToProtoV2_Reply(t *testing.T) {
 	}
 	if proto.Reply.MessageId != "orig-msg-123" {
 		t.Errorf("expected reply message_id orig-msg-123, got %s", proto.Reply.MessageId)
+	}
+	if proto.Reply.SenderId != "orig-sender-uuid" {
+		t.Errorf("expected reply sender_id orig-sender-uuid, got %s", proto.Reply.SenderId)
 	}
 }
 

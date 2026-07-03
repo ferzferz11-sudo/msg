@@ -163,13 +163,13 @@ func (p *HermesACPProvider) StreamChat(ctx context.Context, messages []AIMessage
 					ch <- StreamChunk{Done: true}
 					return
 				case "session.error":
-				 errMsg := "hermes error"
+					errMsg := "hermes error"
 					if params, ok := notif.Params.(map[string]any); ok {
 						if msg, ok := params["message"].(string); ok {
 							errMsg = msg
 						}
 					}
-			 ch <- StreamChunk{Error: fmt.Errorf("hermes error: %s", errMsg), Done: true}
+					ch <- StreamChunk{Error: fmt.Errorf("hermes error: %s", errMsg), Done: true}
 					return
 				}
 				continue

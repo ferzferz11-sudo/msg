@@ -58,7 +58,7 @@ type ChatV2Row struct {
 
 // ChatV2Result extends ChatV2Row with pagination metadata
 type ChatV2Result struct {
-	Chats     []ChatV2Row
+	Chats      []ChatV2Row
 	NextCursor string
 	HasMore    bool
 }

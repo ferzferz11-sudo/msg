@@ -175,19 +175,19 @@ func (s *server) GetAdminUserList(ctx context.Context, req *gen.GetAdminUserList
 		isOnline := onlineSet[r.UserId]
 
 		users = append(users, &gen.AdminUserInfo{
-			UserId:             r.UserId,
-			Username:           r.Username,
-			AvatarUrl:          r.AvatarURL,
-			FullAvatarUrl:      r.FullAvatarURL,
-			Email:              r.Email,
-			IsSuperAdmin:       r.IsSuperAdmin,
-			LastClientVersion:  r.LastClientVersion,
-			LastSeenAt:         lastSeen,
-			IsOnline:           isOnline,
-			LastMessageText:    r.LastMessageText,
-			LastMessageTime:    lastMsgTime,
+			UserId:              r.UserId,
+			Username:            r.Username,
+			AvatarUrl:           r.AvatarURL,
+			FullAvatarUrl:       r.FullAvatarURL,
+			Email:               r.Email,
+			IsSuperAdmin:        r.IsSuperAdmin,
+			LastClientVersion:   r.LastClientVersion,
+			LastSeenAt:          lastSeen,
+			IsOnline:            isOnline,
+			LastMessageText:     r.LastMessageText,
+			LastMessageTime:     lastMsgTime,
 			LastMessageUsername: r.LastMessageUsername,
-			ChatCount:          r.ChatCount,
+			ChatCount:           r.ChatCount,
 		})
 	}
 

@@ -25,9 +25,9 @@ type Hub struct {
 	callStreams   map[gen.ChatService_CallSessionServer]string
 
 	// ChatV2 streams
-	v2Clients   map[gen.ChatService_ChatV2Server]string // stream → username
-	v2UserIds   map[gen.ChatService_ChatV2Server]string // stream → userId
-	v2Rooms     map[gen.ChatService_ChatV2Server]string // stream → room ID
+	v2Clients map[gen.ChatService_ChatV2Server]string // stream → username
+	v2UserIds map[gen.ChatService_ChatV2Server]string // stream → userId
+	v2Rooms   map[gen.ChatService_ChatV2Server]string // stream → room ID
 
 	// Reverse-lookup sets for O(1) IsUserOnline
 	userIdSet      map[string]bool   // userId → online (v2 clients)

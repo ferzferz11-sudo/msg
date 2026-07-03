@@ -1709,6 +1709,7 @@ message MessageMedia {
 message MessageReply {
   string message_id = 1;
   string preview = 2;
+  string sender_id = 3;
 }
 
 message GetHistoryV2Request {

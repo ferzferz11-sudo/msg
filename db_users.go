@@ -633,11 +633,11 @@ func (db *DB) SetMutedChat(uid, room string, m bool) error {
 
 type AdminUserRow struct {
 	UserId, Username, AvatarURL, FullAvatarURL, Email, LastClientVersion string
-	LastSeenAt                                                          sql.NullTime
-	IsSuperAdmin                                                        bool
+	LastSeenAt                                                           sql.NullTime
+	IsSuperAdmin                                                         bool
 	LastMessageText, LastMessageUsername                                 string
-	LastMessageTime                                                     sql.NullTime
-	ChatCount                                                           int32
+	LastMessageTime                                                      sql.NullTime
+	ChatCount                                                            int32
 }
 
 func (db *DB) GetAdminUserList(query string, limit int, sortBy string, lastMessageTime *time.Time, lastUsername string) ([]AdminUserRow, error) {

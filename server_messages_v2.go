@@ -105,6 +105,7 @@ func (s *server) SendMessageV2(ctx context.Context, req *gen.SendMessageV2Reques
 				preview = "[voice]"
 			}
 			row.ReplyPreview = sql.NullString{String: preview, Valid: true}
+			row.ReplySenderID = sql.NullString{String: orig.SenderID, Valid: true}
 		}
 	}
 
@@ -369,13 +370,13 @@ func rowToProtoV2(r *MessageRowV2) *gen.MessageV2 {
 	}
 
 	m := &gen.MessageV2{
-		Id:       r.ID,
-		RoomId:   r.RoomID,
-		SenderId: r.SenderID,
-		Edited:   r.Edited,
-		IsRead:   r.IsRead,
+		Id:        r.ID,
+		RoomId:    r.RoomID,
+		SenderId:  r.SenderID,
+		Edited:    r.Edited,
+		IsRead:    r.IsRead,
 		CreatedAt: timestamppb.New(r.CreatedAt),
-		IsE2Ee:   r.IsE2EE,
+		IsE2Ee:    r.IsE2EE,
 	}
 
 	if r.IsE2EE {
@@ -406,6 +407,7 @@ func rowToProtoV2(r *MessageRowV2) *gen.MessageV2 {
 		m.Reply = &gen.MessageReply{
 			MessageId: r.ReplyToID.String,
 			Preview:   r.ReplyPreview.String,
+			SenderId:  r.ReplySenderID.String,
 		}
 	}
 

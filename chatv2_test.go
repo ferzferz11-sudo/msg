@@ -39,9 +39,9 @@ func (m *mockChatV2Stream) Context() context.Context {
 
 func (m *mockChatV2Stream) SendHeader(metadata.MD) error { return nil }
 func (m *mockChatV2Stream) SetHeader(metadata.MD) error  { return nil }
-func (m *mockChatV2Stream) SendMsg(interface{}) error     { return nil }
-func (m *mockChatV2Stream) RecvMsg(interface{}) error     { return nil }
-func (m *mockChatV2Stream) SetTrailer(metadata.MD)        {}
+func (m *mockChatV2Stream) SendMsg(interface{}) error    { return nil }
+func (m *mockChatV2Stream) RecvMsg(interface{}) error    { return nil }
+func (m *mockChatV2Stream) SetTrailer(metadata.MD)       {}
 
 func (m *mockChatV2Stream) Recv() (*gen.ChatV2Message, error) {
 	msg, ok := <-m.recvCh

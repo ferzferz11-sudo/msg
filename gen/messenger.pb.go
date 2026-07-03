@@ -14740,6 +14740,7 @@ type MessageReply struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	MessageId     string                 `protobuf:"bytes,1,opt,name=message_id,json=messageId,proto3" json:"message_id,omitempty"`
 	Preview       string                 `protobuf:"bytes,2,opt,name=preview,proto3" json:"preview,omitempty"`
+	SenderId      string                 `protobuf:"bytes,3,opt,name=sender_id,json=senderId,proto3" json:"sender_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -14784,6 +14785,13 @@ func (x *MessageReply) GetMessageId() string {
 func (x *MessageReply) GetPreview() string {
 	if x != nil {
 		return x.Preview
+	}
+	return ""
+}
+
+func (x *MessageReply) GetSenderId() string {
+	if x != nil {
+		return x.SenderId
 	}
 	return ""
 }
@@ -19948,11 +19956,12 @@ const file_messenger_proto_rawDesc = "" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x10\n" +
 	"\x03url\x18\x02 \x01(\tR\x03url\x12\x12\n" +
 	"\x04urls\x18\x03 \x03(\tR\x04urls\x12\x1a\n" +
-	"\bduration\x18\x04 \x01(\x05R\bduration\"G\n" +
+	"\bduration\x18\x04 \x01(\x05R\bduration\"d\n" +
 	"\fMessageReply\x12\x1d\n" +
 	"\n" +
 	"message_id\x18\x01 \x01(\tR\tmessageId\x12\x18\n" +
-	"\apreview\x18\x02 \x01(\tR\apreview\"\\\n" +
+	"\apreview\x18\x02 \x01(\tR\apreview\x12\x1b\n" +
+	"\tsender_id\x18\x03 \x01(\tR\bsenderId\"\\\n" +
 	"\x13GetHistoryV2Request\x12\x17\n" +
 	"\aroom_id\x18\x01 \x01(\tR\x06roomId\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x16\n" +

@@ -826,6 +826,7 @@ func (s *server) ChatV2(stream gen.ChatService_ChatV2Server) error {
 			if v2msg.Reply != nil {
 				row.ReplyToID = sql.NullString{String: v2msg.Reply.MessageId, Valid: true}
 				row.ReplyPreview = sql.NullString{String: v2msg.Reply.Preview, Valid: true}
+				row.ReplySenderID = sql.NullString{String: v2msg.Reply.SenderId, Valid: true}
 			}
 
 			if v2msg.IsE2Ee {

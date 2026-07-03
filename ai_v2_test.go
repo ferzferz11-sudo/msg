@@ -16,9 +16,9 @@ import (
 // ======= Mock AgentProvider =======
 
 type mockProvider struct {
-	streamCh    chan StreamChunk
+	streamCh     chan StreamChunk
 	capabilities AgentCapabilities
-	closed      bool
+	closed       bool
 }
 
 func newMockProvider(content string) *mockProvider {
@@ -84,9 +84,9 @@ type mockTool struct {
 	role        string
 }
 
-func (t *mockTool) Name() string              { return t.name }
-func (t *mockTool) Description() string       { return t.description }
-func (t *mockTool) RequiredRole() string      { return t.role }
+func (t *mockTool) Name() string         { return t.name }
+func (t *mockTool) Description() string  { return t.description }
+func (t *mockTool) RequiredRole() string { return t.role }
 func (t *mockTool) Parameters() map[string]any {
 	return map[string]any{
 		"type": "object",
@@ -458,7 +458,7 @@ func TestAgentExecutor_WithToolCalls(t *testing.T) {
 	})
 	tools := &ToolRegistry{tools: make(map[string]Tool)}
 	tools.Register(&mockTool{
-		name:        "echo_tool",
+		name: "echo_tool",
 		executeFunc: func(ctx context.Context, args map[string]any) (string, error) {
 			return "echo result", nil
 		},

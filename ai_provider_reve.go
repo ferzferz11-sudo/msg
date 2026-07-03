@@ -63,10 +63,10 @@ func (p *reveProvider) StreamChat(ctx context.Context, messages []AIMessageInput
 		}
 
 		ch <- StreamChunk{
-			Content:   "Image generated",
-			ImageURL:  imageURL,
-			Finished:  true,
-			Done:      true,
+			Content:  "Image generated",
+			ImageURL: imageURL,
+			Finished: true,
+			Done:     true,
 		}
 	}()
 
@@ -75,8 +75,8 @@ func (p *reveProvider) StreamChat(ctx context.Context, messages []AIMessageInput
 
 func (p *reveProvider) generateImage(ctx context.Context, prompt string) (string, error) {
 	payload := map[string]any{
-		"prompt":              prompt,
-		"test_time_scaling":   1,
+		"prompt":            prompt,
+		"test_time_scaling": 1,
 	}
 	jsonData, err := json.Marshal(payload)
 	if err != nil {

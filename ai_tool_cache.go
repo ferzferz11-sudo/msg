@@ -86,7 +86,7 @@ type cachedTool struct {
 	keyFn func(args map[string]any) string
 }
 
-func (t *cachedTool) Name() string              { return t.inner.Name() }
+func (t *cachedTool) Name() string               { return t.inner.Name() }
 func (t *cachedTool) Description() string        { return t.inner.Description() }
 func (t *cachedTool) Parameters() map[string]any { return t.inner.Parameters() }
 func (t *cachedTool) RequiredRole() string       { return t.inner.RequiredRole() }

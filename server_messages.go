@@ -177,17 +177,17 @@ func (s *server) SetReaction(_ context.Context, req *gen.ReactionRequest) (*gen.
 		}
 
 		s.hub.Broadcast(&gen.Message{
-			Id:          msg.ID,
-			User:        username,
-			Text:        text,
-			CreatedAt:   timestamppb.New(msg.CreatedAt),
-			Reactions:   reactions,
-			RoomId:      msg.RoomID,
-			IsRead:      msg.IsRead,
-			ImageUrl:    imageURL,
-			VoiceUrl:    voiceURL,
-			Duration:    msg.Duration,
-			Edited:      msg.Edited,
+			Id:        msg.ID,
+			User:      username,
+			Text:      text,
+			CreatedAt: timestamppb.New(msg.CreatedAt),
+			Reactions: reactions,
+			RoomId:    msg.RoomID,
+			IsRead:    msg.IsRead,
+			ImageUrl:  imageURL,
+			VoiceUrl:  voiceURL,
+			Duration:  msg.Duration,
+			Edited:    msg.Edited,
 		})
 	}
 
