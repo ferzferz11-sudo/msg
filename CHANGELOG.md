@@ -1,5 +1,15 @@
 # Лава — Server Changelog
 
+## [1.3.1.18] - 2026-07-03
+
+### Bug Fixes
+- **Reply/quote message content lost** — `MessageReply` moved out of `oneof content` in `MessageV2` proto. Previously, setting a reply overwrote the text/media content (text/media field was set first, then `Content = Reply` overwrote it), making the message bubble appear empty. Now `reply` is a separate field — text+reply are independent.
+
+### Features
+- **@Mentions in messages** — `SendMessageV2Request` now accepts `repeated string mentions` (field 7). `MessageV2` returns `repeated string mentions` (field 40). Client extracts `@username` from text, server stores as JSON array in `messages_v2.mentions` column. DB migration auto-creates column on startup.
+
+---
+
 ## [1.3.1.17] - 2026-07-02
 
 ### Bug Fixes

@@ -1,6 +1,6 @@
 # Lavender Messenger — Client Integration Guide
 
-**Server:** v1.3.0.38 | **Protocol:** gRPC + Protocol Buffers | **Date:** 2026-06-29
+**Server:** v1.3.1.18 | **Protocol:** gRPC + Protocol Buffers | **Date:** 2026-07-03
 
 This document covers everything a client needs to integrate with the Lavender Messenger server. Platform-agnostic — applies to Android, iOS, Web, Desktop, or any gRPC-capable client.
 
@@ -464,7 +464,7 @@ Messages v2 provides a lightweight, type-safe message system with cursor-based p
 |---------|-----------|-------------|
 | Fields | 26 (God Object) | ~12 (lean) |
 | Sender | `user` (username) | `sender_id` (UUID) |
-| Content | flat fields | `oneof content` (text/media/reply) |
+| Content | flat fields | `oneof content` (text/media) + `reply` + `mentions` |
 | Reactions | N+1 queries | JSONB in message |
 | Pagination | OFFSET | Cursor-based |
 | Auth | in-message (jwt_token, device_id) | interceptor-only |
@@ -513,8 +513,9 @@ message MessageV2 {
   oneof content {
     string text = 10;
     MessageMedia media = 11;
-    MessageReply reply = 12;
   }
+
+  MessageReply reply = 12;  // separate field — does NOT overwrite text/media
 
   bool edited = 20;
   bool is_read = 21;
@@ -523,6 +524,8 @@ message MessageV2 {
 
   bool is_e2ee = 30;
   string e2ee_payload = 31;
+
+  repeated string mentions = 40;  // @usernames mentioned in message
 }
 
 message MessageMedia {
@@ -576,6 +579,7 @@ message SendMessageV2Request {
   string reply_to_id = 4;
   bool is_e2ee = 5;
   string e2ee_payload = 6;
+  repeated string mentions = 7;  // @usernames to mention
 }
 
 message SendMessageV2Response {
@@ -584,6 +588,30 @@ message SendMessageV2Response {
   string error = 3;
 }
 ```
+
+### Mentions
+
+When sending a message, the client can extract `@username` mentions from the text and include them in the `mentions` field:
+
+```protobuf
+// Client extracts mentions from text:
+text = "Hello @user1 @user2, check this out"
+mentions = ["user1", "user2"]
+
+// Server stores them in messages_v2.mentions as JSON array
+// and returns them in MessageV2.mentions on every read
+```
+
+**Client flow:**
+1. Parse message text for `@username` patterns
+2. Extract unique usernames (strip `@` prefix)
+3. Include in `SendMessageV2Request.mentions`
+4. On receive: highlight `@username` spans in message text using `MessageV2.mentions`
+
+**Server behavior:**
+- Mentions stored as JSON array in `messages_v2.mentions` column
+- Returned in `GetHistoryV2`, `ChatV2` stream, and `SendMessageV2` response
+- DB migration: `ALTER TABLE messages_v2 ADD COLUMN mentions TEXT DEFAULT '[]'`
 
 ### EditMessageV2
 
