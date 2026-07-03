@@ -251,15 +251,19 @@ func (s *server) DeleteChat(_ context.Context, req *gen.DeleteChatRequest) (*gen
 		return &gen.DeleteChatResponse{Success: false, Message: "Chat or group already deleted"}, nil
 	}
 
-	// Security check: only creator can delete group chats
-	// We allow users to delete their own direct chats, but groups must be deleted by the creator
+	// Security check: only creator or admin can delete group chats
 	if chat.Type == "group" && chat.CreatorUsername != requesterUsername {
-		logger.Errorf("DeleteChat error: User %s is not authorized to delete group chat %s (creator: %s)",
-			requesterUsername, req.ChatId, chat.CreatorUsername)
-		return &gen.DeleteChatResponse{
-			Success: false,
-			Message: "You don't have permission to delete this group. Only the group administrator can delete it.",
-		}, nil
+		// Check if requester is admin
+		isAdmin := s.db.IsSuperAdmin(requesterUsername)
+		if !isAdmin {
+			logger.Errorf("DeleteChat error: User %s is not authorized to delete group chat %s (creator: %s)",
+				requesterUsername, req.ChatId, chat.CreatorUsername)
+			return &gen.DeleteChatResponse{
+				Success: false,
+				Message: "You don't have permission to delete this group. Only the group creator (" + chat.CreatorUsername + ") or an admin can delete it.",
+			}, nil
+		}
+		logger.Infof("DeleteChat: Admin %s deleting group chat %s (creator: %s)", requesterUsername, req.ChatId, chat.CreatorUsername)
 	}
 
 	var participants []string
