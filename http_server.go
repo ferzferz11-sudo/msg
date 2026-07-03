@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	maxUploadSize   = 10 * 1024 * 1024 // 10MB
+	maxUploadSize   = 30 * 1024 * 1024 // 30MB
 	avatarsPath     = "./uploads/avatars"
 	imagesPath      = "./uploads/images"
 	filesPath       = "./uploads/files"
