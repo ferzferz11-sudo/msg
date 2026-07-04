@@ -137,6 +137,17 @@ func (s *server) MarkRead(ctx context.Context, req *gen.MarkReadRequest) (*gen.M
 			Text:   "READ_ALL:" + userID,
 			RoomId: req.RoomId,
 		})
+		// Also broadcast to ChatV2 streams
+		for _, stream := range s.hub.SnapshotRoomStreams(req.RoomId) {
+			_ = stream.Send(&gen.ChatV2Message{
+				Payload: &gen.ChatV2Message_System{
+					System: &gen.ChatV2System{
+						Type:    "READ_ALL",
+						Message: userID,
+					},
+				},
+			})
+		}
 	}
 
 	return &gen.MarkReadResponse{Success: true}, nil

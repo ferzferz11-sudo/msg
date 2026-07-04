@@ -56,34 +56,4 @@
 | v1.2.0.0 | AuthService v2 (JWT) |
 | v1.2.1.0 | ProfileService v2 (dev only) |
 
----
 
-## Следующая сессия
-
-### T1: Android — SuperAdminActivity (клиент)
-
-См. `doc/PROMPT_ADMIN_USER_LIST.md`:
-- Клиент: SuperAdminActivity обновление
-- Новый RPC `GetAdminUserList` уже реализован на сервере (v1.3.0.31)
-
-### T2: Android — DeleteMessageV2 cleanup
-
-См. `doc/CLIENT_DELETE_MESSAGE_v2.md`:
-- Убрать проверку `content_type == 'deleted'` (таких записей больше нет)
-- Сервер физически удаляет записи из messages_v2
-
-### T3: Web — Admin Panel (как на Android)
-
-Новый RPC `GetAdminUserList` уже реализован на сервере (v1.3.0.31).
-Нужно создать web-клиент:
-- Доступ: только для `isSuperAdmin` пользователей
-- Экран: список пользователей с пагинацией (cursor-based)
-- Информация: username, avatar, email, isSuperAdmin, lastClientVersion, lastSeenAt, isOnline, lastMessageText, lastMessageTime, chatCount
-- Действия: поиск, сортировка, клик на пользователя → профиль
-
-### T4: Web — E2EE Secret Chat UI
-
-См. `doc/PROMPT_NEXT_SESSION.md` в веб-проекте:
-- Secret Chat Creation Flow
-- Key Exchange UI
-- Encrypted Messaging pipeline
