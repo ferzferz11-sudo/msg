@@ -1,5 +1,20 @@
 # Лава — Server Changelog
 
+## [1.3.2.0] - 2026-07-04
+
+### Features
+- **Multi-Company Support** — users can belong to multiple companies simultaneously (e.g., Owner in one, Employee in another).
+- **SetPrimaryCompany** — set which company appears in user's profile (`users.primary_company_id`).
+- **GetUserCompanies** — list all companies with membership/position + `is_primary` flag.
+- **GetUserInfo** — public user profile with company/position info (for contacts).
+- **Profile primary company** — `GetProfile` uses `primary_company_id` first, fallback to highest level.
+
+### Improvements
+- **Profile company fallback** — if no primary company set, shows highest-level position across all companies.
+- **CLIENT_INTEGRATION.md** — full company system documentation with multi-company flows.
+
+---
+
 ## [1.3.1.21] - 2026-07-04
 
 ### Features

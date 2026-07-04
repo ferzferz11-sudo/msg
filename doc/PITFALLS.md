@@ -2,7 +2,7 @@
 
 Подводные камни и известные проблемы сервера. Читать перед началом работы!
 
-**Обновлено:** 2026-06-27
+**Обновлено:** 2026-07-04
 
 ---
 
@@ -10,7 +10,7 @@
 
 ### Структура файлов
 - server.go — структура server, общие методы (resolveDisplayName, logErrorOnce)
-- server_*.go — методы по доменам (chat, users, chats, messages, profile, push, contacts, themes, drafts, muted, favorites, ai)
+- server_*.go — методы по доменам (chat, users, chats, messages, profile, push, contacts, themes, drafts, muted, favorites, ai, company)
 - При добавлении новых методов — класть в соответствующий server_*.go файл
 - Не добавлять методы напрямую в server.go (только структура и общие утилиты)
 
@@ -35,6 +35,30 @@
 ### /dev/null сломан после OOM
 - Если `/dev/null` стал файлом вместо device node: `rm /dev/null && mknod /dev/null c 1 3 && chmod 666 /dev/null`
 - Без этого `go build` падает с "open /dev/null: no such file or directory"
+
+---
+
+## Company System
+
+### Множественные компании
+- Пользователь может быть в нескольких компаниях одновременно
+- `UNIQUE(company_id, user_id)` — одна позиция на компанию, но unlimited компаний на пользователя
+- `primary_company_id` на users определяет какая компания показывается в профиле
+- **Fallback**: если primary_company_id не задан, GetProfile показывает компанию с самым высоким уровнем позиции
+
+### Chat filtering
+- `company_chats.access_level` + `min_position_level` определяют видимость чата
+- Фильтрация идёт по позиции пользователя **в ЭТОЙ компании**, не по primary
+- Тип чата: `type="company"` в таблице `chats`
+
+### Builtin позиции
+- Owner (3), Top Manager (2), Manager (1), Employee (0) — нельзя удалить
+- Проверка: `level >= 0 && level <= 3 && title in (Owner, Top Manager, Manager, Employee)`
+
+### Owner constraints
+- Владелец не может покинуть компанию (нужно transfer ownership)
+- Владелец не может быть удалён из компании
+- Только владелец может удалить компанию
 
 ---
 

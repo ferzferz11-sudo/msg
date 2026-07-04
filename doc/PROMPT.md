@@ -1,7 +1,7 @@
-# Промпт для серверных сессий — v1.3.0.40
+# Промпт для серверных сессий — v1.3.2.0
 
-**Дата:** 2026-07-01 | **Ветка:** feat/1.3.0.x
-**Статус:** v1.3.0.40 задеплоен. Chat list sorting fix, call UUID routing fix.
+**Дата:** 2026-07-04 | **Ветка:** feat/1.3.0.x
+**Статус:** v1.3.2.0 задеплоен. Company System: multi-company support, positions, members, company chats.
 
 ---
 
@@ -9,8 +9,8 @@
 
 | | Версия | Статус |
 |---|--------|--------|
-| **Сервер prod** | v1.3.0.31 | ✅ Работает на порту 50051 |
-| **Сервер dev** | v1.3.0.31 | ✅ Работает на порту 50052 |
+| **Сервер prod** | v1.3.2.0 | ✅ Работает на порту 50051 |
+| **Сервер dev** | v1.3.2.0 | ✅ Работает на порту 50052 |
 | **Web клиент** | v0.1.9.0 | ✅ https://13.140.25.249/web/ |
 
 **Android:** `/root/msg.client.android` — документация там, сборка ТОЛЬКО локально.
@@ -22,7 +22,7 @@
 ### Файлы сервера
 ```
 main.go                    — Entry point, gRPC, GracefulStop
-server.go                  — Server struct, helpers (v1.3.0.31)
+server.go                  — Server struct, helpers, version (v1.3.2.0)
 hub.go                     — Connection management + BroadcastV2Reaction
 
 === AI Services v2 ===
@@ -46,7 +46,8 @@ server_messages.go         — History, reactions, editing (v1 deprecated)
 server_messages_v2.go      — GetHistoryV2, SendMessageV2, Edit/Delete/ReactionV2, SearchMessages
 server_push.go             — FCM push, call push
 server_contacts.go, server_themes.go, server_drafts.go, server_muted.go, server_favorites.go
-server_profile.go, server_profile_v2.go (ProfileService), server_management.go, server_remote.go
+server_profile.go, server_profile_v2.go (ProfileService), server_company.go (CompanyService)
+server_management.go, server_remote.go
 secret_chat.go, bot_commands.go, http_server.go, email.go, crypto.go
 ```
 
@@ -62,6 +63,7 @@ secret_chat.go, bot_commands.go, http_server.go, email.go, crypto.go
 6. Коммитить после каждого изменения
 7. **Актуальный код сервера всегда доступен локально** — перед работой всегда читай файлы из `/Users/paveld/LavenderMessenger-server/`, НЕ полагайся на кеш или предыдущие версии
 8. **Стабильность > фичи** — деплоим на prod, ошибки критичны
+9. **Тесты обязательны** — `go test ./...` перед каждым деплоем
 
 ---
 

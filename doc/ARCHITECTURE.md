@@ -1,7 +1,7 @@
 # Lavender Messenger — Архитектура
 
-**Дата:** 2026-06-29
-**Версия сервера:** 1.3.0.38
+**Дата:** 2026-07-04
+**Версия сервера:** 1.3.2.0
 **Модуль:** `LavenderMessenger` (Go 1.26)
 
 ---
@@ -61,6 +61,7 @@
 | `server_favorites.go` | Favorites, device mgmt, password reset, user ID | ChatService |
 | `server_profile.go` | Profile: username, password, mark read, avatar, delete | ChatService |
 | `server_profile_v2.go` | ProfileService: JWT-only profile management | ProfileService |
+| `server_company.go` | CompanyService: companies, positions, members, company chats | CompanyService |
 | `server_management.go` | Admin: list, add, update, delete servers | ServerService |
 | `server_remote.go` | Remote agent: list, status, deploy (unary + streaming) | ChatService |
 | `server_ai_v2.go` | AI v2: ChatWithAIV2, Agent CRUD, Marketplace, Usage Stats (15 RPCs) | ChatService |
@@ -209,6 +210,33 @@ Health endpoint returns 503 `{"status":"shutting_down"}` during shutdown window.
 
 ---
 
+## 5.1 Company System Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     CompanyService                           │
+│                                                             │
+│  Companies ──► Positions ──► Members                        │
+│      │              │            │                           │
+│      ▼              ▼            ▼                           │
+│  companies    company_pos    company_members                │
+│  (owner_id)   (level 0-3)   (user→position)                │
+│                                                             │
+│  Company Chats ──► Access Control                           │
+│      │                  │                                   │
+│      ▼                  ▼                                   │
+│  company_chats    access_level + min_position_level         │
+│  (chat_id FK)     (member/management/owner_only)            │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**DB Tables:** companies, company_positions, company_members, company_chats, users.primary_company_id
+**Position hierarchy:** Owner(3) > Top Manager(2) > Manager(1) > Employee(0)
+**Chat access:** member (all) → management (level≥1) → owner_only (level=3)
+**Multi-company:** Users can belong to multiple companies; primary_company_id for profile display
+
+---
+
 ## 6. Tech Stack
 
 - Go 1.26, gRPC + Protocol Buffers
@@ -232,7 +260,7 @@ Health endpoint returns 503 `{"status":"shutting_down"}` during shutdown window.
 | `go test ./...` | Все тесты (~88) |
 | `go test -race -count=1 .` | С race detector |
 
-Тесты: `auth_jwt_test.go`, `auth_service_test.go`, `owl_test.go`, `bot_commands_test.go`, `server_push_test.go`, `server_remote_test.go`, `server_stability_test.go`, `chatv2_test.go`, `messages_v2_test.go`, `core/rag/memory/memory_test.go`
+Тесты: `auth_jwt_test.go`, `auth_service_test.go`, `owl_test.go`, `bot_commands_test.go`, `server_push_test.go`, `server_remote_test.go`, `server_stability_test.go`, `chatv2_test.go`, `messages_v2_test.go`, `company_test.go`, `core/rag/memory/memory_test.go`
 
 ---
 

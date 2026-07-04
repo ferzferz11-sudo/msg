@@ -5,16 +5,17 @@
 
 ---
 
-## ✅ Серверная часть завершена (50/50 задач + 2 test suites + Hermes ACP)
+## ✅ Серверная часть завершена (50/50 задач + 2 test suites + Hermes ACP + Company System)
 
 Прогресс: **100%**
 
-### Тесты (crypto + AI v2)
+### Тесты (crypto + AI v2 + company)
 
 | Файл | Что тестирует | Тестов |
 |------|--------------|--------|
 | `crypto_test.go` | encrypt/decrypt (roundtrip, unicode, markers, tamper), HashPassword/CheckPassword, GenerateResetToken, getSecretKey | 22 |
 | `ai_v2_test.go` | ProviderRegistry, ToolRegistry (whitelist, cache), HybridRouter (keywords, binding), AgentExecutor (mock provider, tool calls, model override), resolveAPIKey, toolCache (TTL, LRU, concurrent), isURLSafe SSRF, OpenRouter SSE streaming, query_database security, all tool interfaces | 76 |
+| `company_test.go` | removeParticipant, access level thresholds, position hierarchy, chat type validation, default positions, builtin position protection, owner constraints, participants JSON | 9 |
 
 ---
 
@@ -22,6 +23,9 @@
 
 | Версия | Описание |
 |--------|----------|
+| v1.3.2.0 | Company System: companies, positions, members, company chats, access control, multi-company support, primary company, GetUserInfo, GetUserCompanies, SetPrimaryCompany, max_upload_size in /info, READ_ALL broadcast to ChatV2 |
+| v1.3.1.21 | Company System v1: CRUD, positions, members, company chats, access levels |
+| v1.3.1.20 | Read receipts fix (messages_v2), max_upload_size in /info, READ_ALL broadcast |
 | v1.3.0.31 | BroadcastGlobalV2 for online status, BroadcastShutdown for v2, reaction broadcast to ChatV2 stream, GetAdminUserList RPC, DeleteMessageV2 physical delete |
 | v1.3.0.29 | Hermes ACP provider (JSON-RPC 2.0, persistent sessions), crypto + AI v2 tests (98), last_seen_at tracking, 11 preset agents |
 | v1.3.0.27 | v1 messages tables dropped, v1 DB functions removed |

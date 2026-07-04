@@ -2,14 +2,14 @@
 
 Индекс документов проекта. Читать при каждом старте новой сессии.
 
-**Модуль:** `LavenderMessenger` | **Go:** 1.26 | **Сервер:** v1.3.0.38
+**Модуль:** `LavenderMessenger` | **Go:** 1.26 | **Сервер:** v1.3.2.0
 
 ---
 
 ## Быстрый старт
 
 1. **PROMPT.md** — контекст сессии (ветка, статус, команды, правила)
-2. **CLIENT_INTEGRATION.md** — **полная интеграция клиентов** (все gRPC методы, HTTP endpoints, AI v2, marketplace)
+2. **CLIENT_INTEGRATION.md** — **полная интеграция клиентов** (все gRPC методы, HTTP endpoints, AI v2, marketplace, company system)
 
 ---
 
@@ -18,7 +18,7 @@
 | Файл | Назначение |
 |------|-----------|
 | `PROMPT.md` | Промпт для серверных сессий: статус, правила, команды |
-| `CLIENT_INTEGRATION.md` | **Единый документ интеграции клиентов** — все gRPC методы, HTTP endpoints, auth, AI v2, marketplace |
+| `CLIENT_INTEGRATION.md` | **Единый документ интеграции клиентов** — все gRPC методы, HTTP endpoints, auth, AI v2, marketplace, company system |
 | `ARCHITECTURE.md` | Архитектура сервера: структура файлов, auth, AI pipeline |
 | `AI_SERVICES.md` | AI-сервисы: провайдеры, пресеты, инструменты |
 | `TASKS.md` | Таск-трекер |

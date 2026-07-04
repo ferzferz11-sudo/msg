@@ -2,7 +2,7 @@
 
 Документация по модульным тестам: как запускать, что покрыто, как писать новые тесты.
 
-**Актуально:** v1.3.0.38 (2026-06-29)
+**Актуально:** v1.3.2.0 (2026-07-04)
 
 ---
 
@@ -42,9 +42,10 @@ go test -coverprofile=/tmp/cover.out -count=1 . && go tool cover -func=/tmp/cove
 | `server_stability_test.go` | Pinned messages fix, type assertion, graceful shutdown, panic recovery | 13 |
 | `chatv2_test.go` | ChatV2 stream: auth, message routing, typing | TBD |
 | `messages_v2_test.go` | Messages v2: CRUD, cursor pagination, reactions | TBD |
+| `company_test.go` | removeParticipant, access level thresholds, position hierarchy, chat type validation, default positions, builtin position protection, owner constraints, participants JSON | 9 |
 | `core/rag/memory/memory_test.go` | In-memory RAG: embeddings, vector DB, pipeline | 4 |
 
-**Всего:** ~186+ тестов (все проходят)
+**Всего:** ~195+ тестов (все проходят)
 
 ---
 
@@ -236,6 +237,30 @@ go test -coverprofile=/tmp/cover.out -count=1 . && go tool cover -func=/tmp/cove
 | `TestConnectDB_HaltOnFailure` | Сервер останавливается при падении БД |
 | `TestStreamHandler_PanicRecovery` | Panic recovery в stream handlers |
 | `TestUpdateUsername_TransactionErrorHandling` | Транзакция проверяет ошибки |
+
+---
+
+## company_test.go (9 тестов)
+
+### Position Levels & Access (5)
+
+| Тест | Что проверяет |
+|------|--------------|
+| `TestRemoveParticipant` | Удаление участника из JSON массива (7 под-тестов: list of 3, only user, first, last, not in list, empty, double quotes) |
+| `TestCompanyPositions_AccessLevelThresholds` | Пороги доступа: member→0, management→1, owner_only→3, minLevel override (5 под-тестов) |
+| `TestCompanyPositions_LevelHierarchy` | Иерархия позиций: Owner > Top Manager > Manager > Employee; проверка management и owner-only видимости |
+| `TestCompanyChat_CreationLogic` | Тип "company" является валидным типом чата |
+| `TestCompanyChat_AccessLevelValidation` | Валидные уровни: none, member, management, owner_only, all |
+
+### Defaults & Constraints (4)
+
+| Тест | Что проверяет |
+|------|--------------|
+| `TestCompany_DefaultPositions` | Автосоздание 4 позиций (Owner/Top Manager/Manager/Employee), без дубликатов, уровни 0-3 |
+| `TestCompany_CannotDeleteBuiltinPositions` | Owner/Top Manager/Manager/Employee нельзя удалить |
+| `TestCompany_OwnerCannotLeave` | Владелец не может покинуть свою компанию |
+| `TestCompany_OwnerCannotBeRemoved` | Владелец не может быть удалён |
+| `TestCompanyChat_ParticipantsJSON` | Формирование JSON массива участников |
 
 ---
 

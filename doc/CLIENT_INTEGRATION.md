@@ -1,6 +1,6 @@
 # Lavender Messenger — Client Integration Guide
 
-**Server:** v1.3.1.21 | **Protocol:** gRPC + Protocol Buffers | **Date:** 2026-07-04
+**Server:** v1.3.2.0 | **Protocol:** gRPC + Protocol Buffers | **Date:** 2026-07-04
 
 This document covers everything a client needs to integrate with the Lavender Messenger server. Platform-agnostic — applies to Android, iOS, Web, Desktop, or any gRPC-capable client.
 
