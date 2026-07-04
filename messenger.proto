@@ -127,12 +127,15 @@ message ChatInfo {
   bool is_secret = 15;
   string peer_public_key = 16;
   bool e2ee_ready = 17;
-  string active_agent_id = 20;  // For hermes sessions: current active agent
-  string agent_mode = 21;       // For hermes sessions: single/parallel/pipeline
-  bool is_pinned = 22;          // ChatList v2: pinned status
-  bool is_muted = 23;           // ChatList v2: muted status
-  bool is_archived = 24;        // ChatList v2: archived status
-  int64 pinned_at = 25;         // ChatList v2: timestamp when pinned (for sort order)
+  string active_agent_id = 20;
+  string agent_mode = 21;
+  bool is_pinned = 22;
+  bool is_muted = 23;
+  bool is_archived = 24;
+  int64 pinned_at = 25;
+  string company_id = 26;
+  string company_chat_access = 27;
+  int32 company_min_position_level = 28;
 }
 
 message GetChatsRequest {
@@ -1593,6 +1596,10 @@ message GetProfileResponse {
   bool is_super_admin = 9;
   string created_at = 10;
   string last_seen_at = 11;
+  string company_id = 12;
+  string company_name = 13;
+  string position_title = 14;
+  int32 position_level = 15;
 }
 
 message UpdateProfileV2Request {
@@ -2148,5 +2155,264 @@ service ProfileService {
   rpc DeleteProfile(DeleteProfileV2Request) returns (DeleteProfileV2Response);
   rpc GetUserSettings(GetUserSettingsRequest) returns (GetUserSettingsResponse);
   rpc UpdateUserSettings(UpdateUserSettingsRequest) returns (UpdateUserSettingsResponse);
+}
+
+// ======= Company System =======
+
+service CompanyService {
+  rpc CreateCompany(CreateCompanyRequest) returns (CreateCompanyResponse);
+  rpc GetCompany(GetCompanyRequest) returns (GetCompanyResponse);
+  rpc UpdateCompany(UpdateCompanyRequest) returns (UpdateCompanyResponse);
+  rpc DeleteCompany(DeleteCompanyRequest) returns (DeleteCompanyResponse);
+  rpc ListCompanies(ListCompaniesRequest) returns (ListCompaniesResponse);
+
+  rpc CreatePosition(CreatePositionRequest) returns (CreatePositionResponse);
+  rpc UpdatePosition(UpdatePositionRequest) returns (UpdatePositionResponse);
+  rpc DeletePosition(DeletePositionRequest) returns (DeletePositionResponse);
+  rpc ListPositions(ListPositionsRequest) returns (ListPositionsResponse);
+
+  rpc AddMember(AddMemberRequest) returns (AddMemberResponse);
+  rpc RemoveMember(RemoveMemberRequest) returns (RemoveMemberResponse);
+  rpc UpdateMemberPosition(UpdateMemberPositionRequest) returns (UpdateMemberPositionResponse);
+  rpc ListMembers(ListMembersRequest) returns (ListMembersResponse);
+
+  rpc CreateCompanyChat(CreateCompanyChatRequest) returns (CreateCompanyChatResponse);
+  rpc SetCompanyChatAccess(SetCompanyChatAccessRequest) returns (SetCompanyChatAccessResponse);
+  rpc GetCompanyChats(GetCompanyChatsRequest) returns (GetCompanyChatsResponse);
+  rpc JoinCompany(JoinCompanyRequest) returns (JoinCompanyResponse);
+  rpc LeaveCompany(LeaveCompanyRequest) returns (LeaveCompanyResponse);
+  rpc GetUserInfo(GetUserInfoRequest) returns (GetUserInfoResponse);
+  rpc GetCompanyByUser(GetCompanyByUserRequest) returns (GetCompanyByUserResponse);
+}
+
+message Company {
+  string id = 1;
+  string name = 2;
+  string owner_id = 3;
+  string avatar_url = 4;
+  string created_at = 5;
+  int32 member_count = 6;
+}
+
+message CompanyPosition {
+  string id = 1;
+  string company_id = 2;
+  string title = 3;
+  int32 level = 4;
+  string chat_access = 5;
+}
+
+message CompanyMember {
+  string id = 1;
+  string company_id = 2;
+  string user_id = 3;
+  string username = 4;
+  string avatar_url = 5;
+  CompanyPosition position = 6;
+  string joined_at = 7;
+}
+
+message CompanyChatInfo {
+  string chat_id = 1;
+  string company_id = 2;
+  string access_level = 3;
+  int32 min_position_level = 4;
+}
+
+message CreateCompanyRequest {
+  string name = 1;
+}
+message CreateCompanyResponse {
+  bool success = 1;
+  Company company = 2;
+}
+
+message GetCompanyRequest {
+  string company_id = 1;
+}
+message GetCompanyResponse {
+  Company company = 1;
+  repeated CompanyPosition positions = 2;
+  int32 member_count = 3;
+}
+
+message UpdateCompanyRequest {
+  string company_id = 1;
+  string name = 2;
+  string avatar_url = 3;
+}
+message UpdateCompanyResponse {
+  bool success = 1;
+  Company company = 2;
+}
+
+message DeleteCompanyRequest {
+  string company_id = 1;
+}
+message DeleteCompanyResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message ListCompaniesRequest {
+  string user_id = 1;
+}
+message ListCompaniesResponse {
+  repeated Company companies = 1;
+}
+
+message CreatePositionRequest {
+  string company_id = 1;
+  string title = 2;
+  int32 level = 3;
+  string chat_access = 4;
+}
+message CreatePositionResponse {
+  bool success = 1;
+  CompanyPosition position = 2;
+}
+
+message UpdatePositionRequest {
+  string position_id = 1;
+  string title = 2;
+  int32 level = 3;
+  string chat_access = 4;
+}
+message UpdatePositionResponse {
+  bool success = 1;
+  CompanyPosition position = 2;
+}
+
+message DeletePositionRequest {
+  string position_id = 1;
+}
+message DeletePositionResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message ListPositionsRequest {
+  string company_id = 1;
+}
+message ListPositionsResponse {
+  repeated CompanyPosition positions = 1;
+}
+
+message AddMemberRequest {
+  string company_id = 1;
+  string user_id = 2;
+  string position_id = 3;
+}
+message AddMemberResponse {
+  bool success = 1;
+  CompanyMember member = 2;
+}
+
+message RemoveMemberRequest {
+  string company_id = 1;
+  string user_id = 2;
+}
+message RemoveMemberResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message UpdateMemberPositionRequest {
+  string company_id = 1;
+  string user_id = 2;
+  string position_id = 3;
+}
+message UpdateMemberPositionResponse {
+  bool success = 1;
+  CompanyMember member = 2;
+}
+
+message ListMembersRequest {
+  string company_id = 1;
+  string cursor = 2;
+  int32 limit = 3;
+}
+message ListMembersResponse {
+  repeated CompanyMember members = 1;
+  string next_cursor = 2;
+  bool has_more = 3;
+}
+
+message CreateCompanyChatRequest {
+  string company_id = 1;
+  string name = 2;
+  string access_level = 3;
+  int32 min_position_level = 4;
+  repeated string participant_ids = 5;
+}
+message CreateCompanyChatResponse {
+  bool success = 1;
+  string chat_id = 2;
+}
+
+message SetCompanyChatAccessRequest {
+  string chat_id = 1;
+  string access_level = 2;
+  int32 min_position_level = 3;
+}
+message SetCompanyChatAccessResponse {
+  bool success = 1;
+}
+
+message GetCompanyChatsRequest {
+  string company_id = 1;
+}
+message GetCompanyChatsResponse {
+  repeated CompanyChatInfo chats = 1;
+}
+
+message JoinCompanyRequest {
+  string company_id = 1;
+  string invite_code = 2;
+}
+message JoinCompanyResponse {
+  bool success = 1;
+  CompanyMember member = 2;
+}
+
+message LeaveCompanyRequest {
+  string company_id = 1;
+}
+message LeaveCompanyResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// Public user info (for contacts, profiles)
+message UserPublicInfo {
+  string user_id = 1;
+  string username = 2;
+  string avatar_url = 3;
+  string full_avatar_url = 4;
+  string bio = 5;
+  string status = 6;
+  bool is_online = 7;
+  string last_seen_at = 8;
+  string company_id = 9;
+  string company_name = 10;
+  string position_title = 11;
+  int32 position_level = 12;
+}
+
+message GetUserInfoRequest {
+  string user_id = 1;
+}
+
+message GetUserInfoResponse {
+  UserPublicInfo info = 1;
+}
+
+message GetCompanyByUserRequest {
+  string user_id = 1;
+}
+
+message GetCompanyByUserResponse {
+  Company company = 1;
+  CompanyMember member = 2;
 }
 

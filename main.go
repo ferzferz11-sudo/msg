@@ -201,6 +201,11 @@ func main() {
 	ProfileServiceVersion = "2.0"
 	logger.Info("ProfileService v2 registered")
 
+	// Register CompanyService
+	companyServer := newCompanyServer(db)
+	gen.RegisterCompanyServiceServer(s, companyServer)
+	logger.Info("CompanyService registered")
+
 	// Register server management service (only dev)
 	if appEnv == "dev" {
 		srvMgmt := &serverServiceServer{db: db}

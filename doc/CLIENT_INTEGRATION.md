@@ -1,6 +1,6 @@
 # Lavender Messenger — Client Integration Guide
 
-**Server:** v1.3.1.20 | **Protocol:** gRPC + Protocol Buffers | **Date:** 2026-07-04
+**Server:** v1.3.1.21 | **Protocol:** gRPC + Protocol Buffers | **Date:** 2026-07-04
 
 This document covers everything a client needs to integrate with the Lavender Messenger server. Platform-agnostic — applies to Android, iOS, Web, Desktop, or any gRPC-capable client.
 
@@ -918,6 +918,238 @@ rpc GetSecretChatKey(GetSecretChatKeyRequest) returns (GetSecretChatKeyResponse)
 ```
 
 E2EE messages are encrypted client-side. The server stores only the encrypted payload. When sending, set `is_e2ee = true` and `e2ee_payload` with the base64-encoded ciphertext.
+
+---
+
+## Company System
+
+Companies allow organizations to manage employees, positions, and company-exclusive chats with role-based access control.
+
+### Architecture
+
+```
+Company (owner)
+├── Positions (level 0-3)
+│   ├── Employee (0) — member chat access
+│   ├── Manager (1) — management + member chat access
+│   ├── Top Manager (2) — management + member chat access
+│   └── Owner (3) — full access to all chats
+├── Members (user → position)
+└── Company Chats (access_level + min_position_level)
+```
+
+### RPCs
+
+```protobuf
+service CompanyService {
+  // Company CRUD
+  rpc CreateCompany(CreateCompanyRequest) returns (CreateCompanyResponse);
+  rpc GetCompany(GetCompanyRequest) returns (GetCompanyResponse);
+  rpc UpdateCompany(UpdateCompanyRequest) returns (UpdateCompanyResponse);
+  rpc DeleteCompany(DeleteCompanyRequest) returns (DeleteCompanyResponse);
+  rpc ListCompanies(ListCompaniesRequest) returns (ListCompaniesResponse);
+
+  // Positions
+  rpc CreatePosition(CreatePositionRequest) returns (CreatePositionResponse);
+  rpc UpdatePosition(UpdatePositionRequest) returns (UpdatePositionResponse);
+  rpc DeletePosition(DeletePositionRequest) returns (DeletePositionResponse);
+  rpc ListPositions(ListPositionsRequest) returns (ListPositionsResponse);
+
+  // Members
+  rpc AddMember(AddMemberRequest) returns (AddMemberResponse);
+  rpc RemoveMember(RemoveMemberRequest) returns (RemoveMemberResponse);
+  rpc UpdateMemberPosition(UpdateMemberPositionRequest) returns (UpdateMemberPositionResponse);
+  rpc ListMembers(ListMembersRequest) returns (ListMembersResponse);
+
+  // Company Chats
+  rpc CreateCompanyChat(CreateCompanyChatRequest) returns (CreateCompanyChatResponse);
+  rpc SetCompanyChatAccess(SetCompanyChatAccessRequest) returns (SetCompanyChatAccessResponse);
+  rpc GetCompanyChats(GetCompanyChatsRequest) returns (GetCompanyChatsResponse);
+
+  // Join / Leave
+  rpc JoinCompany(JoinCompanyRequest) returns (JoinCompanyResponse);
+  rpc LeaveCompany(LeaveCompanyRequest) returns (LeaveCompanyResponse);
+
+  // User Info
+  rpc GetUserInfo(GetUserInfoRequest) returns (GetUserInfoResponse);
+  rpc GetCompanyByUser(GetCompanyByUserRequest) returns (GetCompanyByUserResponse);
+}
+```
+
+### Create Company
+
+Owner creates a company — default positions are auto-created:
+
+```protobuf
+message CreateCompanyRequest {
+  string name = 1;  // "Acme Corp"
+}
+message CreateCompanyResponse {
+  bool success = 1;
+  Company company = 2;  // { id, name, owner_id, created_at }
+}
+```
+
+**Auto-created positions:**
+| Title | Level | Chat Access |
+|-------|-------|-------------|
+| Owner | 3 | owner_only |
+| Top Manager | 2 | management |
+| Manager | 1 | management |
+| Employee | 0 | member |
+
+Creator is automatically added as **Owner**.
+
+### Positions
+
+Custom positions with access levels:
+
+```protobuf
+message CreatePositionRequest {
+  string company_id = 1;
+  string title = 2;          // "Senior Developer"
+  int32 level = 3;           // 0-3 (0=staff, 3=owner)
+  string chat_access = 4;    // "none"|"member"|"management"|"owner_only"|"all"
+}
+```
+
+**Chat access levels:**
+| Level | Who Sees |
+|-------|----------|
+| `member` | All company employees |
+| `management` | Manager (1), Top Manager (2), Owner (3) |
+| `owner_only` | Owner (3) only |
+| `all` | All + external participants |
+
+### Members
+
+Add users from contacts to company:
+
+```protobuf
+message AddMemberRequest {
+  string company_id = 1;
+  string user_id = 2;       // contact's UUID
+  string position_id = 3;   // position to assign
+}
+```
+
+**ListMembers** uses cursor-based pagination:
+```protobuf
+message ListMembersRequest {
+  string company_id = 1;
+  string cursor = 2;     // from previous response
+  int32 limit = 3;       // default 50, max 200
+}
+```
+
+### Company Chats
+
+Create chats with role-based visibility:
+
+```protobuf
+message CreateCompanyChatRequest {
+  string company_id = 1;
+  string name = 2;                      // "Engineering Team"
+  string access_level = 3;              // "member"|"management"|"owner_only"
+  int32 min_position_level = 4;         // override: minimum position.level
+  repeated string participant_ids = 5;  // empty = auto-add all eligible
+}
+```
+
+**Visibility examples:**
+- `access_level: "member"` → all employees see this chat
+- `access_level: "management"` → only Manager+ see it
+- `access_level: "owner_only"` → only Owner sees it
+- `min_position_level: 2` → only Top Manager+ (overrides access_level)
+
+When `participant_ids` is empty, all eligible members are auto-added.
+
+### GetUserInfo (for Contacts)
+
+When viewing a contact's profile, use `GetUserInfo` to show their company:
+
+```protobuf
+message GetUserInfoRequest {
+  string user_id = 1;
+}
+message GetUserInfoResponse {
+  UserPublicInfo info = 1;
+}
+
+message UserPublicInfo {
+  string user_id = 1;
+  string username = 2;
+  string avatar_url = 3;
+  string full_avatar_url = 4;
+  string bio = 5;
+  string status = 6;
+  bool is_online = 7;
+  string last_seen_at = 8;
+  string company_id = 9;
+  string company_name = 10;
+  string position_title = 11;
+  int32 position_level = 12;
+}
+```
+
+### Profile Integration
+
+`GetProfileResponse` now includes company fields:
+
+```protobuf
+message GetProfileResponse {
+  // ... existing fields ...
+  string company_id = 12;
+  string company_name = 13;
+  string position_title = 14;
+  int32 position_level = 15;
+}
+```
+
+### ChatInfo Integration
+
+Company chats in `GetChatsV2` include:
+
+```protobuf
+message ChatInfo {
+  // ... existing fields ...
+  string company_id = 26;
+  string company_chat_access = 27;
+  int32 company_min_position_level = 28;
+}
+```
+
+### Client Flow: Create Company from Profile
+
+```
+1. User taps "Create Company" in profile
+2. Client calls CreateCompany({ name: "My Company" })
+3. Server creates company + default positions + adds user as Owner
+4. Client shows company profile with positions list
+5. User taps "Add Member" → selects from contacts
+6. Client calls AddMember({ company_id, user_id, position_id })
+7. Member added, auto-joined to eligible company chats
+```
+
+### Client Flow: Company Chat Visibility
+
+```
+1. Client calls GetChatsV2 with filter "all"
+2. For each chat with type="company":
+   - Check company_chat_access and company_min_position_level
+   - Compare with user's position_level (from GetProfile)
+   - Only show chats where user's level >= threshold
+3. Display company badge on chat icon
+```
+
+### Access Control Matrix
+
+| Position Level | member chats | management chats | owner_only chats |
+|----------------|-------------|-----------------|-----------------|
+| Employee (0) | ✅ | ❌ | ❌ |
+| Manager (1) | ✅ | ✅ | ❌ |
+| Top Manager (2) | ✅ | ✅ | ❌ |
+| Owner (3) | ✅ | ✅ | ✅ |
 
 ---
 

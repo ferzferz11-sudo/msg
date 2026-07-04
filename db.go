@@ -149,6 +149,46 @@ func ConnectDB() (*DB, error) {
 
 		// --- Chat List v2 ---
 		`CREATE TABLE IF NOT EXISTS chat_list_v2 (id SERIAL PRIMARY KEY, user_id UUID NOT NULL, chat_id VARCHAR(255) NOT NULL, unread_count INTEGER DEFAULT 0, last_message_preview TEXT, last_message_at TIMESTAMP, is_pinned BOOLEAN DEFAULT FALSE, is_muted BOOLEAN DEFAULT FALSE, UNIQUE(user_id, chat_id))`,
+
+		// --- Company System ---
+		`CREATE TABLE IF NOT EXISTS companies (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			name VARCHAR(255) NOT NULL,
+			owner_id UUID NOT NULL REFERENCES users(id),
+			avatar_url TEXT DEFAULT '',
+			created_at TIMESTAMP NOT NULL DEFAULT NOW()
+		)`,
+		`CREATE TABLE IF NOT EXISTS company_positions (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+			title VARCHAR(255) NOT NULL,
+			level INT NOT NULL DEFAULT 0,
+			chat_access VARCHAR(50) DEFAULT 'member',
+			created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+			UNIQUE(company_id, title)
+		)`,
+		`CREATE TABLE IF NOT EXISTS company_members (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+			user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			position_id UUID NOT NULL REFERENCES company_positions(id),
+			joined_at TIMESTAMP NOT NULL DEFAULT NOW(),
+			UNIQUE(company_id, user_id)
+		)`,
+		`CREATE TABLE IF NOT EXISTS company_chats (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			chat_id VARCHAR(255) NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
+			company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+			access_level VARCHAR(50) DEFAULT 'member',
+			min_position_level INT DEFAULT 0,
+			created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+			UNIQUE(chat_id)
+		)`,
+		`CREATE INDEX IF NOT EXISTS idx_company_members_user ON company_members(user_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_company_members_company ON company_members(company_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_company_chats_chat ON company_chats(chat_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_company_chats_company ON company_chats(company_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_company_positions_company ON company_positions(company_id)`,
 	}
 
 	for _, q := range queries {

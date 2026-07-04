@@ -130,6 +130,7 @@ func StartHTTPServerAndReturn(port string) *http.Server {
 				"ai":      AIServiceVersion,
 				"files":   FileServiceVersion,
 				"push":    PushServiceVersion,
+				"company": CompanyServiceVersion,
 			},
 		}
 		json.NewEncoder(w).Encode(info)

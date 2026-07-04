@@ -1,5 +1,31 @@
 # Лава — Server Changelog
 
+## [1.3.1.21] - 2026-07-04
+
+### Features
+- **Company System** — new `CompanyService` with full CRUD for companies, positions, members, and company chats.
+  - `CreateCompany` — auto-creates default positions (Owner/Top Manager/Manager/Employee) and adds creator as Owner.
+  - `GetCompany`, `UpdateCompany`, `DeleteCompany`, `ListCompanies`.
+  - `CreatePosition`, `UpdatePosition`, `DeletePosition`, `ListPositions` — custom positions with level (0-3) and chat_access.
+  - `AddMember`, `RemoveMember`, `UpdateMemberPosition`, `ListMembers` — cursor-based pagination.
+  - `CreateCompanyChat` — creates chat with access_level (member/management/owner_only) and auto-adds eligible members.
+  - `SetCompanyChatAccess`, `GetCompanyChats`.
+  - `JoinCompany`, `LeaveCompany` — invite/leave flow with auto-join to eligible chats.
+  - `GetUserInfo` — public user info including company/position (for contacts).
+  - `GetCompanyByUser` — company membership for a user.
+- **Company Chat type** — chats table now supports `type="company"` with `company_chats` junction table for access control.
+- **Profile company fields** — `GetProfileResponse` now includes `company_id`, `company_name`, `position_title`, `position_level`.
+- **ChatInfo company fields** — `ChatInfo` now includes `company_id`, `company_chat_access`, `company_min_position_level`.
+- **GET /info** — `max_upload_size` field (30 MB) for client capability negotiation.
+- **MarkRead ChatV2 broadcast** — `MarkRead` now broadcasts `READ_ALL` to ChatV2 streams.
+
+### Architecture
+- 4 new DB tables: `companies`, `company_positions`, `company_members`, `company_chats` with indexes.
+- Access hierarchy: Owner (3) > Top Manager (2) > Manager (1) > Employee (0).
+- Chat access levels: `member` (all), `management` (level ≥1), `owner_only` (level 3).
+
+---
+
 ## [1.3.1.20] - 2026-07-04
 
 ### Bug Fixes

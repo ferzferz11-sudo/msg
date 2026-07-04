@@ -54,7 +54,18 @@ func (p *profileServerV2) GetProfile(ctx context.Context, _ *gen.GetProfileReque
 		locale = localeNull.String
 	}
 
-	return &gen.GetProfileResponse{
+	// Company info
+	var companyID, companyName, positionTitle sql.NullString
+	var positionLevel sql.NullInt32
+	_ = p.db.QueryRow(`
+		SELECT c.id, c.name, cp.title, cp.level
+		FROM company_members cm
+		JOIN companies c ON c.id = cm.company_id
+		JOIN company_positions cp ON cp.id = cm.position_id
+		WHERE cm.user_id=$1::uuid
+		ORDER BY cp.level DESC LIMIT 1`, userID).Scan(&companyID, &companyName, &positionTitle, &positionLevel)
+
+	resp := &gen.GetProfileResponse{
 		UserId:        userID,
 		Username:      username,
 		Email:         email,
@@ -66,7 +77,19 @@ func (p *profileServerV2) GetProfile(ctx context.Context, _ *gen.GetProfileReque
 		IsSuperAdmin:  isSuperAdmin,
 		CreatedAt:     createdAt.Format(time.RFC3339),
 		LastSeenAt:    lastSeenAt.Format(time.RFC3339),
-	}, nil
+	}
+	if companyID.Valid {
+		resp.CompanyId = companyID.String
+		resp.CompanyName = companyName.String
+	}
+	if positionTitle.Valid {
+		resp.PositionTitle = positionTitle.String
+	}
+	if positionLevel.Valid {
+		resp.PositionLevel = int32(positionLevel.Int32)
+	}
+
+	return resp, nil
 }
 
 // UpdateProfile updates bio, status, locale, and optionally username.

@@ -5689,3 +5689,827 @@ var ProfileService_ServiceDesc = grpc.ServiceDesc{
 	Streams:  []grpc.StreamDesc{},
 	Metadata: "messenger.proto",
 }
+
+const (
+	CompanyService_CreateCompany_FullMethodName        = "/messenger.CompanyService/CreateCompany"
+	CompanyService_GetCompany_FullMethodName           = "/messenger.CompanyService/GetCompany"
+	CompanyService_UpdateCompany_FullMethodName        = "/messenger.CompanyService/UpdateCompany"
+	CompanyService_DeleteCompany_FullMethodName        = "/messenger.CompanyService/DeleteCompany"
+	CompanyService_ListCompanies_FullMethodName        = "/messenger.CompanyService/ListCompanies"
+	CompanyService_CreatePosition_FullMethodName       = "/messenger.CompanyService/CreatePosition"
+	CompanyService_UpdatePosition_FullMethodName       = "/messenger.CompanyService/UpdatePosition"
+	CompanyService_DeletePosition_FullMethodName       = "/messenger.CompanyService/DeletePosition"
+	CompanyService_ListPositions_FullMethodName        = "/messenger.CompanyService/ListPositions"
+	CompanyService_AddMember_FullMethodName            = "/messenger.CompanyService/AddMember"
+	CompanyService_RemoveMember_FullMethodName         = "/messenger.CompanyService/RemoveMember"
+	CompanyService_UpdateMemberPosition_FullMethodName = "/messenger.CompanyService/UpdateMemberPosition"
+	CompanyService_ListMembers_FullMethodName          = "/messenger.CompanyService/ListMembers"
+	CompanyService_CreateCompanyChat_FullMethodName    = "/messenger.CompanyService/CreateCompanyChat"
+	CompanyService_SetCompanyChatAccess_FullMethodName = "/messenger.CompanyService/SetCompanyChatAccess"
+	CompanyService_GetCompanyChats_FullMethodName      = "/messenger.CompanyService/GetCompanyChats"
+	CompanyService_JoinCompany_FullMethodName          = "/messenger.CompanyService/JoinCompany"
+	CompanyService_LeaveCompany_FullMethodName         = "/messenger.CompanyService/LeaveCompany"
+	CompanyService_GetUserInfo_FullMethodName          = "/messenger.CompanyService/GetUserInfo"
+	CompanyService_GetCompanyByUser_FullMethodName     = "/messenger.CompanyService/GetCompanyByUser"
+)
+
+// CompanyServiceClient is the client API for CompanyService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+type CompanyServiceClient interface {
+	CreateCompany(ctx context.Context, in *CreateCompanyRequest, opts ...grpc.CallOption) (*CreateCompanyResponse, error)
+	GetCompany(ctx context.Context, in *GetCompanyRequest, opts ...grpc.CallOption) (*GetCompanyResponse, error)
+	UpdateCompany(ctx context.Context, in *UpdateCompanyRequest, opts ...grpc.CallOption) (*UpdateCompanyResponse, error)
+	DeleteCompany(ctx context.Context, in *DeleteCompanyRequest, opts ...grpc.CallOption) (*DeleteCompanyResponse, error)
+	ListCompanies(ctx context.Context, in *ListCompaniesRequest, opts ...grpc.CallOption) (*ListCompaniesResponse, error)
+	CreatePosition(ctx context.Context, in *CreatePositionRequest, opts ...grpc.CallOption) (*CreatePositionResponse, error)
+	UpdatePosition(ctx context.Context, in *UpdatePositionRequest, opts ...grpc.CallOption) (*UpdatePositionResponse, error)
+	DeletePosition(ctx context.Context, in *DeletePositionRequest, opts ...grpc.CallOption) (*DeletePositionResponse, error)
+	ListPositions(ctx context.Context, in *ListPositionsRequest, opts ...grpc.CallOption) (*ListPositionsResponse, error)
+	AddMember(ctx context.Context, in *AddMemberRequest, opts ...grpc.CallOption) (*AddMemberResponse, error)
+	RemoveMember(ctx context.Context, in *RemoveMemberRequest, opts ...grpc.CallOption) (*RemoveMemberResponse, error)
+	UpdateMemberPosition(ctx context.Context, in *UpdateMemberPositionRequest, opts ...grpc.CallOption) (*UpdateMemberPositionResponse, error)
+	ListMembers(ctx context.Context, in *ListMembersRequest, opts ...grpc.CallOption) (*ListMembersResponse, error)
+	CreateCompanyChat(ctx context.Context, in *CreateCompanyChatRequest, opts ...grpc.CallOption) (*CreateCompanyChatResponse, error)
+	SetCompanyChatAccess(ctx context.Context, in *SetCompanyChatAccessRequest, opts ...grpc.CallOption) (*SetCompanyChatAccessResponse, error)
+	GetCompanyChats(ctx context.Context, in *GetCompanyChatsRequest, opts ...grpc.CallOption) (*GetCompanyChatsResponse, error)
+	JoinCompany(ctx context.Context, in *JoinCompanyRequest, opts ...grpc.CallOption) (*JoinCompanyResponse, error)
+	LeaveCompany(ctx context.Context, in *LeaveCompanyRequest, opts ...grpc.CallOption) (*LeaveCompanyResponse, error)
+	GetUserInfo(ctx context.Context, in *GetUserInfoRequest, opts ...grpc.CallOption) (*GetUserInfoResponse, error)
+	GetCompanyByUser(ctx context.Context, in *GetCompanyByUserRequest, opts ...grpc.CallOption) (*GetCompanyByUserResponse, error)
+}
+
+type companyServiceClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewCompanyServiceClient(cc grpc.ClientConnInterface) CompanyServiceClient {
+	return &companyServiceClient{cc}
+}
+
+func (c *companyServiceClient) CreateCompany(ctx context.Context, in *CreateCompanyRequest, opts ...grpc.CallOption) (*CreateCompanyResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateCompanyResponse)
+	err := c.cc.Invoke(ctx, CompanyService_CreateCompany_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *companyServiceClient) GetCompany(ctx context.Context, in *GetCompanyRequest, opts ...grpc.CallOption) (*GetCompanyResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetCompanyResponse)
+	err := c.cc.Invoke(ctx, CompanyService_GetCompany_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *companyServiceClient) UpdateCompany(ctx context.Context, in *UpdateCompanyRequest, opts ...grpc.CallOption) (*UpdateCompanyResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateCompanyResponse)
+	err := c.cc.Invoke(ctx, CompanyService_UpdateCompany_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *companyServiceClient) DeleteCompany(ctx context.Context, in *DeleteCompanyRequest, opts ...grpc.CallOption) (*DeleteCompanyResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteCompanyResponse)
+	err := c.cc.Invoke(ctx, CompanyService_DeleteCompany_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *companyServiceClient) ListCompanies(ctx context.Context, in *ListCompaniesRequest, opts ...grpc.CallOption) (*ListCompaniesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListCompaniesResponse)
+	err := c.cc.Invoke(ctx, CompanyService_ListCompanies_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *companyServiceClient) CreatePosition(ctx context.Context, in *CreatePositionRequest, opts ...grpc.CallOption) (*CreatePositionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreatePositionResponse)
+	err := c.cc.Invoke(ctx, CompanyService_CreatePosition_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *companyServiceClient) UpdatePosition(ctx context.Context, in *UpdatePositionRequest, opts ...grpc.CallOption) (*UpdatePositionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdatePositionResponse)
+	err := c.cc.Invoke(ctx, CompanyService_UpdatePosition_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *companyServiceClient) DeletePosition(ctx context.Context, in *DeletePositionRequest, opts ...grpc.CallOption) (*DeletePositionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeletePositionResponse)
+	err := c.cc.Invoke(ctx, CompanyService_DeletePosition_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *companyServiceClient) ListPositions(ctx context.Context, in *ListPositionsRequest, opts ...grpc.CallOption) (*ListPositionsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListPositionsResponse)
+	err := c.cc.Invoke(ctx, CompanyService_ListPositions_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *companyServiceClient) AddMember(ctx context.Context, in *AddMemberRequest, opts ...grpc.CallOption) (*AddMemberResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AddMemberResponse)
+	err := c.cc.Invoke(ctx, CompanyService_AddMember_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *companyServiceClient) RemoveMember(ctx context.Context, in *RemoveMemberRequest, opts ...grpc.CallOption) (*RemoveMemberResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RemoveMemberResponse)
+	err := c.cc.Invoke(ctx, CompanyService_RemoveMember_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *companyServiceClient) UpdateMemberPosition(ctx context.Context, in *UpdateMemberPositionRequest, opts ...grpc.CallOption) (*UpdateMemberPositionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateMemberPositionResponse)
+	err := c.cc.Invoke(ctx, CompanyService_UpdateMemberPosition_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *companyServiceClient) ListMembers(ctx context.Context, in *ListMembersRequest, opts ...grpc.CallOption) (*ListMembersResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListMembersResponse)
+	err := c.cc.Invoke(ctx, CompanyService_ListMembers_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *companyServiceClient) CreateCompanyChat(ctx context.Context, in *CreateCompanyChatRequest, opts ...grpc.CallOption) (*CreateCompanyChatResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateCompanyChatResponse)
+	err := c.cc.Invoke(ctx, CompanyService_CreateCompanyChat_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *companyServiceClient) SetCompanyChatAccess(ctx context.Context, in *SetCompanyChatAccessRequest, opts ...grpc.CallOption) (*SetCompanyChatAccessResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SetCompanyChatAccessResponse)
+	err := c.cc.Invoke(ctx, CompanyService_SetCompanyChatAccess_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *companyServiceClient) GetCompanyChats(ctx context.Context, in *GetCompanyChatsRequest, opts ...grpc.CallOption) (*GetCompanyChatsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetCompanyChatsResponse)
+	err := c.cc.Invoke(ctx, CompanyService_GetCompanyChats_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *companyServiceClient) JoinCompany(ctx context.Context, in *JoinCompanyRequest, opts ...grpc.CallOption) (*JoinCompanyResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(JoinCompanyResponse)
+	err := c.cc.Invoke(ctx, CompanyService_JoinCompany_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *companyServiceClient) LeaveCompany(ctx context.Context, in *LeaveCompanyRequest, opts ...grpc.CallOption) (*LeaveCompanyResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(LeaveCompanyResponse)
+	err := c.cc.Invoke(ctx, CompanyService_LeaveCompany_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *companyServiceClient) GetUserInfo(ctx context.Context, in *GetUserInfoRequest, opts ...grpc.CallOption) (*GetUserInfoResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetUserInfoResponse)
+	err := c.cc.Invoke(ctx, CompanyService_GetUserInfo_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *companyServiceClient) GetCompanyByUser(ctx context.Context, in *GetCompanyByUserRequest, opts ...grpc.CallOption) (*GetCompanyByUserResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetCompanyByUserResponse)
+	err := c.cc.Invoke(ctx, CompanyService_GetCompanyByUser_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// CompanyServiceServer is the server API for CompanyService service.
+// All implementations must embed UnimplementedCompanyServiceServer
+// for forward compatibility.
+type CompanyServiceServer interface {
+	CreateCompany(context.Context, *CreateCompanyRequest) (*CreateCompanyResponse, error)
+	GetCompany(context.Context, *GetCompanyRequest) (*GetCompanyResponse, error)
+	UpdateCompany(context.Context, *UpdateCompanyRequest) (*UpdateCompanyResponse, error)
+	DeleteCompany(context.Context, *DeleteCompanyRequest) (*DeleteCompanyResponse, error)
+	ListCompanies(context.Context, *ListCompaniesRequest) (*ListCompaniesResponse, error)
+	CreatePosition(context.Context, *CreatePositionRequest) (*CreatePositionResponse, error)
+	UpdatePosition(context.Context, *UpdatePositionRequest) (*UpdatePositionResponse, error)
+	DeletePosition(context.Context, *DeletePositionRequest) (*DeletePositionResponse, error)
+	ListPositions(context.Context, *ListPositionsRequest) (*ListPositionsResponse, error)
+	AddMember(context.Context, *AddMemberRequest) (*AddMemberResponse, error)
+	RemoveMember(context.Context, *RemoveMemberRequest) (*RemoveMemberResponse, error)
+	UpdateMemberPosition(context.Context, *UpdateMemberPositionRequest) (*UpdateMemberPositionResponse, error)
+	ListMembers(context.Context, *ListMembersRequest) (*ListMembersResponse, error)
+	CreateCompanyChat(context.Context, *CreateCompanyChatRequest) (*CreateCompanyChatResponse, error)
+	SetCompanyChatAccess(context.Context, *SetCompanyChatAccessRequest) (*SetCompanyChatAccessResponse, error)
+	GetCompanyChats(context.Context, *GetCompanyChatsRequest) (*GetCompanyChatsResponse, error)
+	JoinCompany(context.Context, *JoinCompanyRequest) (*JoinCompanyResponse, error)
+	LeaveCompany(context.Context, *LeaveCompanyRequest) (*LeaveCompanyResponse, error)
+	GetUserInfo(context.Context, *GetUserInfoRequest) (*GetUserInfoResponse, error)
+	GetCompanyByUser(context.Context, *GetCompanyByUserRequest) (*GetCompanyByUserResponse, error)
+	mustEmbedUnimplementedCompanyServiceServer()
+}
+
+// UnimplementedCompanyServiceServer must be embedded to have
+// forward compatible implementations.
+//
+// NOTE: this should be embedded by value instead of pointer to avoid a nil
+// pointer dereference when methods are called.
+type UnimplementedCompanyServiceServer struct{}
+
+func (UnimplementedCompanyServiceServer) CreateCompany(context.Context, *CreateCompanyRequest) (*CreateCompanyResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateCompany not implemented")
+}
+func (UnimplementedCompanyServiceServer) GetCompany(context.Context, *GetCompanyRequest) (*GetCompanyResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetCompany not implemented")
+}
+func (UnimplementedCompanyServiceServer) UpdateCompany(context.Context, *UpdateCompanyRequest) (*UpdateCompanyResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateCompany not implemented")
+}
+func (UnimplementedCompanyServiceServer) DeleteCompany(context.Context, *DeleteCompanyRequest) (*DeleteCompanyResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteCompany not implemented")
+}
+func (UnimplementedCompanyServiceServer) ListCompanies(context.Context, *ListCompaniesRequest) (*ListCompaniesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListCompanies not implemented")
+}
+func (UnimplementedCompanyServiceServer) CreatePosition(context.Context, *CreatePositionRequest) (*CreatePositionResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreatePosition not implemented")
+}
+func (UnimplementedCompanyServiceServer) UpdatePosition(context.Context, *UpdatePositionRequest) (*UpdatePositionResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdatePosition not implemented")
+}
+func (UnimplementedCompanyServiceServer) DeletePosition(context.Context, *DeletePositionRequest) (*DeletePositionResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeletePosition not implemented")
+}
+func (UnimplementedCompanyServiceServer) ListPositions(context.Context, *ListPositionsRequest) (*ListPositionsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListPositions not implemented")
+}
+func (UnimplementedCompanyServiceServer) AddMember(context.Context, *AddMemberRequest) (*AddMemberResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method AddMember not implemented")
+}
+func (UnimplementedCompanyServiceServer) RemoveMember(context.Context, *RemoveMemberRequest) (*RemoveMemberResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RemoveMember not implemented")
+}
+func (UnimplementedCompanyServiceServer) UpdateMemberPosition(context.Context, *UpdateMemberPositionRequest) (*UpdateMemberPositionResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateMemberPosition not implemented")
+}
+func (UnimplementedCompanyServiceServer) ListMembers(context.Context, *ListMembersRequest) (*ListMembersResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListMembers not implemented")
+}
+func (UnimplementedCompanyServiceServer) CreateCompanyChat(context.Context, *CreateCompanyChatRequest) (*CreateCompanyChatResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateCompanyChat not implemented")
+}
+func (UnimplementedCompanyServiceServer) SetCompanyChatAccess(context.Context, *SetCompanyChatAccessRequest) (*SetCompanyChatAccessResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetCompanyChatAccess not implemented")
+}
+func (UnimplementedCompanyServiceServer) GetCompanyChats(context.Context, *GetCompanyChatsRequest) (*GetCompanyChatsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetCompanyChats not implemented")
+}
+func (UnimplementedCompanyServiceServer) JoinCompany(context.Context, *JoinCompanyRequest) (*JoinCompanyResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method JoinCompany not implemented")
+}
+func (UnimplementedCompanyServiceServer) LeaveCompany(context.Context, *LeaveCompanyRequest) (*LeaveCompanyResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method LeaveCompany not implemented")
+}
+func (UnimplementedCompanyServiceServer) GetUserInfo(context.Context, *GetUserInfoRequest) (*GetUserInfoResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetUserInfo not implemented")
+}
+func (UnimplementedCompanyServiceServer) GetCompanyByUser(context.Context, *GetCompanyByUserRequest) (*GetCompanyByUserResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetCompanyByUser not implemented")
+}
+func (UnimplementedCompanyServiceServer) mustEmbedUnimplementedCompanyServiceServer() {}
+func (UnimplementedCompanyServiceServer) testEmbeddedByValue()                        {}
+
+// UnsafeCompanyServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to CompanyServiceServer will
+// result in compilation errors.
+type UnsafeCompanyServiceServer interface {
+	mustEmbedUnimplementedCompanyServiceServer()
+}
+
+func RegisterCompanyServiceServer(s grpc.ServiceRegistrar, srv CompanyServiceServer) {
+	// If the following call panics, it indicates UnimplementedCompanyServiceServer was
+	// embedded by pointer and is nil.  This will cause panics if an
+	// unimplemented method is ever invoked, so we test this at initialization
+	// time to prevent it from happening at runtime later due to I/O.
+	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
+		t.testEmbeddedByValue()
+	}
+	s.RegisterService(&CompanyService_ServiceDesc, srv)
+}
+
+func _CompanyService_CreateCompany_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateCompanyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompanyServiceServer).CreateCompany(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CompanyService_CreateCompany_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompanyServiceServer).CreateCompany(ctx, req.(*CreateCompanyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CompanyService_GetCompany_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetCompanyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompanyServiceServer).GetCompany(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CompanyService_GetCompany_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompanyServiceServer).GetCompany(ctx, req.(*GetCompanyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CompanyService_UpdateCompany_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateCompanyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompanyServiceServer).UpdateCompany(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CompanyService_UpdateCompany_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompanyServiceServer).UpdateCompany(ctx, req.(*UpdateCompanyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CompanyService_DeleteCompany_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteCompanyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompanyServiceServer).DeleteCompany(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CompanyService_DeleteCompany_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompanyServiceServer).DeleteCompany(ctx, req.(*DeleteCompanyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CompanyService_ListCompanies_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListCompaniesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompanyServiceServer).ListCompanies(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CompanyService_ListCompanies_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompanyServiceServer).ListCompanies(ctx, req.(*ListCompaniesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CompanyService_CreatePosition_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreatePositionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompanyServiceServer).CreatePosition(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CompanyService_CreatePosition_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompanyServiceServer).CreatePosition(ctx, req.(*CreatePositionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CompanyService_UpdatePosition_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdatePositionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompanyServiceServer).UpdatePosition(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CompanyService_UpdatePosition_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompanyServiceServer).UpdatePosition(ctx, req.(*UpdatePositionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CompanyService_DeletePosition_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeletePositionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompanyServiceServer).DeletePosition(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CompanyService_DeletePosition_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompanyServiceServer).DeletePosition(ctx, req.(*DeletePositionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CompanyService_ListPositions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListPositionsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompanyServiceServer).ListPositions(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CompanyService_ListPositions_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompanyServiceServer).ListPositions(ctx, req.(*ListPositionsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CompanyService_AddMember_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AddMemberRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompanyServiceServer).AddMember(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CompanyService_AddMember_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompanyServiceServer).AddMember(ctx, req.(*AddMemberRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CompanyService_RemoveMember_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveMemberRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompanyServiceServer).RemoveMember(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CompanyService_RemoveMember_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompanyServiceServer).RemoveMember(ctx, req.(*RemoveMemberRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CompanyService_UpdateMemberPosition_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateMemberPositionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompanyServiceServer).UpdateMemberPosition(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CompanyService_UpdateMemberPosition_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompanyServiceServer).UpdateMemberPosition(ctx, req.(*UpdateMemberPositionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CompanyService_ListMembers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListMembersRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompanyServiceServer).ListMembers(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CompanyService_ListMembers_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompanyServiceServer).ListMembers(ctx, req.(*ListMembersRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CompanyService_CreateCompanyChat_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateCompanyChatRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompanyServiceServer).CreateCompanyChat(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CompanyService_CreateCompanyChat_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompanyServiceServer).CreateCompanyChat(ctx, req.(*CreateCompanyChatRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CompanyService_SetCompanyChatAccess_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetCompanyChatAccessRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompanyServiceServer).SetCompanyChatAccess(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CompanyService_SetCompanyChatAccess_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompanyServiceServer).SetCompanyChatAccess(ctx, req.(*SetCompanyChatAccessRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CompanyService_GetCompanyChats_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetCompanyChatsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompanyServiceServer).GetCompanyChats(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CompanyService_GetCompanyChats_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompanyServiceServer).GetCompanyChats(ctx, req.(*GetCompanyChatsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CompanyService_JoinCompany_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(JoinCompanyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompanyServiceServer).JoinCompany(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CompanyService_JoinCompany_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompanyServiceServer).JoinCompany(ctx, req.(*JoinCompanyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CompanyService_LeaveCompany_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LeaveCompanyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompanyServiceServer).LeaveCompany(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CompanyService_LeaveCompany_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompanyServiceServer).LeaveCompany(ctx, req.(*LeaveCompanyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CompanyService_GetUserInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetUserInfoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompanyServiceServer).GetUserInfo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CompanyService_GetUserInfo_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompanyServiceServer).GetUserInfo(ctx, req.(*GetUserInfoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CompanyService_GetCompanyByUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetCompanyByUserRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompanyServiceServer).GetCompanyByUser(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CompanyService_GetCompanyByUser_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompanyServiceServer).GetCompanyByUser(ctx, req.(*GetCompanyByUserRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// CompanyService_ServiceDesc is the grpc.ServiceDesc for CompanyService service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var CompanyService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "messenger.CompanyService",
+	HandlerType: (*CompanyServiceServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "CreateCompany",
+			Handler:    _CompanyService_CreateCompany_Handler,
+		},
+		{
+			MethodName: "GetCompany",
+			Handler:    _CompanyService_GetCompany_Handler,
+		},
+		{
+			MethodName: "UpdateCompany",
+			Handler:    _CompanyService_UpdateCompany_Handler,
+		},
+		{
+			MethodName: "DeleteCompany",
+			Handler:    _CompanyService_DeleteCompany_Handler,
+		},
+		{
+			MethodName: "ListCompanies",
+			Handler:    _CompanyService_ListCompanies_Handler,
+		},
+		{
+			MethodName: "CreatePosition",
+			Handler:    _CompanyService_CreatePosition_Handler,
+		},
+		{
+			MethodName: "UpdatePosition",
+			Handler:    _CompanyService_UpdatePosition_Handler,
+		},
+		{
+			MethodName: "DeletePosition",
+			Handler:    _CompanyService_DeletePosition_Handler,
+		},
+		{
+			MethodName: "ListPositions",
+			Handler:    _CompanyService_ListPositions_Handler,
+		},
+		{
+			MethodName: "AddMember",
+			Handler:    _CompanyService_AddMember_Handler,
+		},
+		{
+			MethodName: "RemoveMember",
+			Handler:    _CompanyService_RemoveMember_Handler,
+		},
+		{
+			MethodName: "UpdateMemberPosition",
+			Handler:    _CompanyService_UpdateMemberPosition_Handler,
+		},
+		{
+			MethodName: "ListMembers",
+			Handler:    _CompanyService_ListMembers_Handler,
+		},
+		{
+			MethodName: "CreateCompanyChat",
+			Handler:    _CompanyService_CreateCompanyChat_Handler,
+		},
+		{
+			MethodName: "SetCompanyChatAccess",
+			Handler:    _CompanyService_SetCompanyChatAccess_Handler,
+		},
+		{
+			MethodName: "GetCompanyChats",
+			Handler:    _CompanyService_GetCompanyChats_Handler,
+		},
+		{
+			MethodName: "JoinCompany",
+			Handler:    _CompanyService_JoinCompany_Handler,
+		},
+		{
+			MethodName: "LeaveCompany",
+			Handler:    _CompanyService_LeaveCompany_Handler,
+		},
+		{
+			MethodName: "GetUserInfo",
+			Handler:    _CompanyService_GetUserInfo_Handler,
+		},
+		{
+			MethodName: "GetCompanyByUser",
+			Handler:    _CompanyService_GetCompanyByUser_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "messenger.proto",
+}
