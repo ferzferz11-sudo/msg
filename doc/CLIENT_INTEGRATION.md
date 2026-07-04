@@ -973,6 +973,8 @@ service CompanyService {
   // User Info
   rpc GetUserInfo(GetUserInfoRequest) returns (GetUserInfoResponse);
   rpc GetCompanyByUser(GetCompanyByUserRequest) returns (GetCompanyByUserResponse);
+  rpc SetPrimaryCompany(SetPrimaryCompanyRequest) returns (SetPrimaryCompanyResponse);
+  rpc GetUserCompanies(GetUserCompaniesRequest) returns (GetUserCompaniesResponse);
 }
 ```
 
@@ -1094,15 +1096,15 @@ message UserPublicInfo {
 
 ### Profile Integration
 
-`GetProfileResponse` now includes company fields:
+`GetProfileResponse` includes company fields. **Primary company** is shown (set via `SetPrimaryCompany`), fallback to highest-level position:
 
 ```protobuf
 message GetProfileResponse {
   // ... existing fields ...
-  string company_id = 12;
-  string company_name = 13;
-  string position_title = 14;
-  int32 position_level = 15;
+  string company_id = 12;       // primary company ID
+  string company_name = 13;     // primary company name
+  string position_title = 14;   // position in primary company
+  int32 position_level = 15;    // position level (0-3)
 }
 ```
 
@@ -1150,6 +1152,94 @@ message ChatInfo {
 | Manager (1) | ✅ | ✅ | ❌ |
 | Top Manager (2) | ✅ | ✅ | ❌ |
 | Owner (3) | ✅ | ✅ | ✅ |
+
+### Multi-Company Support
+
+Users can belong to **multiple companies simultaneously** (e.g., Owner in one, Employee in another).
+
+**Database:** `company_members` has `UNIQUE(company_id, user_id)` — one position per company, but unlimited companies per user.
+
+#### SetPrimaryCompany
+
+Set which company appears in the user's profile:
+
+```protobuf
+message SetPrimaryCompanyRequest {
+  string company_id = 1;
+}
+message SetPrimaryCompanyResponse {
+  bool success = 1;
+  string message = 2;
+}
+```
+
+**Behavior:** Updates `users.primary_company_id`. `GetProfile` returns this company's info. If not set, falls back to highest-level position across all companies.
+
+#### GetUserCompanies
+
+List all companies the user belongs to:
+
+```protobuf
+message GetUserCompaniesRequest {
+  // empty — user_id from JWT
+}
+message GetUserCompaniesResponse {
+  repeated CompanyCompanyMember companies = 1;
+}
+
+message CompanyCompanyMember {
+  Company company = 1;
+  CompanyMember member = 2;    // includes position with level
+  bool is_primary = 3;         // true if this is the user's primary company
+}
+```
+
+**Returns:** All companies sorted by position level (highest first). Each entry includes the company, the user's membership/position, and whether it's the primary company.
+
+### Client Flow: Multi-Company Profile
+
+```
+1. Client calls GetUserCompanies → list of all companies
+2. Display company switcher in profile (if >1 company)
+3. User selects a company → client calls SetPrimaryCompany({ company_id })
+4. GetProfile now returns the selected company's info
+5. Company chats are filtered per-company based on position
+```
+
+### Client Flow: Create Company from Profile
+
+```
+1. User taps "Create Company" in profile
+2. Client calls CreateCompany({ name: "My Company" })
+3. Server creates company + default positions + adds user as Owner
+4. Client auto-sets as primary: SetPrimaryCompany({ company_id })
+5. Client shows company profile with positions list
+6. User taps "Add Member" → selects from contacts
+7. Client calls AddMember({ company_id, user_id, position_id })
+8. Member added, auto-joined to eligible company chats
+```
+
+### Client Flow: Join Company
+
+```
+1. User receives company_id (invite link / QR / manual)
+2. Client calls JoinCompany({ company_id })
+3. Server adds user with default Employee position
+4. User auto-joined to all eligible company chats
+5. Client shows company in GetUserCompanies list
+```
+
+### Client Flow: Company Chat Visibility (Multi-Company)
+
+```
+1. Client calls GetChatsV2 → returns all chats (including company chats)
+2. For each chat with type="company":
+   a. Find company_id from company_chats
+   b. Find user's position in THAT company (not primary)
+   c. Check access_level and min_position_level
+   d. Only show if user's level >= threshold
+3. Each company chat shows its company's badge/icon
+```
 
 ---
 

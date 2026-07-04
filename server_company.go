@@ -871,4 +871,83 @@ func (c *companyServer) GetCompanyByUser(ctx context.Context, req *gen.GetCompan
 	return &gen.GetCompanyByUserResponse{Company: company, Member: member}, nil
 }
 
+// SetPrimaryCompany sets the user's primary company (shown in profile).
+func (c *companyServer) SetPrimaryCompany(ctx context.Context, req *gen.SetPrimaryCompanyRequest) (*gen.SetPrimaryCompanyResponse, error) {
+	userID := GetUserID(ctx)
+	if userID == "" {
+		return &gen.SetPrimaryCompanyResponse{Success: false}, nil
+	}
+
+	// Verify user is a member of this company
+	var exists bool
+	_ = c.db.QueryRow(`SELECT EXISTS(SELECT 1 FROM company_members WHERE company_id=$1::uuid AND user_id=$2::uuid)`, req.CompanyId, userID).Scan(&exists)
+	if !exists {
+		return &gen.SetPrimaryCompanyResponse{Success: false, Message: "not a member of this company"}, nil
+	}
+
+	_, err := c.db.Exec(`UPDATE users SET primary_company_id=$1::uuid WHERE id=$2::uuid`, req.CompanyId, userID)
+	if err != nil {
+		logger.Errorf("Company: SetPrimaryCompany error: %v", err)
+		return &gen.SetPrimaryCompanyResponse{Success: false}, nil
+	}
+
+	return &gen.SetPrimaryCompanyResponse{Success: true, Message: "Primary company updated"}, nil
+}
+
+// GetUserCompanies returns all companies the user belongs to with their positions.
+func (c *companyServer) GetUserCompanies(ctx context.Context, _ *gen.GetUserCompaniesRequest) (*gen.GetUserCompaniesResponse, error) {
+	userID := GetUserID(ctx)
+	if userID == "" {
+		return &gen.GetUserCompaniesResponse{}, nil
+	}
+
+	var primaryCompanyID sql.NullString
+	_ = c.db.QueryRow(`SELECT primary_company_id FROM users WHERE id=$1::uuid`, userID).Scan(&primaryCompanyID)
+
+	rows, err := c.db.Query(`
+		SELECT c.id, c.name, c.owner_id, COALESCE(c.avatar_url,''), c.created_at,
+		       cm.id, cm.user_id, cp.id, cp.company_id, cp.title, cp.level, cp.chat_access,
+		       cm.joined_at
+		FROM company_members cm
+		JOIN companies c ON c.id = cm.company_id
+		JOIN company_positions cp ON cp.id = cm.position_id
+		WHERE cm.user_id=$1::uuid
+		ORDER BY cp.level DESC`, userID)
+	if err != nil {
+		return &gen.GetUserCompaniesResponse{}, nil
+	}
+	defer rows.Close()
+
+	var result []*gen.CompanyCompanyMember
+	for rows.Next() {
+		var comp gen.Company
+		var member gen.CompanyMember
+		var pos gen.CompanyPosition
+		var createdAt, joinedAt time.Time
+
+		if err := rows.Scan(
+			&comp.Id, &comp.Name, &comp.OwnerId, &comp.AvatarUrl, &createdAt,
+			&member.Id, &member.UserId, &pos.Id, &pos.CompanyId, &pos.Title, &pos.Level, &pos.ChatAccess,
+			&joinedAt,
+		); err != nil {
+			continue
+		}
+		comp.CreatedAt = createdAt.Format(time.RFC3339)
+		_ = c.db.QueryRow(`SELECT COUNT(*) FROM company_members WHERE company_id=$1::uuid`, comp.Id).Scan(&comp.MemberCount)
+		member.CompanyId = comp.Id
+		member.Position = &pos
+		member.JoinedAt = joinedAt.Format(time.RFC3339)
+
+		isPrimary := primaryCompanyID.Valid && primaryCompanyID.String == comp.Id
+
+		result = append(result, &gen.CompanyCompanyMember{
+			Company:   &comp,
+			Member:    &member,
+			IsPrimary: isPrimary,
+		})
+	}
+
+	return &gen.GetUserCompaniesResponse{Companies: result}, nil
+}
+
 

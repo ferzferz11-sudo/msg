@@ -175,6 +175,9 @@ func ConnectDB() (*DB, error) {
 			joined_at TIMESTAMP NOT NULL DEFAULT NOW(),
 			UNIQUE(company_id, user_id)
 		)`,
+		`DO $$ BEGIN
+			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='primary_company_id') THEN ALTER TABLE users ADD COLUMN primary_company_id UUID REFERENCES companies(id); END IF;
+		END $$;`,
 		`CREATE TABLE IF NOT EXISTS company_chats (
 			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 			chat_id VARCHAR(255) NOT NULL REFERENCES chats(id) ON DELETE CASCADE,

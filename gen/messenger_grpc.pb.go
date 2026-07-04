@@ -5711,6 +5711,8 @@ const (
 	CompanyService_LeaveCompany_FullMethodName         = "/messenger.CompanyService/LeaveCompany"
 	CompanyService_GetUserInfo_FullMethodName          = "/messenger.CompanyService/GetUserInfo"
 	CompanyService_GetCompanyByUser_FullMethodName     = "/messenger.CompanyService/GetCompanyByUser"
+	CompanyService_SetPrimaryCompany_FullMethodName    = "/messenger.CompanyService/SetPrimaryCompany"
+	CompanyService_GetUserCompanies_FullMethodName     = "/messenger.CompanyService/GetUserCompanies"
 )
 
 // CompanyServiceClient is the client API for CompanyService service.
@@ -5737,6 +5739,8 @@ type CompanyServiceClient interface {
 	LeaveCompany(ctx context.Context, in *LeaveCompanyRequest, opts ...grpc.CallOption) (*LeaveCompanyResponse, error)
 	GetUserInfo(ctx context.Context, in *GetUserInfoRequest, opts ...grpc.CallOption) (*GetUserInfoResponse, error)
 	GetCompanyByUser(ctx context.Context, in *GetCompanyByUserRequest, opts ...grpc.CallOption) (*GetCompanyByUserResponse, error)
+	SetPrimaryCompany(ctx context.Context, in *SetPrimaryCompanyRequest, opts ...grpc.CallOption) (*SetPrimaryCompanyResponse, error)
+	GetUserCompanies(ctx context.Context, in *GetUserCompaniesRequest, opts ...grpc.CallOption) (*GetUserCompaniesResponse, error)
 }
 
 type companyServiceClient struct {
@@ -5947,6 +5951,26 @@ func (c *companyServiceClient) GetCompanyByUser(ctx context.Context, in *GetComp
 	return out, nil
 }
 
+func (c *companyServiceClient) SetPrimaryCompany(ctx context.Context, in *SetPrimaryCompanyRequest, opts ...grpc.CallOption) (*SetPrimaryCompanyResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SetPrimaryCompanyResponse)
+	err := c.cc.Invoke(ctx, CompanyService_SetPrimaryCompany_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *companyServiceClient) GetUserCompanies(ctx context.Context, in *GetUserCompaniesRequest, opts ...grpc.CallOption) (*GetUserCompaniesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetUserCompaniesResponse)
+	err := c.cc.Invoke(ctx, CompanyService_GetUserCompanies_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // CompanyServiceServer is the server API for CompanyService service.
 // All implementations must embed UnimplementedCompanyServiceServer
 // for forward compatibility.
@@ -5971,6 +5995,8 @@ type CompanyServiceServer interface {
 	LeaveCompany(context.Context, *LeaveCompanyRequest) (*LeaveCompanyResponse, error)
 	GetUserInfo(context.Context, *GetUserInfoRequest) (*GetUserInfoResponse, error)
 	GetCompanyByUser(context.Context, *GetCompanyByUserRequest) (*GetCompanyByUserResponse, error)
+	SetPrimaryCompany(context.Context, *SetPrimaryCompanyRequest) (*SetPrimaryCompanyResponse, error)
+	GetUserCompanies(context.Context, *GetUserCompaniesRequest) (*GetUserCompaniesResponse, error)
 	mustEmbedUnimplementedCompanyServiceServer()
 }
 
@@ -6040,6 +6066,12 @@ func (UnimplementedCompanyServiceServer) GetUserInfo(context.Context, *GetUserIn
 }
 func (UnimplementedCompanyServiceServer) GetCompanyByUser(context.Context, *GetCompanyByUserRequest) (*GetCompanyByUserResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetCompanyByUser not implemented")
+}
+func (UnimplementedCompanyServiceServer) SetPrimaryCompany(context.Context, *SetPrimaryCompanyRequest) (*SetPrimaryCompanyResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetPrimaryCompany not implemented")
+}
+func (UnimplementedCompanyServiceServer) GetUserCompanies(context.Context, *GetUserCompaniesRequest) (*GetUserCompaniesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetUserCompanies not implemented")
 }
 func (UnimplementedCompanyServiceServer) mustEmbedUnimplementedCompanyServiceServer() {}
 func (UnimplementedCompanyServiceServer) testEmbeddedByValue()                        {}
@@ -6422,6 +6454,42 @@ func _CompanyService_GetCompanyByUser_Handler(srv interface{}, ctx context.Conte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _CompanyService_SetPrimaryCompany_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetPrimaryCompanyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompanyServiceServer).SetPrimaryCompany(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CompanyService_SetPrimaryCompany_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompanyServiceServer).SetPrimaryCompany(ctx, req.(*SetPrimaryCompanyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CompanyService_GetUserCompanies_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetUserCompaniesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompanyServiceServer).GetUserCompanies(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CompanyService_GetUserCompanies_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompanyServiceServer).GetUserCompanies(ctx, req.(*GetUserCompaniesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // CompanyService_ServiceDesc is the grpc.ServiceDesc for CompanyService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -6508,6 +6576,14 @@ var CompanyService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetCompanyByUser",
 			Handler:    _CompanyService_GetCompanyByUser_Handler,
+		},
+		{
+			MethodName: "SetPrimaryCompany",
+			Handler:    _CompanyService_SetPrimaryCompany_Handler,
+		},
+		{
+			MethodName: "GetUserCompanies",
+			Handler:    _CompanyService_GetUserCompanies_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

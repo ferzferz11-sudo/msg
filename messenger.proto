@@ -2183,6 +2183,8 @@ service CompanyService {
   rpc LeaveCompany(LeaveCompanyRequest) returns (LeaveCompanyResponse);
   rpc GetUserInfo(GetUserInfoRequest) returns (GetUserInfoResponse);
   rpc GetCompanyByUser(GetCompanyByUserRequest) returns (GetCompanyByUserResponse);
+  rpc SetPrimaryCompany(SetPrimaryCompanyRequest) returns (SetPrimaryCompanyResponse);
+  rpc GetUserCompanies(GetUserCompaniesRequest) returns (GetUserCompaniesResponse);
 }
 
 message Company {
@@ -2414,5 +2416,26 @@ message GetCompanyByUserRequest {
 message GetCompanyByUserResponse {
   Company company = 1;
   CompanyMember member = 2;
+}
+
+message SetPrimaryCompanyRequest {
+  string company_id = 1;
+}
+message SetPrimaryCompanyResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message GetUserCompaniesRequest {
+  // empty — user_id from JWT
+}
+message GetUserCompaniesResponse {
+  repeated CompanyCompanyMember companies = 1;
+}
+
+message CompanyCompanyMember {
+  Company company = 1;
+  CompanyMember member = 2;
+  bool is_primary = 3;
 }
 

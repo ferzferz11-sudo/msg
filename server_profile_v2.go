@@ -54,16 +54,34 @@ func (p *profileServerV2) GetProfile(ctx context.Context, _ *gen.GetProfileReque
 		locale = localeNull.String
 	}
 
-	// Company info
+	// Company info (from primary_company_id, fallback to highest level)
 	var companyID, companyName, positionTitle sql.NullString
 	var positionLevel sql.NullInt32
-	_ = p.db.QueryRow(`
-		SELECT c.id, c.name, cp.title, cp.level
-		FROM company_members cm
-		JOIN companies c ON c.id = cm.company_id
-		JOIN company_positions cp ON cp.id = cm.position_id
-		WHERE cm.user_id=$1::uuid
-		ORDER BY cp.level DESC LIMIT 1`, userID).Scan(&companyID, &companyName, &positionTitle, &positionLevel)
+
+	// Try primary_company_id first
+	var primaryCompanyID sql.NullString
+	_ = p.db.QueryRow(`SELECT primary_company_id FROM users WHERE id=$1::uuid`, userID).Scan(&primaryCompanyID)
+
+	if primaryCompanyID.Valid {
+		_ = p.db.QueryRow(`
+			SELECT c.id, c.name, cp.title, cp.level
+			FROM company_members cm
+			JOIN companies c ON c.id = cm.company_id
+			JOIN company_positions cp ON cp.id = cm.position_id
+			WHERE cm.user_id=$1::uuid AND cm.company_id=$2::uuid`, userID, primaryCompanyID.String).
+			Scan(&companyID, &companyName, &positionTitle, &positionLevel)
+	}
+
+	// Fallback: highest position across all companies
+	if !companyID.Valid {
+		_ = p.db.QueryRow(`
+			SELECT c.id, c.name, cp.title, cp.level
+			FROM company_members cm
+			JOIN companies c ON c.id = cm.company_id
+			JOIN company_positions cp ON cp.id = cm.position_id
+			WHERE cm.user_id=$1::uuid
+			ORDER BY cp.level DESC LIMIT 1`, userID).Scan(&companyID, &companyName, &positionTitle, &positionLevel)
+	}
 
 	resp := &gen.GetProfileResponse{
 		UserId:        userID,
