@@ -384,6 +384,16 @@ func (db *DB) MarkReadAndCheck(room, userID string) (bool, error) {
 
 	affected, _ = res.RowsAffected()
 
+	// Also mark messages_v2 as read (only messages from other users)
+	res2, err := tx.Exec(`UPDATE messages_v2 SET is_read=TRUE WHERE room_id=$1 AND sender_id!=$2 AND is_read=FALSE`, room, userID)
+	if err != nil {
+		return false, err
+	}
+	affected2, _ := res2.RowsAffected()
+	if affected2 > 0 {
+		affected += affected2
+	}
+
 	err = tx.Commit()
 	if err == nil && affected > 0 {
 		_ = db.IncrementUserChatListVersionByUserID(userID)
