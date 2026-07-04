@@ -1,5 +1,12 @@
 # Лава — Server Changelog
 
+## [1.3.1.20] - 2026-07-04
+
+### Bug Fixes
+- **Read receipts not working for messages_v2** — `MarkReadAndCheck` now also updates `messages_v2.is_read=TRUE` in the same transaction. Previously, only legacy `messages` table was updated, so new messages (saved via `SaveMessageV2`) never got marked as read, causing single-checkmark (✓) instead of double-checkmark (✓✓).
+
+---
+
 ## [1.3.1.18] - 2026-07-03
 
 ### Bug Fixes
