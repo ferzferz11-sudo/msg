@@ -1,6 +1,6 @@
 # Lavender Messenger — Client Integration Guide
 
-**Server:** v1.3.1.18 | **Protocol:** gRPC + Protocol Buffers | **Date:** 2026-07-03
+**Server:** v1.3.1.20 | **Protocol:** gRPC + Protocol Buffers | **Date:** 2026-07-04
 
 This document covers everything a client needs to integrate with the Lavender Messenger server. Platform-agnostic — applies to Android, iOS, Web, Desktop, or any gRPC-capable client.
 
@@ -26,8 +26,9 @@ GET http://<host>:<port>/info
 Response:
 ```json
 {
-  "version": "1.3.0.27",
-  "time": "2026-06-23T22:00:00Z",
+  "version": "1.3.1.20",
+  "time": "2026-07-04T18:57:25+04:00",
+  "max_upload_size": 31457280,
   "services": {
     "auth": "2.0",
     "chat": "2.0",
@@ -43,6 +44,7 @@ Use these versions to decide which API paths to use:
 - `auth >= "2.0"` → use `SignInV2` / `SignUpV2` (JWT tokens)
 - `profile >= "2.0"` → use `ProfileService` v2 (separate gRPC service)
 - `ai >= "2.0"` → use `ChatWithAIV2`
+- `max_upload_size` → max file size in bytes (30 MB). Client should check `file.size <= max_upload_size` before uploading
 
 ---
 
@@ -250,6 +252,7 @@ ChatV2 stream receives system messages via `ChatV2System`:
 | `SERVER_SHUTTINGDOWN` | `""` | Server is about to restart |
 | `ONLINE_USERS_UPDATE` | `["uuid1","uuid2",...]` | JSON array of online user IDs |
 | `REACTION_V2` | `"messageId\|reactionsJSON"` | Reaction update (pipe-separated) |
+| `READ_ALL` | `"userId"` | All messages in room marked as read by userId |
 
 **REACTION_V2 parsing:**
 ```kotlin
