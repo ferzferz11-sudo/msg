@@ -135,11 +135,12 @@ func (g *AIGateway) Chat(ctx context.Context, req *ChatRequest, streamFn StreamF
 
 	// 9. Execute
 	var fullResponse string
+	hasRagContext := req.Message != "" // Simple heuristic: non-empty message likely used RAG
 	execResult, err := g.executor.Execute(ctx, agent, messages, settings, func(token string, finished bool) error {
 		if !finished {
 			fullResponse += token
 		}
-		return streamFn(token, finished, "", agent.ID, agent.Name)
+		return streamFn(token, finished, "", agent.ID, agent.Name, hasRagContext, agent.Model)
 	})
 
 	// 10. Refund on error
@@ -150,7 +151,7 @@ func (g *AIGateway) Chat(ctx context.Context, req *ChatRequest, streamFn StreamF
 
 	// 10.5 Send image URL if present (e.g. Reve image generation)
 	if execResult != nil && execResult.ImageURL != "" {
-		if err := streamFn("", true, execResult.ImageURL, agent.ID, agent.Name); err != nil {
+		if err := streamFn("", true, execResult.ImageURL, agent.ID, agent.Name, false, agent.Model); err != nil {
 			logger.Warnf("[AI] streamFn image: %v", err)
 		}
 	}
@@ -185,7 +186,9 @@ type ChatRequest struct {
 // StreamFn is the callback for streaming tokens. token="" + finished=true signals end.
 // imageURL is set when the agent produces an image (e.g. Reve).
 // agentID and agentName identify which agent produced this token.
-type StreamFn func(token string, finished bool, imageURL string, agentID string, agentName string) error
+// hasRagContext indicates if RAG context was used.
+// modelUsed is the model name for this response.
+type StreamFn func(token string, finished bool, imageURL string, agentID string, agentName string, hasRagContext bool, modelUsed string) error
 
 func (g *AIGateway) loadOrCreateChat(ctx context.Context, req *ChatRequest) (*AIChatV2, error) {
 	if req.ChatID != "" {

@@ -35,13 +35,15 @@ func (s *server) ChatWithAIV2(req *gen.ChatWithAIV2Request, stream gen.ChatServi
 
 	logger.Infof("[AI] ChatWithAIV2: user=%s agent=%s session=%s msg=%dchars", userID, req.AgentId, req.SessionId, len(req.Message))
 
-	err = gateway.Chat(stream.Context(), chatReq, func(token string, finished bool, imageURL string, agentID string, agentName string) error {
+	err = gateway.Chat(stream.Context(), chatReq, func(token string, finished bool, imageURL string, agentID string, agentName string, hasRagContext bool, modelUsed string) error {
 		return stream.Send(&gen.ChatWithAIV2Response{
-			Token:     token,
-			Finished:  finished,
-			ImageUrl:  imageURL,
-			AgentId:   agentID,
-			AgentName: agentName,
+			Token:         token,
+			Finished:      finished,
+			ImageUrl:      imageURL,
+			AgentId:       agentID,
+			AgentName:     agentName,
+			HasRagContext: hasRagContext,
+			ModelUsed:     modelUsed,
 		})
 	})
 

@@ -2,6 +2,7 @@ package main
 
 import (
 	"LavenderMessenger/gen"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -246,4 +247,31 @@ func (s *server) ChatV2(stream gen.ChatService_ChatV2Server) error {
 			continue
 		}
 	}
+}
+
+func (s *server) MarkRead(ctx context.Context, req *gen.MarkReadRequest) (*gen.MarkReadResponse, error) {
+	userID := GetUserID(ctx)
+	if userID == "" {
+		userID = req.UserId
+	}
+	if userID == "" {
+		return &gen.MarkReadResponse{Success: false}, nil
+	}
+
+	roomID := req.GetRoomId()
+	if roomID == "" {
+		return &gen.MarkReadResponse{Success: false}, nil
+	}
+
+	changed, err := s.db.MarkReadAndCheck(roomID, userID)
+	if err != nil {
+		logger.Errorf("MarkRead error: user=%s room=%s err=%v", userID, roomID, err)
+		return &gen.MarkReadResponse{Success: false}, nil
+	}
+
+	if changed {
+		s.hub.BroadcastToRoom(roomID, "READ_ALL", userID)
+	}
+
+	return &gen.MarkReadResponse{Success: true}, nil
 }

@@ -260,6 +260,7 @@ func main() {
 	if httpPort == "" {
 		httpPort = "8082"
 	}
+	SetHTTPDependencies(db, srv.hub)
 	httpSrv := StartHTTPServerAndReturn(httpPort)
 
 	// Graceful shutdown on SIGINT/SIGTERM

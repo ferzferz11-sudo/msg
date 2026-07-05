@@ -1,5 +1,20 @@
 # Лава — Server Changelog
 
+## [1.3.3.1] - 2026-07-05
+
+### Features
+- **Password Reset HTTP Endpoint** — `POST /api/request-password-reset` public endpoint (no JWT). Finds super admin, creates/reuses direct chat, sends system message "Пользователь запросил смену пароля". For web client "Forgot Password" flow.
+- **MarkRead gRPC Handler** — re-implemented `ChatService.MarkRead` (was deleted during v1 removal). Updates `user_chat_metadata.last_read_at` + `messages_v2.is_read`, broadcasts `READ_ALL` to room. Fixes unread count not clearing.
+
+### Bug Fixes
+- **Systemic auth bug fix** — 15+ handlers now use `GetUserID(ctx)` from JWT instead of `req.UserId` from request body. Fixed handlers: `AddFavorite`, `RemoveFavorite`, `GetFavorites`, `GetDevices`, `DeleteDevice`, `DeleteOtherDevices`, `GetMutedChats`, `SetMutedChat`, `SaveDraft`, `GetDraft`, `DeleteDraft`, `UpdateChatAvatar`, `UpdateChatSettings`, `CreateDirectChat`, `CreateGroupChat`, `AddParticipant`, `RemoveParticipant`.
+
+### Enhancements
+- **ChatList fields** — `chatV2RowToProto` now populates all ChatInfo proto fields: `is_secret`, `peer_public_key`, `e2ee_ready`, `active_agent_id`, `agent_mode`, `company_id`, `company_chat_access`, `company_min_position_level`. SQL queries updated with `company_chats` LEFT JOIN.
+- **AI v2 response fields** — `ChatWithAIV2Response` now includes `has_rag_context`, `model_used`. Extended `StreamFn` callback signature.
+
+---
+
 ## [1.3.3.0] - 2026-07-05
 
 ### Breaking Changes

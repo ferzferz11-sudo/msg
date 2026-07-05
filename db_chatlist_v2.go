@@ -54,6 +54,15 @@ type ChatV2Row struct {
 	IsMuted                                                                                               bool
 	IsArchived                                                                                            bool
 	PinnedAt                                                                                              int64
+
+	IsSecret                bool
+	PeerPublicKey           string
+	E2eeReady               bool
+	ActiveAgentId           string
+	AgentMode               string
+	CompanyId               string
+	CompanyChatAccess       string
+	CompanyMinPositionLevel int32
 }
 
 // ChatV2Result extends ChatV2Row with pagination metadata
@@ -76,6 +85,15 @@ type PinnedMessageRow struct {
 // Called from ConnectDB during initialization.
 func MigrateChatListV2(db *sql.DB) {
 	queries := []string{
+		// Add agent_id and agent_mode to chats table (for AI chat agent info)
+		`DO $$ BEGIN
+			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='chats' AND column_name='agent_id') THEN
+				ALTER TABLE chats ADD COLUMN agent_id VARCHAR(255) DEFAULT '';
+			END IF;
+			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='chats' AND column_name='agent_mode') THEN
+				ALTER TABLE chats ADD COLUMN agent_mode VARCHAR(50) DEFAULT 'single';
+			END IF;
+		END $$`,
 		// user_chat_metadata: add pinned, muted, archived columns
 		`DO $$ BEGIN
 			IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='user_chat_metadata' AND column_name='pinned') THEN
@@ -200,14 +218,19 @@ func (db *DB) SearchChats(userID, query string, limit, offset int) ([]ChatV2Row,
 		       COALESCE(c.creator_username, ''), COALESCE(c.creator_id::text, ''),
 		       COALESCE(c.avatar_url, ''), COALESCE(c.full_avatar_url, ''),
 		       COALESCE(c.allow_members_to_add, FALSE), COALESCE(c.is_secret, FALSE),
+		       COALESCE(c.public_key_a, ''), COALESCE(c.e2ee_ready, FALSE),
 		       COALESCE(c.last_message_text, ''), COALESCE(c.last_message_time, c.created_at),
 		       COALESCE(ucm.pinned, FALSE), COALESCE(ucm.archived, FALSE), COALESCE(ucm.pinned_at, 0),
 		       COALESCE(c.last_message_username, ''),
 		       COALESCE(c.last_message_has_image, FALSE),
-		       COALESCE(uc2.count, 0)
+		       COALESCE(uc2.count, 0),
+		       COALESCE(c.agent_id, ''), COALESCE(c.agent_mode, 'single'),
+		       COALESCE(cc.company_id::text, ''), COALESCE(cc.access_level, 'member'),
+		       COALESCE(cc.min_position_level, 0)
 		FROM chats c
 		LEFT JOIN user_chat_metadata ucm ON ucm.room_id = c.id AND ucm.user_id = $2::uuid
 		LEFT JOIN unread_counts uc2 ON c.id = uc2.room_id
+		LEFT JOIN company_chats cc ON cc.chat_id = c.id
 		WHERE (
 			LOWER(c.name) LIKE $1
 			OR LOWER(c.participants) LIKE $1
@@ -226,15 +249,17 @@ func (db *DB) SearchChats(userID, query string, limit, offset int) ([]ChatV2Row,
 	for rows.Next() {
 		var c ChatV2Row
 		var creatorId string
-		var isSecret bool
 		err := rows.Scan(
 			&c.ID, &c.Name, &c.Type, &c.Participants, &c.CreatedAt,
 			&c.Creator, &creatorId, &c.AvatarURL, &c.FullAvatarURL,
-			&c.AllowMembersToAdd, &isSecret,
+			&c.AllowMembersToAdd, &c.IsSecret,
+			&c.PeerPublicKey, &c.E2eeReady,
 			&c.LastMessageText, &c.LastMessageTime,
 			&c.IsPinned, &c.IsArchived, &c.PinnedAt,
 			&c.LastMessageUsername, &c.LastMessageHasImage,
 			&c.UnreadCount,
+			&c.ActiveAgentId, &c.AgentMode,
+			&c.CompanyId, &c.CompanyChatAccess, &c.CompanyMinPositionLevel,
 		)
 		if err != nil {
 			logger.Errorf("SearchChats scan error: %v", err)
@@ -327,16 +352,21 @@ func (db *DB) GetUserChatsV2Cursor(userID, username string, limit int, cursor, f
 		       COALESCE(c.creator_username, ''), COALESCE(c.creator_id::text, ''),
 		       COALESCE(c.avatar_url, ''), COALESCE(c.full_avatar_url, ''),
 		       COALESCE(c.allow_members_to_add, FALSE), COALESCE(c.is_secret, FALSE),
+		       COALESCE(c.public_key_a, ''), COALESCE(c.e2ee_ready, FALSE),
 		       COALESCE(c.last_message_text, ''), COALESCE(c.last_message_time, c.created_at),
 		       COALESCE(ucm.pinned, FALSE), COALESCE(ucm.archived, FALSE),
 		       COALESCE(ucm.pinned_at, 0),
 		       COALESCE(c.last_message_username, ''),
 		       COALESCE(c.last_message_has_image, FALSE),
-		       COALESCE(uc2.count, 0)
+		       COALESCE(uc2.count, 0),
+		       COALESCE(c.agent_id, ''), COALESCE(c.agent_mode, 'single'),
+		       COALESCE(cc.company_id::text, ''), COALESCE(cc.access_level, 'member'),
+		       COALESCE(cc.min_position_level, 0)
 		FROM chats c
 		LEFT JOIN user_chat_metadata ucm ON ucm.room_id = c.id AND ucm.user_id = $1::uuid
 		LEFT JOIN muted_chats mc ON mc.room_id = c.id AND mc.user_id = $1::uuid
 		LEFT JOIN unread_counts uc2 ON c.id = uc2.room_id
+		LEFT JOIN company_chats cc ON cc.chat_id = c.id
 		WHERE c.type NOT IN ('ai', 'owl', 'hermes')
 		AND (c.participant_ids @> ARRAY[$1::uuid] OR c.participants::jsonb @> jsonb_build_array($3::text))
 		%s
@@ -355,16 +385,18 @@ func (db *DB) GetUserChatsV2Cursor(userID, username string, limit int, cursor, f
 	for rows.Next() {
 		var c ChatV2Row
 		var creatorId string
-		var isSecret bool
 
 		err := rows.Scan(
 			&c.ID, &c.Name, &c.Type, &c.Participants, &c.CreatedAt,
 			&c.Creator, &creatorId, &c.AvatarURL, &c.FullAvatarURL,
-			&c.AllowMembersToAdd, &isSecret,
+			&c.AllowMembersToAdd, &c.IsSecret,
+			&c.PeerPublicKey, &c.E2eeReady,
 			&c.LastMessageText, &c.LastMessageTime,
 			&c.IsPinned, &c.IsArchived, &c.PinnedAt,
 			&c.LastMessageUsername, &c.LastMessageHasImage,
 			&c.UnreadCount,
+			&c.ActiveAgentId, &c.AgentMode,
+			&c.CompanyId, &c.CompanyChatAccess, &c.CompanyMinPositionLevel,
 		)
 		if err != nil {
 			logger.Errorf("GetUserChatsV2 scan error: %v", err)

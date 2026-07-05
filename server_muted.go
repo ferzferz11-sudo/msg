@@ -7,8 +7,12 @@ import (
 	"github.com/google/uuid"
 )
 
-func (s *server) GetMutedChats(_ context.Context, req *gen.GetMutedChatsRequest) (*gen.GetMutedChatsResponse, error) {
-	if req.UserId == "" {
+func (s *server) GetMutedChats(ctx context.Context, req *gen.GetMutedChatsRequest) (*gen.GetMutedChatsResponse, error) {
+	userID := GetUserID(ctx)
+	if userID == "" {
+		userID = req.UserId
+	}
+	if userID == "" {
 		return &gen.GetMutedChatsResponse{RoomIds: []string{}}, nil
 	}
 
@@ -16,34 +20,38 @@ func (s *server) GetMutedChats(_ context.Context, req *gen.GetMutedChatsRequest)
 	var err error
 
 	// Check if it's a UUID or username
-	if _, uuidErr := uuid.Parse(req.UserId); uuidErr == nil {
-		mutedChats, err = s.db.GetMutedChatsByUserID(req.UserId)
+	if _, uuidErr := uuid.Parse(userID); uuidErr == nil {
+		mutedChats, err = s.db.GetMutedChatsByUserID(userID)
 	} else {
-		mutedChats, err = s.db.GetMutedChats(req.UserId)
+		mutedChats, err = s.db.GetMutedChats(userID)
 	}
 
 	if err != nil {
-		s.logErrorOnce("GetMutedChats:"+req.UserId, "Failed to get muted chats for user %s: %v", req.UserId, err)
+		s.logErrorOnce("GetMutedChats:"+userID, "Failed to get muted chats for user %s: %v", userID, err)
 		return &gen.GetMutedChatsResponse{RoomIds: []string{}}, nil
 	}
 	return &gen.GetMutedChatsResponse{RoomIds: mutedChats}, nil
 }
 
-func (s *server) SetMutedChat(_ context.Context, req *gen.SetMutedChatRequest) (*gen.SetMutedChatResponse, error) {
-	if req.UserId == "" {
+func (s *server) SetMutedChat(ctx context.Context, req *gen.SetMutedChatRequest) (*gen.SetMutedChatResponse, error) {
+	userID := GetUserID(ctx)
+	if userID == "" {
+		userID = req.UserId
+	}
+	if userID == "" {
 		return &gen.SetMutedChatResponse{Success: false}, nil
 	}
 
 	var err error
 	// Check if it's a UUID or username
-	if _, uuidErr := uuid.Parse(req.UserId); uuidErr == nil {
-		err = s.db.SetMutedChatByUserID(req.UserId, req.RoomId, req.Muted)
+	if _, uuidErr := uuid.Parse(userID); uuidErr == nil {
+		err = s.db.SetMutedChatByUserID(userID, req.RoomId, req.Muted)
 	} else {
-		err = s.db.SetMutedChat(req.UserId, req.RoomId, req.Muted)
+		err = s.db.SetMutedChat(userID, req.RoomId, req.Muted)
 	}
 
 	if err != nil {
-		s.logErrorOnce("SetMutedChat:"+req.UserId, "Failed to set muted status for user %s in room %s (muted=%v): %v", req.UserId, req.RoomId, req.Muted, err)
+		s.logErrorOnce("SetMutedChat:"+userID, "Failed to set muted status for user %s in room %s (muted=%v): %v", userID, req.RoomId, req.Muted, err)
 		return &gen.SetMutedChatResponse{Success: false}, nil
 	}
 
@@ -51,6 +59,6 @@ func (s *server) SetMutedChat(_ context.Context, req *gen.SetMutedChatRequest) (
 	if !req.Muted {
 		action = "unmuted"
 	}
-	logger.Infof("Chat %s for user %s in room %s", action, req.UserId, req.RoomId)
+	logger.Infof("Chat %s for user %s in room %s", action, userID, req.RoomId)
 	return &gen.SetMutedChatResponse{Success: true}, nil
 }

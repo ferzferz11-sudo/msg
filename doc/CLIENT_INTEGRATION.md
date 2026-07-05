@@ -1,6 +1,6 @@
 # Lavender Messenger — Client Integration Guide
 
-**Server:** v1.3.2.1 | **Protocol:** gRPC + Protocol Buffers | **Date:** 2026-07-05
+**Server:** v1.3.3.1 | **Protocol:** gRPC + Protocol Buffers | **Date:** 2026-07-05
 
 This document covers everything a client needs to integrate with the Lavender Messenger server. Platform-agnostic — applies to Android, iOS, Web, Desktop, or any gRPC-capable client.
 
@@ -310,7 +310,19 @@ message ChatInfo {
   string full_avatar_url = 11;
   string last_message_username = 12;
   bool last_message_has_image = 13;
+  bool allow_members_to_add = 14;
   bool is_secret = 15;
+  string peer_public_key = 16;  // E2EE public key
+  bool e2ee_ready = 17;         // E2EE key exchange status
+  string active_agent_id = 20;  // Current active agent for AI chats
+  string agent_mode = 21;       // Agent mode (single/parallel/pipeline)
+  bool is_pinned = 22;
+  bool is_muted = 23;
+  bool is_archived = 24;
+  int64 pinned_at = 25;
+  string company_id = 26;              // Company ID for company chats
+  string company_chat_access = 27;     // Access level (member/management/owner_only)
+  int32 company_min_position_level = 28; // Minimum position level
 }
 ```
 
@@ -451,10 +463,19 @@ rpc GetPinnedMessages(GetPinnedMessagesRequest) returns (GetPinnedMessagesRespon
 rpc MarkRead(MarkReadRequest) returns (MarkReadResponse);
 
 message MarkReadRequest {
-  string room_id = 1;
-  string message_id = 2;    // last read message ID
+  string room_id = 1;       // chat ID to mark as read
+  string username = 2;      // your username
+  string user_id = 3;       // your UUID (fallback if JWT missing)
+}
+
+message MarkReadResponse {
+  bool success = 1;
 }
 ```
+
+**Server behavior:** Updates `user_chat_metadata.last_read_at` and `messages_v2.is_read` for all unread messages in the room. Broadcasts `READ_ALL` system message to the room via ChatV2 stream.
+
+**Client should call:** When entering a chat, on room switch, and when receiving new messages.
 
 ---
 
@@ -1246,10 +1267,40 @@ message CompanyCompanyMember {
 
 ## Password Reset
 
+### gRPC (requires auth)
+
 ```protobuf
 rpc RequestPasswordReset(RequestPasswordResetRequest) returns (RequestPasswordResetResponse);
 rpc ResetPassword(ResetPasswordRequest) returns (ResetPasswordResponse);
 ```
+
+### HTTP (no auth — for web client "Forgot Password")
+
+```
+POST /api/request-password-reset
+Content-Type: application/json
+
+{
+  "username": "shuvs"
+}
+```
+
+**Response (success):**
+```json
+{"success": true, "message": "Запрос отправлен админу"}
+```
+
+**Response (user not found):**
+```json
+{"success": false, "message": "Пользователь не найден"}
+```
+
+**Response (no admin):**
+```json
+{"success": false, "message": "Администратор сервера не найден"}
+```
+
+**Flow:** Server finds super admin → creates/reuses direct chat → sends system message "Пользователь запросил смену пароля" → broadcasts to admin's ChatV2 stream.
 
 ---
 
@@ -1614,6 +1665,7 @@ All HTTP endpoints are on port 8082 (prod) or 8083 (dev).
 |--------|------|-------------|
 | `GET` | `/health` | Health check (returns version + status) |
 | `GET` | `/info` | Service versions for capability negotiation |
+| `POST` | `/api/request-password-reset` | Request password reset (sends message to super admin) |
 
 ### Upload (Requires JWT Bearer Token)
 

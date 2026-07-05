@@ -18,6 +18,8 @@ import (
 	"strings"
 	"sync/atomic"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 const (
@@ -38,7 +40,16 @@ var (
 
 	// Shutdown state — set to true during graceful shutdown
 	httpShuttingDown atomic.Bool
+
+	// DB and Hub references for HTTP handlers (set via SetHTTPDependencies)
+	httpDB  *DB
+	httpHub *Hub
 )
+
+func SetHTTPDependencies(db *DB, hub *Hub) {
+	httpDB = db
+	httpHub = hub
+}
 
 func getEnvOrDefault(key, defaultValue string) string {
 	if v := os.Getenv(key); v != "" {
@@ -104,6 +115,9 @@ func StartHTTPServerAndReturn(port string) *http.Server {
 
 	// TURN credentials endpoint
 	http.HandleFunc("/turn-credentials", requireAuth(turnCredentialsHandler))
+
+	// Public endpoints (no auth)
+	http.HandleFunc("/api/request-password-reset", requestPasswordResetHandler)
 
 	// Health check endpoint
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
@@ -542,6 +556,82 @@ func turnCredentialsHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(servers)
+}
+
+func requestPasswordResetHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "Method not allowed"})
+		return
+	}
+
+	var req struct {
+		Username string `json:"username"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Username == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "Username is required"})
+		return
+	}
+
+	if httpDB == nil {
+		logger.Errorf("requestPasswordReset: DB not initialized")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "Server error"})
+		return
+	}
+
+	exists, err := httpDB.UserExists(req.Username)
+	if err != nil || !exists {
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "Пользователь не найден"})
+		return
+	}
+
+	var adminUsername string
+	err = httpDB.QueryRow(`SELECT username FROM users WHERE is_super_admin = TRUE LIMIT 1`).Scan(&adminUsername)
+	if err != nil || adminUsername == "" {
+		logger.Errorf("requestPasswordReset: no super admin found")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "Администратор сервера не найден"})
+		return
+	}
+
+	var adminUserID string
+	httpDB.QueryRow(`SELECT id::text FROM users WHERE username = $1`, adminUsername).Scan(&adminUserID)
+
+	chatID, err := httpDB.GetDirectChatBetweenUsers(req.Username, adminUsername)
+	if err != nil {
+		logger.Errorf("requestPasswordReset: failed to create chat: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "Ошибка создания чата"})
+		return
+	}
+
+	msgID := uuid.New().String()
+	msg := &MessageRowV2{
+		ID:          msgID,
+		RoomID:      chatID,
+		SenderID:    adminUserID,
+		ContentType: "text",
+		Text:        "Пользователь запросил смену пароля",
+		CreatedAt:   time.Now(),
+	}
+	if err := httpDB.SaveMessageV2(msg); err != nil {
+		logger.Errorf("requestPasswordReset: failed to save message: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "Ошибка отправки сообщения"})
+		return
+	}
+
+	if httpHub != nil {
+		httpHub.BroadcastToRoom(chatID, "NEW_MESSAGE_V2", msgID)
+	}
+
+	logger.Infof("requestPasswordReset: password reset requested by %s, chat=%s", req.Username, chatID)
+	json.NewEncoder(w).Encode(map[string]interface{}{"success": true, "message": "Запрос отправлен админу"})
 }
 
 func corsMiddleware(next http.Handler) http.Handler {

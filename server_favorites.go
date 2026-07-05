@@ -20,10 +20,14 @@ func (s *server) GetUserId(_ context.Context, req *gen.GetUserIdRequest) (*gen.G
 }
 
 func (s *server) AddFavorite(ctx context.Context, req *gen.AddFavoriteRequest) (*gen.AddFavoriteResponse, error) {
-	if req.UserId == "" || req.MessageId == "" {
+	userID := GetUserID(ctx)
+	if userID == "" {
+		userID = req.UserId
+	}
+	if userID == "" || req.MessageId == "" {
 		return &gen.AddFavoriteResponse{Success: false, Message: "empty user id or message id"}, nil
 	}
-	err := s.db.AddFavorite(req.UserId, req.MessageId)
+	err := s.db.AddFavorite(userID, req.MessageId)
 	if err != nil {
 		logger.Infof("Failed to add favorite: %v", err)
 		return &gen.AddFavoriteResponse{Success: false, Message: err.Error()}, nil
@@ -32,10 +36,14 @@ func (s *server) AddFavorite(ctx context.Context, req *gen.AddFavoriteRequest) (
 }
 
 func (s *server) RemoveFavorite(ctx context.Context, req *gen.RemoveFavoriteRequest) (*gen.RemoveFavoriteResponse, error) {
-	if req.UserId == "" || req.MessageId == "" {
+	userID := GetUserID(ctx)
+	if userID == "" {
+		userID = req.UserId
+	}
+	if userID == "" || req.MessageId == "" {
 		return &gen.RemoveFavoriteResponse{Success: false}, nil
 	}
-	err := s.db.RemoveFavorite(req.UserId, req.MessageId)
+	err := s.db.RemoveFavorite(userID, req.MessageId)
 	if err != nil {
 		logger.Infof("Failed to remove favorite: %v", err)
 		return &gen.RemoveFavoriteResponse{Success: false}, nil
@@ -44,10 +52,14 @@ func (s *server) RemoveFavorite(ctx context.Context, req *gen.RemoveFavoriteRequ
 }
 
 func (s *server) GetFavorites(ctx context.Context, req *gen.GetFavoritesRequest) (*gen.GetFavoritesResponse, error) {
-	if req.UserId == "" {
+	userID := GetUserID(ctx)
+	if userID == "" {
+		userID = req.UserId
+	}
+	if userID == "" {
 		return &gen.GetFavoritesResponse{Messages: nil}, nil
 	}
-	favs, err := s.db.GetFavorites(req.UserId)
+	favs, err := s.db.GetFavorites(userID)
 	if err != nil {
 		logger.Infof("Failed to get favorites: %v", err)
 		return &gen.GetFavoritesResponse{Messages: nil}, nil
@@ -131,8 +143,11 @@ func (s *server) SaveFavoriteMessage(ctx context.Context, req *gen.Message) (*ge
 }
 
 func (s *server) GetDevices(ctx context.Context, req *gen.GetDevicesRequest) (*gen.GetDevicesResponse, error) {
-	_ = ctx
-	dbDevices, err := s.db.GetUserDevices(req.UserId)
+	userID := GetUserID(ctx)
+	if userID == "" {
+		userID = req.UserId
+	}
+	dbDevices, err := s.db.GetUserDevices(userID)
 	if err != nil {
 		return nil, err
 	}
@@ -152,8 +167,11 @@ func (s *server) GetDevices(ctx context.Context, req *gen.GetDevicesRequest) (*g
 }
 
 func (s *server) DeleteDevice(ctx context.Context, req *gen.DeleteDeviceRequest) (*gen.DeleteDeviceResponse, error) {
-	_ = ctx
-	err := s.db.DeleteUserDevice(req.DeviceId, req.UserId)
+	userID := GetUserID(ctx)
+	if userID == "" {
+		userID = req.UserId
+	}
+	err := s.db.DeleteUserDevice(req.DeviceId, userID)
 	if err != nil {
 		return &gen.DeleteDeviceResponse{Success: false, Message: err.Error()}, nil
 	}
@@ -164,8 +182,11 @@ func (s *server) DeleteDevice(ctx context.Context, req *gen.DeleteDeviceRequest)
 }
 
 func (s *server) DeleteOtherDevices(ctx context.Context, req *gen.DeleteDeviceRequest) (*gen.DeleteDeviceResponse, error) {
-	_ = ctx
-	err := s.db.DeleteOtherDevices(req.UserId, req.DeviceId)
+	userID := GetUserID(ctx)
+	if userID == "" {
+		userID = req.UserId
+	}
+	err := s.db.DeleteOtherDevices(userID, req.DeviceId)
 	if err != nil {
 		return &gen.DeleteDeviceResponse{Success: false, Message: err.Error()}, nil
 	}

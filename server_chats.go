@@ -9,7 +9,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func (s *server) CreateDirectChat(_ context.Context, req *gen.CreateDirectChatRequest) (*gen.CreateDirectChatResponse, error) {
+func (s *server) CreateDirectChat(ctx context.Context, req *gen.CreateDirectChatRequest) (*gen.CreateDirectChatResponse, error) {
 	u1 := req.User1
 	if req.User1Id != "" {
 		resolved := resolveDisplayName(s.db, req.User1Id)
@@ -44,7 +44,7 @@ func (s *server) CreateDirectChat(_ context.Context, req *gen.CreateDirectChatRe
 	return &gen.CreateDirectChatResponse{ChatId: chatID, Success: true}, nil
 }
 
-func (s *server) CreateGroupChat(_ context.Context, req *gen.CreateGroupChatRequest) (*gen.CreateGroupChatResponse, error) {
+func (s *server) CreateGroupChat(ctx context.Context, req *gen.CreateGroupChatRequest) (*gen.CreateGroupChatResponse, error) {
 	creator := req.Creator
 	if req.CreatorId != "" {
 		resolved := resolveDisplayName(s.db, req.CreatorId)
@@ -76,7 +76,7 @@ func (s *server) CreateGroupChat(_ context.Context, req *gen.CreateGroupChatRequ
 	return &gen.CreateGroupChatResponse{ChatId: chatID, Success: true}, nil
 }
 
-func (s *server) AddParticipant(_ context.Context, req *gen.AddParticipantRequest) (*gen.AddParticipantResponse, error) {
+func (s *server) AddParticipant(ctx context.Context, req *gen.AddParticipantRequest) (*gen.AddParticipantResponse, error) {
 	username := req.Username
 	if req.UserId != "" {
 		resolved := resolveDisplayName(s.db, req.UserId)
@@ -127,7 +127,7 @@ func (s *server) AddParticipant(_ context.Context, req *gen.AddParticipantReques
 	return &gen.AddParticipantResponse{Success: true, Message: "User added successfully"}, nil
 }
 
-func (s *server) RemoveParticipant(_ context.Context, req *gen.RemoveParticipantRequest) (*gen.RemoveParticipantResponse, error) {
+func (s *server) RemoveParticipant(ctx context.Context, req *gen.RemoveParticipantRequest) (*gen.RemoveParticipantResponse, error) {
 	username := req.Username
 	if req.UserId != "" {
 		resolved := resolveDisplayName(s.db, req.UserId)
@@ -315,17 +315,18 @@ func (s *server) UpdateChatName(_ context.Context, req *gen.UpdateChatNameReques
 	return &gen.UpdateChatNameResponse{Success: true, Message: "Chat name updated successfully"}, nil
 }
 
-func (s *server) UpdateChatAvatar(_ context.Context, req *gen.UpdateChatAvatarRequest) (*gen.UpdateChatAvatarResponse, error) {
+func (s *server) UpdateChatAvatar(ctx context.Context, req *gen.UpdateChatAvatarRequest) (*gen.UpdateChatAvatarResponse, error) {
 	if req.ChatId == "" || req.AvatarUrl == "" {
 		return &gen.UpdateChatAvatarResponse{Success: false, Message: "Chat ID and Avatar URL are required"}, nil
 	}
 
-	username := req.Username
-	if req.UserId != "" {
-		resolved := resolveDisplayName(s.db, req.UserId)
-		if resolved != "" {
-			username = resolved
-		}
+	userID := GetUserID(ctx)
+	if userID == "" {
+		userID = req.UserId
+	}
+	username := resolveDisplayName(s.db, userID)
+	if username == "" {
+		username = req.Username
 	}
 
 	logger.Infof("UpdateChatAvatar: Checking admin status for chat %s, user %s", req.ChatId, username)
@@ -359,7 +360,7 @@ func (s *server) UpdateChatAvatar(_ context.Context, req *gen.UpdateChatAvatarRe
 	return &gen.UpdateChatAvatarResponse{Success: true, Message: "Chat avatar updated successfully"}, nil
 }
 
-func (s *server) UpdateChatSettings(_ context.Context, req *gen.UpdateChatSettingsRequest) (*gen.UpdateChatSettingsResponse, error) {
+func (s *server) UpdateChatSettings(ctx context.Context, req *gen.UpdateChatSettingsRequest) (*gen.UpdateChatSettingsResponse, error) {
 	if req.ChatId == "" {
 		return &gen.UpdateChatSettingsResponse{Success: false, Message: "Chat ID is required"}, nil
 	}
@@ -370,7 +371,11 @@ func (s *server) UpdateChatSettings(_ context.Context, req *gen.UpdateChatSettin
 		return &gen.UpdateChatSettingsResponse{Success: false, Message: "Chat not found"}, nil
 	}
 
-	username := resolveDisplayName(s.db, req.UserId)
+	userID := GetUserID(ctx)
+	if userID == "" {
+		userID = req.UserId
+	}
+	username := resolveDisplayName(s.db, userID)
 	if chat.CreatorUsername != username {
 		return &gen.UpdateChatSettingsResponse{Success: false, Message: "Unauthorized: only admin can change settings"}, nil
 	}
