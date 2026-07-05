@@ -152,6 +152,42 @@ func (s *server) SendMessageV2(ctx context.Context, req *gen.SendMessageV2Reques
 		_ = target.Send(wrappedMsg)
 	}
 
+	// Send push notifications to offline recipients
+	if !strings.HasPrefix(req.RoomId, "favorites_") {
+		senderUsername := GetUsername(ctx)
+		if senderUsername != "" && s.db.GetUserPushStatus(senderUsername) {
+			chat, err := s.db.GetChat(req.RoomId)
+			if err == nil {
+				var participants []string
+				if err := json.Unmarshal([]byte(chat.Participants), &participants); err == nil {
+					var recipients []string
+					for _, pp := range participants {
+						if pp != senderUsername {
+							recipients = append(recipients, pp)
+						}
+					}
+					if len(recipients) > 0 {
+						dbTargets, err := s.db.GetPushTokensByUsernames(recipients)
+						if err == nil && len(dbTargets) > 0 {
+							var targets []pushTarget
+							for _, t := range dbTargets {
+								targets = append(targets, pushTarget{
+									UserId:   t.UserId,
+									Username: t.Username,
+								})
+							}
+							pushText := row.Text
+							if row.IsE2EE {
+								pushText = "New encrypted message"
+							}
+							s.sendBatchPushNotifications(targets, senderUsername, pushText, req.RoomId)
+						}
+					}
+				}
+			}
+		}
+	}
+
 	return &gen.SendMessageV2Response{
 		Message: rowToProtoV2(row),
 		Success: true,
