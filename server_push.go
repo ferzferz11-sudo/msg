@@ -105,7 +105,7 @@ func (s *server) sendPushNotification(userId, username, title, body, roomID stri
 			CollapseKey: roomID,
 			TTL:         durationPtr(5 * time.Minute),
 			Notification: &messaging.AndroidNotification{
-				ChannelID: "lavender_messages",
+				ChannelID: "lavender_messages_v2",
 				Priority:  messaging.PriorityHigh,
 				Sound:     "default",
 			},
@@ -205,7 +205,7 @@ func (s *server) sendMulticastWithRetry(client *messaging.Client, tokens, userID
 			CollapseKey: roomID,
 			TTL:         durationPtr(5 * time.Minute),
 			Notification: &messaging.AndroidNotification{
-				ChannelID: "lavender_messages",
+				ChannelID: "lavender_messages_v2",
 				Priority:  messaging.PriorityHigh,
 				Sound:     "default",
 			},
