@@ -271,8 +271,8 @@ func (db *DB) UpdateChatSettings(id string, allowAdd bool) error {
 
 func (db *DB) UpdateChatParticipants(id, p string) error {
 	_, err := db.Exec(`UPDATE chats SET participants=$1,
-		participant_ids=(SELECT array_agg(u.id ORDER BY u.username) FROM users u WHERE u.username = ANY(SELECT json_array_elements_text($1::json)))
-		WHERE id=$2`, p, id)
+		participant_ids=(SELECT array_agg(u.id ORDER BY u.username) FROM users u WHERE u.username = ANY(SELECT json_array_elements_text($2::json)))
+		WHERE id=$3`, p, p, id)
 	return err
 }
 
