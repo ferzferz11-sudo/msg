@@ -133,6 +133,9 @@ func (c *companyServer) DeleteCompany(ctx context.Context, req *gen.DeleteCompan
 		return &gen.DeleteCompanyResponse{Success: false, Message: "only owner can delete company"}, nil
 	}
 
+	// Clear primary_company_id references before deleting
+	_, _ = c.db.Exec(`UPDATE users SET primary_company_id = NULL WHERE primary_company_id = $1::uuid`, req.CompanyId)
+
 	_, err := c.db.Exec(`DELETE FROM companies WHERE id=$1::uuid`, req.CompanyId)
 	if err != nil {
 		logger.Errorf("Company: DeleteCompany error: %v", err)
