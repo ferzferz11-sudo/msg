@@ -36,6 +36,8 @@
 | ~~Call disconnect Bug 2~~ | HANGUP не доставляется callee если call stream неактивен. Нужен fallback через push notification. Серверная часть (`server_push.go:484-486`). | Высокий | ✅ Исправлено |
 | ~~Call disconnect push fallback~~ | Когда `BroadcastCall` возвращает `delivered=false` для HANGUP — отправлять FCM push вместо потери сигнала. (`handleAbruptDisconnect` + `server_call.go:179-181`). | Высокий | ✅ Исправлено |
 | ~~Push messages bug~~ | Push для сообщений не приходил — `IsUserOnline` пропускал push для пользователей в пустой комнате. Заменено на `IsUserInRoom` (`hub.go:273-288`, `server_push.go:57,149`). | Высокий | ✅ Исправлено |
+| ~~Push ChannelID mismatch~~ | Сервер отправлял `lavender_messages`, клиент создавал `lavender_messages_v2`. Android 8+ игнорировал push. (`server_push.go:108,208`). | Высокий | ✅ Исправлено |
+| ~~SendMessageV2 push~~ | `SendMessageV2` не отправлял push-уведомления. Добавлена push-логика для offline-получателей (`server_messages_v2.go:155-189`). | Высокий | ✅ Исправлено |
 | ~~Initiate echo fix (клиент)~~ | Клиентская часть починки — `CallManager.kt` INITIATE echo больше не портит receiverId. Собрано и протестировано. | Высокий | ✅ Исправлено |
 
 ---
@@ -135,4 +137,6 @@ go test ./...
 
 - ~~**Call disconnect Bug 2:**~~ ✅ Исправлено. `handleAbruptDisconnect` теперь отправляет `CALL_ENDED` push когда HANGUP не доставляется через call stream.
 - ~~**Push messages bug:**~~ ✅ Исправлено. `IsUserOnline` заменён на `IsUserInRoom` — push теперь приходит когда пользователь на главном экране (пустая комната).
+- ~~**Push ChannelID mismatch:**~~ ✅ Исправлено. Сервер теперь использует `lavender_messages_v2` (вместо `lavender_messages`).
+- ~~**SendMessageV2 no push:**~~ ✅ Исправлено. Добавлена push-логика в `SendMessageV2` для offline-получателей.
 - ~~**Initiate echo (клиент):**~~ ✅ Исправлено. `CallManager.kt:46-57` — INITIATE echo обновляет только callId, receiverId сохраняется.
