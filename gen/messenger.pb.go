@@ -1746,6 +1746,7 @@ type CreateGroupChatRequest struct {
 	Creator        string                 `protobuf:"bytes,3,opt,name=creator,proto3" json:"creator,omitempty"`
 	CreatorId      string                 `protobuf:"bytes,4,opt,name=creator_id,json=creatorId,proto3" json:"creator_id,omitempty"`
 	ParticipantIds []string               `protobuf:"bytes,5,rep,name=participant_ids,json=participantIds,proto3" json:"participant_ids,omitempty"`
+	Type           string                 `protobuf:"bytes,6,opt,name=type,proto3" json:"type,omitempty"` // "group" (default), "conference"
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -1813,6 +1814,13 @@ func (x *CreateGroupChatRequest) GetParticipantIds() []string {
 		return x.ParticipantIds
 	}
 	return nil
+}
+
+func (x *CreateGroupChatRequest) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
 }
 
 type CreateGroupChatResponse struct {
@@ -21818,14 +21826,15 @@ const file_messenger_proto_rawDesc = "" +
 	"\buser2_id\x18\x04 \x01(\tR\auser2Id\"M\n" +
 	"\x18CreateDirectChatResponse\x12\x17\n" +
 	"\achat_id\x18\x01 \x01(\tR\x06chatId\x12\x18\n" +
-	"\asuccess\x18\x02 \x01(\bR\asuccess\"\xb2\x01\n" +
+	"\asuccess\x18\x02 \x01(\bR\asuccess\"\xc6\x01\n" +
 	"\x16CreateGroupChatRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\"\n" +
 	"\fparticipants\x18\x02 \x03(\tR\fparticipants\x12\x18\n" +
 	"\acreator\x18\x03 \x01(\tR\acreator\x12\x1d\n" +
 	"\n" +
 	"creator_id\x18\x04 \x01(\tR\tcreatorId\x12'\n" +
-	"\x0fparticipant_ids\x18\x05 \x03(\tR\x0eparticipantIds\"L\n" +
+	"\x0fparticipant_ids\x18\x05 \x03(\tR\x0eparticipantIds\x12\x12\n" +
+	"\x04type\x18\x06 \x01(\tR\x04type\"L\n" +
 	"\x17CreateGroupChatResponse\x12\x17\n" +
 	"\achat_id\x18\x01 \x01(\tR\x06chatId\x12\x18\n" +
 	"\asuccess\x18\x02 \x01(\bR\asuccess\"v\n" +

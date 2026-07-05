@@ -171,6 +171,7 @@ message CreateGroupChatRequest {
   string creator = 3;
   string creator_id = 4;
   repeated string participant_ids = 5;
+  string type = 6;  // "group" (default), "conference"
 }
 
 message CreateGroupChatResponse {

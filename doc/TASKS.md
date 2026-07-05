@@ -23,6 +23,7 @@
 
 | Версия | Описание |
 |--------|----------|
+| v1.3.2.1 | Bug fixes: UpdateChatParticipants type mismatch, DeleteCompany FK violation, CreateGroupChat type field |
 | v1.3.2.0 | Company System: companies, positions, members, company chats, access control, multi-company support, primary company, GetUserInfo, GetUserCompanies, SetPrimaryCompany, max_upload_size in /info, READ_ALL broadcast to ChatV2 |
 | v1.3.1.21 | Company System v1: CRUD, positions, members, company chats, access levels |
 | v1.3.1.20 | Read receipts fix (messages_v2), max_upload_size in /info, READ_ALL broadcast |

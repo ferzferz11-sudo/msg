@@ -1,5 +1,16 @@
 # Лава — Server Changelog
 
+## [1.3.2.1] - 2026-07-05
+
+### Bug Fixes
+- **UpdateChatParticipants type mismatch** — `UpdateChatParticipants` used `$1` as both text and json, causing `pq: inconsistent types deduced for parameter $1`. Fixed by using separate parameters (`$1` for text, `$2` for json).
+- **DeleteCompany FK violation** — `DeleteCompany` now clears `primary_company_id` references before deleting, preventing `pq: update or delete on table "companies" violates foreign key constraint`.
+
+### Features
+- **CreateGroupChat type field** — `CreateGroupChatRequest` now accepts `type` field (field 6): `"group"` (default), `"conference"`. Android client already sends this for conference chats.
+
+---
+
 ## [1.3.2.0] - 2026-07-04
 
 ### Features

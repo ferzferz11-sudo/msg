@@ -1,6 +1,6 @@
 # Lavender Messenger — Client Integration Guide
 
-**Server:** v1.3.2.0 | **Protocol:** gRPC + Protocol Buffers | **Date:** 2026-07-04
+**Server:** v1.3.2.1 | **Protocol:** gRPC + Protocol Buffers | **Date:** 2026-07-05
 
 This document covers everything a client needs to integrate with the Lavender Messenger server. Platform-agnostic — applies to Android, iOS, Web, Desktop, or any gRPC-capable client.
 
@@ -335,6 +335,7 @@ message CreateGroupChatRequest {
   string name = 1;
   repeated string participant_ids = 5;  // UUIDs of participants
   string creator_id = 4;               // your UUID
+  string type = 6;                     // "group" (default), "conference"
 }
 // Returns: CreateGroupChatResponse { chat_id, success }
 ```

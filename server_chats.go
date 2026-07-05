@@ -100,12 +100,17 @@ func (s *server) CreateGroupChat(_ context.Context, req *gen.CreateGroupChatRequ
 		return &gen.CreateGroupChatResponse{Success: false}, fmt.Errorf("failed to encode participants: %w", err)
 	}
 
-	err = s.db.CreateChat(chatID, req.Name, "group", string(participantsJSON), creator, req.CreatorId)
+	chatType := req.Type
+	if chatType == "" {
+		chatType = "group"
+	}
+
+	err = s.db.CreateChat(chatID, req.Name, chatType, string(participantsJSON), creator, req.CreatorId)
 	if err != nil {
 		logger.Infof("Failed to create group chat in DB: %v", err)
 		return &gen.CreateGroupChatResponse{Success: false}, err
 	}
-	logger.Infof("Group chat created: %s (%s)", chatID, req.Name)
+	logger.Infof("Group chat created: %s (%s) type=%s", chatID, req.Name, chatType)
 	return &gen.CreateGroupChatResponse{ChatId: chatID, Success: true}, nil
 }
 
