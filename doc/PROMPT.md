@@ -17,15 +17,25 @@
 
 ---
 
-## ТЕКУЩИЕ ЗАДАЧИ
+## ВЫПОЛНЕНО В ЭТОЙ СЕССИИ (v1.3.3.1)
 
-| ID | Описание | Статус |
-|----|----------|--------|
-| T1 | Password Reset HTTP Endpoint | ✅ Done |
-| T2 | Systemic Auth Bug (15+ handlers) | ✅ Done |
-| T3 | MarkRead Handler | ✅ Done |
-| T4 | ChatList fields fix | ✅ Done |
-| T5 | AI v2 response fields | ✅ Done |
+| Задача | Описание | Статус |
+|--------|----------|--------|
+| Password Reset | `POST /api/request-password-reset` — публичный HTTP эндпоинт для web клиента | ✅ |
+| MarkRead Handler | Реализован `ChatService.MarkRead` — помечает сообщения прочитанными, рассылает `READ_ALL` | ✅ |
+| Systemic Auth Fix | 15+ хендлеров теперь используют `GetUserID(ctx)` вместо `req.UserId` | ✅ |
+| ChatList Fields | `chatV2RowToProto` заполняет все поля ChatInfo: is_secret, e2ee_ready, company_*, agent_* | ✅ |
+| AI v2 Fields | `ChatWithAIV2Response` теперь включает `has_rag_context`, `model_used` | ✅ |
+
+---
+
+## ОСТАВШИЕСЯ ЗАДАЧИ НА СЛЕДУЮЩУЮ СЕССИЮ
+
+| Задача | Описание | Приоритет |
+|--------|----------|-----------|
+| Call disconnect Bug 2 | HANGUP не доставляется callee если call stream неактивен. Нужен fallback через push notification. Серверная часть (`server_chat.go:668-673`). | Высокий |
+| Initiate echo fix (клиент) | Клиентская часть починки — `CallManager.kt` INITIATE echo больше не портит receiverId. Нужно собрать и протестировать. | Высокий |
+| Call disconnect push fallback | Когда `BroadcastCall` возвращает `delivered=false` для HANGUP — отправлять FCM push вместо потери сигнала. | Высокий |
 
 ---
 
@@ -34,11 +44,11 @@
 ### Файлы сервера
 ```
 main.go                    — Entry point, gRPC, GracefulStop
-server.go                  — Server struct, helpers, version (v1.3.3.0)
+server.go                  — Server struct, helpers, version (v1.3.3.1)
 hub.go                     — ChatV2 streams, call streams, conferences, online status
 
 === Streams ===
-server_chat.go             — ChatV2 stream (messaging, typing, bot commands)
+server_chat.go             — ChatV2 stream (messaging, typing, bot commands) + MarkRead
 server_call.go             — CallSession stream (WebRTC signaling), conference helpers
 
 === AI Services v2 ===
@@ -57,7 +67,7 @@ db_migrations.go           — Core schema migrations (extracted)
 db_messages_v2.go          — Messages v2 CRUD
 db_users.go                — User operations
 db_chats.go                — Chat operations
-db_chatlist_v2.go          — ChatList v2: pin/unpin/archive/search
+db_chatlist_v2.go          — ChatList v2: pin/unpin/archive/search + migrations
 db_ai_v2.go                — AI v2: agents, chats, messages
 db_auth_devices.go         — Device CRUD
 db_hermes.go               — Hermes DB
@@ -80,13 +90,14 @@ secret_chat.go, bot_commands.go, http_server.go, email.go, crypto.go
 1. ⚠️ **НЕ компилировать Android на сервере** — OOM kill
 2. Версия сервера в `server.go`
 3. userId (UUID) — всегда как ключ, НЕ username
-4. Auth context → `GetUserID(ctx)`, NEVER `req.UserId` (T7: системный fix pending)
+4. Auth context → `GetUserID(ctx)`, NEVER `req.UserId`
 5. DB миграции: `IF NOT EXISTS`, NEVER `DROP`
 6. Коммитить после каждого изменения
-7. **Актуальный код сервера всегда доступен локально** — перед работой всегда читай файлы из `/Users/paveld/LavenderMessenger-server/`, НЕ полагайся на кеш или предыдущие версии
+7. **Актуальный код сервера всегда доступен локально** — перед работой всегда читай файлы из `/Users/paveld/LavenderMessenger-server/`
 8. **Стабильность > фичи** — деплоим на prod, ошибки критичны
 9. **Тесты обязательны** — `go test ./...` перед каждым деплоем
 10. **v1 удалён** — только ChatV2, ProfileService v2, Messages v2
+11. **Деплоить через скрипты** — `./scripts/deploy-dev-local.sh` и `./scripts/deploy-prod-local.sh`
 
 ---
 
@@ -121,5 +132,5 @@ go test ./...
 
 ## ИЗВЕСТНЫЕ ПРОБЛЕМЫ
 
-- **T7 (blocked):** ~15 хендлеров используют `req.UserId` вместо `GetUserID(ctx)` — системный fix на следующей сессии
-- **DeleteChat:** уже исправлен (использует JWT context)
+- **Call disconnect Bug 2:** HANGUP не доставляется callee если call stream неактивен. Нужен push notification fallback. Серверная часть: `server_chat.go:668-673` + `server_push.go:493-515`.
+- **Initiate echo (клиент):** `CallManager.kt` — fix applied but needs build/test on client side.
