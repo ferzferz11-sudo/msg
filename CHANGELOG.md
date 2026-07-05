@@ -1,5 +1,26 @@
 # Лава — Server Changelog
 
+## [1.3.3.0] - 2026-07-05
+
+### Breaking Changes
+- **v1 compatibility removed** — all v1 RPCs deleted: `GetHistory`, `SetReaction`, `DeleteMessages`, `EditMessage`, `GetAllChats`, v1 `Chat` stream, v1 `Typing` stream, legacy profile methods (`UpdateUsername`, `UpdatePassword`, `AdminUpdatePassword`, `MarkRead`, `UpdateAvatar`, `DeleteProfile` on ChatService). Clients must use v2 APIs only.
+
+### Features
+- **Bot commands in ChatV2** — `/status`, `/deploy`, `/logs`, `/restart`, `/ai`, `/help`, `/version` now work via ChatV2 stream. Responses sent as `BOT_RESPONSE` system messages.
+- **DeleteChat auth fix** — uses JWT context (`GetUserID(ctx)`) instead of `req.UserId` for authorization, preventing stale token issues.
+
+### Architecture
+- **File split** — `server_call.go` extracted from `server_chat.go` (CallSession, conference helpers, GetClients).
+- **DB migrations extracted** — `db_migrations.go` separated from `db.go` for cleaner organization.
+- **Hub v2 only** — removed v1 stream maps (`clients`, `clientUserIds`, `authenticated`, `rooms`, `typingStreams`) and methods from `hub.go`.
+- **Dead code removed** — `GetUserChatsV2` (offset-based), `SimpleRouter`, `RouteRule` deleted.
+
+### Tests
+- ChatV2 integration tests: auth flow, invalid token, typing broadcast, room isolation.
+- All existing tests pass with race detector.
+
+---
+
 ## [1.3.2.1] - 2026-07-05
 
 ### Bug Fixes

@@ -37,7 +37,7 @@ go test -coverprofile=/tmp/cover.out -count=1 . && go tool cover -func=/tmp/cove
 | `auth_service_test.go` | AuthService v2 (SignInV2, SignUpV2, TokenPair) + v1 compat | 20 |
 | `owl_test.go` | OWL rate limiter, mock OpenRouter API, streaming | 15 |
 | `bot_commands_test.go` | Bot commands, rate limiter, notifications | 20 |
-| `server_push_test.go` | Hub.IsUserOnline (v1+v2, grace period) | 6 |
+| `server_push_test.go` | Hub.IsUserOnline (v2 only, grace period) | 6 |
 | `server_remote_test.go` | Remote agent deployment, stream updates, done filtering | 8 |
 | `server_stability_test.go` | Pinned messages fix, type assertion, graceful shutdown, panic recovery | 13 |
 | `chatv2_test.go` | ChatV2 stream: auth, message routing, typing | TBD |

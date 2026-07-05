@@ -158,11 +158,7 @@ func (s *server) DeleteDevice(ctx context.Context, req *gen.DeleteDeviceRequest)
 		return &gen.DeleteDeviceResponse{Success: false, Message: err.Error()}, nil
 	}
 
-	// Tell connected client to logout
-	s.hub.BroadcastGlobal(&gen.Message{
-		User: "SYSTEM",
-		Text: "FORCE_DISCONNECT_DEVICE:" + req.DeviceId,
-	})
+	s.hub.BroadcastGlobalV2("FORCE_DISCONNECT_DEVICE", req.DeviceId)
 
 	return &gen.DeleteDeviceResponse{Success: true, Message: "Device removed"}, nil
 }
@@ -174,11 +170,7 @@ func (s *server) DeleteOtherDevices(ctx context.Context, req *gen.DeleteDeviceRe
 		return &gen.DeleteDeviceResponse{Success: false, Message: err.Error()}, nil
 	}
 
-	// Tell all other devices of this user to logout
-	s.hub.BroadcastGlobal(&gen.Message{
-		User: "SYSTEM",
-		Text: "FORCE_LOGOUT_EXCEPT:" + req.DeviceId,
-	})
+	s.hub.BroadcastGlobalV2("FORCE_LOGOUT_EXCEPT", req.DeviceId)
 
 	return &gen.DeleteDeviceResponse{Success: true, Message: "All other sessions terminated"}, nil
 }

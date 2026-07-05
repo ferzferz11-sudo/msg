@@ -27,7 +27,7 @@
 |------|------------|
 | `main.go` | Точка входа: env, Firebase, DB, gRPC+HTTP, Hermes, graceful shutdown |
 | `server.go` | `server` struct (ChatService), версии сервисов, helpers |
-| `hub.go` | Менеджер streams: clients, typing, call, conference, online status, grace period |
+| `hub.go` | Менеджер streams: ChatV2 clients, call, conference, online status, grace period |
 | `logger.go` | Structured logging (logrus) |
 
 ### Database
@@ -48,10 +48,10 @@
 
 | Файл | Назначение | Сервис |
 |------|------------|--------|
-| `server_chat.go` | Chat/Typing/CallSession streams (WebRTC signaling) | ChatService |
+| `server_chat.go` | ChatV2 stream (messaging, typing), CallSession (WebRTC signaling), GetClients | ChatService |
 | `server_chatlist_v2.go` | **GetChatsV2** (основной), Pin/UnPin chats, Search, Archive, Pin messages | ChatService |
 | `server_chats.go` | Chat CRUD: GetAllChats, Create, Delete, Update | ChatService |
-| `server_messages.go` | History, reactions, deletion, editing | ChatService |
+| `server_messages_v2.go` | GetHistoryV2, SendMessageV2, Edit/Delete/ReactionV2, SearchMessages | ChatService |
 | `server_users.go` | Profiles: list, update, get profile, get avatar | ChatService |
 | `server_push.go` | FCM push, call push, conference push, online broadcast | ChatService |
 | `server_contacts.go` | Contact list, chat list version | ChatService |
@@ -59,8 +59,7 @@
 | `server_drafts.go` | Draft messages | ChatService |
 | `server_muted.go` | Muted chats | ChatService |
 | `server_favorites.go` | Favorites, device mgmt, password reset, user ID | ChatService |
-| `server_profile.go` | Profile: username, password, mark read, avatar, delete | ChatService |
-| `server_profile_v2.go` | ProfileService: JWT-only profile management | ProfileService |
+| `server_profile_v2.go` | ProfileService: GetProfile, UpdateProfile, UpdateAvatar, DeleteProfile | ProfileService |
 | `server_company.go` | CompanyService: companies, positions, members, company chats | CompanyService |
 | `server_management.go` | Admin: list, add, update, delete servers | ServerService |
 | `server_remote.go` | Remote agent: list, status, deploy (unary + streaming) | ChatService |

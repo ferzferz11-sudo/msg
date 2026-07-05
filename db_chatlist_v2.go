@@ -270,15 +270,6 @@ func (db *DB) UnarchiveChat(userID, chatID string) error {
 	return err
 }
 
-// GetUserChatsV2 returns chats with v2 fields (pinned, muted, archived) and pagination
-func (db *DB) GetUserChatsV2(userID, username string, limit, offset int, filter string) ([]ChatV2Row, error) {
-	result, err := db.GetUserChatsV2Cursor(userID, username, limit, "", filter)
-	if err != nil {
-		return nil, err
-	}
-	return result.Chats, nil
-}
-
 // GetUserChatsV2Cursor returns chats with cursor-based pagination
 func (db *DB) GetUserChatsV2Cursor(userID, username string, limit int, cursor, filter string) (*ChatV2Result, error) {
 	if limit <= 0 {

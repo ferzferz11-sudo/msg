@@ -11,7 +11,6 @@ import (
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"firebase.google.com/go/v4/messaging"
 )
@@ -333,15 +332,7 @@ func (s *server) saveConferenceSystemMessage(roomID, text, senderName, senderId 
 	_, _ = s.db.Exec(`UPDATE chats SET last_message_text=$1, last_message_time=$2, last_message_username=$3, last_message_has_image=$4 WHERE id=$5`,
 		displayText, createdAt, user, false, roomID)
 
-	broadcastMsg := &gen.Message{
-		Id:        msgId,
-		User:      user,
-		UserId:    uid,
-		Text:      displayText,
-		CreatedAt: timestamppb.New(createdAt),
-		RoomId:    roomID,
-	}
-	s.hub.Broadcast(broadcastMsg)
+	s.hub.BroadcastToRoom(roomID, "CALL_SYSTEM", fmt.Sprintf("%s|%s|%s", msgId, user, displayText))
 }
 
 func (s *server) broadcastConferenceStatus(roomID string) {
@@ -462,15 +453,7 @@ func (s *server) saveCallSystemMessage(u1, u2, icon, text, senderName, senderId 
 	_, _ = s.db.Exec(`UPDATE chats SET last_message_text=$1, last_message_time=$2, last_message_username=$3, last_message_has_image=$4 WHERE id=$5`,
 		displayText, createdAt, senderName, false, chatID)
 
-	broadcastMsg := &gen.Message{
-		Id:        msgId,
-		User:      senderName,
-		UserId:    senderId,
-		Text:      displayText,
-		CreatedAt: timestamppb.New(createdAt),
-		RoomId:    chatID,
-	}
-	s.hub.Broadcast(broadcastMsg)
+	s.hub.BroadcastToRoom(chatID, "CALL_SYSTEM", fmt.Sprintf("%s|%s|%s", msgId, senderName, displayText))
 }
 
 func (s *server) handleAbruptDisconnect(userId string) {
@@ -621,15 +604,6 @@ func (s *server) sendCallEndedPushNotification(receiverId, senderId, callId stri
 func (s *server) broadcastOnlineUsers() {
 	users := s.hub.GetOnlineUsers()
 	usersJson, _ := json.Marshal(users)
-
-	// Send to v1 clients (ChatStream)
-	msg := &gen.Message{
-		User:      "SYSTEM",
-		Text:      "ONLINE_USERS_UPDATE:" + string(usersJson),
-		Id:        uuid.New().String(),
-		CreatedAt: timestamppb.Now(),
-	}
-	s.hub.BroadcastGlobal(msg)
 
 	// Send to v2 clients (ChatV2)
 	s.hub.BroadcastGlobalV2("ONLINE_USERS_UPDATE", string(usersJson))

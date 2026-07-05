@@ -3,6 +3,7 @@ package main
 import (
 	"LavenderMessenger/gen"
 	"context"
+	"sync"
 	"testing"
 
 	"google.golang.org/grpc"
@@ -13,9 +14,9 @@ import (
 type mockChatV2Stream struct {
 	grpc.ServerStream
 	ctx     context.Context
+	mu      sync.Mutex
 	sent    []*gen.ChatV2Message
 	recvCh  chan *gen.ChatV2Message
-	room    string
 	closeCh chan struct{}
 }
 
@@ -29,6 +30,8 @@ func newMockChatV2Stream(ctx context.Context) *mockChatV2Stream {
 }
 
 func (m *mockChatV2Stream) Send(msg *gen.ChatV2Message) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.sent = append(m.sent, msg)
 	return nil
 }
@@ -57,6 +60,14 @@ func (m *mockChatV2Stream) send(msg *gen.ChatV2Message) {
 
 func (m *mockChatV2Stream) close() {
 	close(m.recvCh)
+}
+
+func (m *mockChatV2Stream) getSent() []*gen.ChatV2Message {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	cp := make([]*gen.ChatV2Message, len(m.sent))
+	copy(cp, m.sent)
+	return cp
 }
 
 // ======= Hub V2 methods tests =======
@@ -228,4 +239,121 @@ func TestHubV2_OnlineUsers(t *testing.T) {
 
 	h.UnregisterV2(s1)
 	h.UnregisterV2(s2)
+}
+
+// ======= ChatV2 Auth Flow Tests =======
+
+func TestChatV2_AuthRequired(t *testing.T) {
+	srv := &server{hub: NewHub(nil)}
+	stream := newMockChatV2Stream(context.Background())
+
+	done := make(chan error, 1)
+	go func() {
+		done <- srv.ChatV2(stream)
+	}()
+
+	// Send message without JWT, then close
+	stream.send(&gen.ChatV2Message{})
+	stream.close()
+
+	<-done
+
+	sent := stream.getSent()
+	if len(sent) == 0 {
+		t.Fatal("expected at least 1 message sent")
+	}
+	msg := sent[0]
+	sys, ok := msg.Payload.(*gen.ChatV2Message_System)
+	if !ok {
+		t.Fatalf("expected system message, got %T", msg.Payload)
+	}
+	if sys.System.Type != "AUTH_REQUIRED" {
+		t.Errorf("expected AUTH_REQUIRED, got %s", sys.System.Type)
+	}
+}
+
+func TestChatV2_InvalidToken(t *testing.T) {
+	srv := &server{hub: NewHub(nil)}
+	stream := newMockChatV2Stream(context.Background())
+
+	done := make(chan error, 1)
+	go func() {
+		done <- srv.ChatV2(stream)
+	}()
+
+	// Send message with invalid JWT
+	stream.send(&gen.ChatV2Message{
+		JwtToken: "invalid-token",
+	})
+
+	err := <-done
+	if err == nil {
+		t.Fatal("expected error for invalid token")
+	}
+
+	sent := stream.getSent()
+	if len(sent) == 0 {
+		t.Fatal("expected AUTH_FAILED message")
+	}
+	msg := sent[0]
+	sys, ok := msg.Payload.(*gen.ChatV2Message_System)
+	if !ok {
+		t.Fatalf("expected system message, got %T", msg.Payload)
+	}
+	if sys.System.Type != "AUTH_FAILED" {
+		t.Errorf("expected AUTH_FAILED, got %s", sys.System.Type)
+	}
+}
+
+func TestChatV2_TypingBroadcast(t *testing.T) {
+	h := NewHub(nil)
+	s1 := newMockChatV2Stream(context.Background())
+	s2 := newMockChatV2Stream(context.Background())
+
+	h.RegisterV2(s1)
+	h.RegisterV2(s2)
+	h.SetV2Room(s1, "room-1")
+	h.SetV2Room(s2, "room-1")
+
+	// Broadcast typing to room
+	h.BroadcastToRoom("room-1", "TYPING", "alice|true")
+
+	// Both streams should receive it
+	if len(s1.sent) != 1 {
+		t.Fatalf("s1: expected 1 message, got %d", len(s1.sent))
+	}
+	if len(s2.sent) != 1 {
+		t.Fatalf("s2: expected 1 message, got %d", len(s2.sent))
+	}
+
+	sys1, ok := s1.sent[0].Payload.(*gen.ChatV2Message_System)
+	if !ok {
+		t.Fatal("expected system message")
+	}
+	if sys1.System.Type != "TYPING" {
+		t.Errorf("expected TYPING, got %s", sys1.System.Type)
+	}
+	if sys1.System.Message != "alice|true" {
+		t.Errorf("expected alice|true, got %s", sys1.System.Message)
+	}
+
+	h.UnregisterV2(s1)
+	h.UnregisterV2(s2)
+}
+
+func TestChatV2_BroadcastToRoom_WrongRoom(t *testing.T) {
+	h := NewHub(nil)
+	s1 := newMockChatV2Stream(context.Background())
+
+	h.RegisterV2(s1)
+	h.SetV2Room(s1, "room-1")
+
+	// Broadcast to different room
+	h.BroadcastToRoom("room-2", "TEST", "data")
+
+	if len(s1.sent) != 0 {
+		t.Errorf("expected 0 messages in wrong room, got %d", len(s1.sent))
+	}
+
+	h.UnregisterV2(s1)
 }

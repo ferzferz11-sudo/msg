@@ -39,3 +39,4 @@
 - **Актуальный код сервера всегда доступен локально** — перед работой всегда читай файлы из `/Users/paveld/LavenderMessenger-server/`
 - Android: `/root/msg.client.android/doc/` — документация клиента
 - ⚠️ Android собирается ТОЛЬКО локально (нет памяти на сервере)
+- ⚠️ v1 совместимость удалена: только ChatV2 stream, ProfileService v2, Messages v2

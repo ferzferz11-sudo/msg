@@ -141,11 +141,7 @@ func (s *server) SendMessageV2(ctx context.Context, req *gen.SendMessageV2Reques
 	_ = s.db.IncrementParticipantsChatListVersion(req.RoomId)
 
 	// Broadcast to room via system message (client fetches via GetHistoryV2)
-	s.hub.Broadcast(&gen.Message{
-		User:   "SYSTEM",
-		Text:   "NEW_MESSAGE_V2:" + msgID,
-		RoomId: req.RoomId,
-	})
+	s.hub.BroadcastToRoom(req.RoomId, "NEW_MESSAGE_V2", msgID)
 
 	// Broadcast actual message via ChatV2 stream (real-time delivery)
 	v2Msg := rowToProtoV2(row)
@@ -194,11 +190,7 @@ func (s *server) EditMessageV2(ctx context.Context, req *gen.EditMessageV2Reques
 	// Broadcast edit notification
 	updated, err := s.db.GetMessageV2ByUUID(req.MessageId)
 	if err == nil {
-		s.hub.Broadcast(&gen.Message{
-			User:   "SYSTEM",
-			Text:   "EDIT_MESSAGE_V2:" + req.MessageId,
-			RoomId: updated.RoomID,
-		})
+		s.hub.BroadcastToRoom(updated.RoomID, "EDIT_MESSAGE_V2", req.MessageId)
 
 		// Update last message in chat if this was the last message
 		var lastMsgID string
@@ -273,11 +265,7 @@ func (s *server) DeleteMessageV2(ctx context.Context, req *gen.DeleteMessageV2Re
 		msg, err := s.db.GetMessageV2ByUUID(id)
 		if err == nil {
 			_ = s.db.IncrementParticipantsChatListVersion(msg.RoomID)
-			s.hub.Broadcast(&gen.Message{
-				User:   "SYSTEM",
-				Text:   "DELETE_MESSAGE_V2:" + id,
-				RoomId: msg.RoomID,
-			})
+			s.hub.BroadcastToRoom(msg.RoomID, "DELETE_MESSAGE_V2", id)
 		}
 	}
 
@@ -308,11 +296,7 @@ func (s *server) SetReactionV2(ctx context.Context, req *gen.SetReactionV2Reques
 	// Broadcast reaction update via system message
 	msg, err := s.db.GetMessageV2ByUUID(req.MessageId)
 	if err == nil {
-		s.hub.Broadcast(&gen.Message{
-			User:   "SYSTEM",
-			Text:   "REACTION_V2:" + req.MessageId,
-			RoomId: msg.RoomID,
-		})
+		s.hub.BroadcastToRoom(msg.RoomID, "REACTION_V2", req.MessageId)
 		s.hub.BroadcastV2Reaction(msg.RoomID, req.MessageId, reactionsJSON)
 	}
 

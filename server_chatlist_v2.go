@@ -182,21 +182,7 @@ func (s *server) GetChatsV2(ctx context.Context, req *gen.GetChatsRequest) (*gen
 	filter := req.GetFilter()
 	cursor := req.GetCursor()
 
-	// Use cursor-based pagination if cursor is provided, else legacy offset
-	var result *ChatV2Result
-	var err error
-	if cursor != "" {
-		result, err = s.db.GetUserChatsV2Cursor(userID, username, limit, cursor, filter)
-	} else {
-		// Legacy offset path for backward compatibility
-		chats, dbErr := s.db.GetUserChatsV2(userID, username, limit, int(req.GetOffset()), filter)
-		if dbErr != nil {
-			logger.Errorf("Error fetching chats v2 for user %s: %v", userID, dbErr)
-			return &gen.GetChatsResponse{}, dbErr
-		}
-		result = &ChatV2Result{Chats: chats}
-	}
-
+	result, err := s.db.GetUserChatsV2Cursor(userID, username, limit, cursor, filter)
 	if err != nil {
 		logger.Errorf("Error fetching chats v2 for user %s: %v", userID, err)
 		return &gen.GetChatsResponse{}, err

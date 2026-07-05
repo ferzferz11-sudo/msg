@@ -10,9 +10,10 @@
 
 ### Структура файлов
 - server.go — структура server, общие методы (resolveDisplayName, logErrorOnce)
-- server_*.go — методы по доменам (chat, users, chats, messages, profile, push, contacts, themes, drafts, muted, favorites, ai, company)
+- server_*.go — методы по доменам (chat, users, chats, messages_v2, profile_v2, push, contacts, themes, drafts, muted, favorites, ai, company)
 - При добавлении новых методов — класть в соответствующий server_*.go файл
 - Не добавлять методы напрямую в server.go (только структура и общие утилиты)
+- v1 совместимость удалена: только ChatV2 stream, ProfileService v2, Messages v2
 
 ### hermes_sessions owner
 - Таблица должна принадлежать `lavender`, не `postgres`

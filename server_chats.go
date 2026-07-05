@@ -7,45 +7,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
-
-func (s *server) GetAllChats(ctx context.Context, req *gen.GetAllChatsRequest) (*gen.GetAllChatsResponse, error) {
-	chats, err := s.db.GetAllChats()
-	if err != nil {
-		logger.Errorf("Error fetching all chats: %v", err)
-		return nil, err
-	}
-
-	var chatInfos []*gen.ChatInfo
-	for _, c := range chats {
-		chatInfos = append(chatInfos, &gen.ChatInfo{
-			Id:                  c.ID,
-			Name:                c.Name,
-			Type:                c.Type,
-			Participants:        c.Participants,
-			CreatedAt:           timestamppb.New(c.CreatedAt),
-			UnreadCount:         int32(c.UnreadCount),
-			LastMessageTime:     timestamppb.New(c.LastMessageTime),
-			Creator:             c.Creator,
-			LastMessageText:     c.LastMessageText,
-			AvatarUrl:           c.AvatarURL,
-			FullAvatarUrl:       c.FullAvatarURL,
-			LastMessageUsername: c.LastMessageUsername,
-			LastMessageHasImage: c.LastMessageHasImage,
-			AllowMembersToAdd:   c.AllowMembersToAdd,
-			IsPinned:            false,
-			IsMuted:             false,
-			IsArchived:          false,
-			PinnedAt:            0,
-		})
-	}
-
-	return &gen.GetAllChatsResponse{
-		Chats: chatInfos,
-	}, nil
-}
 
 func (s *server) CreateDirectChat(_ context.Context, req *gen.CreateDirectChatRequest) (*gen.CreateDirectChatResponse, error) {
 	u1 := req.User1
@@ -223,17 +185,21 @@ func (s *server) RemoveParticipant(_ context.Context, req *gen.RemoveParticipant
 	return &gen.RemoveParticipantResponse{Success: true, Message: "User removed successfully"}, nil
 }
 
-func (s *server) DeleteChat(_ context.Context, req *gen.DeleteChatRequest) (*gen.DeleteChatResponse, error) {
+func (s *server) DeleteChat(ctx context.Context, req *gen.DeleteChatRequest) (*gen.DeleteChatResponse, error) {
 	if req.ChatId == "" {
 		return &gen.DeleteChatResponse{Success: false, Message: "Chat ID is required"}, nil
 	}
 
-	requesterUsername := req.RequesterUsername
-	if req.RequesterUserId != "" {
-		resolved := resolveDisplayName(s.db, req.RequesterUserId)
-		if resolved != "" {
-			requesterUsername = resolved
-		}
+	requesterUsername := GetUsername(ctx)
+	requesterUserID := GetUserID(ctx)
+	if requesterUserID == "" {
+		requesterUserID = req.RequesterUserId
+	}
+	if requesterUsername == "" && requesterUserID != "" {
+		requesterUsername = resolveDisplayName(s.db, requesterUserID)
+	}
+	if requesterUsername == "" {
+		requesterUsername = req.RequesterUsername
 	}
 
 	logger.Infof("DeleteChat: Request to delete chat %s by %s", req.ChatId, requesterUsername)
@@ -320,19 +286,8 @@ func (s *server) DeleteChat(_ context.Context, req *gen.DeleteChatRequest) (*gen
 		_ = s.db.IncrementChatListVersionByUsernames(participants)
 	}
 
-	// 6. Send signal to clear cache for all participants
-	s.hub.Broadcast(&gen.Message{
-		User:   "SYSTEM",
-		Text:   "CLEAR_CACHE:" + req.ChatId,
-		RoomId: req.ChatId,
-	})
-
-	// 7. Send signal to exit the deleted chat for all participants
-	s.hub.Broadcast(&gen.Message{
-		User:   "SYSTEM",
-		Text:   "CHAT_DELETED:" + req.ChatId,
-		RoomId: req.ChatId,
-	})
+	s.hub.BroadcastToRoom(req.ChatId, "CLEAR_CACHE", req.ChatId)
+	s.hub.BroadcastToRoom(req.ChatId, "CHAT_DELETED", req.ChatId)
 
 	// 8. Broadcast update signal
 	s.broadcastOnlineUsers()

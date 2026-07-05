@@ -4,19 +4,19 @@
 // This file implements the gRPC server for the Lavender Messenger.
 // It handles client connections, message broadcasting, and encryption.
 //
-// Refactored in v1.1.2.9: methods split into separate files by domain:
-//   server_chat.go      — Chat, Typing, CallSession, GetClients
+// Methods split into separate files by domain:
+//   server_chat.go      — ChatV2, CallSession, GetClients
+//   server_chatlist_v2.go — GetChatsV2, Pin/Unpin, Search, Archive
+//   server_messages_v2.go — GetHistoryV2, SendMessageV2, Edit/Delete/ReactionV2, SearchMessages
 //   server_users.go     — GetAllUsers, UpdateProfile, GetUserProfile, GetUserAvatar
-//   server_chats.go     — GetAllChats, GetChats, CreateDirectChat, CreateGroupChat, DeleteChat, etc.
-//   server_messages.go  — GetHistory, SetReaction, DeleteMessages, EditMessage
-//   server_profile.go   — [DEPRECATED] Legacy profile: UpdateUsername, UpdatePassword, AdminUpdatePassword, MarkRead, UpdateAvatar, DeleteProfile
-//   server_profile_v2.go — ProfileService v2: GetProfile, UpdateProfile, UpdateAvatar, DeleteProfile, GetUserSettings, UpdateUserSettings
+//   server_chats.go     — CreateDirectChat, CreateGroupChat, DeleteChat, etc.
 //   server_push.go      — RegisterToken, sendPushNotification, broadcastOnlineUsers, etc.
 //   server_contacts.go  — AddContact, RemoveContact, GetContacts, GetChatListVersion
 //   server_themes.go    — GetThemes, SaveTheme, SetCurrentTheme, DeleteTheme
 //   server_drafts.go    — GetFCMLogs, SaveDraft, GetDraft, DeleteDraft
 //   server_muted.go     — GetMutedChats, SetMutedChat
 //   server_favorites.go — GetUserId, AddFavorite, RemoveFavorite, GetFavorites
+//   server_profile_v2.go — ProfileService v2: GetProfile, UpdateProfile, UpdateAvatar, DeleteProfile
 //   server_ai_v2.go     — AI Services v2: ChatWithAIV2, Agent CRUD, ListTools
 
 package main
@@ -32,7 +32,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const ServerVersion = "1.3.2.1"
+const ServerVersion = "1.3.3.0"
 
 // Service versions for client capability negotiation.
 // Service versions for client capability negotiation.
