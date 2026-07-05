@@ -54,8 +54,8 @@ func (s *server) sendPushNotification(userId, username, title, body, roomID stri
 		return
 	}
 
-	if s.hub.IsUserOnline(userId, username) {
-		s.logFCM("INFO", "Skip %s: user is online", username)
+	if s.hub.IsUserInRoom(userId, username, roomID) {
+		s.logFCM("INFO", "Skip %s: user is in same room", username)
 		return
 	}
 
@@ -146,7 +146,7 @@ func (s *server) sendBatchPushNotifications(targets []pushTarget, title, body, r
 	var tokens []string
 	var tokenUserIDs []string
 	for _, t := range targets {
-		if s.hub.IsUserOnline(t.UserId, t.Username) {
+		if s.hub.IsUserInRoom(t.UserId, t.Username, roomID) {
 			continue
 		}
 		if mutedSet[t.UserId] {
@@ -482,7 +482,8 @@ func (s *server) handleAbruptDisconnect(userId string) {
 
 		delivered := s.hub.BroadcastCall(hangupSignal)
 		if !delivered {
-			logger.Infof("[CALL] HANGUP not delivered to %s for call %s (receiver offline)", otherPartyId, call.CallID)
+			logger.Infof("[CALL] HANGUP not delivered to %s for call %s (receiver offline), sending push fallback", otherPartyId, call.CallID)
+			s.sendCallEndedPushNotification(otherPartyId, userId, call.CallID)
 		} else {
 			logger.Infof("[CALL] HANGUP sent to %s for call %s", otherPartyId, call.CallID)
 		}

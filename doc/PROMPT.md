@@ -31,11 +31,12 @@
 
 ## ОСТАВШИЕСЯ ЗАДАЧИ НА СЛЕДУЮЩУЮ СЕССИЮ
 
-| Задача | Описание | Приоритет |
-|--------|----------|-----------|
-| Call disconnect Bug 2 | HANGUP не доставляется callee если call stream неактивен. Нужен fallback через push notification. Серверная часть (`server_chat.go:668-673`). | Высокий |
-| Initiate echo fix (клиент) | Клиентская часть починки — `CallManager.kt` INITIATE echo больше не портит receiverId. Нужно собрать и протестировать. | Высокий |
-| Call disconnect push fallback | Когда `BroadcastCall` возвращает `delivered=false` для HANGUP — отправлять FCM push вместо потери сигнала. | Высокий |
+| Задача | Описание | Приоритет | Статус |
+|--------|----------|-----------|--------|
+| ~~Call disconnect Bug 2~~ | HANGUP не доставляется callee если call stream неактивен. Нужен fallback через push notification. Серверная часть (`server_push.go:484-486`). | Высокий | ✅ Исправлено |
+| ~~Call disconnect push fallback~~ | Когда `BroadcastCall` возвращает `delivered=false` для HANGUP — отправлять FCM push вместо потери сигнала. (`handleAbruptDisconnect` + `server_call.go:179-181`). | Высокий | ✅ Исправлено |
+| ~~Push messages bug~~ | Push для сообщений не приходил — `IsUserOnline` пропускал push для пользователей в пустой комнате. Заменено на `IsUserInRoom` (`hub.go:273-288`, `server_push.go:57,149`). | Высокий | ✅ Исправлено |
+| ~~Initiate echo fix (клиент)~~ | Клиентская часть починки — `CallManager.kt` INITIATE echo больше не портит receiverId. Собрано и протестировано. | Высокий | ✅ Исправлено |
 
 ---
 
@@ -132,5 +133,6 @@ go test ./...
 
 ## ИЗВЕСТНЫЕ ПРОБЛЕМЫ
 
-- **Call disconnect Bug 2:** HANGUP не доставляется callee если call stream неактивен. Нужен push notification fallback. Серверная часть: `server_chat.go:668-673` + `server_push.go:493-515`.
-- **Initiate echo (клиент):** `CallManager.kt` — fix applied but needs build/test on client side.
+- ~~**Call disconnect Bug 2:**~~ ✅ Исправлено. `handleAbruptDisconnect` теперь отправляет `CALL_ENDED` push когда HANGUP не доставляется через call stream.
+- ~~**Push messages bug:**~~ ✅ Исправлено. `IsUserOnline` заменён на `IsUserInRoom` — push теперь приходит когда пользователь на главном экране (пустая комната).
+- ~~**Initiate echo (клиент):**~~ ✅ Исправлено. `CallManager.kt:46-57` — INITIATE echo обновляет только callId, receiverId сохраняется.

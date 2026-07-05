@@ -270,6 +270,23 @@ func (h *Hub) IsUserOnline(userId, username string) bool {
 	return false
 }
 
+func (h *Hub) IsUserInRoom(userId, username, roomID string) bool {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	for stream, room := range h.v2Rooms {
+		if room != roomID {
+			continue
+		}
+		if userId != "" && h.v2UserIds[stream] == userId {
+			return true
+		}
+		if username != "" && h.v2Clients[stream] == username {
+			return true
+		}
+	}
+	return false
+}
+
 func (h *Hub) GetOnlineUserSet() map[string]bool {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
