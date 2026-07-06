@@ -77,14 +77,30 @@ func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
 			s.hub.BroadcastCall(msg)
 			msg.ReceiverId = originalReceiver
 
-			s.sendCallPushNotification(msg.ReceiverId, msg.SenderId, msg.CallId)
+			if !delivered {
+				s.sendCallPushNotification(msg.ReceiverId, msg.SenderId, msg.CallId)
+			}
 			s.saveCallSystemMessage(senderName, receiverName, "📹", "Видеозвонок", senderName, msg.SenderId)
 			continue
 
 		case gen.CallMessage_ACCEPT:
+			if msg.CallId == "" {
+				continue
+			}
+			if status, err := s.db.GetCallStatus(msg.CallId); err == nil && (status == "completed" || status == "rejected") {
+				logger.Warnf("[CALL] Ignoring stale ACCEPT for %s (status: %s)", msg.CallId, status)
+				continue
+			}
 			logger.Infof("[CALL] Accepted: %s", msg.CallId)
 			_ = s.db.UpdateCallStatus(msg.CallId, "active")
 		case gen.CallMessage_REJECT:
+			if msg.CallId == "" {
+				continue
+			}
+			if status, err := s.db.GetCallStatus(msg.CallId); err == nil && (status == "completed" || status == "rejected") {
+				logger.Warnf("[CALL] Ignoring stale REJECT for %s (status: %s)", msg.CallId, status)
+				continue
+			}
 			logger.Infof("[CALL] Rejected: %s", msg.CallId)
 			_ = s.db.UpdateCallStatus(msg.CallId, "rejected")
 			s.saveCallSystemMessage(senderName, receiverName, "📞↘️", "Пропущенный вызов", receiverName, msg.ReceiverId)

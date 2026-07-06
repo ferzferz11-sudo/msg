@@ -542,6 +542,12 @@ func (db *DB) GetCallDuration(callID string) (int, error) {
 	return int(duration), err
 }
 
+func (db *DB) GetCallStatus(callID string) (string, error) {
+	var status string
+	err := db.QueryRow(`SELECT status FROM calls WHERE id = $1::uuid`, callID).Scan(&status)
+	return status, err
+}
+
 func (db *DB) GetActiveCallsByUser(userID string) ([]struct {
 	CallID     string
 	CallerID   string

@@ -247,6 +247,7 @@ func (s *server) ChatV2(stream gen.ChatService_ChatV2Server) error {
 			}
 
 		case *gen.ChatV2Message_Typing:
+			logger.Infof("[ChatV2] TYPING from %s in room %s (isTyping=%v)", connectedUser, currentRoom, p.Typing.IsTyping)
 			s.hub.BroadcastToRoom(currentRoom, "TYPING", fmt.Sprintf("%s|%v", connectedUser, p.Typing.IsTyping))
 
 		case *gen.ChatV2Message_System:
