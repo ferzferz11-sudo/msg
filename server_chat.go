@@ -232,7 +232,7 @@ func (s *server) ChatV2(stream gen.ChatService_ChatV2Server) error {
 									if chat.IsSecret {
 										pushText = "New encrypted message"
 									}
-									s.sendBatchPushNotifications(targets, connectedUser, pushText, currentRoom)
+									s.pushDebouncer.Enqueue(targets, connectedUser, connectedUserID, pushText, currentRoom)
 								}
 							}
 						}

@@ -32,7 +32,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const ServerVersion = "1.3.3.4"
+const ServerVersion = "1.3.3.5"
 
 // Service versions for client capability negotiation.
 // Service versions for client capability negotiation.
@@ -66,6 +66,9 @@ type server struct {
 
 	// Remote Agent Manager
 	remoteAgentManager *RemoteAgentManager
+
+	// Push debouncer — batches rapid messages into single notification
+	pushDebouncer *PushDebouncer
 
 	// AI Gateway v2
 	aiGateway *AIGateway

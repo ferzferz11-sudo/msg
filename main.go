@@ -158,6 +158,7 @@ func main() {
 		owlApiKey:   os.Getenv("OPENROUTER_API_KEY"),
 	}
 	srv.hub = NewHub(srv.broadcastOnlineUsers) // Hub manages all active client connections
+	srv.pushDebouncer = NewPushDebouncer(srv.sendBatchPushNotifications)
 
 	// Initialize Hermes DB
 	srv.hermesDB = NewHermesDB(db.DB)
