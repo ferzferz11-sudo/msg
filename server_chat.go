@@ -93,6 +93,12 @@ func (s *server) ChatV2(stream gen.ChatService_ChatV2Server) error {
 			continue
 		}
 
+		// Handle room switch: client sends ChatV2Message with just roomId (no payload)
+		if msg.RoomId != "" && msg.RoomId != currentRoom {
+			currentRoom = msg.RoomId
+			s.hub.SetV2Room(stream, currentRoom)
+		}
+
 		switch p := msg.Payload.(type) {
 		case *gen.ChatV2Message_Message:
 			v2msg := p.Message
