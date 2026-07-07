@@ -50,7 +50,7 @@ func (s *server) ChatV2(stream gen.ChatService_ChatV2Server) error {
 			s.hub.SetV2Username(stream, connectedUser)
 			s.hub.SetV2Room(stream, currentRoom)
 			s.hub.ClearGracePeriod(connectedUser)
-			logger.Infof("[ChatV2] %s connected to room %s", connectedUser, currentRoom)
+			logger.Debugf("[ChatV2] %s connected to room %s", connectedUser, currentRoom)
 
 			_ = s.db.UpdateLastSeen(connectedUser)
 			if msg.ClientVersion != "" {
