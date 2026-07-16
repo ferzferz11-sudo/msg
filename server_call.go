@@ -187,6 +187,13 @@ func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
 			continue
 		}
 
+		// Resolve ReceiverId to UUID if it's a username (client may send username)
+		if !isUUID(msg.ReceiverId) {
+			if uid, err := s.db.GetUserIDByUsername(msg.ReceiverId); err == nil && uid != "" {
+				msg.ReceiverId = uid
+			}
+		}
+
 		delivered := s.hub.BroadcastCall(msg)
 		logger.Infof("[CALL] Signal %s delivered to %s: %v", msg.Type.String(), msg.ReceiverId, delivered)
 		if !delivered {
