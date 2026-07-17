@@ -102,7 +102,11 @@ func (s *server) logFCM(level, format string, v ...interface{}) {
 	if len(s.fcmLogs) > 100 {
 		s.fcmLogs = s.fcmLogs[1:]
 	}
-	logger.Infof("[FCM %s] %s", level, msg)
+	if level == "SUCCESS" {
+		logger.Debugf("[FCM %s] %s", level, msg)
+	} else {
+		logger.Infof("[FCM %s] %s", level, msg)
+	}
 }
 
 // isUUID checks if a string is a valid UUID
