@@ -44,7 +44,7 @@ func (s *server) SaveDraft(ctx context.Context, req *gen.SaveDraftRequest) (*gen
 		s.logErrorOnce("SaveDraft:"+userID, "Failed to save draft for user %s in room %s: %v", userID, req.RoomId, err)
 		return &gen.SaveDraftResponse{Success: false, Message: err.Error()}, nil
 	}
-	logger.Infof("Draft saved for user %s in room %s (length: %d)", userID, req.RoomId, len(req.DraftText))
+	logger.Debugf("Draft saved for user %s in room %s (length: %d)", userID, req.RoomId, len(req.DraftText))
 	return &gen.SaveDraftResponse{Success: true, Message: "Draft saved successfully"}, nil
 }
 
@@ -112,7 +112,7 @@ func (s *server) DeleteDraft(ctx context.Context, req *gen.DeleteDraftRequest) (
 	}
 	// Only log if we actually deleted something (not for empty/duplicate deletions)
 	if deleted {
-		logger.Infof("Draft deleted for user %s in room %s", userID, req.RoomId)
+		logger.Debugf("Draft deleted for user %s in room %s", userID, req.RoomId)
 	}
 	return &gen.DeleteDraftResponse{Success: true}, nil
 }
