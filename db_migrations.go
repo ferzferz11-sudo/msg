@@ -145,6 +145,69 @@ var coreMigrations = []string{
 	`CREATE INDEX IF NOT EXISTS idx_company_chats_chat ON company_chats(chat_id)`,
 	`CREATE INDEX IF NOT EXISTS idx_company_chats_company ON company_chats(company_id)`,
 	`CREATE INDEX IF NOT EXISTS idx_company_positions_company ON company_positions(company_id)`,
+
+	// --- Sticker System ---
+	`CREATE TABLE IF NOT EXISTS sticker_packs (
+		id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+		title VARCHAR(255) NOT NULL,
+		name VARCHAR(255) NOT NULL,
+		creator_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+		cover_sticker_id VARCHAR(255) DEFAULT '',
+		status VARCHAR(20) DEFAULT 'draft',
+		rejection_reason TEXT DEFAULT '',
+		is_featured BOOLEAN DEFAULT FALSE,
+		created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+		updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+	)`,
+	`CREATE INDEX IF NOT EXISTS idx_sticker_packs_creator ON sticker_packs(creator_user_id)`,
+	`CREATE INDEX IF NOT EXISTS idx_sticker_packs_status ON sticker_packs(status)`,
+	`CREATE TABLE IF NOT EXISTS stickers (
+		id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+		pack_id UUID NOT NULL REFERENCES sticker_packs(id) ON DELETE CASCADE,
+		lottie_url TEXT NOT NULL,
+		thumbnail_url TEXT DEFAULT '',
+		emoji VARCHAR(20) DEFAULT '',
+		width INT DEFAULT 512,
+		height INT DEFAULT 512,
+		sort_order INT DEFAULT 0,
+		created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+	)`,
+	`CREATE INDEX IF NOT EXISTS idx_stickers_pack ON stickers(pack_id)`,
+
+	// --- Company Settings ---
+	`CREATE TABLE IF NOT EXISTS company_settings (
+		company_id UUID PRIMARY KEY REFERENCES companies(id) ON DELETE CASCADE,
+		invite_only BOOLEAN DEFAULT FALSE,
+		default_position_id UUID,
+		allow_member_invite BOOLEAN DEFAULT FALSE,
+		chat_access VARCHAR(20) DEFAULT 'member',
+		require_approval BOOLEAN DEFAULT FALSE,
+		updated_at TIMESTAMPTZ DEFAULT NOW()
+	)`,
+
+	// --- Company Invite Codes ---
+	`CREATE TABLE IF NOT EXISTS company_invite_codes (
+		id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+		company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+		code VARCHAR(12) NOT NULL UNIQUE,
+		created_by UUID NOT NULL REFERENCES users(id),
+		created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+		expires_at TIMESTAMPTZ,
+		max_uses INT DEFAULT 1,
+		use_count INT DEFAULT 0,
+		is_active BOOLEAN DEFAULT TRUE
+	)`,
+	`CREATE INDEX IF NOT EXISTS idx_invite_codes_code ON company_invite_codes(code)`,
+	`CREATE INDEX IF NOT EXISTS idx_invite_codes_company ON company_invite_codes(company_id)`,
+
+	// --- Fix invalid UTF-8 in existing messages ---
+	`DO $$ BEGIN
+		UPDATE messages_v2 SET text = convert_to(convert_from(text::bytea, 'UTF8'), 'UTF8') WHERE text IS NOT NULL AND NOT octet_length(text) = octet_length(convert_to(text, 'UTF8'));
+		UPDATE messages_v2 SET reply_preview = convert_to(convert_from(reply_preview::bytea, 'UTF8'), 'UTF8') WHERE reply_preview IS NOT NULL AND NOT octet_length(reply_preview) = octet_length(convert_to(reply_preview, 'UTF8'));
+		UPDATE messages_v2 SET media_url = convert_to(convert_from(media_url::bytea, 'UTF8'), 'UTF8') WHERE media_url IS NOT NULL AND NOT octet_length(media_url) = octet_length(convert_to(media_url, 'UTF8'));
+	EXCEPTION WHEN OTHERS THEN
+		RAISE NOTICE 'UTF8 cleanup migration skipped: %', SQLERRM;
+	END $$;`,
 }
 
 func runCoreMigrations(db *sql.DB) error {

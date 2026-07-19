@@ -8,6 +8,7 @@ import (
 	"log"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
@@ -72,6 +73,9 @@ func (s *server) SendMessageV2(ctx context.Context, req *gen.SendMessageV2Reques
 
 	switch c := req.Content.(type) {
 	case *gen.SendMessageV2Request_Text:
+		if !utf8.ValidString(c.Text) {
+			return &gen.SendMessageV2Response{Success: false, Error: "invalid UTF-8 in text"}, nil
+		}
 		row.Text = c.Text
 		row.ContentType = "text"
 	case *gen.SendMessageV2Request_Media:
@@ -95,6 +99,9 @@ func (s *server) SendMessageV2(ctx context.Context, req *gen.SendMessageV2Reques
 		row.ReplyToID = sql.NullString{String: req.ReplyToId, Valid: true}
 		orig, err := s.db.GetMessageV2ByUUID(req.ReplyToId)
 		if err == nil {
+			if !utf8.ValidString(orig.Text) {
+				orig.Text = strings.ToValidUTF8(orig.Text, "")
+			}
 			preview := orig.Text
 			if len(preview) > 100 {
 				preview = preview[:100]
@@ -112,6 +119,13 @@ func (s *server) SendMessageV2(ctx context.Context, req *gen.SendMessageV2Reques
 	if len(req.Mentions) > 0 {
 		b, _ := json.Marshal(req.Mentions)
 		row.Mentions = sql.NullString{String: string(b), Valid: true}
+	}
+
+	if !utf8.ValidString(row.MediaURL) {
+		row.MediaURL = strings.ToValidUTF8(row.MediaURL, "")
+	}
+	if row.ReplyPreview.Valid && !utf8.ValidString(row.ReplyPreview.String) {
+		row.ReplyPreview.String = strings.ToValidUTF8(row.ReplyPreview.String, "")
 	}
 
 	if err := s.db.SaveMessageV2(row); err != nil {

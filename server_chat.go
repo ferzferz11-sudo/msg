@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 // ChatV2 is a bidirectional stream for v2 messages (oneof payload).
@@ -129,6 +130,9 @@ func (s *server) ChatV2(stream gen.ChatService_ChatV2Server) error {
 
 			switch c := v2msg.Content.(type) {
 			case *gen.MessageV2_Text:
+				if !utf8.ValidString(c.Text) {
+					continue
+				}
 				row.Text = c.Text
 				row.ContentType = "text"
 
@@ -175,13 +179,24 @@ func (s *server) ChatV2(stream gen.ChatService_ChatV2Server) error {
 
 			if v2msg.Reply != nil {
 				row.ReplyToID = sql.NullString{String: v2msg.Reply.MessageId, Valid: true}
-				row.ReplyPreview = sql.NullString{String: v2msg.Reply.Preview, Valid: true}
+				preview := v2msg.Reply.Preview
+				if !utf8.ValidString(preview) {
+					preview = strings.ToValidUTF8(preview, "")
+				}
+				row.ReplyPreview = sql.NullString{String: preview, Valid: true}
 				row.ReplySenderID = sql.NullString{String: v2msg.Reply.SenderId, Valid: true}
 			}
 
 			if v2msg.IsE2Ee {
 				row.IsE2EE = true
 				row.E2EEPayload = []byte(v2msg.E2EePayload)
+			}
+
+			if !utf8.ValidString(row.MediaURL) {
+				row.MediaURL = strings.ToValidUTF8(row.MediaURL, "")
+			}
+			if row.ReplyPreview.Valid && !utf8.ValidString(row.ReplyPreview.String) {
+				row.ReplyPreview.String = strings.ToValidUTF8(row.ReplyPreview.String, "")
 			}
 
 			if err := s.db.SaveMessageV2(row); err != nil {

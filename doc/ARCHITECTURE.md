@@ -1,7 +1,7 @@
 # Lavender Messenger — Архитектура
 
-**Дата:** 2026-07-05
-**Версия сервера:** 1.3.3.1
+**Дата:** 2026-07-19
+**Версия сервера:** 1.3.4.0
 **Модуль:** `LavenderMessenger` (Go 1.26)
 
 ---
@@ -61,6 +61,10 @@
 | `server_favorites.go` | Favorites, device mgmt, password reset, user ID | ChatService |
 | `server_profile_v2.go` | ProfileService: GetProfile, UpdateProfile, UpdateAvatar, DeleteProfile | ProfileService |
 | `server_company.go` | CompanyService: companies, positions, members, company chats | CompanyService |
+| `server_company_settings.go` | CompanyService: GetCompanySettings, UpdateCompanySettings | CompanyService |
+| `server_company_invite.go` | CompanyService: invite codes (generate, join, revoke, list) | CompanyService |
+| `server_company_notifications.go` | CompanyService: SendCompanyNotification (FCM push for events) | CompanyService |
+| `server_stickers.go` | StickerService: sticker packs, stickers, approval workflow | StickerService |
 | `server_management.go` | Admin: list, add, update, delete servers | ServerService |
 | `server_remote.go` | Remote agent: list, status, deploy (unary + streaming) | ChatService |
 | `server_ai_v2.go` | AI v2: ChatWithAIV2, Agent CRUD, Marketplace, Usage Stats (15 RPCs) | ChatService |
@@ -109,7 +113,7 @@
 
 | Файл | Назначение |
 |------|------------|
-| `http_server.go` | HTTP: uploads (avatar/image/file/background/audio), TURN, health, info |
+| `http_server.go` | HTTP: uploads (avatar/image/file/background/audio/sticker/sticker-thumbnail), TURN, health, info |
 | `email.go` | SMTP: password reset emails |
 | `crypto.go` | AES-256-GCM encryption, bcrypt hashing, reset tokens |
 | `secret_chat.go` | E2EE: secret chat creation, public key exchange |
@@ -226,13 +230,51 @@ Health endpoint returns 503 `{"status":"shutting_down"}` during shutdown window.
 │      ▼                  ▼                                   │
 │  company_chats    access_level + min_position_level         │
 │  (chat_id FK)     (member/management/owner_only)            │
+│                                                             │
+│  Settings ──► Invite Codes ──► Notifications                │
+│      │              │                │                      │
+│      ▼              ▼                ▼                      │
+│  company_       company_invite   FCM push                   │
+│  settings       codes            (company events)           │
+│  (JSONB)        (8-char code)                               │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-**DB Tables:** companies, company_positions, company_members, company_chats, users.primary_company_id
+**DB Tables:** companies, company_positions, company_members, company_chats, company_settings, company_invite_codes, users.primary_company_id
 **Position hierarchy:** Owner(3) > Top Manager(2) > Manager(1) > Employee(0)
 **Chat access:** member (all) → management (level≥1) → owner_only (level=3)
 **Multi-company:** Users can belong to multiple companies; primary_company_id for profile display
+**Settings:** invite_only, default_position_id, allow_member_invite, chat_access, require_approval
+**Invite codes:** 8-char alphanumeric, configurable expiry and max uses
+**Notifications:** FCM push for MEMBER_JOINED, MEMBER_LEFT, POSITION_CHANGED, COMPANY_CHAT_CREATED
+
+---
+
+## 5.2 Sticker System Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     StickerService                           │
+│                                                             │
+│  Sticker Packs ──► Stickers                                 │
+│      │                  │                                   │
+│      ▼                  ▼                                   │
+│  sticker_packs     stickers                                │
+│  (creator_user_id) (pack_id FK, lottie_url, thumbnail)     │
+│  (status workflow)                                          │
+│                                                             │
+│  Draft → Pending → Approved / Rejected                      │
+│                                                             │
+│  HTTP Upload:                                               │
+│  /upload-sticker          (Lottie .json, max 512KB)         │
+│  /upload-sticker-thumbnail (PNG/JPG, served via /sticker-*) │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**DB Tables:** sticker_packs, stickers
+**Status workflow:** draft → pending → approved/rejected
+**File storage:** ./uploads/stickers/ (Lottie .json), ./uploads/sticker-thumbnails/ (PNG/JPG)
+**Admin approval:** Super admin required for ApproveStickerPack, GetPendingStickerPacks, SetFeaturedStickerPack
 
 ---
 

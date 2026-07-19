@@ -5691,28 +5691,35 @@ var ProfileService_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	CompanyService_CreateCompany_FullMethodName        = "/messenger.CompanyService/CreateCompany"
-	CompanyService_GetCompany_FullMethodName           = "/messenger.CompanyService/GetCompany"
-	CompanyService_UpdateCompany_FullMethodName        = "/messenger.CompanyService/UpdateCompany"
-	CompanyService_DeleteCompany_FullMethodName        = "/messenger.CompanyService/DeleteCompany"
-	CompanyService_ListCompanies_FullMethodName        = "/messenger.CompanyService/ListCompanies"
-	CompanyService_CreatePosition_FullMethodName       = "/messenger.CompanyService/CreatePosition"
-	CompanyService_UpdatePosition_FullMethodName       = "/messenger.CompanyService/UpdatePosition"
-	CompanyService_DeletePosition_FullMethodName       = "/messenger.CompanyService/DeletePosition"
-	CompanyService_ListPositions_FullMethodName        = "/messenger.CompanyService/ListPositions"
-	CompanyService_AddMember_FullMethodName            = "/messenger.CompanyService/AddMember"
-	CompanyService_RemoveMember_FullMethodName         = "/messenger.CompanyService/RemoveMember"
-	CompanyService_UpdateMemberPosition_FullMethodName = "/messenger.CompanyService/UpdateMemberPosition"
-	CompanyService_ListMembers_FullMethodName          = "/messenger.CompanyService/ListMembers"
-	CompanyService_CreateCompanyChat_FullMethodName    = "/messenger.CompanyService/CreateCompanyChat"
-	CompanyService_SetCompanyChatAccess_FullMethodName = "/messenger.CompanyService/SetCompanyChatAccess"
-	CompanyService_GetCompanyChats_FullMethodName      = "/messenger.CompanyService/GetCompanyChats"
-	CompanyService_JoinCompany_FullMethodName          = "/messenger.CompanyService/JoinCompany"
-	CompanyService_LeaveCompany_FullMethodName         = "/messenger.CompanyService/LeaveCompany"
-	CompanyService_GetUserInfo_FullMethodName          = "/messenger.CompanyService/GetUserInfo"
-	CompanyService_GetCompanyByUser_FullMethodName     = "/messenger.CompanyService/GetCompanyByUser"
-	CompanyService_SetPrimaryCompany_FullMethodName    = "/messenger.CompanyService/SetPrimaryCompany"
-	CompanyService_GetUserCompanies_FullMethodName     = "/messenger.CompanyService/GetUserCompanies"
+	CompanyService_CreateCompany_FullMethodName           = "/messenger.CompanyService/CreateCompany"
+	CompanyService_GetCompany_FullMethodName              = "/messenger.CompanyService/GetCompany"
+	CompanyService_UpdateCompany_FullMethodName           = "/messenger.CompanyService/UpdateCompany"
+	CompanyService_DeleteCompany_FullMethodName           = "/messenger.CompanyService/DeleteCompany"
+	CompanyService_ListCompanies_FullMethodName           = "/messenger.CompanyService/ListCompanies"
+	CompanyService_CreatePosition_FullMethodName          = "/messenger.CompanyService/CreatePosition"
+	CompanyService_UpdatePosition_FullMethodName          = "/messenger.CompanyService/UpdatePosition"
+	CompanyService_DeletePosition_FullMethodName          = "/messenger.CompanyService/DeletePosition"
+	CompanyService_ListPositions_FullMethodName           = "/messenger.CompanyService/ListPositions"
+	CompanyService_AddMember_FullMethodName               = "/messenger.CompanyService/AddMember"
+	CompanyService_RemoveMember_FullMethodName            = "/messenger.CompanyService/RemoveMember"
+	CompanyService_UpdateMemberPosition_FullMethodName    = "/messenger.CompanyService/UpdateMemberPosition"
+	CompanyService_ListMembers_FullMethodName             = "/messenger.CompanyService/ListMembers"
+	CompanyService_CreateCompanyChat_FullMethodName       = "/messenger.CompanyService/CreateCompanyChat"
+	CompanyService_SetCompanyChatAccess_FullMethodName    = "/messenger.CompanyService/SetCompanyChatAccess"
+	CompanyService_GetCompanyChats_FullMethodName         = "/messenger.CompanyService/GetCompanyChats"
+	CompanyService_JoinCompany_FullMethodName             = "/messenger.CompanyService/JoinCompany"
+	CompanyService_LeaveCompany_FullMethodName            = "/messenger.CompanyService/LeaveCompany"
+	CompanyService_GetUserInfo_FullMethodName             = "/messenger.CompanyService/GetUserInfo"
+	CompanyService_GetCompanyByUser_FullMethodName        = "/messenger.CompanyService/GetCompanyByUser"
+	CompanyService_SetPrimaryCompany_FullMethodName       = "/messenger.CompanyService/SetPrimaryCompany"
+	CompanyService_GetUserCompanies_FullMethodName        = "/messenger.CompanyService/GetUserCompanies"
+	CompanyService_GetCompanySettings_FullMethodName      = "/messenger.CompanyService/GetCompanySettings"
+	CompanyService_UpdateCompanySettings_FullMethodName   = "/messenger.CompanyService/UpdateCompanySettings"
+	CompanyService_GenerateInviteCode_FullMethodName      = "/messenger.CompanyService/GenerateInviteCode"
+	CompanyService_JoinByInviteCode_FullMethodName        = "/messenger.CompanyService/JoinByInviteCode"
+	CompanyService_RevokeInviteCode_FullMethodName        = "/messenger.CompanyService/RevokeInviteCode"
+	CompanyService_ListInviteCodes_FullMethodName         = "/messenger.CompanyService/ListInviteCodes"
+	CompanyService_SendCompanyNotification_FullMethodName = "/messenger.CompanyService/SendCompanyNotification"
 )
 
 // CompanyServiceClient is the client API for CompanyService service.
@@ -5741,6 +5748,16 @@ type CompanyServiceClient interface {
 	GetCompanyByUser(ctx context.Context, in *GetCompanyByUserRequest, opts ...grpc.CallOption) (*GetCompanyByUserResponse, error)
 	SetPrimaryCompany(ctx context.Context, in *SetPrimaryCompanyRequest, opts ...grpc.CallOption) (*SetPrimaryCompanyResponse, error)
 	GetUserCompanies(ctx context.Context, in *GetUserCompaniesRequest, opts ...grpc.CallOption) (*GetUserCompaniesResponse, error)
+	// === Company Settings ===
+	GetCompanySettings(ctx context.Context, in *GetCompanySettingsRequest, opts ...grpc.CallOption) (*GetCompanySettingsResponse, error)
+	UpdateCompanySettings(ctx context.Context, in *UpdateCompanySettingsRequest, opts ...grpc.CallOption) (*UpdateCompanySettingsResponse, error)
+	// === Company Invite Codes ===
+	GenerateInviteCode(ctx context.Context, in *GenerateInviteCodeRequest, opts ...grpc.CallOption) (*GenerateInviteCodeResponse, error)
+	JoinByInviteCode(ctx context.Context, in *JoinByInviteCodeRequest, opts ...grpc.CallOption) (*JoinByInviteCodeResponse, error)
+	RevokeInviteCode(ctx context.Context, in *RevokeInviteCodeRequest, opts ...grpc.CallOption) (*RevokeInviteCodeResponse, error)
+	ListInviteCodes(ctx context.Context, in *ListInviteCodesRequest, opts ...grpc.CallOption) (*ListInviteCodesResponse, error)
+	// === Company Notifications ===
+	SendCompanyNotification(ctx context.Context, in *SendCompanyNotificationRequest, opts ...grpc.CallOption) (*SendCompanyNotificationResponse, error)
 }
 
 type companyServiceClient struct {
@@ -5971,6 +5988,76 @@ func (c *companyServiceClient) GetUserCompanies(ctx context.Context, in *GetUser
 	return out, nil
 }
 
+func (c *companyServiceClient) GetCompanySettings(ctx context.Context, in *GetCompanySettingsRequest, opts ...grpc.CallOption) (*GetCompanySettingsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetCompanySettingsResponse)
+	err := c.cc.Invoke(ctx, CompanyService_GetCompanySettings_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *companyServiceClient) UpdateCompanySettings(ctx context.Context, in *UpdateCompanySettingsRequest, opts ...grpc.CallOption) (*UpdateCompanySettingsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateCompanySettingsResponse)
+	err := c.cc.Invoke(ctx, CompanyService_UpdateCompanySettings_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *companyServiceClient) GenerateInviteCode(ctx context.Context, in *GenerateInviteCodeRequest, opts ...grpc.CallOption) (*GenerateInviteCodeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GenerateInviteCodeResponse)
+	err := c.cc.Invoke(ctx, CompanyService_GenerateInviteCode_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *companyServiceClient) JoinByInviteCode(ctx context.Context, in *JoinByInviteCodeRequest, opts ...grpc.CallOption) (*JoinByInviteCodeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(JoinByInviteCodeResponse)
+	err := c.cc.Invoke(ctx, CompanyService_JoinByInviteCode_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *companyServiceClient) RevokeInviteCode(ctx context.Context, in *RevokeInviteCodeRequest, opts ...grpc.CallOption) (*RevokeInviteCodeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RevokeInviteCodeResponse)
+	err := c.cc.Invoke(ctx, CompanyService_RevokeInviteCode_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *companyServiceClient) ListInviteCodes(ctx context.Context, in *ListInviteCodesRequest, opts ...grpc.CallOption) (*ListInviteCodesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListInviteCodesResponse)
+	err := c.cc.Invoke(ctx, CompanyService_ListInviteCodes_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *companyServiceClient) SendCompanyNotification(ctx context.Context, in *SendCompanyNotificationRequest, opts ...grpc.CallOption) (*SendCompanyNotificationResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SendCompanyNotificationResponse)
+	err := c.cc.Invoke(ctx, CompanyService_SendCompanyNotification_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // CompanyServiceServer is the server API for CompanyService service.
 // All implementations must embed UnimplementedCompanyServiceServer
 // for forward compatibility.
@@ -5997,6 +6084,16 @@ type CompanyServiceServer interface {
 	GetCompanyByUser(context.Context, *GetCompanyByUserRequest) (*GetCompanyByUserResponse, error)
 	SetPrimaryCompany(context.Context, *SetPrimaryCompanyRequest) (*SetPrimaryCompanyResponse, error)
 	GetUserCompanies(context.Context, *GetUserCompaniesRequest) (*GetUserCompaniesResponse, error)
+	// === Company Settings ===
+	GetCompanySettings(context.Context, *GetCompanySettingsRequest) (*GetCompanySettingsResponse, error)
+	UpdateCompanySettings(context.Context, *UpdateCompanySettingsRequest) (*UpdateCompanySettingsResponse, error)
+	// === Company Invite Codes ===
+	GenerateInviteCode(context.Context, *GenerateInviteCodeRequest) (*GenerateInviteCodeResponse, error)
+	JoinByInviteCode(context.Context, *JoinByInviteCodeRequest) (*JoinByInviteCodeResponse, error)
+	RevokeInviteCode(context.Context, *RevokeInviteCodeRequest) (*RevokeInviteCodeResponse, error)
+	ListInviteCodes(context.Context, *ListInviteCodesRequest) (*ListInviteCodesResponse, error)
+	// === Company Notifications ===
+	SendCompanyNotification(context.Context, *SendCompanyNotificationRequest) (*SendCompanyNotificationResponse, error)
 	mustEmbedUnimplementedCompanyServiceServer()
 }
 
@@ -6072,6 +6169,27 @@ func (UnimplementedCompanyServiceServer) SetPrimaryCompany(context.Context, *Set
 }
 func (UnimplementedCompanyServiceServer) GetUserCompanies(context.Context, *GetUserCompaniesRequest) (*GetUserCompaniesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetUserCompanies not implemented")
+}
+func (UnimplementedCompanyServiceServer) GetCompanySettings(context.Context, *GetCompanySettingsRequest) (*GetCompanySettingsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetCompanySettings not implemented")
+}
+func (UnimplementedCompanyServiceServer) UpdateCompanySettings(context.Context, *UpdateCompanySettingsRequest) (*UpdateCompanySettingsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateCompanySettings not implemented")
+}
+func (UnimplementedCompanyServiceServer) GenerateInviteCode(context.Context, *GenerateInviteCodeRequest) (*GenerateInviteCodeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GenerateInviteCode not implemented")
+}
+func (UnimplementedCompanyServiceServer) JoinByInviteCode(context.Context, *JoinByInviteCodeRequest) (*JoinByInviteCodeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method JoinByInviteCode not implemented")
+}
+func (UnimplementedCompanyServiceServer) RevokeInviteCode(context.Context, *RevokeInviteCodeRequest) (*RevokeInviteCodeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RevokeInviteCode not implemented")
+}
+func (UnimplementedCompanyServiceServer) ListInviteCodes(context.Context, *ListInviteCodesRequest) (*ListInviteCodesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListInviteCodes not implemented")
+}
+func (UnimplementedCompanyServiceServer) SendCompanyNotification(context.Context, *SendCompanyNotificationRequest) (*SendCompanyNotificationResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SendCompanyNotification not implemented")
 }
 func (UnimplementedCompanyServiceServer) mustEmbedUnimplementedCompanyServiceServer() {}
 func (UnimplementedCompanyServiceServer) testEmbeddedByValue()                        {}
@@ -6490,6 +6608,132 @@ func _CompanyService_GetUserCompanies_Handler(srv interface{}, ctx context.Conte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _CompanyService_GetCompanySettings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetCompanySettingsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompanyServiceServer).GetCompanySettings(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CompanyService_GetCompanySettings_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompanyServiceServer).GetCompanySettings(ctx, req.(*GetCompanySettingsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CompanyService_UpdateCompanySettings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateCompanySettingsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompanyServiceServer).UpdateCompanySettings(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CompanyService_UpdateCompanySettings_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompanyServiceServer).UpdateCompanySettings(ctx, req.(*UpdateCompanySettingsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CompanyService_GenerateInviteCode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GenerateInviteCodeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompanyServiceServer).GenerateInviteCode(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CompanyService_GenerateInviteCode_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompanyServiceServer).GenerateInviteCode(ctx, req.(*GenerateInviteCodeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CompanyService_JoinByInviteCode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(JoinByInviteCodeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompanyServiceServer).JoinByInviteCode(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CompanyService_JoinByInviteCode_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompanyServiceServer).JoinByInviteCode(ctx, req.(*JoinByInviteCodeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CompanyService_RevokeInviteCode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RevokeInviteCodeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompanyServiceServer).RevokeInviteCode(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CompanyService_RevokeInviteCode_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompanyServiceServer).RevokeInviteCode(ctx, req.(*RevokeInviteCodeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CompanyService_ListInviteCodes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListInviteCodesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompanyServiceServer).ListInviteCodes(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CompanyService_ListInviteCodes_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompanyServiceServer).ListInviteCodes(ctx, req.(*ListInviteCodesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CompanyService_SendCompanyNotification_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SendCompanyNotificationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompanyServiceServer).SendCompanyNotification(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CompanyService_SendCompanyNotification_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompanyServiceServer).SendCompanyNotification(ctx, req.(*SendCompanyNotificationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // CompanyService_ServiceDesc is the grpc.ServiceDesc for CompanyService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -6584,6 +6828,592 @@ var CompanyService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetUserCompanies",
 			Handler:    _CompanyService_GetUserCompanies_Handler,
+		},
+		{
+			MethodName: "GetCompanySettings",
+			Handler:    _CompanyService_GetCompanySettings_Handler,
+		},
+		{
+			MethodName: "UpdateCompanySettings",
+			Handler:    _CompanyService_UpdateCompanySettings_Handler,
+		},
+		{
+			MethodName: "GenerateInviteCode",
+			Handler:    _CompanyService_GenerateInviteCode_Handler,
+		},
+		{
+			MethodName: "JoinByInviteCode",
+			Handler:    _CompanyService_JoinByInviteCode_Handler,
+		},
+		{
+			MethodName: "RevokeInviteCode",
+			Handler:    _CompanyService_RevokeInviteCode_Handler,
+		},
+		{
+			MethodName: "ListInviteCodes",
+			Handler:    _CompanyService_ListInviteCodes_Handler,
+		},
+		{
+			MethodName: "SendCompanyNotification",
+			Handler:    _CompanyService_SendCompanyNotification_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "messenger.proto",
+}
+
+const (
+	StickerService_CreateStickerPack_FullMethodName      = "/messenger.StickerService/CreateStickerPack"
+	StickerService_AddSticker_FullMethodName             = "/messenger.StickerService/AddSticker"
+	StickerService_RemoveSticker_FullMethodName          = "/messenger.StickerService/RemoveSticker"
+	StickerService_DeleteStickerPack_FullMethodName      = "/messenger.StickerService/DeleteStickerPack"
+	StickerService_GetUserStickerPacks_FullMethodName    = "/messenger.StickerService/GetUserStickerPacks"
+	StickerService_GetPublicStickerPacks_FullMethodName  = "/messenger.StickerService/GetPublicStickerPacks"
+	StickerService_GetStickerPack_FullMethodName         = "/messenger.StickerService/GetStickerPack"
+	StickerService_SubmitForApproval_FullMethodName      = "/messenger.StickerService/SubmitForApproval"
+	StickerService_ApproveStickerPack_FullMethodName     = "/messenger.StickerService/ApproveStickerPack"
+	StickerService_GetPendingStickerPacks_FullMethodName = "/messenger.StickerService/GetPendingStickerPacks"
+	StickerService_SearchStickerPacks_FullMethodName     = "/messenger.StickerService/SearchStickerPacks"
+	StickerService_UpdateStickerPack_FullMethodName      = "/messenger.StickerService/UpdateStickerPack"
+	StickerService_SetFeaturedStickerPack_FullMethodName = "/messenger.StickerService/SetFeaturedStickerPack"
+)
+
+// StickerServiceClient is the client API for StickerService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+type StickerServiceClient interface {
+	CreateStickerPack(ctx context.Context, in *CreateStickerPackRequest, opts ...grpc.CallOption) (*CreateStickerPackResponse, error)
+	AddSticker(ctx context.Context, in *AddStickerRequest, opts ...grpc.CallOption) (*AddStickerResponse, error)
+	RemoveSticker(ctx context.Context, in *RemoveStickerRequest, opts ...grpc.CallOption) (*RemoveStickerResponse, error)
+	DeleteStickerPack(ctx context.Context, in *DeleteStickerPackRequest, opts ...grpc.CallOption) (*DeleteStickerPackResponse, error)
+	GetUserStickerPacks(ctx context.Context, in *GetUserStickerPacksRequest, opts ...grpc.CallOption) (*GetUserStickerPacksResponse, error)
+	GetPublicStickerPacks(ctx context.Context, in *GetPublicStickerPacksRequest, opts ...grpc.CallOption) (*GetPublicStickerPacksResponse, error)
+	GetStickerPack(ctx context.Context, in *GetStickerPackRequest, opts ...grpc.CallOption) (*GetStickerPackResponse, error)
+	SubmitForApproval(ctx context.Context, in *SubmitForApprovalRequest, opts ...grpc.CallOption) (*SubmitForApprovalResponse, error)
+	ApproveStickerPack(ctx context.Context, in *ApproveStickerPackRequest, opts ...grpc.CallOption) (*ApproveStickerPackResponse, error)
+	GetPendingStickerPacks(ctx context.Context, in *GetPendingStickerPacksRequest, opts ...grpc.CallOption) (*GetPendingStickerPacksResponse, error)
+	SearchStickerPacks(ctx context.Context, in *SearchStickerPacksRequest, opts ...grpc.CallOption) (*SearchStickerPacksResponse, error)
+	UpdateStickerPack(ctx context.Context, in *UpdateStickerPackRequest, opts ...grpc.CallOption) (*UpdateStickerPackResponse, error)
+	SetFeaturedStickerPack(ctx context.Context, in *SetFeaturedStickerPackRequest, opts ...grpc.CallOption) (*SetFeaturedStickerPackResponse, error)
+}
+
+type stickerServiceClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewStickerServiceClient(cc grpc.ClientConnInterface) StickerServiceClient {
+	return &stickerServiceClient{cc}
+}
+
+func (c *stickerServiceClient) CreateStickerPack(ctx context.Context, in *CreateStickerPackRequest, opts ...grpc.CallOption) (*CreateStickerPackResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateStickerPackResponse)
+	err := c.cc.Invoke(ctx, StickerService_CreateStickerPack_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *stickerServiceClient) AddSticker(ctx context.Context, in *AddStickerRequest, opts ...grpc.CallOption) (*AddStickerResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AddStickerResponse)
+	err := c.cc.Invoke(ctx, StickerService_AddSticker_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *stickerServiceClient) RemoveSticker(ctx context.Context, in *RemoveStickerRequest, opts ...grpc.CallOption) (*RemoveStickerResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RemoveStickerResponse)
+	err := c.cc.Invoke(ctx, StickerService_RemoveSticker_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *stickerServiceClient) DeleteStickerPack(ctx context.Context, in *DeleteStickerPackRequest, opts ...grpc.CallOption) (*DeleteStickerPackResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteStickerPackResponse)
+	err := c.cc.Invoke(ctx, StickerService_DeleteStickerPack_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *stickerServiceClient) GetUserStickerPacks(ctx context.Context, in *GetUserStickerPacksRequest, opts ...grpc.CallOption) (*GetUserStickerPacksResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetUserStickerPacksResponse)
+	err := c.cc.Invoke(ctx, StickerService_GetUserStickerPacks_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *stickerServiceClient) GetPublicStickerPacks(ctx context.Context, in *GetPublicStickerPacksRequest, opts ...grpc.CallOption) (*GetPublicStickerPacksResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetPublicStickerPacksResponse)
+	err := c.cc.Invoke(ctx, StickerService_GetPublicStickerPacks_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *stickerServiceClient) GetStickerPack(ctx context.Context, in *GetStickerPackRequest, opts ...grpc.CallOption) (*GetStickerPackResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetStickerPackResponse)
+	err := c.cc.Invoke(ctx, StickerService_GetStickerPack_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *stickerServiceClient) SubmitForApproval(ctx context.Context, in *SubmitForApprovalRequest, opts ...grpc.CallOption) (*SubmitForApprovalResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SubmitForApprovalResponse)
+	err := c.cc.Invoke(ctx, StickerService_SubmitForApproval_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *stickerServiceClient) ApproveStickerPack(ctx context.Context, in *ApproveStickerPackRequest, opts ...grpc.CallOption) (*ApproveStickerPackResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ApproveStickerPackResponse)
+	err := c.cc.Invoke(ctx, StickerService_ApproveStickerPack_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *stickerServiceClient) GetPendingStickerPacks(ctx context.Context, in *GetPendingStickerPacksRequest, opts ...grpc.CallOption) (*GetPendingStickerPacksResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetPendingStickerPacksResponse)
+	err := c.cc.Invoke(ctx, StickerService_GetPendingStickerPacks_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *stickerServiceClient) SearchStickerPacks(ctx context.Context, in *SearchStickerPacksRequest, opts ...grpc.CallOption) (*SearchStickerPacksResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SearchStickerPacksResponse)
+	err := c.cc.Invoke(ctx, StickerService_SearchStickerPacks_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *stickerServiceClient) UpdateStickerPack(ctx context.Context, in *UpdateStickerPackRequest, opts ...grpc.CallOption) (*UpdateStickerPackResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateStickerPackResponse)
+	err := c.cc.Invoke(ctx, StickerService_UpdateStickerPack_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *stickerServiceClient) SetFeaturedStickerPack(ctx context.Context, in *SetFeaturedStickerPackRequest, opts ...grpc.CallOption) (*SetFeaturedStickerPackResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SetFeaturedStickerPackResponse)
+	err := c.cc.Invoke(ctx, StickerService_SetFeaturedStickerPack_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// StickerServiceServer is the server API for StickerService service.
+// All implementations must embed UnimplementedStickerServiceServer
+// for forward compatibility.
+type StickerServiceServer interface {
+	CreateStickerPack(context.Context, *CreateStickerPackRequest) (*CreateStickerPackResponse, error)
+	AddSticker(context.Context, *AddStickerRequest) (*AddStickerResponse, error)
+	RemoveSticker(context.Context, *RemoveStickerRequest) (*RemoveStickerResponse, error)
+	DeleteStickerPack(context.Context, *DeleteStickerPackRequest) (*DeleteStickerPackResponse, error)
+	GetUserStickerPacks(context.Context, *GetUserStickerPacksRequest) (*GetUserStickerPacksResponse, error)
+	GetPublicStickerPacks(context.Context, *GetPublicStickerPacksRequest) (*GetPublicStickerPacksResponse, error)
+	GetStickerPack(context.Context, *GetStickerPackRequest) (*GetStickerPackResponse, error)
+	SubmitForApproval(context.Context, *SubmitForApprovalRequest) (*SubmitForApprovalResponse, error)
+	ApproveStickerPack(context.Context, *ApproveStickerPackRequest) (*ApproveStickerPackResponse, error)
+	GetPendingStickerPacks(context.Context, *GetPendingStickerPacksRequest) (*GetPendingStickerPacksResponse, error)
+	SearchStickerPacks(context.Context, *SearchStickerPacksRequest) (*SearchStickerPacksResponse, error)
+	UpdateStickerPack(context.Context, *UpdateStickerPackRequest) (*UpdateStickerPackResponse, error)
+	SetFeaturedStickerPack(context.Context, *SetFeaturedStickerPackRequest) (*SetFeaturedStickerPackResponse, error)
+	mustEmbedUnimplementedStickerServiceServer()
+}
+
+// UnimplementedStickerServiceServer must be embedded to have
+// forward compatible implementations.
+//
+// NOTE: this should be embedded by value instead of pointer to avoid a nil
+// pointer dereference when methods are called.
+type UnimplementedStickerServiceServer struct{}
+
+func (UnimplementedStickerServiceServer) CreateStickerPack(context.Context, *CreateStickerPackRequest) (*CreateStickerPackResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateStickerPack not implemented")
+}
+func (UnimplementedStickerServiceServer) AddSticker(context.Context, *AddStickerRequest) (*AddStickerResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method AddSticker not implemented")
+}
+func (UnimplementedStickerServiceServer) RemoveSticker(context.Context, *RemoveStickerRequest) (*RemoveStickerResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RemoveSticker not implemented")
+}
+func (UnimplementedStickerServiceServer) DeleteStickerPack(context.Context, *DeleteStickerPackRequest) (*DeleteStickerPackResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteStickerPack not implemented")
+}
+func (UnimplementedStickerServiceServer) GetUserStickerPacks(context.Context, *GetUserStickerPacksRequest) (*GetUserStickerPacksResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetUserStickerPacks not implemented")
+}
+func (UnimplementedStickerServiceServer) GetPublicStickerPacks(context.Context, *GetPublicStickerPacksRequest) (*GetPublicStickerPacksResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetPublicStickerPacks not implemented")
+}
+func (UnimplementedStickerServiceServer) GetStickerPack(context.Context, *GetStickerPackRequest) (*GetStickerPackResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetStickerPack not implemented")
+}
+func (UnimplementedStickerServiceServer) SubmitForApproval(context.Context, *SubmitForApprovalRequest) (*SubmitForApprovalResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SubmitForApproval not implemented")
+}
+func (UnimplementedStickerServiceServer) ApproveStickerPack(context.Context, *ApproveStickerPackRequest) (*ApproveStickerPackResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ApproveStickerPack not implemented")
+}
+func (UnimplementedStickerServiceServer) GetPendingStickerPacks(context.Context, *GetPendingStickerPacksRequest) (*GetPendingStickerPacksResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetPendingStickerPacks not implemented")
+}
+func (UnimplementedStickerServiceServer) SearchStickerPacks(context.Context, *SearchStickerPacksRequest) (*SearchStickerPacksResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SearchStickerPacks not implemented")
+}
+func (UnimplementedStickerServiceServer) UpdateStickerPack(context.Context, *UpdateStickerPackRequest) (*UpdateStickerPackResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateStickerPack not implemented")
+}
+func (UnimplementedStickerServiceServer) SetFeaturedStickerPack(context.Context, *SetFeaturedStickerPackRequest) (*SetFeaturedStickerPackResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetFeaturedStickerPack not implemented")
+}
+func (UnimplementedStickerServiceServer) mustEmbedUnimplementedStickerServiceServer() {}
+func (UnimplementedStickerServiceServer) testEmbeddedByValue()                        {}
+
+// UnsafeStickerServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to StickerServiceServer will
+// result in compilation errors.
+type UnsafeStickerServiceServer interface {
+	mustEmbedUnimplementedStickerServiceServer()
+}
+
+func RegisterStickerServiceServer(s grpc.ServiceRegistrar, srv StickerServiceServer) {
+	// If the following call panics, it indicates UnimplementedStickerServiceServer was
+	// embedded by pointer and is nil.  This will cause panics if an
+	// unimplemented method is ever invoked, so we test this at initialization
+	// time to prevent it from happening at runtime later due to I/O.
+	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
+		t.testEmbeddedByValue()
+	}
+	s.RegisterService(&StickerService_ServiceDesc, srv)
+}
+
+func _StickerService_CreateStickerPack_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateStickerPackRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StickerServiceServer).CreateStickerPack(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: StickerService_CreateStickerPack_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StickerServiceServer).CreateStickerPack(ctx, req.(*CreateStickerPackRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _StickerService_AddSticker_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AddStickerRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StickerServiceServer).AddSticker(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: StickerService_AddSticker_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StickerServiceServer).AddSticker(ctx, req.(*AddStickerRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _StickerService_RemoveSticker_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveStickerRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StickerServiceServer).RemoveSticker(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: StickerService_RemoveSticker_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StickerServiceServer).RemoveSticker(ctx, req.(*RemoveStickerRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _StickerService_DeleteStickerPack_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteStickerPackRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StickerServiceServer).DeleteStickerPack(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: StickerService_DeleteStickerPack_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StickerServiceServer).DeleteStickerPack(ctx, req.(*DeleteStickerPackRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _StickerService_GetUserStickerPacks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetUserStickerPacksRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StickerServiceServer).GetUserStickerPacks(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: StickerService_GetUserStickerPacks_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StickerServiceServer).GetUserStickerPacks(ctx, req.(*GetUserStickerPacksRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _StickerService_GetPublicStickerPacks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetPublicStickerPacksRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StickerServiceServer).GetPublicStickerPacks(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: StickerService_GetPublicStickerPacks_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StickerServiceServer).GetPublicStickerPacks(ctx, req.(*GetPublicStickerPacksRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _StickerService_GetStickerPack_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetStickerPackRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StickerServiceServer).GetStickerPack(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: StickerService_GetStickerPack_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StickerServiceServer).GetStickerPack(ctx, req.(*GetStickerPackRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _StickerService_SubmitForApproval_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SubmitForApprovalRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StickerServiceServer).SubmitForApproval(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: StickerService_SubmitForApproval_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StickerServiceServer).SubmitForApproval(ctx, req.(*SubmitForApprovalRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _StickerService_ApproveStickerPack_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ApproveStickerPackRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StickerServiceServer).ApproveStickerPack(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: StickerService_ApproveStickerPack_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StickerServiceServer).ApproveStickerPack(ctx, req.(*ApproveStickerPackRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _StickerService_GetPendingStickerPacks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetPendingStickerPacksRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StickerServiceServer).GetPendingStickerPacks(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: StickerService_GetPendingStickerPacks_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StickerServiceServer).GetPendingStickerPacks(ctx, req.(*GetPendingStickerPacksRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _StickerService_SearchStickerPacks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SearchStickerPacksRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StickerServiceServer).SearchStickerPacks(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: StickerService_SearchStickerPacks_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StickerServiceServer).SearchStickerPacks(ctx, req.(*SearchStickerPacksRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _StickerService_UpdateStickerPack_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateStickerPackRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StickerServiceServer).UpdateStickerPack(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: StickerService_UpdateStickerPack_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StickerServiceServer).UpdateStickerPack(ctx, req.(*UpdateStickerPackRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _StickerService_SetFeaturedStickerPack_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetFeaturedStickerPackRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StickerServiceServer).SetFeaturedStickerPack(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: StickerService_SetFeaturedStickerPack_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StickerServiceServer).SetFeaturedStickerPack(ctx, req.(*SetFeaturedStickerPackRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// StickerService_ServiceDesc is the grpc.ServiceDesc for StickerService service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var StickerService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "messenger.StickerService",
+	HandlerType: (*StickerServiceServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "CreateStickerPack",
+			Handler:    _StickerService_CreateStickerPack_Handler,
+		},
+		{
+			MethodName: "AddSticker",
+			Handler:    _StickerService_AddSticker_Handler,
+		},
+		{
+			MethodName: "RemoveSticker",
+			Handler:    _StickerService_RemoveSticker_Handler,
+		},
+		{
+			MethodName: "DeleteStickerPack",
+			Handler:    _StickerService_DeleteStickerPack_Handler,
+		},
+		{
+			MethodName: "GetUserStickerPacks",
+			Handler:    _StickerService_GetUserStickerPacks_Handler,
+		},
+		{
+			MethodName: "GetPublicStickerPacks",
+			Handler:    _StickerService_GetPublicStickerPacks_Handler,
+		},
+		{
+			MethodName: "GetStickerPack",
+			Handler:    _StickerService_GetStickerPack_Handler,
+		},
+		{
+			MethodName: "SubmitForApproval",
+			Handler:    _StickerService_SubmitForApproval_Handler,
+		},
+		{
+			MethodName: "ApproveStickerPack",
+			Handler:    _StickerService_ApproveStickerPack_Handler,
+		},
+		{
+			MethodName: "GetPendingStickerPacks",
+			Handler:    _StickerService_GetPendingStickerPacks_Handler,
+		},
+		{
+			MethodName: "SearchStickerPacks",
+			Handler:    _StickerService_SearchStickerPacks_Handler,
+		},
+		{
+			MethodName: "UpdateStickerPack",
+			Handler:    _StickerService_UpdateStickerPack_Handler,
+		},
+		{
+			MethodName: "SetFeaturedStickerPack",
+			Handler:    _StickerService_SetFeaturedStickerPack_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

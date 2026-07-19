@@ -23,13 +23,16 @@ import (
 )
 
 const (
-	maxUploadSize   = 30 * 1024 * 1024 // 30MB
-	avatarsPath     = "./uploads/avatars"
-	imagesPath      = "./uploads/images"
-	filesPath       = "./uploads/files"
-	backgroundsPath = "./uploads/background"
-	audioPath       = "./uploads/audio"
-	defaultHTTPPort = "8082"
+	maxUploadSize          = 30 * 1024 * 1024 // 30MB
+	maxStickerSize         = 512 * 1024        // 512KB
+	avatarsPath            = "./uploads/avatars"
+	imagesPath             = "./uploads/images"
+	filesPath              = "./uploads/files"
+	backgroundsPath        = "./uploads/background"
+	audioPath              = "./uploads/audio"
+	stickersPath           = "./uploads/stickers"
+	stickerThumbnailsPath  = "./uploads/sticker-thumbnails"
+	defaultHTTPPort        = "8082"
 )
 
 var (
@@ -106,12 +109,16 @@ func StartHTTPServerAndReturn(port string) *http.Server {
 	os.MkdirAll(filesPath, 0755)
 	os.MkdirAll(backgroundsPath, 0755)
 	os.MkdirAll(audioPath, 0755)
+	os.MkdirAll(stickersPath, 0755)
+	os.MkdirAll(stickerThumbnailsPath, 0755)
 
 	http.HandleFunc("/upload-avatar", requireAuth(uploadAvatarHandler))
 	http.HandleFunc("/upload-image", requireAuth(uploadImageHandler))
 	http.HandleFunc("/upload-file", requireAuth(uploadFileHandler))
 	http.HandleFunc("/upload-background", requireAuth(uploadBackgroundHandler))
 	http.HandleFunc("/upload-audio", requireAuth(uploadAudioHandler))
+	http.HandleFunc("/upload-sticker", requireAuth(uploadStickerHandler))
+	http.HandleFunc("/upload-sticker-thumbnail", requireAuth(uploadStickerThumbnailHandler))
 
 	// TURN credentials endpoint
 	http.HandleFunc("/turn-credentials", requireAuth(turnCredentialsHandler))
@@ -144,7 +151,8 @@ func StartHTTPServerAndReturn(port string) *http.Server {
 				"ai":      AIServiceVersion,
 				"files":   FileServiceVersion,
 				"push":    PushServiceVersion,
-				"company": CompanyServiceVersion,
+				"company":  CompanyServiceVersion,
+				"stickers": StickerServiceVersion,
 			},
 		}
 		json.NewEncoder(w).Encode(info)
@@ -164,6 +172,12 @@ func StartHTTPServerAndReturn(port string) *http.Server {
 	})
 	http.HandleFunc("/audio/", func(w http.ResponseWriter, r *http.Request) {
 		serveFileHandler(w, r, "/audio/", audioPath)
+	})
+	http.HandleFunc("/stickers/", func(w http.ResponseWriter, r *http.Request) {
+		serveFileHandler(w, r, "/stickers/", stickersPath)
+	})
+	http.HandleFunc("/sticker-thumbnails/", func(w http.ResponseWriter, r *http.Request) {
+		serveFileHandler(w, r, "/sticker-thumbnails/", stickerThumbnailsPath)
 	})
 
 	srv := &http.Server{
@@ -520,6 +534,124 @@ func DeleteImageFile(imageURL string) error {
 
 	logger.Infof("🗑️ Successfully deleted file from disk: %s", filePath)
 	return nil
+}
+
+func uploadStickerHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, maxStickerSize)
+	if err := r.ParseMultipartForm(maxStickerSize); err != nil {
+		logger.Errorf("Sticker upload error: file too large: %v", err)
+		http.Error(w, "File too large", http.StatusBadRequest)
+		return
+	}
+
+	file, handler, err := r.FormFile("sticker")
+	if err != nil {
+		logger.Errorf("Sticker upload error: %v", err)
+		http.Error(w, "Error retrieving sticker file", http.StatusBadRequest)
+		return
+	}
+	defer closeFile(file)
+
+	fileBytes, err := io.ReadAll(file)
+	if err != nil {
+		logger.Errorf("Sticker upload error reading file: %v", err)
+		http.Error(w, "Error reading file", http.StatusInternalServerError)
+		return
+	}
+
+	ext := sanitizeFileExtension(handler.Filename, []string{".json"})
+	if ext == "" {
+		http.Error(w, "Only .json (Lottie) files are allowed", http.StatusBadRequest)
+		return
+	}
+
+	hash := md5.Sum(fileBytes)
+	filename := hex.EncodeToString(hash[:]) + ext
+
+	filePath := filepath.Join(stickersPath, filename)
+	if err := os.WriteFile(filePath, fileBytes, 0644); err != nil {
+		logger.Errorf("Sticker upload error saving file: %v", err)
+		http.Error(w, "Error saving file", http.StatusInternalServerError)
+		return
+	}
+
+	publicIP := os.Getenv("PUBLIC_IP")
+	if publicIP == "" {
+		publicIP = "localhost"
+	}
+	httpPort := os.Getenv("HTTP_PORT")
+	if httpPort == "" {
+		httpPort = defaultHTTPPort
+	}
+
+	fileURL := fmt.Sprintf("http://%s:%s/stickers/%s", publicIP, httpPort, filename)
+	logger.Infof("Sticker uploaded: %s", filename)
+	w.Header().Set("Content-Type", "application/json")
+	fmt.Fprintf(w, `{"url": "%s"}`, fileURL)
+}
+
+func uploadStickerThumbnailHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
+	if err := r.ParseMultipartForm(maxUploadSize); err != nil {
+		logger.Errorf("Sticker thumbnail upload error: file too large: %v", err)
+		http.Error(w, "File too large", http.StatusBadRequest)
+		return
+	}
+
+	file, handler, err := r.FormFile("thumbnail")
+	if err != nil {
+		logger.Errorf("Sticker thumbnail upload error: %v", err)
+		http.Error(w, "Error retrieving thumbnail file", http.StatusBadRequest)
+		return
+	}
+	defer closeFile(file)
+
+	fileBytes, err := io.ReadAll(file)
+	if err != nil {
+		logger.Errorf("Sticker thumbnail upload error reading file: %v", err)
+		http.Error(w, "Error reading file", http.StatusInternalServerError)
+		return
+	}
+
+	ext := sanitizeFileExtension(handler.Filename, []string{".png", ".jpg", ".jpeg", ".webp"})
+	if ext == "" {
+		http.Error(w, "Only .png, .jpg, .jpeg, .webp files are allowed", http.StatusBadRequest)
+		return
+	}
+
+	hash := md5.Sum(fileBytes)
+	filename := hex.EncodeToString(hash[:]) + ext
+
+	filePath := filepath.Join(stickerThumbnailsPath, filename)
+	if err := os.WriteFile(filePath, fileBytes, 0644); err != nil {
+		logger.Errorf("Sticker thumbnail upload error saving file: %v", err)
+		http.Error(w, "Error saving file", http.StatusInternalServerError)
+		return
+	}
+
+	publicIP := os.Getenv("PUBLIC_IP")
+	if publicIP == "" {
+		publicIP = "localhost"
+	}
+	httpPort := os.Getenv("HTTP_PORT")
+	if httpPort == "" {
+		httpPort = defaultHTTPPort
+	}
+
+	fileURL := fmt.Sprintf("http://%s:%s/sticker-thumbnails/%s", publicIP, httpPort, filename)
+	logger.Infof("Sticker thumbnail uploaded: %s", filename)
+	w.Header().Set("Content-Type", "application/json")
+	fmt.Fprintf(w, `{"url": "%s"}`, fileURL)
 }
 
 // turnCredentialsHandler generates temporary TURN credentials using HMAC

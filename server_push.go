@@ -92,14 +92,14 @@ func (s *server) sendPushNotification(userId, username, title, body, roomID stri
 		Token: token,
 		Notification: &messaging.Notification{
 			Title: title,
-			Body:  body,
+			Body:  truncateForFCM(body),
 		},
-		Data: map[string]string{
+		Data: buildSafeDataMap(map[string]string{
 			"title":   title,
 			"body":    truncateForFCM(body),
 			"room_id": roomID,
 			"sender":  title,
-		},
+		}),
 		Android: &messaging.AndroidConfig{
 			Priority:    "high",
 			CollapseKey: roomID,
@@ -192,14 +192,14 @@ func (s *server) sendMulticastWithRetry(client *messaging.Client, tokens, userID
 		Tokens: tokens,
 		Notification: &messaging.Notification{
 			Title: title,
-			Body:  body,
+			Body:  truncateForFCM(body),
 		},
-		Data: map[string]string{
+		Data: buildSafeDataMap(map[string]string{
 			"title":   title,
 			"body":    truncateForFCM(body),
 			"room_id": roomID,
 			"sender":  title,
-		},
+		}),
 		Android: &messaging.AndroidConfig{
 			Priority:    "high",
 			CollapseKey: roomID,
@@ -397,18 +397,18 @@ func (s *server) sendPushInternal(targetUserID, title, body string, data map[str
 		Token: token,
 		Notification: &messaging.Notification{
 			Title: title,
-			Body:  body,
+			Body:  truncateForFCM(body),
 		},
 		Data: func() map[string]string {
 			safe := make(map[string]string, len(data))
 			for k, v := range data {
-				if k == "text" {
+				if k == "text" || k == "body" {
 					safe[k] = truncateForFCM(v)
 				} else {
 					safe[k] = v
 				}
 			}
-			return safe
+			return buildSafeDataMap(safe)
 		}(),
 		Android: &messaging.AndroidConfig{
 			Priority: "high",
@@ -614,11 +614,37 @@ func durationPtr(d time.Duration) *time.Duration {
 	return &d
 }
 
-const maxFCMDataBodyLen = 3500
+const maxFCMDataSize = 3800
 
 func truncateForFCM(s string) string {
-	if len(s) <= maxFCMDataBodyLen {
+	if len(s) <= maxFCMDataSize {
 		return s
 	}
-	return s[:maxFCMDataBodyLen] + "..."
+	return s[:maxFCMDataSize] + "..."
+}
+
+func buildSafeDataMap(data map[string]string) map[string]string {
+	totalSize := 0
+	for k, v := range data {
+		totalSize += len(k) + len(v)
+	}
+	if totalSize <= maxFCMDataSize {
+		return data
+	}
+	overhead := totalSize
+	safe := make(map[string]string, len(data))
+	for k, v := range data {
+		safe[k] = v
+		overhead -= len(v)
+	}
+	if body, ok := safe["body"]; ok {
+		allowed := maxFCMDataSize - overhead
+		if allowed < 100 {
+			allowed = 100
+		}
+		if len(body) > allowed {
+			safe["body"] = body[:allowed] + "..."
+		}
+	}
+	return safe
 }

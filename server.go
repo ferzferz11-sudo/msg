@@ -32,7 +32,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const ServerVersion = "1.3.3.7"
+const ServerVersion = "1.3.4.0"
 
 // Service versions for client capability negotiation.
 // Service versions for client capability negotiation.
@@ -43,6 +43,7 @@ const (
 	FileServiceVersion    = "1.0"
 	PushServiceVersion    = "1.0"
 	CompanyServiceVersion = "1.0"
+	StickerServiceVersion = "1.0"
 )
 
 // ProfileServiceVersion is set in main() — "2.0" on dev, "1.0" on prod.

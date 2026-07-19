@@ -207,6 +207,11 @@ func main() {
 	gen.RegisterCompanyServiceServer(s, companyServer)
 	logger.Info("CompanyService registered")
 
+	// Register StickerService
+	stickerServer := newStickerServer(db)
+	gen.RegisterStickerServiceServer(s, stickerServer)
+	logger.Info("StickerService registered")
+
 	// Register server management service (only dev)
 	if appEnv == "dev" {
 		srvMgmt := &serverServiceServer{db: db}

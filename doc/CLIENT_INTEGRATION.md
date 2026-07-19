@@ -1,6 +1,6 @@
 # Lavender Messenger — Client Integration Guide
 
-**Server:** v1.3.3.1 | **Protocol:** gRPC + Protocol Buffers | **Date:** 2026-07-05
+**Server:** v1.3.4.0 | **Protocol:** gRPC + Protocol Buffers | **Date:** 2026-07-19
 
 This document covers everything a client needs to integrate with the Lavender Messenger server. Platform-agnostic — applies to Android, iOS, Web, Desktop, or any gRPC-capable client.
 
@@ -26,8 +26,8 @@ GET http://<host>:<port>/info
 Response:
 ```json
 {
-  "version": "1.3.1.20",
-  "time": "2026-07-04T18:57:25+04:00",
+  "version": "1.3.4.0",
+  "time": "2026-07-19T18:05:23+04:00",
   "max_upload_size": 31457280,
   "services": {
     "auth": "2.0",
@@ -35,7 +35,9 @@ Response:
     "profile": "2.0",
     "ai": "2.0",
     "files": "1.0",
-    "push": "1.0"
+    "push": "1.0",
+    "company": "1.0",
+    "stickers": "1.0"
   }
 }
 ```
@@ -44,6 +46,8 @@ Use these versions to decide which API paths to use:
 - `auth >= "2.0"` → use `SignInV2` / `SignUpV2` (JWT tokens)
 - `profile >= "2.0"` → use `ProfileService` v2 (separate gRPC service)
 - `ai >= "2.0"` → use `ChatWithAIV2`
+- `company >= "1.0"` → use `CompanyService` (settings, invite codes, notifications)
+- `stickers >= "1.0"` → use `StickerService` (sticker packs, admin approval)
 - `max_upload_size` → max file size in bytes (30 MB). Client should check `file.size <= max_upload_size` before uploading
 
 ---
@@ -997,6 +1001,19 @@ service CompanyService {
   rpc GetCompanyByUser(GetCompanyByUserRequest) returns (GetCompanyByUserResponse);
   rpc SetPrimaryCompany(SetPrimaryCompanyRequest) returns (SetPrimaryCompanyResponse);
   rpc GetUserCompanies(GetUserCompaniesRequest) returns (GetUserCompaniesResponse);
+
+  // Company Settings
+  rpc GetCompanySettings(GetCompanySettingsRequest) returns (GetCompanySettingsResponse);
+  rpc UpdateCompanySettings(UpdateCompanySettingsRequest) returns (UpdateCompanySettingsResponse);
+
+  // Company Invite Codes
+  rpc GenerateInviteCode(GenerateInviteCodeRequest) returns (GenerateInviteCodeResponse);
+  rpc JoinByInviteCode(JoinByInviteCodeRequest) returns (JoinByInviteCodeResponse);
+  rpc RevokeInviteCode(RevokeInviteCodeRequest) returns (RevokeInviteCodeResponse);
+  rpc ListInviteCodes(ListInviteCodesRequest) returns (ListInviteCodesResponse);
+
+  // Company Notifications
+  rpc SendCompanyNotification(SendCompanyNotificationRequest) returns (SendCompanyNotificationResponse);
 }
 ```
 
@@ -1261,6 +1278,265 @@ message CompanyCompanyMember {
    c. Check access_level and min_position_level
    d. Only show if user's level >= threshold
 3. Each company chat shows its company's badge/icon
+```
+
+### Company Settings
+
+Company owners can configure behavior via settings:
+
+```protobuf
+service CompanyService {
+  rpc GetCompanySettings(GetCompanySettingsRequest) returns (GetCompanySettingsResponse);
+  rpc UpdateCompanySettings(UpdateCompanySettingsRequest) returns (UpdateCompanySettingsResponse);
+}
+
+message CompanySettings {
+  string company_id = 1;
+  bool invite_only = 2;            // hide from search, invite-code only
+  string default_position_id = 3;  // position for new members
+  bool allow_member_invite = 4;    // members can invite others
+  string chat_access = 5;          // "member" | "management" | "owner_only"
+  bool require_approval = 6;       // new members need admin approval
+}
+```
+
+**Access:** `GetCompanySettings` — owner/management. `UpdateCompanySettings` — owner only.
+
+### Company Invite Codes
+
+Generate codes for users to join companies:
+
+```protobuf
+service CompanyService {
+  rpc GenerateInviteCode(GenerateInviteCodeRequest) returns (GenerateInviteCodeResponse);
+  rpc JoinByInviteCode(JoinByInviteCodeRequest) returns (JoinByInviteCodeResponse);
+  rpc RevokeInviteCode(RevokeInviteCodeRequest) returns (RevokeInviteCodeResponse);
+  rpc ListInviteCodes(ListInviteCodesRequest) returns (ListInviteCodesResponse);
+}
+
+message GenerateInviteCodeRequest {
+  string company_id = 1;
+  int32 expires_hours = 2;   // 0 = no expiry
+  int32 max_uses = 3;        // default 1
+}
+
+message InviteCodeInfo {
+  string id = 1;
+  string code = 2;           // 8-char alphanumeric (A-Z, 0-9)
+  string company_id = 3;
+  string created_by = 4;
+  string created_at = 5;
+  string expires_at = 6;
+  int32 max_uses = 7;
+  int32 use_count = 8;
+  bool is_active = 9;
+}
+```
+
+**Flow:**
+1. Owner/manager calls `GenerateInviteCode` → receives code
+2. Share code with user (QR, link, text)
+3. User calls `JoinByInviteCode({ code })` → joins company with default position
+4. Owner/manager can `RevokeInviteCode` to deactivate
+
+**Constraints:**
+- Codes are unique (8 chars, A-Z 0-9)
+- Expired codes rejected
+- Max uses enforced atomically
+- Existing members cannot re-join via code
+
+### Company Notifications
+
+Send push notifications for company events:
+
+```protobuf
+service CompanyService {
+  rpc SendCompanyNotification(SendCompanyNotificationRequest) returns (SendCompanyNotificationResponse);
+}
+
+enum CompanyEventType {
+  COMPANY_EVENT_UNKNOWN = 0;
+  MEMBER_JOINED = 1;
+  MEMBER_LEFT = 2;
+  POSITION_CHANGED = 3;
+  COMPANY_CHAT_CREATED = 4;
+}
+
+message SendCompanyNotificationRequest {
+  string company_id = 1;
+  CompanyEventType event_type = 2;
+  string actor_username = 3;
+  string target_username = 4;    // for POSITION_CHANGED
+  string position_name = 5;      // for POSITION_CHANGED
+}
+```
+
+**Push payload:** FCM data message with `type = "company_event"`, `company_id`, `event_type`, `actor`, `company_name`, `body`.
+
+**Channel:** `lavender_messages_v2` (same as regular messages).
+
+---
+
+## Sticker System
+
+StickerService is a separate gRPC service for managing sticker packs with admin approval workflow.
+
+### Architecture
+
+```
+User creates pack (draft)
+  → Adds stickers (Lottie .json files)
+  → Submits for approval (pending)
+  → Admin approves/rejects
+  → Approved packs visible to all users
+```
+
+### RPCs
+
+```protobuf
+service StickerService {
+  rpc CreateStickerPack(CreateStickerPackRequest) returns (CreateStickerPackResponse);
+  rpc AddSticker(AddStickerRequest) returns (AddStickerResponse);
+  rpc RemoveSticker(RemoveStickerRequest) returns (RemoveStickerResponse);
+  rpc DeleteStickerPack(DeleteStickerPackRequest) returns (DeleteStickerPackResponse);
+  rpc GetUserStickerPacks(GetUserStickerPacksRequest) returns (GetUserStickerPacksResponse);
+  rpc GetPublicStickerPacks(GetPublicStickerPacksRequest) returns (GetPublicStickerPacksResponse);
+  rpc GetStickerPack(GetStickerPackRequest) returns (GetStickerPackResponse);
+  rpc SubmitForApproval(SubmitForApprovalRequest) returns (SubmitForApprovalResponse);
+  rpc ApproveStickerPack(ApproveStickerPackRequest) returns (ApproveStickerPackResponse);
+  rpc GetPendingStickerPacks(GetPendingStickerPacksRequest) returns (GetPendingStickerPacksResponse);
+  rpc SearchStickerPacks(SearchStickerPacksRequest) returns (SearchStickerPacksResponse);
+  rpc UpdateStickerPack(UpdateStickerPackRequest) returns (UpdateStickerPackResponse);
+  rpc SetFeaturedStickerPack(SetFeaturedStickerPackRequest) returns (SetFeaturedStickerPackResponse);
+}
+```
+
+### Sticker Pack Lifecycle
+
+| Status | Meaning | Who Sees |
+|--------|---------|----------|
+| `draft` | Being edited | Creator only |
+| `pending` | Submitted for review | Creator + admins |
+| `approved` | Live | All users |
+| `rejected` | Denied by admin | Creator + admins |
+
+### Key RPCs
+
+#### CreateStickerPack
+
+```protobuf
+message CreateStickerPackRequest {
+  string title = 1;    // "Cats Pack"
+  string name = 2;     // "cats" (URL-friendly slug)
+}
+message CreateStickerPackResponse {
+  bool success = 1;
+  string error = 2;
+  StickerPack pack = 3;
+}
+```
+
+#### AddSticker
+
+```protobuf
+message AddStickerRequest {
+  string pack_id = 1;
+  string lottie_url = 2;     // "http://host:8083/stickers/abc.json"
+  string thumbnail_url = 3;  // "http://host:8083/sticker-thumbnails/abc.png"
+  string emoji = 4;          // "🐱" (fallback display)
+  int32 width = 5;           // default 512
+  int32 height = 6;          // default 512
+}
+```
+
+#### GetPublicStickerPacks (cursor pagination)
+
+```protobuf
+message GetPublicStickerPacksRequest {
+  string cursor = 1;    // from previous response
+  int32 limit = 2;      // default 50, max 100
+}
+message GetPublicStickerPacksResponse {
+  repeated StickerPack packs = 1;
+  string next_cursor = 2;
+  bool has_more = 3;
+}
+```
+
+**Featured packs** appear first (is_featured = true).
+
+#### Admin Approval
+
+```protobuf
+// Super admin only
+message ApproveStickerPackRequest {
+  string pack_id = 1;
+  bool approved = 2;      // true = approve, false = reject
+  string reason = 3;      // rejection reason (optional)
+}
+```
+
+### HTTP Upload Endpoints
+
+| Method | Path | Content-Type | Description |
+|--------|------|-------------|-------------|
+| `POST` | `/upload-sticker` | `multipart/form-data` | Upload Lottie .json (field: `sticker`, max 512KB) |
+| `POST` | `/upload-sticker-thumbnail` | `multipart/form-data` | Upload thumbnail (field: `thumbnail`, .png/.jpg/.jpeg/.webp) |
+
+**Response:** `{"url": "http://host:port/stickers/<hash>.json"}`
+
+### Sticker Data Model
+
+```protobuf
+message Sticker {
+  string id = 1;
+  string pack_id = 2;
+  string lottie_url = 3;
+  string thumbnail_url = 4;
+  string emoji = 5;
+  int32 width = 6;
+  int32 height = 7;
+  int64 created_at = 8;
+}
+
+message StickerPack {
+  string id = 1;
+  string title = 2;
+  string name = 3;
+  string creator_user_id = 4;
+  string creator_username = 5;
+  repeated Sticker stickers = 6;
+  string cover_sticker_id = 7;
+  string status = 8;           // "draft" | "pending" | "approved" | "rejected"
+  string rejection_reason = 9;
+  int64 created_at = 10;
+  int64 updated_at = 11;
+  bool is_featured = 12;
+}
+```
+
+### Client Flow: Create & Submit Sticker Pack
+
+```
+1. User creates pack: CreateStickerPack({ title: "Cats", name: "cats" })
+2. Upload Lottie files: POST /upload-sticker → get URLs
+3. Upload thumbnails: POST /upload-sticker-thumbnail → get URLs
+4. Add stickers: AddSticker({ pack_id, lottie_url, thumbnail_url, emoji: "🐱" })
+5. Repeat for each sticker
+6. Submit: SubmitForApproval({ pack_id })
+7. Pack status changes to "pending"
+8. Admin reviews: ApproveStickerPack({ pack_id, approved: true })
+9. Pack appears in GetPublicStickerPacks for all users
+```
+
+### Client Flow: Browse Stickers
+
+```
+1. Load public packs: GetPublicStickerPacks({ limit: 50 })
+2. Featured packs shown first
+3. Load more: pass next_cursor from response
+4. Tap pack: GetStickerPack({ pack_id }) → full sticker list
+5. Search: SearchStickerPacks({ query: "cat", limit: 20 })
 ```
 
 ---
@@ -1678,6 +1954,8 @@ All upload endpoints require `Authorization: Bearer <access_token>` header.
 | `POST` | `/upload-file` | `multipart/form-data` | Upload file (field: `file`) |
 | `POST` | `/upload-background` | `multipart/form-data` | Upload background (field: `background`) |
 | `POST` | `/upload-audio` | `multipart/form-data` | Upload audio (field: `audio`) |
+| `POST` | `/upload-sticker` | `multipart/form-data` | Upload Lottie .json (field: `sticker`, max 512KB) |
+| `POST` | `/upload-sticker-thumbnail` | `multipart/form-data` | Upload thumbnail (field: `thumbnail`, .png/.jpg/.jpeg/.webp) |
 
 **Allowed extensions:**
 - Images (avatar, image, background): `.jpg`, `.jpeg`, `.png`, `.gif`, `.webp`
@@ -1695,6 +1973,8 @@ All upload endpoints require `Authorization: Bearer <access_token>` header.
 | `GET` | `/files/<filename>` | View file |
 | `GET` | `/background/<filename>` | View background |
 | `GET` | `/audio/<filename>` | View audio |
+| `GET` | `/stickers/<filename>` | View Lottie sticker (.json) |
+| `GET` | `/sticker-thumbnails/<filename>` | View sticker thumbnail |
 
 ### TURN Credentials (WebRTC)
 
@@ -1748,7 +2028,7 @@ Reconnection flow:
 
 | File | Service | Description |
 |------|---------|-------------|
-| `messenger.proto` | ChatService, AuthService, ProfileService | All main RPCs |
+| `messenger.proto` | ChatService, AuthService, ProfileService, CompanyService, StickerService | All main RPCs |
 | `server.proto` | ServerService | Server management (admin) |
 | `hermes_remote.proto` | HermesAgentService | Agent daemon communication |
 
@@ -1801,4 +2081,6 @@ For a new client, implement in this order:
 8. **File uploads:** Upload with JWT auth, use returned URLs in messages
 9. **Push notifications:** `RegisterToken` with FCM token
 10. **AI chat:** `ChatWithAIV2` with streaming
-11. **Graceful shutdown:** Handle `SERVER_SHUTTINGDOWN` and reconnect logic
+11. **Company:** `CompanyService` (settings, invite codes, notifications)
+12. **Stickers:** `StickerService` (browse, create, upload Lottie files)
+13. **Graceful shutdown:** Handle `SERVER_SHUTTINGDOWN` and reconnect logic

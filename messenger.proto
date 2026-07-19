@@ -2158,6 +2158,109 @@ service ProfileService {
   rpc UpdateUserSettings(UpdateUserSettingsRequest) returns (UpdateUserSettingsResponse);
 }
 
+// ======= Company Settings =======
+
+message CompanySettings {
+  string company_id = 1;
+  bool invite_only = 2;
+  string default_position_id = 3;
+  bool allow_member_invite = 4;
+  string chat_access = 5;       // "member", "management", "owner_only"
+  bool require_approval = 6;
+}
+
+message GetCompanySettingsRequest {
+  string company_id = 1;
+}
+
+message GetCompanySettingsResponse {
+  CompanySettings settings = 1;
+}
+
+message UpdateCompanySettingsRequest {
+  string company_id = 1;
+  CompanySettings settings = 2;
+}
+
+message UpdateCompanySettingsResponse {
+  bool success = 1;
+  string error = 2;
+}
+
+// ======= Company Invite Codes =======
+
+message InviteCodeInfo {
+  string id = 1;
+  string code = 2;
+  string company_id = 3;
+  string created_by = 4;
+  string created_at = 5;
+  string expires_at = 6;
+  int32 max_uses = 7;
+  int32 use_count = 8;
+  bool is_active = 9;
+}
+
+message GenerateInviteCodeRequest {
+  string company_id = 1;
+  int32 expires_hours = 2;   // 0 = no expiry
+  int32 max_uses = 3;        // default 1
+}
+
+message GenerateInviteCodeResponse {
+  bool success = 1;
+  InviteCodeInfo code = 2;
+  string error = 3;
+}
+
+message JoinByInviteCodeRequest {
+  string code = 1;
+}
+
+message JoinByInviteCodeResponse {
+  bool success = 1;
+  string company_id = 2;
+  string error = 3;
+}
+
+message RevokeInviteCodeRequest {
+  string code_id = 1;
+}
+
+message RevokeInviteCodeResponse {
+  bool success = 1;
+}
+
+message ListInviteCodesRequest {
+  string company_id = 1;
+}
+
+message ListInviteCodesResponse {
+  repeated InviteCodeInfo codes = 1;
+}
+
+// ======= Company Notifications =======
+
+enum CompanyEventType {
+  COMPANY_EVENT_UNKNOWN = 0;
+  MEMBER_JOINED = 1;
+  MEMBER_LEFT = 2;
+  POSITION_CHANGED = 3;
+  COMPANY_CHAT_CREATED = 4;
+}
+
+message SendCompanyNotificationRequest {
+  string company_id = 1;
+  CompanyEventType event_type = 2;
+  string actor_username = 3;
+  string target_username = 4;
+  string position_name = 5;
+}
+
+message SendCompanyNotificationResponse {
+  bool success = 1;
+}
+
 // ======= Company System =======
 
 service CompanyService {
@@ -2186,6 +2289,19 @@ service CompanyService {
   rpc GetCompanyByUser(GetCompanyByUserRequest) returns (GetCompanyByUserResponse);
   rpc SetPrimaryCompany(SetPrimaryCompanyRequest) returns (SetPrimaryCompanyResponse);
   rpc GetUserCompanies(GetUserCompaniesRequest) returns (GetUserCompaniesResponse);
+
+  // === Company Settings ===
+  rpc GetCompanySettings(GetCompanySettingsRequest) returns (GetCompanySettingsResponse);
+  rpc UpdateCompanySettings(UpdateCompanySettingsRequest) returns (UpdateCompanySettingsResponse);
+
+  // === Company Invite Codes ===
+  rpc GenerateInviteCode(GenerateInviteCodeRequest) returns (GenerateInviteCodeResponse);
+  rpc JoinByInviteCode(JoinByInviteCodeRequest) returns (JoinByInviteCodeResponse);
+  rpc RevokeInviteCode(RevokeInviteCodeRequest) returns (RevokeInviteCodeResponse);
+  rpc ListInviteCodes(ListInviteCodesRequest) returns (ListInviteCodesResponse);
+
+  // === Company Notifications ===
+  rpc SendCompanyNotification(SendCompanyNotificationRequest) returns (SendCompanyNotificationResponse);
 }
 
 message Company {
@@ -2438,5 +2554,175 @@ message CompanyCompanyMember {
   Company company = 1;
   CompanyMember member = 2;
   bool is_primary = 3;
+}
+
+// ======= Sticker System =======
+
+message Sticker {
+  string id = 1;
+  string pack_id = 2;
+  string lottie_url = 3;
+  string thumbnail_url = 4;
+  string emoji = 5;
+  int32 width = 6;
+  int32 height = 7;
+  int64 created_at = 8;
+}
+
+message StickerPack {
+  string id = 1;
+  string title = 2;
+  string name = 3;
+  string creator_user_id = 4;
+  string creator_username = 5;
+  repeated Sticker stickers = 6;
+  string cover_sticker_id = 7;
+  string status = 8;
+  string rejection_reason = 9;
+  int64 created_at = 10;
+  int64 updated_at = 11;
+  bool is_featured = 12;
+}
+
+message CreateStickerPackRequest {
+  string title = 1;
+  string name = 2;
+}
+
+message CreateStickerPackResponse {
+  bool success = 1;
+  string error = 2;
+  StickerPack pack = 3;
+}
+
+message AddStickerRequest {
+  string pack_id = 1;
+  string lottie_url = 2;
+  string thumbnail_url = 3;
+  string emoji = 4;
+  int32 width = 5;
+  int32 height = 6;
+}
+
+message AddStickerResponse {
+  bool success = 1;
+  string error = 2;
+  Sticker sticker = 3;
+}
+
+message RemoveStickerRequest {
+  string pack_id = 1;
+  string sticker_id = 2;
+}
+
+message RemoveStickerResponse {
+  bool success = 1;
+}
+
+message DeleteStickerPackRequest {
+  string pack_id = 1;
+}
+
+message DeleteStickerPackResponse {
+  bool success = 1;
+}
+
+message GetUserStickerPacksRequest {}
+
+message GetUserStickerPacksResponse {
+  repeated StickerPack packs = 1;
+}
+
+message GetPublicStickerPacksRequest {
+  string cursor = 1;
+  int32 limit = 2;
+}
+
+message GetPublicStickerPacksResponse {
+  repeated StickerPack packs = 1;
+  string next_cursor = 2;
+  bool has_more = 3;
+}
+
+message GetStickerPackRequest {
+  string pack_id = 1;
+}
+
+message GetStickerPackResponse {
+  StickerPack pack = 1;
+}
+
+message SubmitForApprovalRequest {
+  string pack_id = 1;
+}
+
+message SubmitForApprovalResponse {
+  bool success = 1;
+  string error = 2;
+}
+
+message ApproveStickerPackRequest {
+  string pack_id = 1;
+  bool approved = 2;
+  string reason = 3;
+}
+
+message ApproveStickerPackResponse {
+  bool success = 1;
+}
+
+message GetPendingStickerPacksRequest {
+  string cursor = 1;
+  int32 limit = 2;
+}
+
+message GetPendingStickerPacksResponse {
+  repeated StickerPack packs = 1;
+  string next_cursor = 2;
+  bool has_more = 3;
+}
+
+message SearchStickerPacksRequest {
+  string query = 1;
+  int32 limit = 2;
+}
+
+message SearchStickerPacksResponse {
+  repeated StickerPack packs = 1;
+}
+
+message UpdateStickerPackRequest {
+  string pack_id = 1;
+  string title = 2;
+  string cover_sticker_id = 3;
+}
+
+message UpdateStickerPackResponse {
+  bool success = 1;
+}
+
+message SetFeaturedStickerPackRequest {
+  string pack_id = 1;
+  bool featured = 2;
+}
+
+message SetFeaturedStickerPackResponse {
+  bool success = 1;
+}
+
+service StickerService {
+  rpc CreateStickerPack(CreateStickerPackRequest) returns (CreateStickerPackResponse);
+  rpc AddSticker(AddStickerRequest) returns (AddStickerResponse);
+  rpc RemoveSticker(RemoveStickerRequest) returns (RemoveStickerResponse);
+  rpc DeleteStickerPack(DeleteStickerPackRequest) returns (DeleteStickerPackResponse);
+  rpc GetUserStickerPacks(GetUserStickerPacksRequest) returns (GetUserStickerPacksResponse);
+  rpc GetPublicStickerPacks(GetPublicStickerPacksRequest) returns (GetPublicStickerPacksResponse);
+  rpc GetStickerPack(GetStickerPackRequest) returns (GetStickerPackResponse);
+  rpc SubmitForApproval(SubmitForApprovalRequest) returns (SubmitForApprovalResponse);
+  rpc ApproveStickerPack(ApproveStickerPackRequest) returns (ApproveStickerPackResponse);
+  rpc GetPendingStickerPacks(GetPendingStickerPacksRequest) returns (GetPendingStickerPacksResponse);
+  rpc SearchStickerPacks(SearchStickerPacksRequest) returns (SearchStickerPacksResponse);
+  rpc UpdateStickerPack(UpdateStickerPackRequest) returns (UpdateStickerPackResponse);
+  rpc SetFeaturedStickerPack(SetFeaturedStickerPackRequest) returns (SetFeaturedStickerPackResponse);
 }
 
