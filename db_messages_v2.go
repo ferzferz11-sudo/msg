@@ -27,6 +27,7 @@ type MessageRowV2 struct {
 	E2EEPayload   []byte
 	Reactions     string
 	Mentions      sql.NullString
+	ForwardedFrom string
 	CreatedAt     time.Time
 }
 
@@ -44,10 +45,10 @@ func (db *DB) SaveMessageV2(m *MessageRowV2) error {
 	if m.Mentions.Valid && m.Mentions.String != "" {
 		mentions = m.Mentions.String
 	}
-	_, err := db.Exec(`INSERT INTO messages_v2 (id, room_id, sender_id, content_type, text, media_url, media_urls, duration, reply_to_id, reply_preview, reply_sender_id, edited, is_read, is_e2ee, e2ee_payload, reactions, mentions, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10, $11, $12, $13, $14, $15, $16::jsonb, $17, $18)
+	_, err := db.Exec(`INSERT INTO messages_v2 (id, room_id, sender_id, content_type, text, media_url, media_urls, duration, reply_to_id, reply_preview, reply_sender_id, edited, is_read, is_e2ee, e2ee_payload, reactions, mentions, created_at, forwarded_from)
+		VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10, $11, $12, $13, $14, $15, $16::jsonb, $17, $18, $19)
 		ON CONFLICT (id) DO NOTHING`,
-		m.ID, m.RoomID, m.SenderID, m.ContentType, m.Text, m.MediaURL, mediaURLs, m.Duration, m.ReplyToID, m.ReplyPreview, m.ReplySenderID, m.Edited, m.IsRead, m.IsE2EE, m.E2EEPayload, reactions, mentions, m.CreatedAt)
+		m.ID, m.RoomID, m.SenderID, m.ContentType, m.Text, m.MediaURL, mediaURLs, m.Duration, m.ReplyToID, m.ReplyPreview, m.ReplySenderID, m.Edited, m.IsRead, m.IsE2EE, m.E2EEPayload, reactions, mentions, m.CreatedAt, m.ForwardedFrom)
 	return err
 }
 
@@ -68,7 +69,8 @@ func (db *DB) GetMessagesV2Cursor(roomID string, limit int, cursor string) ([]Me
 		COALESCE(u.username, ''), COALESCE(u.avatar_url, ''),
 		m.content_type, COALESCE(m.text, ''), COALESCE(m.media_url, ''), COALESCE(m.media_urls, '[]'),
 		m.duration, m.reply_to_id, m.reply_preview, m.reply_sender_id, m.edited, m.is_read, m.is_e2ee,
-		COALESCE(m.e2ee_payload, NULL), COALESCE(m.reactions, '{}'), COALESCE(m.mentions, '[]'), m.created_at
+		COALESCE(m.e2ee_payload, NULL), COALESCE(m.reactions, '{}'), COALESCE(m.mentions, '[]'), m.created_at,
+		COALESCE(m.forwarded_from, '')
 		FROM messages_v2 m
 		LEFT JOIN users u ON m.sender_id = u.id`
 
@@ -91,7 +93,7 @@ func (db *DB) GetMessagesV2Cursor(roomID string, limit int, cursor string) ([]Me
 		if err := rows.Scan(&r.ID, &r.RoomID, &r.SenderID, &r.SenderName, &r.SenderAvatar,
 			&r.ContentType, &r.Text, &r.MediaURL, &r.MediaURLs,
 			&r.Duration, &r.ReplyToID, &r.ReplyPreview, &r.ReplySenderID, &r.Edited, &r.IsRead, &r.IsE2EE,
-			&r.E2EEPayload, &r.Reactions, &r.Mentions, &r.CreatedAt); err != nil {
+			&r.E2EEPayload, &r.Reactions, &r.Mentions, &r.CreatedAt, &r.ForwardedFrom); err != nil {
 			return nil, "", err
 		}
 		result = append(result, r)
@@ -120,12 +122,13 @@ func (db *DB) GetMessageV2ByUUID(id string) (MessageRowV2, error) {
 		COALESCE(u.username, ''), COALESCE(u.avatar_url, ''),
 		m.content_type, COALESCE(m.text, ''), COALESCE(m.media_url, ''), COALESCE(m.media_urls, '[]'),
 		m.duration, m.reply_to_id, m.reply_preview, m.reply_sender_id, m.edited, m.is_read, m.is_e2ee,
-		COALESCE(m.e2ee_payload, NULL), COALESCE(m.reactions, '{}'), COALESCE(m.mentions, '[]'), m.created_at
+		COALESCE(m.e2ee_payload, NULL), COALESCE(m.reactions, '{}'), COALESCE(m.mentions, '[]'), m.created_at,
+		COALESCE(m.forwarded_from, '')
 		FROM messages_v2 m LEFT JOIN users u ON m.sender_id = u.id
 		WHERE m.id = $1`, id).Scan(&r.ID, &r.RoomID, &r.SenderID, &r.SenderName, &r.SenderAvatar,
 		&r.ContentType, &r.Text, &r.MediaURL, &r.MediaURLs,
 		&r.Duration, &r.ReplyToID, &r.ReplyPreview, &r.ReplySenderID, &r.Edited, &r.IsRead, &r.IsE2EE,
-		&r.E2EEPayload, &r.Reactions, &r.Mentions, &r.CreatedAt)
+		&r.E2EEPayload, &r.Reactions, &r.Mentions, &r.CreatedAt, &r.ForwardedFrom)
 	return r, err
 }
 
@@ -207,7 +210,8 @@ func (db *DB) GetMessagesV2ByIDs(ids []string) ([]MessageRowV2, error) {
 		COALESCE(u.username, ''), COALESCE(u.avatar_url, ''),
 		m.content_type, COALESCE(m.text, ''), COALESCE(m.media_url, ''), COALESCE(m.media_urls, '[]'),
 		m.duration, m.reply_to_id, m.reply_preview, m.reply_sender_id, m.edited, m.is_read, m.is_e2ee,
-		COALESCE(m.e2ee_payload, NULL), COALESCE(m.reactions, '{}'), COALESCE(m.mentions, '[]'), m.created_at
+		COALESCE(m.e2ee_payload, NULL), COALESCE(m.reactions, '{}'), COALESCE(m.mentions, '[]'), m.created_at,
+		COALESCE(m.forwarded_from, '')
 		FROM messages_v2 m LEFT JOIN users u ON m.sender_id = u.id
 		WHERE m.id = ANY($1) ORDER BY m.created_at ASC`
 	rows, err := db.Query(query, ids)
@@ -221,7 +225,7 @@ func (db *DB) GetMessagesV2ByIDs(ids []string) ([]MessageRowV2, error) {
 		if err := rows.Scan(&r.ID, &r.RoomID, &r.SenderID, &r.SenderName, &r.SenderAvatar,
 			&r.ContentType, &r.Text, &r.MediaURL, &r.MediaURLs,
 			&r.Duration, &r.ReplyToID, &r.ReplyPreview, &r.ReplySenderID, &r.Edited, &r.IsRead, &r.IsE2EE,
-			&r.E2EEPayload, &r.Reactions, &r.Mentions, &r.CreatedAt); err != nil {
+			&r.E2EEPayload, &r.Reactions, &r.Mentions, &r.CreatedAt, &r.ForwardedFrom); err != nil {
 			return nil, err
 		}
 		result = append(result, r)

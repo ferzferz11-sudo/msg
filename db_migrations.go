@@ -200,6 +200,11 @@ var coreMigrations = []string{
 	`CREATE INDEX IF NOT EXISTS idx_invite_codes_code ON company_invite_codes(code)`,
 	`CREATE INDEX IF NOT EXISTS idx_invite_codes_company ON company_invite_codes(company_id)`,
 
+	// --- Forward attribution ---
+	`DO $$ BEGIN
+		IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages_v2' AND column_name='forwarded_from') THEN ALTER TABLE messages_v2 ADD COLUMN forwarded_from TEXT DEFAULT ''; END IF;
+	END $$;`,
+
 	// --- Revoked Tokens (Agent JWT blacklist) ---
 	`CREATE TABLE IF NOT EXISTS revoked_tokens (
 		token_hash VARCHAR(64) PRIMARY KEY,

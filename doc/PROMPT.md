@@ -1,7 +1,7 @@
-# Промпт для серверных сессий — v1.3.4.0
+# Промпт для серверных сессий — v1.3.4.2
 
 **Дата:** 2026-07-31 | **Ветка:** feat/1.3.0.x
-**Статус:** v1.3.4.0 задеплоен. Security fixes: JWT issuer/audience, agent revoke, rate limiter cleanup, CORS, IP extraction.
+**Статус:** v1.3.4.2 задеплоен. Forward attribution + security fixes.
 
 ---
 

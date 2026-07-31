@@ -14635,6 +14635,7 @@ type MessageV2 struct {
 	IsE2Ee        bool                   `protobuf:"varint,30,opt,name=is_e2ee,json=isE2ee,proto3" json:"is_e2ee,omitempty"`
 	E2EePayload   string                 `protobuf:"bytes,31,opt,name=e2ee_payload,json=e2eePayload,proto3" json:"e2ee_payload,omitempty"`
 	Mentions      []string               `protobuf:"bytes,40,rep,name=mentions,proto3" json:"mentions,omitempty"`
+	ForwardedFrom string                 `protobuf:"bytes,50,opt,name=forwarded_from,json=forwardedFrom,proto3" json:"forwarded_from,omitempty"` // username of original sender when forwarding
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -14769,6 +14770,13 @@ func (x *MessageV2) GetMentions() []string {
 		return x.Mentions
 	}
 	return nil
+}
+
+func (x *MessageV2) GetForwardedFrom() string {
+	if x != nil {
+		return x.ForwardedFrom
+	}
+	return ""
 }
 
 type isMessageV2_Content interface {
@@ -15047,6 +15055,7 @@ type SendMessageV2Request struct {
 	IsE2Ee        bool                           `protobuf:"varint,5,opt,name=is_e2ee,json=isE2ee,proto3" json:"is_e2ee,omitempty"`
 	E2EePayload   string                         `protobuf:"bytes,6,opt,name=e2ee_payload,json=e2eePayload,proto3" json:"e2ee_payload,omitempty"`
 	Mentions      []string                       `protobuf:"bytes,7,rep,name=mentions,proto3" json:"mentions,omitempty"`
+	ForwardedFrom string                         `protobuf:"bytes,8,opt,name=forwarded_from,json=forwardedFrom,proto3" json:"forwarded_from,omitempty"` // username of original sender when forwarding
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -15139,6 +15148,13 @@ func (x *SendMessageV2Request) GetMentions() []string {
 		return x.Mentions
 	}
 	return nil
+}
+
+func (x *SendMessageV2Request) GetForwardedFrom() string {
+	if x != nil {
+		return x.ForwardedFrom
+	}
+	return ""
 }
 
 type isSendMessageV2Request_Content interface {
@@ -25288,7 +25304,7 @@ const file_messenger_proto_rawDesc = "" +
 	"\tis_typing\x18\x01 \x01(\bR\bisTyping\"<\n" +
 	"\fChatV2System\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage\"\xb4\x03\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"\xdb\x03\n" +
 	"\tMessageV2\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
 	"\aroom_id\x18\x02 \x01(\tR\x06roomId\x12\x1b\n" +
@@ -25304,7 +25320,8 @@ const file_messenger_proto_rawDesc = "" +
 	"\treactions\x18\x17 \x01(\fR\treactions\x12\x17\n" +
 	"\ais_e2ee\x18\x1e \x01(\bR\x06isE2ee\x12!\n" +
 	"\fe2ee_payload\x18\x1f \x01(\tR\ve2eePayload\x12\x1a\n" +
-	"\bmentions\x18( \x03(\tR\bmentionsB\t\n" +
+	"\bmentions\x18( \x03(\tR\bmentions\x12%\n" +
+	"\x0eforwarded_from\x182 \x01(\tR\rforwardedFromB\t\n" +
 	"\acontent\"d\n" +
 	"\fMessageMedia\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x10\n" +
@@ -25324,7 +25341,7 @@ const file_messenger_proto_rawDesc = "" +
 	"\bmessages\x18\x01 \x03(\v2\x14.messenger.MessageV2R\bmessages\x12\x1f\n" +
 	"\vnext_cursor\x18\x02 \x01(\tR\n" +
 	"nextCursor\x12\x19\n" +
-	"\bhas_more\x18\x03 \x01(\bR\ahasMore\"\xf9\x01\n" +
+	"\bhas_more\x18\x03 \x01(\bR\ahasMore\"\xa0\x02\n" +
 	"\x14SendMessageV2Request\x12\x17\n" +
 	"\aroom_id\x18\x01 \x01(\tR\x06roomId\x12\x14\n" +
 	"\x04text\x18\x02 \x01(\tH\x00R\x04text\x12/\n" +
@@ -25332,7 +25349,8 @@ const file_messenger_proto_rawDesc = "" +
 	"\vreply_to_id\x18\x04 \x01(\tR\treplyToId\x12\x17\n" +
 	"\ais_e2ee\x18\x05 \x01(\bR\x06isE2ee\x12!\n" +
 	"\fe2ee_payload\x18\x06 \x01(\tR\ve2eePayload\x12\x1a\n" +
-	"\bmentions\x18\a \x03(\tR\bmentionsB\t\n" +
+	"\bmentions\x18\a \x03(\tR\bmentions\x12%\n" +
+	"\x0eforwarded_from\x18\b \x01(\tR\rforwardedFromB\t\n" +
 	"\acontent\"w\n" +
 	"\x15SendMessageV2Response\x12.\n" +
 	"\amessage\x18\x01 \x01(\v2\x14.messenger.MessageV2R\amessage\x12\x18\n" +

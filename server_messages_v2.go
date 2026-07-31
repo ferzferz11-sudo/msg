@@ -121,6 +121,10 @@ func (s *server) SendMessageV2(ctx context.Context, req *gen.SendMessageV2Reques
 		row.Mentions = sql.NullString{String: string(b), Valid: true}
 	}
 
+	if req.ForwardedFrom != "" {
+		row.ForwardedFrom = req.ForwardedFrom
+	}
+
 	if !utf8.ValidString(row.MediaURL) {
 		row.MediaURL = strings.ToValidUTF8(row.MediaURL, "")
 	}
@@ -454,6 +458,10 @@ func rowToProtoV2(r *MessageRowV2) *gen.MessageV2 {
 		if err := json.Unmarshal([]byte(r.Mentions.String), &mentions); err == nil {
 			m.Mentions = mentions
 		}
+	}
+
+	if r.ForwardedFrom != "" {
+		m.ForwardedFrom = r.ForwardedFrom
 	}
 
 	return m

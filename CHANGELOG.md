@@ -1,5 +1,26 @@
 # Лава — Server Changelog
 
+## [1.3.4.2] - 2026-07-31
+
+### Features
+- **Forward Message Attribution** — `forwarded_from` поле в `MessageV2` и `SendMessageV2Request`. Сервер хранит и возвращает username оригинального отправителя при пересылке сообщений.
+
+### Proto
+- `MessageV2.forwarded_from` (field 50) — username of original sender
+- `SendMessageV2Request.forwarded_from` (field 8)
+
+### Migration
+- `messages_v2.forwarded_from TEXT DEFAULT ''` — добавлено через `ALTER TABLE ADD COLUMN IF NOT EXISTS`
+
+---
+
+## [1.3.4.1] - 2026-07-31
+
+### Исправлено
+
+**Sticker thumbnail upload — имя поля:**
+- `uploadStickerThumbnailHandler` (`http_server.go:648`) — ожидал поле `"thumbnail"`, клиент отправлял `"sticker"` → HTTP 400 при загрузке изображений. Фикс: `r.FormFile("sticker")` — единое имя поля для обоих эндпоинтов.
+
 ## [1.3.4.0] - 2026-07-31
 
 ### Security Fixes

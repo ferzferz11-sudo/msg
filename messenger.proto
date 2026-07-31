@@ -1705,6 +1705,7 @@ message MessageV2 {
   string e2ee_payload = 31;
 
   repeated string mentions = 40;
+  string forwarded_from = 50;  // username of original sender when forwarding
 }
 
 message MessageMedia {
@@ -1742,6 +1743,7 @@ message SendMessageV2Request {
   bool is_e2ee = 5;
   string e2ee_payload = 6;
   repeated string mentions = 7;
+  string forwarded_from = 8;  // username of original sender when forwarding
 }
 
 message SendMessageV2Response {
