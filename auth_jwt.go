@@ -115,9 +115,28 @@ func ValidateToken(tokenString string) (*authClaims, error) {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
 		return secret, nil
-	}, jwt.WithIssuer("lavender-server"), jwt.WithAudience("lavender-server"))
+	})
 	if err != nil {
 		return nil, fmt.Errorf("token validation failed: %w", err)
+	}
+
+	// Validate issuer/audience only if present (backward compat for old tokens)
+	if claims, ok := token.Claims.(*authClaims); ok {
+		if claims.Issuer != "" && claims.Issuer != "lavender-server" {
+			return nil, fmt.Errorf("invalid issuer: %s", claims.Issuer)
+		}
+		if len(claims.Audience) > 0 {
+			validAud := false
+			for _, aud := range claims.Audience {
+				if aud == "lavender-server" {
+					validAud = true
+					break
+				}
+			}
+			if !validAud {
+				return nil, fmt.Errorf("invalid audience: %v", claims.Audience)
+			}
+		}
 	}
 
 	claims, ok := token.Claims.(*authClaims)

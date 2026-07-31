@@ -1,6 +1,6 @@
 # Lavender Messenger — Client Integration Guide
 
-**Server:** v1.3.4.0 | **Protocol:** gRPC + Protocol Buffers | **Date:** 2026-07-19
+**Server:** v1.3.4.0 | **Protocol:** gRPC + Protocol Buffers | **Date:** 2026-07-31
 
 This document covers everything a client needs to integrate with the Lavender Messenger server. Platform-agnostic — applies to Android, iOS, Web, Desktop, or any gRPC-capable client.
 
@@ -147,6 +147,44 @@ message RevokeDeviceRequest {
 - Refresh token: JWT, HS256, expires in **30 days**
 - `JWT_SECRET` must be ≥ 32 bytes (enforced at server startup)
 - Refresh token rotation: every `RefreshToken` call returns a new refresh token and invalidates the old one
+
+### JWT Claims (v1.3.4.0+)
+
+Access and refresh tokens now include standard JWT claims:
+
+```json
+{
+  "user_id": "uuid",
+  "username": "string",
+  "device_id": "string",
+  "type": "access",
+  "iss": "lavender-server",
+  "aud": ["lavender-server"],
+  "iat": 1722436800,
+  "exp": 1722437700,
+  "jti": "unique-token-id"
+}
+```
+
+**Client impact:**
+- `iss` (issuer) and `aud` (audience) are informational — no client changes needed
+- Tokens issued before v1.3.4.0 will still be valid (server accepts both old and new format)
+- If you parse JWT claims client-side, `iss` and `aud` are now populated
+
+### Device Management
+
+```protobuf
+rpc GetDevices(GetDevicesRequest) returns (GetDevicesResponse);
+rpc RevokeDevice(RevokeDeviceRequest) returns (AuthResponse);
+
+message DeviceInfo {
+  string device_id = 1;
+  string device_name = 2;
+  string client_version = 3;
+  Timestamp last_seen_at = 4;
+  string ip_address = 5;     // now shows real IP (was "unknown" before v1.3.4.0)
+}
+```
 
 ---
 
@@ -1984,6 +2022,67 @@ Authorization: Bearer <access_token>
 ```
 
 Returns TURN server credentials for WebRTC.
+
+---
+
+## OIDC (OpenID Connect) — SSO
+
+Lavender acts as an OIDC Provider. Third-party apps can authenticate users via Lavender credentials.
+
+### Discovery
+
+```
+GET /.well-known/openid-configuration
+GET /.well-known/jwks.json
+```
+
+### Authorization Flow (PKCE S256 mandatory)
+
+```
+1. Client generates code_verifier + code_challenge (S256)
+2. Redirect to: /oidc/authorize?response_type=code&client_id=...&redirect_uri=...&scope=openid profile&code_challenge=...&code_challenge_method=S256
+3. User logs in via Lavender credentials (or is already logged in)
+4. User consents → server redirects to redirect_uri?code=...
+5. Client exchanges code for tokens: POST /oidc/token (grant_type=authorization_code + code_verifier)
+```
+
+### SSO Exchange (Lavender JWT → OIDC tokens)
+
+For native apps already authenticated via `SignInV2`:
+
+```
+POST /oidc/sso-exchange
+Content-Type: application/json
+
+{
+  "access_token": "<lavender-jwt>",
+  "client_id": "<oidc-client-id>",
+  "scope": "openid profile"
+}
+```
+
+### Endpoints
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /oidc/authorize` | Authorization endpoint (login + consent) |
+| `POST /oidc/token` | Token endpoint (code exchange, refresh) |
+| `GET /oidc/userinfo` | UserInfo (requires OIDC access token) |
+| `POST /oidc/revoke` | Token revocation |
+| `POST /oidc/introspect` | Token introspection |
+| `POST /oidc/logout` | Logout (end session) |
+| `GET /oidc/sso-check` | Check if user has active session |
+| `POST /oidc/sso-exchange` | Exchange Lavender JWT for OIDC tokens |
+
+### CORS for OIDC
+
+OIDC endpoints use restricted CORS (not wildcard). Allowed origins:
+- `https://13.140.25.249`
+- `http://13.140.25.249`
+- `http://localhost:3000`
+- `http://localhost:8080`
+
+Other origins will not receive `Access-Control-Allow-Origin` headers. Add new origins via server config if needed.
 
 ---
 
