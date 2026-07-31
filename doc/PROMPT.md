@@ -1,7 +1,7 @@
-# Промпт для серверных сессий — v1.3.3.1
+# Промпт для серверных сессий — v1.3.4.0
 
-**Дата:** 2026-07-05 | **Ветка:** feat/1.3.0.x
-**Статус:** v1.3.3.7 задеплоен. Call stability: stale ACCEPT/REJECT guard + push dedup.
+**Дата:** 2026-07-31 | **Ветка:** feat/1.3.0.x
+**Статус:** v1.3.4.0 задеплоен. Security fixes: JWT issuer/audience, agent revoke, rate limiter cleanup, CORS, IP extraction.
 
 ---
 

@@ -27,6 +27,34 @@ func newIPRateLimiter(limit int, window time.Duration) *ipRateLimiter {
 	}
 }
 
+func (r *ipRateLimiter) cleanup(ctx context.Context) {
+	ticker := time.NewTicker(5 * time.Minute)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			r.mu.Lock()
+			now := time.Now()
+			for key, times := range r.requests {
+				valid := times[:0]
+				for _, t := range times {
+					if now.Sub(t) < r.window {
+						valid = append(valid, t)
+					}
+				}
+				if len(valid) == 0 {
+					delete(r.requests, key)
+				} else {
+					r.requests[key] = valid
+				}
+			}
+			r.mu.Unlock()
+		}
+	}
+}
+
 func (r *ipRateLimiter) Allow(key string) bool {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -155,7 +183,7 @@ func (a *authServerV2) SignInV2(ctx context.Context, req *gen.SignInRequestV2) (
 	clientVersion := req.GetClientVersion()
 
 	// Register/update device
-	ipAddress := "unknown" // TODO: extract from gRPC context if needed
+	ipAddress := getIPFromContext(ctx)
 	userAgent := clientVersion
 	_, err = a.db.UpsertDevice(userID, deviceID, deviceName, deviceType, clientVersion, ipAddress, userAgent)
 	if err != nil {
@@ -297,7 +325,7 @@ func (a *authServerV2) SignUpV2(ctx context.Context, req *gen.SignUpRequestV2) (
 	clientVersion := req.GetClientVersion()
 
 	// Register device
-	_, err = a.db.UpsertDevice(userID, deviceID, deviceName, deviceType, clientVersion, "unknown", clientVersion)
+	_, err = a.db.UpsertDevice(userID, deviceID, deviceName, deviceType, clientVersion, ip, clientVersion)
 	if err != nil {
 		logger.Errorf("SignUpV2: UpsertDevice error for %s/%s: %v", username, deviceID, err)
 	}
@@ -318,7 +346,7 @@ func (a *authServerV2) SignUpV2(ctx context.Context, req *gen.SignUpRequestV2) (
 		a.db.UpdateDeviceRefreshToken(userID, deviceID, refreshJTI, refreshExp)
 	}
 
-	a.db.LogAuthEvent(userID, deviceID, "signup_v2", "unknown", clientVersion, true, "")
+	a.db.LogAuthEvent(userID, deviceID, "signup_v2", ip, clientVersion, true, "")
 
 	logger.Infof("SignUpV2: new user %s (ID: %s, device: %s)", username, userID, deviceID)
 

@@ -67,6 +67,8 @@ func GenerateTokenPair(userID, username, deviceID string) (accessToken, refreshT
 			ExpiresAt: jwt.NewNumericDate(accessExp),
 			IssuedAt:  jwt.NewNumericDate(now),
 			ID:        uuid.New().String(),
+			Issuer:    "lavender-server",
+			Audience:  jwt.ClaimStrings{"lavender-server"},
 		},
 	}
 	accessTokenObj := jwt.NewWithClaims(jwt.SigningMethodHS256, accessClaims)
@@ -87,6 +89,8 @@ func GenerateTokenPair(userID, username, deviceID string) (accessToken, refreshT
 			ExpiresAt: jwt.NewNumericDate(refreshExp),
 			IssuedAt:  jwt.NewNumericDate(now),
 			ID:        refreshJTI,
+			Issuer:    "lavender-server",
+			Audience:  jwt.ClaimStrings{"lavender-server"},
 		},
 	}
 	refreshTokenObj := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshClaims)
@@ -111,7 +115,7 @@ func ValidateToken(tokenString string) (*authClaims, error) {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
 		return secret, nil
-	})
+	}, jwt.WithIssuer("lavender-server"), jwt.WithAudience("lavender-server"))
 	if err != nil {
 		return nil, fmt.Errorf("token validation failed: %w", err)
 	}

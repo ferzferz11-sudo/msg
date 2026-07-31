@@ -82,6 +82,11 @@ func requireAuth(next http.HandlerFunc) http.HandlerFunc {
 			http.Error(w, `{"error":"invalid or expired token"}`, http.StatusUnauthorized)
 			return
 		}
+		// CRITICAL: reject refresh tokens on HTTP endpoints (same as gRPC interceptor)
+		if claims.Type != "access" {
+			http.Error(w, `{"error":"invalid token type"}`, http.StatusUnauthorized)
+			return
+		}
 		r.Header.Set("X-User-ID", claims.UserID)
 		r.Header.Set("X-Username", claims.Username)
 		next(w, r)
@@ -179,6 +184,38 @@ func StartHTTPServerAndReturn(port string) *http.Server {
 	http.HandleFunc("/sticker-thumbnails/", func(w http.ResponseWriter, r *http.Request) {
 		serveFileHandler(w, r, "/sticker-thumbnails/", stickerThumbnailsPath)
 	})
+
+	// --- OIDC Endpoints ---
+	if os.Getenv("OIDC_ENABLED") != "false" {
+		// Discovery & JWKS (public)
+		http.HandleFunc("/.well-known/openid-configuration", oidcDiscoveryHandler)
+		http.HandleFunc("/.well-known/jwks.json", oidcJWKSHandler)
+
+		// Authorization
+		http.HandleFunc("/oidc/authorize", oidcAuthorizeHandler)
+		http.HandleFunc("/oidc/authorize/consent", oidcConsentHandler)
+
+		// Token
+		http.HandleFunc("/oidc/token", oidcTokenHandler)
+
+		// UserInfo (OIDC auth required)
+		http.HandleFunc("/oidc/userinfo", oidcUserInfoHandler)
+
+		// Token management
+		http.HandleFunc("/oidc/revoke", oidcRevokeHandler)
+		http.HandleFunc("/oidc/introspect", oidcIntrospectHandler)
+		http.HandleFunc("/oidc/logout", oidcLogoutHandler)
+
+		// SSO
+		http.HandleFunc("/oidc/sso-check", oidcSSOCheckHandler)
+		http.HandleFunc("/oidc/sso-exchange", oidcSSOExchangeHandler)
+
+		// Admin (Lavender admin auth)
+		http.HandleFunc("/oidc/admin/clients", requireAdminAuth(oidcAdminClientsHandler))
+		http.HandleFunc("/oidc/admin/clients/", requireAdminAuth(oidcAdminClientHandler))
+
+		logger.Info("OIDC endpoints registered")
+	}
 
 	srv := &http.Server{
 		Addr:    "0.0.0.0:" + port,
@@ -768,8 +805,30 @@ func requestPasswordResetHandler(w http.ResponseWriter, r *http.Request) {
 
 func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		path := r.URL.Path
+
+		// OIDC endpoints: restricted CORS with credentials support
+		if strings.HasPrefix(path, "/oidc/") {
+			origin := r.Header.Get("Origin")
+			allowedOrigins := []string{
+				"https://13.140.25.249",
+				"http://13.140.25.249",
+				"http://localhost:3000",
+				"http://localhost:8080",
+			}
+			for _, allowed := range allowedOrigins {
+				if origin == allowed {
+					w.Header().Set("Access-Control-Allow-Origin", origin)
+					w.Header().Set("Access-Control-Allow-Credentials", "true")
+					break
+				}
+			}
+		} else {
+			// .well-known, uploads, health, info — wildcard
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+		}
+
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 		w.Header().Set("Access-Control-Max-Age", "86400")
 

@@ -15,7 +15,8 @@ import (
 	"strings" // String manipulation functions
 	"syscall"
 
-	"LavenderMessenger/gen" // Generated gRPC code package
+	"LavenderMessenger/auth" // Agent JWT token management
+	"LavenderMessenger/gen"  // Generated gRPC code package
 	hermesagent "LavenderMessenger/gen/hermes_agent"
 
 	"time"
@@ -164,6 +165,14 @@ func main() {
 	srv.hermesDB = NewHermesDB(db.DB)
 	srv.remoteAgentManager = &RemoteAgentManager{agents: make(map[string]*RemoteAgent)}
 
+	// Inject DB into auth package for token revocation
+	auth.SetDB(db.DB)
+
+	// Set agent revocation check hook (queries agent_tokens.revoked)
+	if srv.hermesDB != nil {
+		auth.SetAgentRevocationCheck(srv.hermesDB.IsAgentRevoked)
+	}
+
 	// Initialize AI Gateway v2
 	srv.aiGateway = NewAIGateway(db.DB)
 	logger.Info("AI Gateway v2 initialized")
@@ -183,6 +192,17 @@ func main() {
 		logger.Warnf("Warning: failed to migrate auth v2 tables: %v", err)
 	} else {
 		logger.Info("Auth v2 tables (user_devices, device_auth_log) ready")
+	}
+
+	// OIDC tables
+	if os.Getenv("OIDC_ENABLED") != "false" {
+		if err := runOIDCMigrations(db.DB); err != nil {
+			logger.Warnf("Warning: failed to migrate OIDC tables: %v", err)
+		}
+		// Init OIDC keys
+		if err := initOIDCKeys(); err != nil {
+			logger.Warnf("Warning: failed to init OIDC keys: %v", err)
+		}
 	}
 
 	// Register our chat service with the gRPC server
@@ -257,6 +277,23 @@ func main() {
 				return
 			case <-ticker.C:
 				srv.db.CleanupDeviceAuthLog()
+			}
+		}
+	}()
+
+	// Rate limiter cleanup (every 5 minutes)
+	go authLimiter.cleanup(ctx)
+
+	// Revoked token cleanup (every 1 hour)
+	go func() {
+		ticker := time.NewTicker(1 * time.Hour)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				db.Exec(`DELETE FROM revoked_tokens WHERE expires_at < NOW()`)
 			}
 		}
 	}()

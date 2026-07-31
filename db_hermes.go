@@ -443,6 +443,16 @@ func (h *HermesDB) RevokeAgentToken(agentID string) error {
 	return err
 }
 
+// IsAgentRevoked checks if an agent token has been revoked
+func (h *HermesDB) IsAgentRevoked(agentID string) (bool, error) {
+	var revoked bool
+	err := h.db.QueryRow("SELECT revoked FROM agent_tokens WHERE agent_id = $1", agentID).Scan(&revoked)
+	if err == sql.ErrNoRows {
+		return false, nil // agent not found = not revoked
+	}
+	return revoked, err
+}
+
 // ListAgentTokens возвращает все токены агентов
 func (h *HermesDB) ListAgentTokens() ([]auth.AgentToken, error) {
 	return h.ListAgentTokensFiltered("")

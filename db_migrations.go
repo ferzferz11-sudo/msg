@@ -200,6 +200,14 @@ var coreMigrations = []string{
 	`CREATE INDEX IF NOT EXISTS idx_invite_codes_code ON company_invite_codes(code)`,
 	`CREATE INDEX IF NOT EXISTS idx_invite_codes_company ON company_invite_codes(company_id)`,
 
+	// --- Revoked Tokens (Agent JWT blacklist) ---
+	`CREATE TABLE IF NOT EXISTS revoked_tokens (
+		token_hash VARCHAR(64) PRIMARY KEY,
+		revoked_at TIMESTAMP DEFAULT NOW(),
+		expires_at TIMESTAMP NOT NULL
+	)`,
+	`CREATE INDEX IF NOT EXISTS idx_revoked_tokens_expires ON revoked_tokens(expires_at)`,
+
 	// --- Fix invalid UTF-8 in existing messages ---
 	`DO $$ BEGIN
 		UPDATE messages_v2 SET text = convert_to(convert_from(text::bytea, 'UTF8'), 'UTF8') WHERE text IS NOT NULL AND NOT octet_length(text) = octet_length(convert_to(text, 'UTF8'));

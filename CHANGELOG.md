@@ -1,5 +1,55 @@
 # Лава — Server Changelog
 
+## [1.3.4.0] - 2026-07-31
+
+### Security Fixes
+- **CRITICAL: JWT issuer/audience claims** — `auth_jwt.go`: access и refresh токены теперь содержат `Issuer: "lavender-server"` и `Audience: "lavender-server"`. `ValidateToken` проверяет issuer/audience при валидации. Защита от confused deputy attacks.
+- **HIGH: Agent JWT RevokeToken** — `auth/jwt.go`: реализован отзыв agent-токенов через таблицу `revoked_tokens` (SHA-256 hash). `ValidateAgentToken` проверяет blacklist до валидации подписи. Также проверяет `agent_tokens.revoked` flag через hook.
+- **HIGH: Rate limiter cleanup goroutine** — `auth_service_v2.go`: добавлен cleanup для `ipRateLimiter` (каждые 5 минут). Устраняет unbounded memory growth.
+- **HIGH: CORS restriction для OIDC** — `http_server.go`: OIDC endpoints (`/oidc/*`) теперь используют restricted CORS с конкретными origin. Остальные endpoints — wildcard.
+- **MEDIUM: IP Extraction** — `auth_service_v2.go`: заменены 3 места с hardcoded `"unknown"` IP на `getIPFromContext(ctx)` в `SignInV2` и `SignUpV2`.
+
+### Architecture
+- **Новая таблица**: `revoked_tokens` (token_hash, revoked_at, expires_at) для blacklist agent JWT.
+- **DB injection**: `auth.SetDB(db.DB)` + `auth.SetAgentRevocationCheck(hook)` в `main.go`.
+- **Cleanup goroutines**: rate limiter cleanup (5min), revoked tokens cleanup (1h) — обе с context cancellation.
+
+---
+
+## [1.3.3.2] - 2026-07-26
+
+### Features
+- **OIDC SSO Provider** — Lavender теперь является OpenID Connect Provider. Новые приложения (Android/Web) могут аутентифицировать пользователей через Lavender credentials. 15 HTTP-эндпоинтов, 5 PostgreSQL таблиц, RS256 JWT signing.
+- **OIDC Discovery** — `GET /.well-known/openid-configuration` и `GET /.well-known/jwks.json` для автоматического обнаружения endpoints.
+- **OIDC Authorization Flow** — `/oidc/authorize` с PKCE (S256 mandatory), login/consent forms, authorization codes.
+- **OIDC Token Endpoint** — `/oidc/token` для обмена auth code на tokens и refresh token grant с rotation.
+- **OIDC UserInfo** — `/oidc/userinfo` с scope-based claims.
+- **OIDC Token Management** — `/oidc/revoke`, `/oidc/introspect`, `/oidc/logout`.
+- **OIDC SSO Exchange** — `/oidc/sso-exchange` для обмена Lavender JWT на OIDC tokens (SSO flow).
+- **OIDC Admin API** — `/oidc/admin/clients` для управления OAuth2 клиентами (CRUD).
+- **Admin Auth Middleware** — `requireAdminAuth` для защиты admin endpoints.
+
+### Security Fixes
+- **CRITICAL: HTTP requireAuth token type check** — `requireAuth` теперь отклоняет refresh tokens (раньше пропускали к upload/TURN endpoints). Фикс: `http_server.go:84`.
+- **OIDC PKCE mandatory** — все authorization code flows требуют PKCE S256. Plain method не поддерживается.
+- **OIDC separate signing keys** — RS256 для OIDC, HS256 для internal auth. Компрометация одной не влияет на другую.
+- **Refresh token rotation detection** — повторное использование refresh token → отзыв всех токенов клиента.
+
+### Architecture
+- **12 новых файлов**: `db_oidc_migrations.go`, `db_oidc_clients.go`, `db_oidc_tokens.go`, `oidc_keys.go`, `oidc_tokens.go`, `oidc_authorize.go`, `oidc_token.go`, `oidc_userinfo.go`, `oidc_revoke.go`, `oidc_introspect.go`, `oidc_logout.go`, `oidc_sso.go`, `oidc_admin.go`.
+- **Интеграция**: `http_server.go` (OIDC routes + requireAuth fix), `main.go` (OIDC migrations + key init).
+- **OIDC включается через env**: `OIDC_ENABLED=true` (по умолчанию включён). Отключение: `OIDC_ENABLED=false`.
+
+### Documentation
+- `doc/ANALYSIS_OIDC_SSO.md` — полный анализ v1.3.4.0 + OIDC SSO дизайн.
+- `doc/PROMPT_REVOKE_TOKEN_IP.md` — задачи security fixes (обновлён статус).
+- `doc/PROMPT_DEPLOY_SAFETY.md` — деплой-процедура и чеклисты.
+
+### Operations
+- **Journal cleanup cron** — `0 */4 * * * journalctl --vacuum-size=200M` предотвращает заполнение диска.
+
+---
+
 ## [1.3.3.1] - 2026-07-05
 
 ### Features

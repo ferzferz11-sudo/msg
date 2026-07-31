@@ -284,3 +284,52 @@ func (s *server) GetAdminUserSessions(ctx context.Context, req *gen.GetAdminUser
 		Sessions: sessions,
 	}, nil
 }
+
+func (s *server) AdminUpdatePassword(ctx context.Context, req *gen.AdminUpdatePasswordRequest) (*gen.AdminUpdatePasswordResponse, error) {
+	userID := GetUserID(ctx)
+	if userID == "" {
+		return &gen.AdminUpdatePasswordResponse{Success: false, Message: "unauthorized"}, nil
+	}
+
+	// Check super admin
+	var isAdmin bool
+	err := s.db.QueryRow(`SELECT COALESCE(is_super_admin, FALSE) FROM users WHERE id=$1::uuid`, userID).Scan(&isAdmin)
+	if err != nil || !isAdmin {
+		return &gen.AdminUpdatePasswordResponse{Success: false, Message: "forbidden: super admin only"}, nil
+	}
+
+	if req.TargetUsername == "" {
+		return &gen.AdminUpdatePasswordResponse{Success: false, Message: "target username required"}, nil
+	}
+	if req.NewPassword == "" {
+		return &gen.AdminUpdatePasswordResponse{Success: false, Message: "new password required"}, nil
+	}
+
+	// Resolve target user (could be UUID or username)
+	targetUser := req.TargetUsername
+	if isUUID(req.TargetUsername) {
+		username, err := s.db.GetUserByID(req.TargetUsername)
+		if err == nil && username != "" {
+			targetUser = username
+		}
+	}
+
+	hash, err := HashPassword(req.NewPassword)
+	if err != nil {
+		logger.Errorf("AdminUpdatePassword: hash error: %v", err)
+		return &gen.AdminUpdatePasswordResponse{Success: false, Message: "internal error"}, nil
+	}
+
+	result, err := s.db.Exec(`UPDATE users SET password_hash=$1 WHERE username=$2`, hash, targetUser)
+	if err != nil {
+		logger.Errorf("AdminUpdatePassword: db error for %s: %v", targetUser, err)
+		return &gen.AdminUpdatePasswordResponse{Success: false, Message: "database error"}, nil
+	}
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return &gen.AdminUpdatePasswordResponse{Success: false, Message: "user not found"}, nil
+	}
+
+	logger.Infof("AdminUpdatePassword: admin %s changed password for %s", req.AdminUsername, targetUser)
+	return &gen.AdminUpdatePasswordResponse{Success: true, Message: "password updated"}, nil
+}
