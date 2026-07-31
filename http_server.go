@@ -645,10 +645,10 @@ func uploadStickerThumbnailHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	file, handler, err := r.FormFile("thumbnail")
+	file, handler, err := r.FormFile("sticker")
 	if err != nil {
 		logger.Errorf("Sticker thumbnail upload error: %v", err)
-		http.Error(w, "Error retrieving thumbnail file", http.StatusBadRequest)
+		http.Error(w, "Error retrieving sticker file", http.StatusBadRequest)
 		return
 	}
 	defer closeFile(file)
