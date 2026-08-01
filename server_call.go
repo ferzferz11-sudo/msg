@@ -43,7 +43,14 @@ func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
 			logger.Infof("[CALL] Stream identified: %s (%s)", currentUserId, username)
 		}
 
+		// Legacy: ICE_CANDIDATE with "IDENTITY" payload (old clients)
 		if msg.ReceiverId == "" && msg.Payload == "IDENTITY" {
+			continue
+		}
+
+		// IDENTITY signal: lobby registration (new clients)
+		if msg.Type == gen.CallMessage_IDENTITY {
+			logger.Infof("[CALL] Identity registered: %s (%s)", msg.SenderId, msg.SenderName)
 			continue
 		}
 

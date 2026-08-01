@@ -1,7 +1,7 @@
 # Лава — Задачи
 
 **Ветка:** feat/1.3.0.x
-**Обновлено:** 2026-07-04
+**Обновлено:** 2026-08-01
 
 ---
 
@@ -23,6 +23,9 @@
 
 | Версия | Описание |
 |--------|----------|
+| v1.3.4.7 | Conference improvements: IDENTITY signal type (replaces ICE_CANDIDATE hack), verified LEAVE/END_CONFERENCE + state cleanup |
+| v1.3.4.2 | OIDC session validation (HMAC-SHA256 signed cookies), login flow fix |
+| v1.3.4.0 | OIDC SSO Provider + Security Fixes (JWT issuer/audience, Agent Revoke, Rate Limiter, CORS, IP Extraction) |
 | v1.3.2.1 | Bug fixes: UpdateChatParticipants type mismatch, DeleteCompany FK violation, CreateGroupChat type field |
 | v1.3.2.0 | Company System: companies, positions, members, company chats, access control, multi-company support, primary company, GetUserInfo, GetUserCompanies, SetPrimaryCompany, max_upload_size in /info, READ_ALL broadcast to ChatV2 |
 | v1.3.1.21 | Company System v1: CRUD, positions, members, company chats, access levels |

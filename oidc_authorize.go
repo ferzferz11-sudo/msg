@@ -1,12 +1,14 @@
 package main
 
 import (
+	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"html/template"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -189,8 +191,47 @@ func oidcConsentHandler(w http.ResponseWriter, r *http.Request) {
 	challenge := r.FormValue("code_challenge")
 	challengeMethod := r.FormValue("code_challenge_method")
 	nonce := r.FormValue("nonce")
-	userID := getOIDCSessionUser(r)
 
+	// Handle login action: validate credentials and set session cookie
+	if action == "login" {
+		username := strings.TrimSpace(r.FormValue("username"))
+		password := r.FormValue("password")
+
+		if username == "" || password == "" {
+			showOIDCLoginForm(w, r, &oidcAuthorizeParams{
+				ClientID: clientID, RedirectURI: redirectURI, Scope: scope,
+				State: state, CodeChallenge: challenge, CodeChallengeMethod: challengeMethod,
+				Nonce: nonce, LoginHint: username,
+			})
+			return
+		}
+
+		storedHash, err := db.GetUserPasswordHash(username)
+		if err != nil || !CheckPassword(password, storedHash) {
+			showOIDCLoginForm(w, r, &oidcAuthorizeParams{
+				ClientID: clientID, RedirectURI: redirectURI, Scope: scope,
+				State: state, CodeChallenge: challenge, CodeChallengeMethod: challengeMethod,
+				Nonce: nonce, LoginHint: username,
+			})
+			return
+		}
+
+		userID, err := db.GetUserIdByUsername(username)
+		if err != nil {
+			oidcError(w, "server_error", "failed to resolve user", http.StatusInternalServerError)
+			return
+		}
+
+		setOIDCSessionCookie(w, userID)
+
+		// Redirect back to authorize to continue the flow
+		redirectURL := fmt.Sprintf("/oidc/authorize?response_type=code&client_id=%s&redirect_uri=%s&scope=%s&state=%s&code_challenge=%s&code_challenge_method=%s&nonce=%s",
+			clientID, redirectURI, scope, state, challenge, challengeMethod, nonce)
+		http.Redirect(w, r, redirectURL, http.StatusFound)
+		return
+	}
+
+	userID := getOIDCSessionUser(r)
 	if userID == "" {
 		oidcError(w, "invalid_request", "no session", http.StatusBadRequest)
 		return
@@ -225,15 +266,76 @@ func oidcConsentHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, redirectURL, http.StatusFound)
 }
 
+// setOIDCSessionCookie sets an HMAC-signed session cookie with the user ID.
+// Format: base64(userID)|timestamp|hmac-sha256(base64(userID)|timestamp)
+func setOIDCSessionCookie(w http.ResponseWriter, userID string) {
+	encoded := base64.RawURLEncoding.EncodeToString([]byte(userID))
+	ts := strconv.FormatInt(timeNow().Unix(), 10)
+	payload := encoded + "|" + ts
+
+	key, err := getSecretKey()
+	if err != nil {
+		logger.Errorf("setOIDCSessionCookie: getSecretKey error: %v", err)
+		return
+	}
+	mac := hmac.New(sha256.New, key)
+	mac.Write([]byte(payload))
+	sig := base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
+
+	value := payload + "|" + sig
+	http.SetCookie(w, &http.Cookie{
+		Name:     "oidc_session",
+		Value:    value,
+		Path:     "/oidc",
+		MaxAge:   86400, // 24 hours
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+	})
+}
+
+// getOIDCSessionUser validates the HMAC-signed session cookie and returns the user ID.
 func getOIDCSessionUser(r *http.Request) string {
-	// Check cookie
 	cookie, err := r.Cookie("oidc_session")
 	if err != nil || cookie.Value == "" {
 		return ""
 	}
-	// In production, verify HMAC signature. For now, decode simple session
-	// TODO: proper session validation
-	return ""
+
+	parts := strings.SplitN(cookie.Value, "|", 3)
+	if len(parts) != 3 {
+		return ""
+	}
+
+	encoded, ts, sig := parts[0], parts[1], parts[2]
+
+	// Verify HMAC
+	key, err := getSecretKey()
+	if err != nil {
+		return ""
+	}
+	payload := encoded + "|" + ts
+	mac := hmac.New(sha256.New, key)
+	mac.Write([]byte(payload))
+	expectedSig := base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
+	if !hmac.Equal([]byte(sig), []byte(expectedSig)) {
+		return ""
+	}
+
+	// Check expiry (24 hours)
+	timestamp, err := strconv.ParseInt(ts, 10, 64)
+	if err != nil {
+		return ""
+	}
+	if timeNow().Unix()-timestamp > 86400 {
+		return ""
+	}
+
+	// Decode user ID
+	userIDBytes, err := base64.RawURLEncoding.DecodeString(encoded)
+	if err != nil {
+		return ""
+	}
+	return string(userIDBytes)
 }
 
 // --- Login/Consent Form Rendering ---

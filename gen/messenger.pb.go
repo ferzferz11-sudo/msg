@@ -141,6 +141,7 @@ const (
 	CallMessage_INVITE_TO_CONFERENCE   CallMessage_Type = 14
 	CallMessage_REMOVE_FROM_CONFERENCE CallMessage_Type = 15
 	CallMessage_UPDATE_CONFERENCE      CallMessage_Type = 16
+	CallMessage_IDENTITY               CallMessage_Type = 17 // Identity signal for conference lobby registration
 )
 
 // Enum value maps for CallMessage_Type.
@@ -160,6 +161,7 @@ var (
 		14: "INVITE_TO_CONFERENCE",
 		15: "REMOVE_FROM_CONFERENCE",
 		16: "UPDATE_CONFERENCE",
+		17: "IDENTITY",
 	}
 	CallMessage_Type_value = map[string]int32{
 		"INITIATE":               0,
@@ -176,6 +178,7 @@ var (
 		"INVITE_TO_CONFERENCE":   14,
 		"REMOVE_FROM_CONFERENCE": 15,
 		"UPDATE_CONFERENCE":      16,
+		"IDENTITY":               17,
 	}
 )
 
@@ -24669,7 +24672,7 @@ const file_messenger_proto_rawDesc = "" +
 	"\fnew_password\x18\x02 \x01(\tR\vnewPassword\"K\n" +
 	"\x15ResetPasswordResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage\"\x98\x04\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"\xa6\x04\n" +
 	"\vCallMessage\x12\x17\n" +
 	"\acall_id\x18\x01 \x01(\tR\x06callId\x12\x1b\n" +
 	"\tsender_id\x18\x02 \x01(\tR\bsenderId\x12\x1f\n" +
@@ -24680,7 +24683,7 @@ const file_messenger_proto_rawDesc = "" +
 	"\rreceiver_name\x18\a \x01(\tR\freceiverName\x12\x17\n" +
 	"\aroom_id\x18\b \x01(\tR\x06roomId\x12/\n" +
 	"\x04type\x18\x04 \x01(\x0e2\x1b.messenger.CallMessage.TypeR\x04type\x12\x18\n" +
-	"\apayload\x18\x05 \x01(\tR\apayload\"\x87\x02\n" +
+	"\apayload\x18\x05 \x01(\tR\apayload\"\x95\x02\n" +
 	"\x04Type\x12\f\n" +
 	"\bINITIATE\x10\x00\x12\n" +
 	"\n" +
@@ -24700,7 +24703,8 @@ const file_messenger_proto_rawDesc = "" +
 	"\x0eEND_CONFERENCE\x10\r\x12\x18\n" +
 	"\x14INVITE_TO_CONFERENCE\x10\x0e\x12\x1a\n" +
 	"\x16REMOVE_FROM_CONFERENCE\x10\x0f\x12\x15\n" +
-	"\x11UPDATE_CONFERENCE\x10\x10\"\x9a\x01\n" +
+	"\x11UPDATE_CONFERENCE\x10\x10\x12\f\n" +
+	"\bIDENTITY\x10\x11\"\x9a\x01\n" +
 	"\x0fPipelineRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1d\n" +
 	"\n" +

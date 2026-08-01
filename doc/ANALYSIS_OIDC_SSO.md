@@ -2,7 +2,7 @@
 
 **Дата:** 2026-07-21
 **Версия сервера:** 1.3.4.0
-**Статус:** Анализ завершён, OIDC SSO — дизайн готов, реализация в процессе
+**Статус:** Анализ завершён, OIDC SSO — реализация завершена, session validation исправлена
 
 ---
 
@@ -131,7 +131,7 @@ Fallback: Lavender не установлена → credential mode.
 | Файл | Статус | Описание |
 |------|--------|----------|
 | `oidc_tokens.go` | ✅ Создан | RS256 JWT generation, validation |
-| `oidc_authorize.go` | ✅ Создан | Authorization endpoint + login/consent forms |
+| `oidc_authorize.go` | ✅ Создан | Authorization endpoint + login/consent forms + HMAC session validation |
 | `oidc_token.go` | ✅ Создан | Token endpoint (code exchange + refresh) |
 | `oidc_userinfo.go` | ✅ Создан | UserInfo endpoint |
 | `oidc_revoke.go` | ✅ Создан | Token revocation |
@@ -152,8 +152,8 @@ Fallback: Lavender не установлена → credential mode.
 | # | Задача | Приоритет | Статус |
 |---|--------|-----------|--------|
 | 1 | HTTP requireAuth: проверка claims.Type | CRITICAL | ✅ Исправлено |
-| 2 | JWT issuer/audience claims | CRITICAL | ⏳ Не сделано |
-| 3 | Agent JWT RevokeToken | HIGH | ⏳ Не сделано |
-| 4 | IP Extraction из gRPC context | MEDIUM | ⏳ Не сделано |
-| 5 | Rate limiter eviction | HIGH | ⏳ Не сделано |
-| 6 | CORS restriction для OIDC | HIGH | ⏳ Не сделано |
+| 2 | JWT issuer/audience claims | CRITICAL | ✅ Исправлено (v1.3.4.0) |
+| 3 | Agent JWT RevokeToken | HIGH | ✅ Исправлено (v1.3.4.0) |
+| 4 | IP Extraction из gRPC context | MEDIUM | ✅ Исправлено (v1.3.4.0) |
+| 5 | Rate limiter eviction | HIGH | ✅ Исправлено (v1.3.4.0) |
+| 6 | CORS restriction для OIDC | HIGH | ✅ Исправлено (v1.3.4.0) |

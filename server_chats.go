@@ -92,9 +92,9 @@ func (s *server) AddParticipant(ctx context.Context, req *gen.AddParticipantRequ
 		return &gen.AddParticipantResponse{Success: false, Message: "Chat not found"}, nil
 	}
 
-	if chat.Type != "group" {
-		logger.Errorf("AddParticipant error: Chat %s is not a group chat (type: %s)", req.ChatId, chat.Type)
-		return &gen.AddParticipantResponse{Success: false, Message: "Participants can only be added to group chats"}, nil
+	if chat.Type != "group" && chat.Type != "company" {
+		logger.Errorf("AddParticipant error: Chat %s is not a group/company chat (type: %s)", req.ChatId, chat.Type)
+		return &gen.AddParticipantResponse{Success: false, Message: "Participants can only be added to group or company chats"}, nil
 	}
 
 	var participants []string
@@ -143,9 +143,9 @@ func (s *server) RemoveParticipant(ctx context.Context, req *gen.RemoveParticipa
 		return &gen.RemoveParticipantResponse{Success: false, Message: "Chat not found"}, nil
 	}
 
-	if chat.Type != "group" {
-		logger.Errorf("RemoveParticipant error: Chat %s is not a group chat", req.ChatId)
-		return &gen.RemoveParticipantResponse{Success: false, Message: "Participants can only be removed from group chats"}, nil
+	if chat.Type != "group" && chat.Type != "company" {
+		logger.Errorf("RemoveParticipant error: Chat %s is not a group/company chat (type: %s)", req.ChatId, chat.Type)
+		return &gen.RemoveParticipantResponse{Success: false, Message: "Participants can only be removed from group or company chats"}, nil
 	}
 
 	var participants []string

@@ -647,6 +647,7 @@ message CallMessage {
     INVITE_TO_CONFERENCE = 14;
     REMOVE_FROM_CONFERENCE = 15;
     UPDATE_CONFERENCE = 16;
+    IDENTITY = 17;          // Identity signal for conference lobby registration
   }
   Type type = 4;
 

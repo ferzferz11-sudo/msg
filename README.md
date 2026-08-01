@@ -1,7 +1,7 @@
 # Lavender Messenger — Server
 
 **Author:** Pavel Davydov (ferz)
-**Version:** 1.1.2.4
+**Version:** 1.3.4.3
 **Language:** Go 1.26
 
 gRPC server with AES-256 encryption, PostgreSQL storage, Firebase push notifications, Hermes AI Orchestrator, and OWL AI assistant.

@@ -1,5 +1,28 @@
 # Лава — Server Changelog
 
+## [1.3.4.3] - 2026-08-01
+
+### Bug Fixes
+- **AddParticipant/RemoveParticipant для company chats** — `server_chats.go`: проверка типа чата расширена с `"group"` на `"group" || "company"`. Ранее операции с участниками company чатов возвращали ошибку "is not a group chat".
+
+### Features
+- **IDENTITY signal type** — добавлен `IDENTITY = 17` в `CallMessage.Type` enum. Заменяет хак с `ICE_CANDIDATE` + `"IDENTITY"` payload для регистрации участника в conference lobby. Обратная совместимость со старыми клиентами сохранена.
+
+### Proto
+- `CallMessage.Type.IDENTITY = 17` — identity signal for conference lobby registration
+
+### Verified
+- **LEAVE_CONFERENCE broadcast** — сервер корректно рассылает обновлённый participants JSON при выходе участника
+- **END_CONFERENCE handling** — только creator может завершить, сервер очищает состояние комнаты
+- **Conference state cleanup** — комната автоматически удаляется при пустых участниках
+
+### Documentation
+- OIDC session validation (HMAC-SHA256 signed cookies) — `oidc_authorize.go`
+- Обновлены статусы ⏳→✅ в `ANALYSIS_OIDC_SSO.md`
+- Обновлены версии в `TESTING.md`, `AI_SERVICES.md`, `PITFALLS.md`, `README.md`
+
+---
+
 ## [1.3.4.2] - 2026-07-31
 
 ### Features
