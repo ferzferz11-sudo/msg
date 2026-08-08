@@ -9,39 +9,42 @@ import (
 type PushDebouncer struct {
 	mu      sync.Mutex
 	pending map[string]*pendingPush
-	sendFn  func(targets []pushTarget, title, body, roomID string)
+	sendFn  func(targets []pushTarget, title, body, roomID, messageID string)
 }
 
 type pendingPush struct {
-	sender   string
-	senderID string
-	targets  []pushTarget
-	messages []string
-	timer    *time.Timer
+	sender    string
+	senderID  string
+	targets   []pushTarget
+	messages  []string
+	messageID string
+	timer     *time.Timer
 }
 
-func NewPushDebouncer(sendFn func([]pushTarget, string, string, string)) *PushDebouncer {
+func NewPushDebouncer(sendFn func([]pushTarget, string, string, string, string)) *PushDebouncer {
 	return &PushDebouncer{
 		pending: make(map[string]*pendingPush),
 		sendFn:  sendFn,
 	}
 }
 
-func (d *PushDebouncer) Enqueue(targets []pushTarget, sender, senderID, text, roomID string) {
+func (d *PushDebouncer) Enqueue(targets []pushTarget, sender, senderID, text, roomID, messageID string) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
 	if existing, ok := d.pending[roomID]; ok {
 		existing.messages = append(existing.messages, text)
+		existing.messageID = messageID
 		existing.timer.Reset(3 * time.Second)
 		return
 	}
 
 	pp := &pendingPush{
-		sender:   sender,
-		senderID: senderID,
-		targets:  targets,
-		messages: []string{text},
+		sender:    sender,
+		senderID:  senderID,
+		targets:   targets,
+		messages:  []string{text},
+		messageID: messageID,
 	}
 	pp.timer = time.AfterFunc(3*time.Second, func() {
 		d.flush(roomID)
@@ -76,5 +79,5 @@ func (d *PushDebouncer) flush(roomID string) {
 		body += fmt.Sprintf("\n...и %d сообщений", len(pp.messages)-3)
 	}
 
-	d.sendFn(pp.targets, pp.sender, body, roomID)
+	d.sendFn(pp.targets, pp.sender, body, roomID, pp.messageID)
 }

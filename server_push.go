@@ -48,7 +48,7 @@ func (s *server) RegisterToken(ctx context.Context, req *gen.TokenRequest) (*gen
 	return &gen.TokenResponse{Success: true}, nil
 }
 
-func (s *server) sendPushNotification(userId, username, title, body, roomID string) {
+func (s *server) sendPushNotification(userId, username, title, body, roomID, messageID string) {
 	if s.firebaseApp == nil {
 		s.logFCM("WARN", "Skip %s: Firebase not init", username)
 		return
@@ -95,10 +95,11 @@ func (s *server) sendPushNotification(userId, username, title, body, roomID stri
 			Body:  truncateForFCM(body),
 		},
 		Data: buildSafeDataMap(map[string]string{
-			"title":   title,
-			"body":    truncateForFCM(body),
-			"room_id": roomID,
-			"sender":  title,
+			"title":      title,
+			"body":       truncateForFCM(body),
+			"room_id":    roomID,
+			"sender":     title,
+			"message_id": messageID,
 		}),
 		Android: &messaging.AndroidConfig{
 			Priority:    "high",
@@ -126,7 +127,7 @@ type pushTarget struct {
 	Username string
 }
 
-func (s *server) sendBatchPushNotifications(targets []pushTarget, title, body, roomID string) {
+func (s *server) sendBatchPushNotifications(targets []pushTarget, title, body, roomID, messageID string) {
 	if s.firebaseApp == nil || len(targets) == 0 {
 		return
 	}
@@ -181,11 +182,11 @@ func (s *server) sendBatchPushNotifications(targets []pushTarget, title, body, r
 		chunk := tokens[i:end]
 		chunkIDs := tokenUserIDs[i:end]
 
-		s.sendMulticastWithRetry(client, chunk, chunkIDs, title, body, roomID)
+		s.sendMulticastWithRetry(client, chunk, chunkIDs, title, body, roomID, messageID)
 	}
 }
 
-func (s *server) sendMulticastWithRetry(client *messaging.Client, tokens, userIDs []string, title, body, roomID string) {
+func (s *server) sendMulticastWithRetry(client *messaging.Client, tokens, userIDs []string, title, body, roomID, messageID string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	msg := &messaging.MulticastMessage{
@@ -195,10 +196,11 @@ func (s *server) sendMulticastWithRetry(client *messaging.Client, tokens, userID
 			Body:  truncateForFCM(body),
 		},
 		Data: buildSafeDataMap(map[string]string{
-			"title":   title,
-			"body":    truncateForFCM(body),
-			"room_id": roomID,
-			"sender":  title,
+			"title":      title,
+			"body":       truncateForFCM(body),
+			"room_id":    roomID,
+			"sender":     title,
+			"message_id": messageID,
 		}),
 		Android: &messaging.AndroidConfig{
 			Priority:    "high",

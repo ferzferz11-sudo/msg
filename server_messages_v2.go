@@ -198,7 +198,7 @@ func (s *server) SendMessageV2(ctx context.Context, req *gen.SendMessageV2Reques
 							if row.IsE2EE {
 								pushText = "New encrypted message"
 							}
-							s.sendBatchPushNotifications(targets, senderUsername, pushText, req.RoomId)
+							s.sendBatchPushNotifications(targets, senderUsername, pushText, req.RoomId, row.ID)
 						}
 					}
 				}

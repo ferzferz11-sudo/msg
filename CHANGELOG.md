@@ -1,5 +1,15 @@
 # Лава — Server Changelog
 
+## [1.3.4.5] - 2026-08-08
+
+### Features
+- **FCM message_id in push payload** — `server_push.go`, `push_debounce.go`: все push-уведомления о сообщениях теперь содержат `message_id` в data payload. Клиент может использовать его для reply-by-push (ответ на сообщение из уведомления с корректной цитатой).
+
+### Proto / Data
+- FCM data payload新增字段: `message_id` — UUID сообщения, вызвавшего push
+
+---
+
 ## [1.3.4.4] - 2026-08-08
 
 ### Bug Fixes

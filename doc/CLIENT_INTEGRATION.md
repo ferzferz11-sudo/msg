@@ -1,6 +1,6 @@
 # Lavender Messenger — Client Integration Guide
 
-**Server:** v1.3.4.2 | **Protocol:** gRPC + Protocol Buffers | **Date:** 2026-07-31
+**Server:** v1.3.4.5 | **Protocol:** gRPC + Protocol Buffers | **Date:** 2026-08-08
 
 This document covers everything a client needs to integrate with the Lavender Messenger server. Platform-agnostic — applies to Android, iOS, Web, Desktop, or any gRPC-capable client.
 
@@ -970,6 +970,29 @@ message TokenRequest {
   string device_id = 4;
 }
 ```
+
+### FCM Data Payload
+
+Message push notifications include these data fields:
+
+| Field | Description |
+|-------|-------------|
+| `title` | Sender display name |
+| `body` | Message text (truncated to 3800 chars) |
+| `room_id` | Chat room ID |
+| `sender` | Sender display name (same as title) |
+| `message_id` | UUID of the message that triggered the push |
+
+**Reply from push notification:** Use `message_id` to set `repliedToMessageId` when the user replies directly from a notification. This ensures the reply appears as a proper quote in the chat.
+
+Call push notifications use different fields:
+
+| Field | Description |
+|-------|-------------|
+| `type` | `"VOIP_CALL"` or `"CALL_ENDED"` |
+| `call_id` | Call session ID |
+| `sender_id` | Caller UUID |
+| `sender_name` | Caller display name (VOIP_CALL only) |
 
 ---
 
