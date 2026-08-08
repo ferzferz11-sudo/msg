@@ -1,5 +1,12 @@
 # Лава — Server Changelog
 
+## [1.3.4.4] - 2026-08-08
+
+### Bug Fixes
+- **AddContact/RemoveContact contactID bug** — `server_contacts.go`: `contactID` присваивался `req.UserId` (ID текущего пользователя) вместо `req.ContactUsername` (username целевого контакта). Сервер пытался добавить пользователя как свой собственный контакт. Исправлено: `contactID := req.ContactUsername` с fallback на `req.UserId` только если ContactUsername пуст.
+
+---
+
 ## [1.3.4.3] - 2026-08-01
 
 ### Bug Fixes
