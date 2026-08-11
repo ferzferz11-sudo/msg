@@ -158,6 +158,13 @@ func MigrateChatListV2(db *sql.DB) {
 		`CREATE INDEX IF NOT EXISTS idx_chats_participant_ids ON chats USING GIN(participant_ids)`,
 		// Index for chat list ordering by last_message_time
 		`CREATE INDEX IF NOT EXISTS idx_chats_last_message_time ON chats(last_message_time DESC NULLS LAST)`,
+		// Backfill participant_ids for company chats that are missing it
+		`UPDATE chats c SET participant_ids = (
+			SELECT array_agg(u.id ORDER BY u.username)
+			FROM users u
+			WHERE u.username = ANY(SELECT json_array_elements_text(c.participants::json))
+		)
+		WHERE c.type = 'company' AND (c.participant_ids IS NULL OR c.participant_ids = '{}')`,
 	}
 
 	for _, q := range queries {

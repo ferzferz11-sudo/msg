@@ -1,5 +1,18 @@
 # Лава — Server Changelog
 
+## [1.3.4.6] - 2026-08-11
+
+### Bug Fixes
+- **Company chats not visible in GetChatsV2** — `server_company.go`: `CreateCompanyChat` не заполнял `participant_ids` (UUID массив), поэтому `GetUserChatsV2` не находил company chats по `c.participant_ids @> ARRAY[$1::uuid]`. Исправлено: при создании чата `participant_ids` сразу включает создателя, при добавлении/удалении участников `participant_ids`同步 обновляется.
+- **Backfill migration** — `db_chatlist_v2.go`: миграция заполняет `participant_ids` для существующих company chats.
+
+### Changes
+- `CreateCompanyChat` — INSERT теперь включает `participant_ids = ARRAY[creator_id]`
+- `addUserToCompanyChat` — обновляет и `participants` (JSON) и `participant_ids` (UUID[])
+- `autoLeaveCompanyChats` — при удалении участника также удаляет из `participant_ids`
+
+---
+
 ## [1.3.4.5] - 2026-08-08
 
 ### Features

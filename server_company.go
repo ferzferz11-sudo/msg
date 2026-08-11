@@ -451,7 +451,7 @@ func (c *companyServer) CreateCompanyChat(ctx context.Context, req *gen.CreateCo
 	participants := "[]"
 
 	_, err := c.db.Exec(
-		`INSERT INTO chats (id, name, type, participants, creator_id) VALUES ($1, $2, 'company', $3, $4::uuid)`,
+		`INSERT INTO chats (id, name, type, participants, creator_id, participant_ids) VALUES ($1, $2, 'company', $3, $4::uuid, ARRAY[$4::uuid])`,
 		chatID, req.Name, participants, userID,
 	)
 	if err != nil {
@@ -690,12 +690,18 @@ func (c *companyServer) getUserPositionLevel(companyID, userID string) int {
 
 func (c *companyServer) addUserToCompanyChat(chatID, userID string) {
 	_, _ = c.db.Exec(
-		`UPDATE chats SET participants = CASE
-			WHEN participants = '[]' THEN '[''"'"'' || $1 || ''"'"']'
-			WHEN participants LIKE '%'"'"'' || $1 || ''"'"''%' THEN participants
-			ELSE rtrim(participants, ']') || ',"'"'"'' || $1 || ''"'"']'
-		END WHERE id=$2`,
-		userID, chatID,
+		`UPDATE chats SET
+			participants = CASE
+				WHEN participants = '[]' THEN '[''"'"'' || $1 || ''"'"']'
+				WHEN participants LIKE '%'"'"'' || $1 || ''"'"''%' THEN participants
+				ELSE rtrim(participants, ']') || ',"'"'"'' || $1 || ''"'"']'
+			END,
+			participant_ids = CASE
+				WHEN participant_ids @> ARRAY[$2::uuid] THEN participant_ids
+				ELSE array_append(COALESCE(participant_ids, '{}'), $2::uuid)
+			END
+		WHERE id=$3`,
+		userID, userID, chatID,
 	)
 }
 
@@ -783,7 +789,7 @@ func (c *companyServer) autoLeaveCompanyChats(userID, companyID string) {
 		var participants string
 		_ = c.db.QueryRow(`SELECT participants FROM chats WHERE id=$1`, chatID).Scan(&participants)
 		newParticipants := removeParticipant(participants, userID)
-		_, _ = c.db.Exec(`UPDATE chats SET participants=$1 WHERE id=$2`, newParticipants, chatID)
+		_, _ = c.db.Exec(`UPDATE chats SET participants=$1, participant_ids = array_remove(participant_ids, $2::uuid) WHERE id=$3`, newParticipants, userID, chatID)
 	}
 }
 

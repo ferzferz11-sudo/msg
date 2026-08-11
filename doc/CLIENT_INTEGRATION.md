@@ -1,6 +1,6 @@
 # Lavender Messenger — Client Integration Guide
 
-**Server:** v1.3.4.5 | **Protocol:** gRPC + Protocol Buffers | **Date:** 2026-08-08
+**Server:** v1.3.4.6 | **Protocol:** gRPC + Protocol Buffers | **Date:** 2026-08-11
 
 This document covers everything a client needs to integrate with the Lavender Messenger server. Platform-agnostic — applies to Android, iOS, Web, Desktop, or any gRPC-capable client.
 
@@ -1220,6 +1220,8 @@ message ChatInfo {
   int32 company_min_position_level = 28;
 }
 ```
+
+**Note (v1.3.4.6):** Company chats now properly populate `participant_ids` (UUID array), ensuring they appear in `GetChatsV2` responses. Previously, only `participants` (JSON username array) was set, which could cause chats to be invisible in the chat list.
 
 ### Client Flow: Create Company from Profile
 
