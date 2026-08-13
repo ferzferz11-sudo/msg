@@ -24,6 +24,7 @@
 
 | Версия | Описание |
 |--------|----------|
+| v1.4.0.1 | Call Messages: distinguish audio (📞Звонок) vs video (📹Видеозвонок), "Не отвечено" for unanswered calls, is_video proto field |
 | v1.4.0.0 | Self-Destruct Timer (auto-delete messages per chat: 30s/1m/5m/1h/24h), Delete Message Persistence (deleted_messages table prevents reappearance in history), fixed isChatParticipant UUID resolution |
 | v1.3.4.7 | Conference improvements: IDENTITY signal type (replaces ICE_CANDIDATE hack), verified LEAVE/END_CONFERENCE + state cleanup |
 | v1.3.4.2 | OIDC session validation (HMAC-SHA256 signed cookies), login flow fix |

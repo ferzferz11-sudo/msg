@@ -6474,7 +6474,8 @@ type CallMessage struct {
 	ReceiverName  string                 `protobuf:"bytes,7,opt,name=receiver_name,json=receiverName,proto3" json:"receiver_name,omitempty"`
 	RoomId        string                 `protobuf:"bytes,8,opt,name=room_id,json=roomId,proto3" json:"room_id,omitempty"`
 	Type          CallMessage_Type       `protobuf:"varint,4,opt,name=type,proto3,enum=messenger.CallMessage_Type" json:"type,omitempty"`
-	Payload       string                 `protobuf:"bytes,5,opt,name=payload,proto3" json:"payload,omitempty"` // JSON-строка с SDP или ICE данными
+	Payload       string                 `protobuf:"bytes,5,opt,name=payload,proto3" json:"payload,omitempty"`                 // JSON-строка с SDP или ICE данными
+	IsVideo       bool                   `protobuf:"varint,9,opt,name=is_video,json=isVideo,proto3" json:"is_video,omitempty"` // true = video call, false = audio call (set by client on INITIATE)
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -6563,6 +6564,13 @@ func (x *CallMessage) GetPayload() string {
 		return x.Payload
 	}
 	return ""
+}
+
+func (x *CallMessage) GetIsVideo() bool {
+	if x != nil {
+		return x.IsVideo
+	}
+	return false
 }
 
 type PipelineRequest struct {
@@ -24785,7 +24793,7 @@ const file_messenger_proto_rawDesc = "" +
 	"\fnew_password\x18\x02 \x01(\tR\vnewPassword\"K\n" +
 	"\x15ResetPasswordResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage\"\xa6\x04\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"\xc1\x04\n" +
 	"\vCallMessage\x12\x17\n" +
 	"\acall_id\x18\x01 \x01(\tR\x06callId\x12\x1b\n" +
 	"\tsender_id\x18\x02 \x01(\tR\bsenderId\x12\x1f\n" +
@@ -24796,7 +24804,8 @@ const file_messenger_proto_rawDesc = "" +
 	"\rreceiver_name\x18\a \x01(\tR\freceiverName\x12\x17\n" +
 	"\aroom_id\x18\b \x01(\tR\x06roomId\x12/\n" +
 	"\x04type\x18\x04 \x01(\x0e2\x1b.messenger.CallMessage.TypeR\x04type\x12\x18\n" +
-	"\apayload\x18\x05 \x01(\tR\apayload\"\x95\x02\n" +
+	"\apayload\x18\x05 \x01(\tR\apayload\x12\x19\n" +
+	"\bis_video\x18\t \x01(\bR\aisVideo\"\x95\x02\n" +
 	"\x04Type\x12\f\n" +
 	"\bINITIATE\x10\x00\x12\n" +
 	"\n" +

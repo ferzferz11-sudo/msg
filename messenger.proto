@@ -653,6 +653,7 @@ message CallMessage {
   Type type = 4;
 
   string payload = 5; // JSON-строка с SDP или ICE данными
+  bool is_video = 9;  // true = video call, false = audio call (set by client on INITIATE)
 }
 
 service ChatService {

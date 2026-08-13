@@ -1,6 +1,6 @@
 # Lavender Messenger — Client Integration Guide
 
-**Server:** v1.4.0.0 | **Protocol:** gRPC + Protocol Buffers | **Date:** 2026-08-13
+**Server:** v1.4.0.1 | **Protocol:** gRPC + Protocol Buffers | **Date:** 2026-08-13
 
 This document covers everything a client needs to integrate with the Lavender Messenger server. Platform-agnostic — applies to Android, iOS, Web, Desktop, or any gRPC-capable client.
 
@@ -323,9 +323,32 @@ Separate bidirectional stream for typing indicators.
 
 ```protobuf
 rpc CallSession(stream CallMessage) returns (stream CallMessage);
+
+message CallMessage {
+  string call_id = 1;
+  string sender_id = 2;
+  string receiver_id = 3;
+  string sender_name = 6;
+  string receiver_name = 7;
+  string room_id = 8;
+  Type type = 4;
+  string payload = 5;       // JSON with SDP or ICE data
+  bool is_video = 9;        // true = video call, false = audio call (set on INITIATE)
+}
 ```
 
-Separate bidirectional stream for WebRTC signaling (SDP, ICE, accept, reject, hangup).
+**Client must set `is_video` on INITIATE signal** to distinguish audio vs video calls.
+
+**System messages saved per call:**
+
+| Event | System Message |
+|-------|---------------|
+| Audio call initiated | `📞 Звонок` |
+| Video call initiated | `📹 Видеозвонок` |
+| Call answered + hung up | `📞↗️ Звонок завершен (X:XX)` |
+| Call NOT answered (duration=0) | `📞↘️ Не отвечено` |
+| Call rejected | `📞↘️ Пропущенный вызов` |
+| Connection lost (abrupt disconnect) | `📞↘️ Не отвечено` or `📞↗️ Звонок завершен (X:XX)` |
 
 ---
 

@@ -87,7 +87,11 @@ func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
 			if !delivered {
 				s.sendCallPushNotification(msg.ReceiverId, msg.SenderId, msg.CallId)
 			}
-			s.saveCallSystemMessage(senderName, receiverName, "📹", "Видеозвонок", senderName, msg.SenderId)
+			if msg.IsVideo {
+				s.saveCallSystemMessage(senderName, receiverName, "📹", "Видеозвонок", senderName, msg.SenderId)
+			} else {
+				s.saveCallSystemMessage(senderName, receiverName, "📞", "Звонок", senderName, msg.SenderId)
+			}
 			continue
 
 		case gen.CallMessage_ACCEPT:
@@ -115,14 +119,14 @@ func (s *server) CallSession(stream gen.ChatService_CallSessionServer) error {
 			logger.Infof("[CALL] Hung up: %s", msg.CallId)
 			_ = s.db.UpdateCallStatus(msg.CallId, "completed")
 
-			durationText := ""
 			duration, err := s.db.GetCallDuration(msg.CallId)
 			if err == nil && duration > 0 {
 				minutes := duration / 60
 				seconds := duration % 60
-				durationText = fmt.Sprintf(" (%d:%02d)", minutes, seconds)
+				s.saveCallSystemMessage(senderName, receiverName, "📞↗️", fmt.Sprintf("Звонок завершен (%d:%02d)", minutes, seconds), receiverName, msg.ReceiverId)
+			} else {
+				s.saveCallSystemMessage(senderName, receiverName, "📞↘️", "Не отвечено", receiverName, msg.ReceiverId)
 			}
-			s.saveCallSystemMessage(senderName, receiverName, "📞↗️", "Звонок завершен"+durationText, receiverName, msg.ReceiverId)
 
 		case gen.CallMessage_INITIATE_CONFERENCE:
 			if s.hub.GetConferenceCreator(msg.RoomId) == "" {

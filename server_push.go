@@ -502,13 +502,13 @@ func (s *server) handleAbruptDisconnect(userId string) {
 
 			senderName := resolveDisplayName(s.db, userId)
 			duration, _ := s.db.GetCallDuration(call.CallID)
-			durationText := ""
 			if duration > 0 {
 				minutes := duration / 60
 				seconds := duration % 60
-				durationText = fmt.Sprintf(" (%d:%02d)", minutes, seconds)
+				s.saveCallSystemMessage(senderName, otherUsername, "📞↗️", fmt.Sprintf("Звонок завершен (%d:%02d)", minutes, seconds), senderName, userId)
+			} else {
+				s.saveCallSystemMessage(senderName, otherUsername, "📞↘️", "Не отвечено", senderName, userId)
 			}
-			s.saveCallSystemMessage(senderName, otherUsername, "📞↘️", "Соединение потеряно"+durationText, senderName, userId)
 		}
 	}
 }
