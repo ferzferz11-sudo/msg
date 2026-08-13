@@ -2,7 +2,9 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	"testing"
+	"time"
 
 	"LavenderMessenger/gen"
 )
@@ -102,5 +104,46 @@ func TestSetSelfDestructTimerResponse_Proto(t *testing.T) {
 	}
 	if resp2.Error != "invalid timer value" {
 		t.Errorf("expected error 'invalid timer value', got %q", resp2.Error)
+	}
+}
+
+func TestTimerChangeMessage(t *testing.T) {
+	tests := []struct {
+		seconds int32
+		want    string
+	}{
+		{0, "Автоудаление сообщений отключено"},
+		{30, "Автоудаление сообщений установлено на 30 сек"},
+		{60, "Автоудаление сообщений установлено на 1 мин"},
+		{300, "Автоудаление сообщений установлено на 5 мин"},
+		{3600, "Автоудаление сообщений установлено на 1 час"},
+		{86400, "Автоудаление сообщений установлено на 24 часа"},
+		{120, "Автоудаление сообщений установлено на 120 сек"},
+	}
+	for _, tt := range tests {
+		t.Run(fmt.Sprintf("timer_%d", tt.seconds), func(t *testing.T) {
+			got := timerChangeMessage(tt.seconds)
+			if got != tt.want {
+				t.Errorf("timerChangeMessage(%d) = %q, want %q", tt.seconds, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestRowToProtoV2_SystemMessage(t *testing.T) {
+	row := &MessageRowV2{
+		ID:          "msg-system",
+		RoomID:      "room-1",
+		SenderID:    "00000000-0000-0000-0000-000000000000",
+		ContentType: "system",
+		Text:        "Автоудаление сообщений установлено на 5 мин",
+		CreatedAt:   time.Now().UTC(),
+	}
+	proto := rowToProtoV2(row)
+	if proto == nil {
+		t.Fatal("rowToProtoV2 returned nil")
+	}
+	if proto.SenderId != "00000000-0000-0000-0000-000000000000" {
+		t.Errorf("expected system sender_id, got %q", proto.SenderId)
 	}
 }

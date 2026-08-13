@@ -216,6 +216,7 @@ var coreMigrations = []string{
 	// --- Self-Destruct Timer ---
 	`DO $$ BEGIN
 		IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='chats' AND column_name='self_destruct_timer') THEN ALTER TABLE chats ADD COLUMN self_destruct_timer INTEGER NOT NULL DEFAULT 0; END IF;
+		IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='chats' AND column_name='self_destruct_set_at') THEN ALTER TABLE chats ADD COLUMN self_destruct_set_at TIMESTAMPTZ; END IF;
 	END $$;`,
 
 	// --- Deleted Messages (persistence for delete tracking) ---

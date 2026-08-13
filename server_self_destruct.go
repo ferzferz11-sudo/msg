@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -40,6 +41,27 @@ func (s *server) SetSelfDestructTimer(ctx context.Context, req *gen.SetSelfDestr
 	}
 
 	logger.Infof("SetSelfDestructTimer: room=%s timer=%d by user=%s", req.RoomId, timer, userID)
+
+	// Send system message about timer change
+	systemText := timerChangeMessage(timer)
+	systemRow := &MessageRowV2{
+		ID:          uuid.New().String(),
+		RoomID:      req.RoomId,
+		SenderID:    "00000000-0000-0000-0000-000000000000",
+		ContentType: "system",
+		Text:        systemText,
+		IsRead:      false,
+		CreatedAt:   time.Now().UTC(),
+	}
+	if err := s.db.SaveMessageV2(systemRow); err != nil {
+		logger.Errorf("SetSelfDestructTimer: failed to save system message: %v", err)
+	} else {
+		protoMsg := rowToProtoV2(systemRow)
+		wrappedMsg := &gen.ChatV2Message{Payload: &gen.ChatV2Message_Message{Message: protoMsg}}
+		for _, target := range s.hub.SnapshotRoomStreams(req.RoomId) {
+			_ = target.Send(wrappedMsg)
+		}
+	}
 
 	// Broadcast timer change to all room participants
 	s.hub.BroadcastToRoom(req.RoomId, "SELF_DESTRUCT_TIMER", fmt.Sprintf("%d", timer))
@@ -97,4 +119,24 @@ func (s *server) startDeletedMessagesCleanup(ctx context.Context) {
 func newStaggeredTicker(seconds int) *time.Ticker {
 	// Use a small fixed offset based on current nanoseconds to stagger
 	return time.NewTicker(time.Duration(seconds) * time.Second)
+}
+
+// timerChangeMessage returns a human-readable message about timer change.
+func timerChangeMessage(seconds int32) string {
+	switch seconds {
+	case 0:
+		return "Автоудаление сообщений отключено"
+	case 30:
+		return "Автоудаление сообщений установлено на 30 сек"
+	case 60:
+		return "Автоудаление сообщений установлено на 1 мин"
+	case 300:
+		return "Автоудаление сообщений установлено на 5 мин"
+	case 3600:
+		return "Автоудаление сообщений установлено на 1 час"
+	case 86400:
+		return "Автоудаление сообщений установлено на 24 часа"
+	default:
+		return fmt.Sprintf("Автоудаление сообщений установлено на %d сек", seconds)
+	}
 }

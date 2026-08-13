@@ -272,8 +272,14 @@ func base64Decode(s string) string {
 // ======= Self-Destruct Timer =======
 
 // SetSelfDestructTimer sets the self-destruct timer for a chat.
+// When timer > 0, sets self_destruct_set_at = NOW() so only new messages are affected.
+// When timer == 0 (disabled), clears self_destruct_set_at.
 func (db *DB) SetSelfDestructTimer(roomID string, timerSeconds int) error {
-	_, err := db.Exec(`UPDATE chats SET self_destruct_timer = $1 WHERE id = $2`, timerSeconds, roomID)
+	if timerSeconds > 0 {
+		_, err := db.Exec(`UPDATE chats SET self_destruct_timer = $1, self_destruct_set_at = NOW() WHERE id = $2`, timerSeconds, roomID)
+		return err
+	}
+	_, err := db.Exec(`UPDATE chats SET self_destruct_timer = 0, self_destruct_set_at = NULL WHERE id = $1`, roomID)
 	return err
 }
 
@@ -288,8 +294,9 @@ func (db *DB) GetSelfDestructTimer(roomID string) (int, error) {
 func (db *DB) GetChatsWithSelfDestruct() ([]struct {
 	RoomID string
 	Timer  int
+	SetAt  time.Time
 }, error) {
-	rows, err := db.Query(`SELECT id, self_destruct_timer FROM chats WHERE self_destruct_timer > 0`)
+	rows, err := db.Query(`SELECT id, self_destruct_timer, self_destruct_set_at FROM chats WHERE self_destruct_timer > 0 AND self_destruct_set_at IS NOT NULL`)
 	if err != nil {
 		return nil, err
 	}
@@ -297,13 +304,15 @@ func (db *DB) GetChatsWithSelfDestruct() ([]struct {
 	var result []struct {
 		RoomID string
 		Timer  int
+		SetAt  time.Time
 	}
 	for rows.Next() {
 		var r struct {
 			RoomID string
 			Timer  int
+			SetAt  time.Time
 		}
-		if err := rows.Scan(&r.RoomID, &r.Timer); err == nil {
+		if err := rows.Scan(&r.RoomID, &r.Timer, &r.SetAt); err == nil {
 			result = append(result, r)
 		}
 	}
@@ -311,12 +320,8 @@ func (db *DB) GetChatsWithSelfDestruct() ([]struct {
 }
 
 // DeleteExpiredSelfDestructMessages deletes messages older than the timer for chats with self-destruct enabled.
-// Returns the number of deleted messages and a map of roomID -> []messageID for broadcasting.
+// Only messages created AFTER the timer was set are affected. System messages are never deleted.
 func (db *DB) DeleteExpiredSelfDestructMessages() (map[string][]string, error) {
-	type sdChat struct {
-		RoomID string
-		Timer  int
-	}
 	chats, err := db.GetChatsWithSelfDestruct()
 	if err != nil {
 		return nil, err
@@ -324,7 +329,13 @@ func (db *DB) DeleteExpiredSelfDestructMessages() (map[string][]string, error) {
 
 	affected := make(map[string][]string)
 	for _, c := range chats {
-		rows, err := db.Query(`SELECT id FROM messages_v2 WHERE room_id = $1 AND created_at < NOW() - INTERVAL '1 second' * $2`, c.RoomID, c.Timer)
+		rows, err := db.Query(`
+			SELECT id FROM messages_v2
+			WHERE room_id = $1
+			  AND created_at > $2
+			  AND created_at < NOW() - INTERVAL '1 second' * $3
+			  AND content_type != 'system'`,
+			c.RoomID, c.SetAt, c.Timer)
 		if err != nil {
 			continue
 		}
@@ -338,7 +349,6 @@ func (db *DB) DeleteExpiredSelfDestructMessages() (map[string][]string, error) {
 		rows.Close()
 
 		if len(ids) > 0 {
-			// Insert into deleted_messages before deleting
 			for _, id := range ids {
 				db.Exec(`INSERT INTO deleted_messages (message_id, room_id, deleted_by) VALUES ($1, $2, 'self_destruct') ON CONFLICT DO NOTHING`, id, c.RoomID)
 			}

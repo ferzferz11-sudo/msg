@@ -1,6 +1,6 @@
 # Lavender Messenger — Client Integration Guide
 
-**Server:** v1.4.0.1 | **Protocol:** gRPC + Protocol Buffers | **Date:** 2026-08-13
+**Server:** v1.4.0.2 | **Protocol:** gRPC + Protocol Buffers | **Date:** 2026-08-13
 
 This document covers everything a client needs to integrate with the Lavender Messenger server. Platform-agnostic — applies to Android, iOS, Web, Desktop, or any gRPC-capable client.
 
@@ -766,7 +766,12 @@ message SetSelfDestructTimerResponse {
 
 **Behavior:**
 - Only chat participants can set the timer
-- Server broadcasts `SELF_DESTRUCT_TIMER` system message to all room streams when changed
+- Server sends a system message to the chat (content_type=`"system"`, sender_id=`00000000-...`):
+  - Timer set: `"Автоудаление сообщений установлено на N"`
+  - Timer disabled: `"Автоудаление сообщений отключено"`
+- Server broadcasts `SELF_DESTRUCT_TIMER` system event to all room streams
+- Only messages created AFTER the timer was set are eligible for auto-deletion
+- System messages (content_type=`"system"`) are never auto-deleted
 - Background cleanup runs every 30 seconds — expired messages are deleted and `DELETE_MESSAGE_V2` is broadcast
 - `self_destruct_timer` field is returned in `ChatInfo` via `GetChatsV2` — client can show timer icon in chat list
 
