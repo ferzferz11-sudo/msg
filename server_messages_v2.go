@@ -17,9 +17,15 @@ import (
 )
 
 // GetHistoryV2 returns messages for a room with cursor-based pagination.
-func (s *server) GetHistoryV2(_ context.Context, req *gen.GetHistoryV2Request) (*gen.GetHistoryV2Response, error) {
+func (s *server) GetHistoryV2(ctx context.Context, req *gen.GetHistoryV2Request) (*gen.GetHistoryV2Response, error) {
 	if req.RoomId == "" {
 		return &gen.GetHistoryV2Response{}, nil
+	}
+
+	// Rate limiting: 10 requests/second per user
+	userID := GetUserID(ctx)
+	if userID != "" && !historyRateLimiter.allow(userID) {
+		return nil, status.Errorf(codes.ResourceExhausted, "rate limit exceeded, try again later")
 	}
 
 	limit := int(req.Limit)

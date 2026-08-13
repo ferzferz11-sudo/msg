@@ -99,6 +99,15 @@ func (h *Hub) GetClientVersion(userId string) string {
 	return h.clientVersions[userId]
 }
 
+// --- Active stream count ---
+
+// ActiveStreamCount returns the number of active ChatV2 streams.
+func (h *Hub) ActiveStreamCount() int {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	return len(h.v2Clients)
+}
+
 // --- Grace period ---
 
 const gracePeriodDuration = 30 * time.Second

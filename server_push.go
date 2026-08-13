@@ -115,7 +115,11 @@ func (s *server) sendPushNotification(userId, username, title, body, roomID, mes
 
 	_, err = client.Send(ctx, message)
 	if err != nil {
-		s.logFCM("ERROR", "Send to %s failed: %v", username, err)
+		s.logFCM("ERROR", "Send to %s (user_id=%s) failed: %v", username, userId, err)
+		if s.isInvalidTokenError(err) {
+			s.logFCM("WARN", "Deleting invalid token for %s (user_id=%s)", username, userId)
+			_ = s.db.DeleteUserTokenByUserID(userId)
+		}
 		return
 	}
 

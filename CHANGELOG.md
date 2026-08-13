@@ -1,5 +1,20 @@
 # Лава — Server Changelog
 
+## [1.4.0.3] - 2026-08-13
+
+### Stability & Performance (Android client support)
+- **Stream deadline detection** — `server_chat.go`: ChatV2 streams now monitor inactivity via background goroutine (90s timeout, 30s check interval). Logs inactive streams for diagnostics. gRPC keepalive (20s ping/20s timeout) handles actual dead connection detection (~40s).
+- **ChatV2 message ordering** — documented: messages broadcast in arrival order matching `created_at`.
+- **Extended health endpoint** — `http_server.go`: `/health` now returns `db_connected`, `active_streams`, `uptime_seconds` alongside `status`, `version`, `time`.
+- **Readiness probe** — new `/health/ready` endpoint returns `{"ready":false}` with 503 during shutdown or DB unavailability.
+- **GetHistoryV2 rate limiting** — per-user rate limit (10 req/s) via `RedisRateLimiter`. Returns `RESOURCE_EXHAUSTED` gRPC status when exceeded.
+- **New DB indexes** — `idx_messages_v2_room_read_time` for MarkRead queries, `idx_messages_v2_room_text` for SearchMessages.
+- **FCM invalid token cleanup** — `sendPushNotification` (single-push) now auto-deletes invalid FCM tokens, matching batch-push behavior. Logging includes user_id.
+- **Graceful shutdown retry** — `SERVER_SHUTTINGDOWN` sent twice with 500ms interval (was once). Grace period increased to 3s.
+- **serverStartTime moved** — relocated from `bot_commands.go` to `http_server.go` (shared server-level variable).
+
+---
+
 ## [1.3.4.6] - 2026-08-11
 
 ### Bug Fixes

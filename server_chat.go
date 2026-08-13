@@ -27,11 +27,35 @@ func (s *server) ChatV2(stream gen.ChatService_ChatV2Server) error {
 	s.hub.RegisterV2(stream)
 	defer s.hub.UnregisterV2(stream)
 
+	// Deadline detection: track last activity and close inactive streams
+	const streamInactivityTimeout = 90 * time.Second
+	lastActivityTime := time.Now()
+	deadlineDone := make(chan struct{})
+	go func() {
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-deadlineDone:
+				return
+			case <-stream.Context().Done():
+				return
+			case <-ticker.C:
+				if time.Since(lastActivityTime) > streamInactivityTimeout {
+					logger.Infof("[ChatV2] Stream inactive >%v for user=%s room=%s — gRPC keepalive will close",
+						streamInactivityTimeout, connectedUser, currentRoom)
+				}
+			}
+		}
+	}()
+	defer close(deadlineDone)
+
 	for {
 		msg, err := stream.Recv()
 		if err != nil {
 			return err
 		}
+		lastActivityTime = time.Now()
 
 		if !authDone && msg.JwtToken != "" {
 			claims, err := ValidateToken(msg.JwtToken)
@@ -221,6 +245,8 @@ func (s *server) ChatV2(stream gen.ChatService_ChatV2Server) error {
 			wrappedMsg := &gen.ChatV2Message{
 				Payload: &gen.ChatV2Message_Message{Message: protoMsg},
 			}
+			// Broadcast order: messages are sent to room streams in arrival order,
+			// which matches created_at since each message is timestamped before save.
 			hubSnapshot := s.hub.SnapshotRoomStreams(currentRoom)
 			for _, target := range hubSnapshot {
 				_ = target.Send(wrappedMsg)

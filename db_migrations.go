@@ -43,6 +43,10 @@ var coreMigrations = []string{
 	`CREATE INDEX IF NOT EXISTS idx_messages_v2_room_cursor ON messages_v2(room_id, created_at DESC, id DESC)`,
 	`CREATE INDEX IF NOT EXISTS idx_messages_v2_reply_to ON messages_v2(reply_to_id) WHERE reply_to_id IS NOT NULL`,
 	`CREATE INDEX IF NOT EXISTS idx_messages_v2_sender ON messages_v2(sender_id)`,
+	// Composite index for MarkRead queries (room_id + is_read + created_at)
+	`CREATE INDEX IF NOT EXISTS idx_messages_v2_room_read_time ON messages_v2(room_id, is_read, created_at)`,
+	// Index for text search in SearchMessages (trigram not required, but helps with ILIKE prefix)
+	`CREATE INDEX IF NOT EXISTS idx_messages_v2_room_text ON messages_v2(room_id, text) WHERE text IS NOT NULL AND text != ''`,
 	`DO $$ BEGIN
 		IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages_v2' AND column_name='reply_preview') THEN ALTER TABLE messages_v2 ADD COLUMN reply_preview TEXT DEFAULT ''; END IF;
 	END $$;`,

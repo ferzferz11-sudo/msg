@@ -323,10 +323,14 @@ func main() {
 		srv.isShuttingDown.Store(true)
 		httpShuttingDown.Store(true)
 
-		// Notify all connected clients before stopping
+		// Notify all connected clients before stopping — send twice with 500ms gap
+		// to increase delivery probability on slow/unstable connections
 		srv.hub.BroadcastShutdown()
-		logger.Info("Sent SERVER_SHUTTINGDOWN to all clients")
-		time.Sleep(2 * time.Second) // Give clients time to receive the message
+		logger.Info("Sent SERVER_SHUTTINGDOWN to all clients (attempt 1)")
+		time.Sleep(500 * time.Millisecond)
+		srv.hub.BroadcastShutdown()
+		logger.Info("Sent SERVER_SHUTTINGDOWN to all clients (attempt 2)")
+		time.Sleep(2500 * time.Millisecond) // Total grace period: 3s
 
 		// Cancel background goroutines
 		cancel()

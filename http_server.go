@@ -47,6 +47,9 @@ var (
 	// DB and Hub references for HTTP handlers (set via SetHTTPDependencies)
 	httpDB  *DB
 	httpHub *Hub
+
+	// Server start time — used by /health and /status bot command
+	serverStartTime = time.Now()
 )
 
 func SetHTTPDependencies(db *DB, hub *Hub) {
@@ -131,15 +134,41 @@ func StartHTTPServerAndReturn(port string) *http.Server {
 	// Public endpoints (no auth)
 	http.HandleFunc("/api/request-password-reset", requestPasswordResetHandler)
 
-	// Health check endpoint
+	// Health check endpoint — extended diagnostics
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if httpShuttingDown.Load() {
 			w.WriteHeader(http.StatusServiceUnavailable)
-			fmt.Fprintf(w, `{"status":"shutting_down","version":"%s","time":"%s"}`, ServerVersion, time.Now().Format(time.RFC3339))
+			fmt.Fprintf(w, `{"status":"shutting_down","version":"%s","time":"%s"}`,
+				ServerVersion, time.Now().Format(time.RFC3339))
 			return
 		}
-		fmt.Fprintf(w, `{"status":"ok","version":"%s","time":"%s"}`, ServerVersion, time.Now().Format(time.RFC3339))
+
+		dbConnected := httpDB != nil && httpDB.Ping() == nil
+		activeStreams := 0
+		if httpHub != nil {
+			activeStreams = httpHub.ActiveStreamCount()
+		}
+		uptimeSeconds := int64(time.Since(serverStartTime).Seconds())
+
+		fmt.Fprintf(w, `{"status":"ok","version":"%s","time":"%s","db_connected":%t,"active_streams":%d,"uptime_seconds":%d}`,
+			ServerVersion, time.Now().Format(time.RFC3339), dbConnected, activeStreams, uptimeSeconds)
+	})
+
+	// Readiness probe — returns 503 during shutdown or if DB is unreachable
+	http.HandleFunc("/health/ready", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if httpShuttingDown.Load() {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			fmt.Fprintf(w, `{"ready":false,"reason":"shutting_down"}`)
+			return
+		}
+		if httpDB == nil || httpDB.Ping() != nil {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			fmt.Fprintf(w, `{"ready":false,"reason":"db_unavailable"}`)
+			return
+		}
+		fmt.Fprintf(w, `{"ready":true}`)
 	})
 
 	// Server info endpoint — returns service versions for client capability negotiation

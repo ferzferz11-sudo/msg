@@ -18,6 +18,9 @@ import (
 var (
 	owlRateLimiter      = NewRedisRateLimiter(10, time.Minute, "rl:owl:")
 	freeTierRateLimiter = NewRedisRateLimiter(20, time.Hour, "rl:free:")
+
+	// GetHistoryV2 per-user rate limit: 10 requests/second
+	historyRateLimiter = NewRedisRateLimiter(10, time.Second, "rl:history:")
 )
 
 type rateLimiter struct {

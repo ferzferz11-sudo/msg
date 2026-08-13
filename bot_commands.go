@@ -66,8 +66,6 @@ var botCommandList = []*gen.BotCommandInfo{
 
 // ======= Utility Functions =======
 
-var serverStartTime = time.Now()
-
 func formatDuration(d time.Duration) string {
 	days := int(d.Hours()) / 24
 	hours := int(d.Hours()) % 24
