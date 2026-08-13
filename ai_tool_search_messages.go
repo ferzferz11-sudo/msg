@@ -13,8 +13,10 @@ type searchMessagesTool struct {
 	db *sql.DB
 }
 
-func (t *searchMessagesTool) Name() string        { return "search_messages" }
-func (t *searchMessagesTool) Description() string  { return "Search messages by keyword across user's chats" }
+func (t *searchMessagesTool) Name() string { return "search_messages" }
+func (t *searchMessagesTool) Description() string {
+	return "Search messages by keyword across user's chats"
+}
 func (t *searchMessagesTool) RequiredRole() string { return "user" }
 
 func (t *searchMessagesTool) Parameters() map[string]any {
@@ -56,15 +58,21 @@ func (t *searchMessagesTool) Execute(ctx context.Context, args map[string]any) (
 	var err error
 	if chatID != "" {
 		rows, err = t.db.QueryContext(ctx,
-			`SELECT message_id, room_id, username, created_at, LEFT(encrypted_text::text, 200) as preview
-			FROM messages WHERE room_id = $1 AND encrypted_text::text ILIKE $2
-			ORDER BY created_at DESC LIMIT $3`,
+			`SELECT mv.id, mv.room_id, COALESCE(u.username, mv.sender_id::text), mv.created_at::text,
+				LEFT(CASE WHEN mv.text != '' THEN mv.text WHEN mv.content_type = 'image' THEN '[image]' WHEN mv.content_type = 'voice' THEN '[voice]' WHEN mv.content_type = 'file' THEN '[file]' ELSE '' END, 200) as preview
+			FROM messages_v2 mv
+			LEFT JOIN users u ON u.id = mv.sender_id
+			WHERE mv.room_id = $1 AND mv.text ILIKE $2
+			ORDER BY mv.created_at DESC LIMIT $3`,
 			chatID, "%"+query+"%", limit)
 	} else {
 		rows, err = t.db.QueryContext(ctx,
-			`SELECT message_id, room_id, username, created_at, LEFT(encrypted_text::text, 200) as preview
-			FROM messages WHERE encrypted_text::text ILIKE $1
-			ORDER BY created_at DESC LIMIT $2`,
+			`SELECT mv.id, mv.room_id, COALESCE(u.username, mv.sender_id::text), mv.created_at::text,
+				LEFT(CASE WHEN mv.text != '' THEN mv.text WHEN mv.content_type = 'image' THEN '[image]' WHEN mv.content_type = 'voice' THEN '[voice]' WHEN mv.content_type = 'file' THEN '[file]' ELSE '' END, 200) as preview
+			FROM messages_v2 mv
+			LEFT JOIN users u ON u.id = mv.sender_id
+			WHERE mv.text ILIKE $1
+			ORDER BY mv.created_at DESC LIMIT $2`,
 			"%"+query+"%", limit)
 	}
 	if err != nil {

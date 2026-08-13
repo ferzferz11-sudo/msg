@@ -16,17 +16,23 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 const (
-	maxUploadSize   = 10 * 1024 * 1024 // 10MB
-	avatarsPath     = "./uploads/avatars"
-	imagesPath      = "./uploads/images"
-	filesPath       = "./uploads/files"
-	backgroundsPath = "./uploads/background"
-	audioPath       = "./uploads/audio"
-	defaultHTTPPort = "8082"
+	maxUploadSize          = 30 * 1024 * 1024 // 30MB
+	maxStickerSize         = 512 * 1024        // 512KB
+	avatarsPath            = "./uploads/avatars"
+	imagesPath             = "./uploads/images"
+	filesPath              = "./uploads/files"
+	backgroundsPath        = "./uploads/background"
+	audioPath              = "./uploads/audio"
+	stickersPath           = "./uploads/stickers"
+	stickerThumbnailsPath  = "./uploads/sticker-thumbnails"
+	defaultHTTPPort        = "8082"
 )
 
 var (
@@ -34,7 +40,19 @@ var (
 	turnServerHost   = getEnvOrDefault("TURN_SERVER_HOST", "13.140.25.249:3478")
 	turnSharedSecret = os.Getenv("TURN_SHARED_SECRET")
 	turnTTL          = 86400 // 24 hours
+
+	// Shutdown state — set to true during graceful shutdown
+	httpShuttingDown atomic.Bool
+
+	// DB and Hub references for HTTP handlers (set via SetHTTPDependencies)
+	httpDB  *DB
+	httpHub *Hub
 )
+
+func SetHTTPDependencies(db *DB, hub *Hub) {
+	httpDB = db
+	httpHub = hub
+}
 
 func getEnvOrDefault(key, defaultValue string) string {
 	if v := os.Getenv(key); v != "" {
@@ -49,72 +67,44 @@ func closeFile(file io.ReadCloser) {
 	}
 }
 
-func StartHTTPServer(port string) {
-	// Ensure directories exist
-	os.MkdirAll(avatarsPath, 0755)
-	os.MkdirAll(imagesPath, 0755)
-	os.MkdirAll(filesPath, 0755)
-	os.MkdirAll(backgroundsPath, 0755)
-	os.MkdirAll(audioPath, 0755)
-
-	http.HandleFunc("/upload-avatar", uploadAvatarHandler)
-	http.HandleFunc("/upload-image", uploadImageHandler)
-	http.HandleFunc("/upload-file", uploadFileHandler)
-	http.HandleFunc("/upload-background", uploadBackgroundHandler)
-	http.HandleFunc("/upload-audio", uploadAudioHandler)
-
-	// TURN credentials endpoint
-	http.HandleFunc("/turn-credentials", turnCredentialsHandler)
-
-	// Health check endpoint
-	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprintf(w, `{"status":"ok","version":"%s","time":"%s"}`, ServerVersion, time.Now().Format(time.RFC3339))
-	})
-
-	// Server info endpoint — returns service versions for client capability negotiation
-	http.HandleFunc("/info", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		info := map[string]interface{}{
-			"version":  ServerVersion,
-			"time":     time.Now().Format(time.RFC3339),
-			"services": map[string]string{
-				"auth":     AuthServiceVersion,
-				"chat":     ChatServiceVersion,
-				"profile":  ProfileServiceVersion,
-				"ai":       AIServiceVersion,
-				"files":    FileServiceVersion,
-				"push":     PushServiceVersion,
-			},
+// requireAuth is HTTP middleware that validates a JWT Bearer token from the Authorization header.
+// On success, it sets X-User-ID and X-Username headers for downstream handlers.
+func requireAuth(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		authHeader := r.Header.Get("Authorization")
+		if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
+			http.Error(w, `{"error":"missing or invalid Authorization header"}`, http.StatusUnauthorized)
+			return
 		}
-		json.NewEncoder(w).Encode(info)
-	})
-
-	http.HandleFunc("/avatars/", func(w http.ResponseWriter, r *http.Request) {
-		serveFileHandler(w, r, "/avatars/", avatarsPath)
-	})
-	http.HandleFunc("/images/", func(w http.ResponseWriter, r *http.Request) {
-		serveFileHandler(w, r, "/images/", imagesPath)
-	})
-	http.HandleFunc("/files/", func(w http.ResponseWriter, r *http.Request) {
-		serveFileHandler(w, r, "/files/", filesPath)
-	})
-	http.HandleFunc("/background/", func(w http.ResponseWriter, r *http.Request) {
-		serveFileHandler(w, r, "/background/", backgroundsPath)
-	})
-	http.HandleFunc("/audio/", func(w http.ResponseWriter, r *http.Request) {
-		serveFileHandler(w, r, "/audio/", audioPath)
-	})
-
-	srv := &http.Server{
-		Addr:    "0.0.0.0:" + port,
-		Handler: nil,
+		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+		claims, err := ValidateToken(tokenString)
+		if err != nil {
+			http.Error(w, `{"error":"invalid or expired token"}`, http.StatusUnauthorized)
+			return
+		}
+		// CRITICAL: reject refresh tokens on HTTP endpoints (same as gRPC interceptor)
+		if claims.Type != "access" {
+			http.Error(w, `{"error":"invalid token type"}`, http.StatusUnauthorized)
+			return
+		}
+		r.Header.Set("X-User-ID", claims.UserID)
+		r.Header.Set("X-Username", claims.Username)
+		next(w, r)
 	}
+}
 
-	logger.Infof("HTTP server started on port %s", port)
-	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		logger.Errorf("HTTP server error: %v", err)
+// sanitizeFileExtension validates and normalizes a file extension, returning empty string if disallowed
+func sanitizeFileExtension(filename string, allowed []string) string {
+	ext := strings.ToLower(filepath.Ext(filename))
+	if ext == "" {
+		return ""
 	}
+	for _, a := range allowed {
+		if ext == a {
+			return ext
+		}
+	}
+	return ""
 }
 
 func StartHTTPServerAndReturn(port string) *http.Server {
@@ -124,19 +114,31 @@ func StartHTTPServerAndReturn(port string) *http.Server {
 	os.MkdirAll(filesPath, 0755)
 	os.MkdirAll(backgroundsPath, 0755)
 	os.MkdirAll(audioPath, 0755)
+	os.MkdirAll(stickersPath, 0755)
+	os.MkdirAll(stickerThumbnailsPath, 0755)
 
-	http.HandleFunc("/upload-avatar", uploadAvatarHandler)
-	http.HandleFunc("/upload-image", uploadImageHandler)
-	http.HandleFunc("/upload-file", uploadFileHandler)
-	http.HandleFunc("/upload-background", uploadBackgroundHandler)
-	http.HandleFunc("/upload-audio", uploadAudioHandler)
+	http.HandleFunc("/upload-avatar", requireAuth(uploadAvatarHandler))
+	http.HandleFunc("/upload-image", requireAuth(uploadImageHandler))
+	http.HandleFunc("/upload-file", requireAuth(uploadFileHandler))
+	http.HandleFunc("/upload-background", requireAuth(uploadBackgroundHandler))
+	http.HandleFunc("/upload-audio", requireAuth(uploadAudioHandler))
+	http.HandleFunc("/upload-sticker", requireAuth(uploadStickerHandler))
+	http.HandleFunc("/upload-sticker-thumbnail", requireAuth(uploadStickerThumbnailHandler))
 
 	// TURN credentials endpoint
-	http.HandleFunc("/turn-credentials", turnCredentialsHandler)
+	http.HandleFunc("/turn-credentials", requireAuth(turnCredentialsHandler))
+
+	// Public endpoints (no auth)
+	http.HandleFunc("/api/request-password-reset", requestPasswordResetHandler)
 
 	// Health check endpoint
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
+		if httpShuttingDown.Load() {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			fmt.Fprintf(w, `{"status":"shutting_down","version":"%s","time":"%s"}`, ServerVersion, time.Now().Format(time.RFC3339))
+			return
+		}
 		fmt.Fprintf(w, `{"status":"ok","version":"%s","time":"%s"}`, ServerVersion, time.Now().Format(time.RFC3339))
 	})
 
@@ -144,15 +146,18 @@ func StartHTTPServerAndReturn(port string) *http.Server {
 	http.HandleFunc("/info", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		info := map[string]interface{}{
-			"version":  ServerVersion,
-			"time":     time.Now().Format(time.RFC3339),
+			"version":          ServerVersion,
+			"time":             time.Now().Format(time.RFC3339),
+			"max_upload_size":  maxUploadSize,
 			"services": map[string]string{
-				"auth":     AuthServiceVersion,
-				"chat":     ChatServiceVersion,
-				"profile":  ProfileServiceVersion,
-				"ai":       AIServiceVersion,
-				"files":    FileServiceVersion,
-				"push":     PushServiceVersion,
+				"auth":    AuthServiceVersion,
+				"chat":    ChatServiceVersion,
+				"profile": ProfileServiceVersion,
+				"ai":      AIServiceVersion,
+				"files":   FileServiceVersion,
+				"push":    PushServiceVersion,
+				"company":  CompanyServiceVersion,
+				"stickers": StickerServiceVersion,
 			},
 		}
 		json.NewEncoder(w).Encode(info)
@@ -173,10 +178,48 @@ func StartHTTPServerAndReturn(port string) *http.Server {
 	http.HandleFunc("/audio/", func(w http.ResponseWriter, r *http.Request) {
 		serveFileHandler(w, r, "/audio/", audioPath)
 	})
+	http.HandleFunc("/stickers/", func(w http.ResponseWriter, r *http.Request) {
+		serveFileHandler(w, r, "/stickers/", stickersPath)
+	})
+	http.HandleFunc("/sticker-thumbnails/", func(w http.ResponseWriter, r *http.Request) {
+		serveFileHandler(w, r, "/sticker-thumbnails/", stickerThumbnailsPath)
+	})
+
+	// --- OIDC Endpoints ---
+	if os.Getenv("OIDC_ENABLED") != "false" {
+		// Discovery & JWKS (public)
+		http.HandleFunc("/.well-known/openid-configuration", oidcDiscoveryHandler)
+		http.HandleFunc("/.well-known/jwks.json", oidcJWKSHandler)
+
+		// Authorization
+		http.HandleFunc("/oidc/authorize", oidcAuthorizeHandler)
+		http.HandleFunc("/oidc/authorize/consent", oidcConsentHandler)
+
+		// Token
+		http.HandleFunc("/oidc/token", oidcTokenHandler)
+
+		// UserInfo (OIDC auth required)
+		http.HandleFunc("/oidc/userinfo", oidcUserInfoHandler)
+
+		// Token management
+		http.HandleFunc("/oidc/revoke", oidcRevokeHandler)
+		http.HandleFunc("/oidc/introspect", oidcIntrospectHandler)
+		http.HandleFunc("/oidc/logout", oidcLogoutHandler)
+
+		// SSO
+		http.HandleFunc("/oidc/sso-check", oidcSSOCheckHandler)
+		http.HandleFunc("/oidc/sso-exchange", oidcSSOExchangeHandler)
+
+		// Admin (Lavender admin auth)
+		http.HandleFunc("/oidc/admin/clients", requireAdminAuth(oidcAdminClientsHandler))
+		http.HandleFunc("/oidc/admin/clients/", requireAdminAuth(oidcAdminClientHandler))
+
+		logger.Info("OIDC endpoints registered")
+	}
 
 	srv := &http.Server{
 		Addr:    "0.0.0.0:" + port,
-		Handler: nil,
+		Handler: corsMiddleware(http.DefaultServeMux),
 	}
 
 	logger.Infof("HTTP server started on port %s", port)
@@ -187,22 +230,6 @@ func StartHTTPServerAndReturn(port string) *http.Server {
 	}()
 
 	return srv
-}
-
-func StartAPKServer(port string) {
-	apkDir := os.Getenv("APK_DIR")
-	if apkDir == "" {
-		apkDir = "/home/ferz/LavenderMessengerAndroid"
-	}
-
-	mux := http.NewServeMux()
-	fileServer := http.FileServer(http.Dir(apkDir))
-	mux.Handle("/", fileServer)
-
-	logger.Infof("APK server started on port %s serving %s", port, apkDir)
-	if err := http.ListenAndServe("0.0.0.0:"+port, mux); err != nil {
-		logger.Errorf("APK server error: %v", err)
-	}
 }
 
 func uploadAvatarHandler(w http.ResponseWriter, r *http.Request) {
@@ -234,11 +261,13 @@ func uploadAvatarHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Generate filename for thumbnail
+	// Validate thumbnail extension
 	hash := md5.Sum(thumbBytes)
-	ext := filepath.Ext(thumbHandler.Filename)
+	allowedImageExts := []string{".jpg", ".jpeg", ".png", ".gif", ".webp"}
+	ext := sanitizeFileExtension(thumbHandler.Filename, allowedImageExts)
 	if ext == "" {
-		ext = ".jpg"
+		http.Error(w, "File extension not allowed", http.StatusBadRequest)
+		return
 	}
 	thumbFilename := hex.EncodeToString(hash[:]) + ext
 
@@ -262,18 +291,18 @@ func uploadAvatarHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Process full image (optional)
 	var fullURL string
-	fullFile, _, err := r.FormFile("avatar_full")
+	fullFile, fullHandler, err := r.FormFile("avatar_full")
 	if err == nil {
 		defer closeFile(fullFile)
 
 		fullBytes, err := io.ReadAll(fullFile)
 		if err == nil {
-			// Generate filename for full image
-			fullHash := md5.Sum(fullBytes)
-			fullExt := filepath.Ext(thumbHandler.Filename)
+			// Validate full image extension
+			fullExt := sanitizeFileExtension(fullHandler.Filename, allowedImageExts)
 			if fullExt == "" {
-				fullExt = ".jpg"
+				fullExt = ext // fallback to thumbnail's validated extension
 			}
+			fullHash := md5.Sum(fullBytes)
 			fullFilename := hex.EncodeToString(fullHash[:]) + "_full" + fullExt
 
 			fullPath := filepath.Join(avatarsPath, fullFilename)
@@ -415,18 +444,27 @@ func handleUpload(w http.ResponseWriter, r *http.Request, formKey, saveDir, urlP
 		return
 	}
 
-	// For files, we might want to keep the original name or hash it
-	var filename string
-	if formKey == "file" {
-		filename = handler.Filename
-	} else {
-		hash := md5.Sum(fileBytes)
-		ext := filepath.Ext(handler.Filename)
-		if ext == "" {
-			ext = ".jpg"
-		}
-		filename = hex.EncodeToString(hash[:]) + ext
+	// Validate file extension
+	var allowedExts []string
+	switch formKey {
+	case "image", "background":
+		allowedExts = []string{".jpg", ".jpeg", ".png", ".gif", ".webp"}
+	case "file":
+		allowedExts = []string{".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
+			".txt", ".csv", ".json", ".xml", ".zip", ".rar", ".7z",
+			".mp3", ".mp4", ".avi", ".mov", ".mkv", ".webm", ".m4a", ".aac", ".ogg", ".wav"}
+	default:
+		allowedExts = []string{".jpg", ".jpeg", ".png", ".gif", ".webp"}
 	}
+	ext := sanitizeFileExtension(handler.Filename, allowedExts)
+	if ext == "" {
+		http.Error(w, "File extension not allowed", http.StatusBadRequest)
+		return
+	}
+
+	// Hash filename to prevent path traversal and naming conflicts
+	hash := md5.Sum(fileBytes)
+	filename := hex.EncodeToString(hash[:]) + ext
 
 	filePath := filepath.Join(saveDir, filename)
 	if err := os.WriteFile(filePath, fileBytes, 0644); err != nil {
@@ -535,6 +573,124 @@ func DeleteImageFile(imageURL string) error {
 	return nil
 }
 
+func uploadStickerHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, maxStickerSize)
+	if err := r.ParseMultipartForm(maxStickerSize); err != nil {
+		logger.Errorf("Sticker upload error: file too large: %v", err)
+		http.Error(w, "File too large", http.StatusBadRequest)
+		return
+	}
+
+	file, handler, err := r.FormFile("sticker")
+	if err != nil {
+		logger.Errorf("Sticker upload error: %v", err)
+		http.Error(w, "Error retrieving sticker file", http.StatusBadRequest)
+		return
+	}
+	defer closeFile(file)
+
+	fileBytes, err := io.ReadAll(file)
+	if err != nil {
+		logger.Errorf("Sticker upload error reading file: %v", err)
+		http.Error(w, "Error reading file", http.StatusInternalServerError)
+		return
+	}
+
+	ext := sanitizeFileExtension(handler.Filename, []string{".json"})
+	if ext == "" {
+		http.Error(w, "Only .json (Lottie) files are allowed", http.StatusBadRequest)
+		return
+	}
+
+	hash := md5.Sum(fileBytes)
+	filename := hex.EncodeToString(hash[:]) + ext
+
+	filePath := filepath.Join(stickersPath, filename)
+	if err := os.WriteFile(filePath, fileBytes, 0644); err != nil {
+		logger.Errorf("Sticker upload error saving file: %v", err)
+		http.Error(w, "Error saving file", http.StatusInternalServerError)
+		return
+	}
+
+	publicIP := os.Getenv("PUBLIC_IP")
+	if publicIP == "" {
+		publicIP = "localhost"
+	}
+	httpPort := os.Getenv("HTTP_PORT")
+	if httpPort == "" {
+		httpPort = defaultHTTPPort
+	}
+
+	fileURL := fmt.Sprintf("http://%s:%s/stickers/%s", publicIP, httpPort, filename)
+	logger.Infof("Sticker uploaded: %s", filename)
+	w.Header().Set("Content-Type", "application/json")
+	fmt.Fprintf(w, `{"url": "%s"}`, fileURL)
+}
+
+func uploadStickerThumbnailHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
+	if err := r.ParseMultipartForm(maxUploadSize); err != nil {
+		logger.Errorf("Sticker thumbnail upload error: file too large: %v", err)
+		http.Error(w, "File too large", http.StatusBadRequest)
+		return
+	}
+
+	file, handler, err := r.FormFile("sticker")
+	if err != nil {
+		logger.Errorf("Sticker thumbnail upload error: %v", err)
+		http.Error(w, "Error retrieving sticker file", http.StatusBadRequest)
+		return
+	}
+	defer closeFile(file)
+
+	fileBytes, err := io.ReadAll(file)
+	if err != nil {
+		logger.Errorf("Sticker thumbnail upload error reading file: %v", err)
+		http.Error(w, "Error reading file", http.StatusInternalServerError)
+		return
+	}
+
+	ext := sanitizeFileExtension(handler.Filename, []string{".png", ".jpg", ".jpeg", ".webp"})
+	if ext == "" {
+		http.Error(w, "Only .png, .jpg, .jpeg, .webp files are allowed", http.StatusBadRequest)
+		return
+	}
+
+	hash := md5.Sum(fileBytes)
+	filename := hex.EncodeToString(hash[:]) + ext
+
+	filePath := filepath.Join(stickerThumbnailsPath, filename)
+	if err := os.WriteFile(filePath, fileBytes, 0644); err != nil {
+		logger.Errorf("Sticker thumbnail upload error saving file: %v", err)
+		http.Error(w, "Error saving file", http.StatusInternalServerError)
+		return
+	}
+
+	publicIP := os.Getenv("PUBLIC_IP")
+	if publicIP == "" {
+		publicIP = "localhost"
+	}
+	httpPort := os.Getenv("HTTP_PORT")
+	if httpPort == "" {
+		httpPort = defaultHTTPPort
+	}
+
+	fileURL := fmt.Sprintf("http://%s:%s/sticker-thumbnails/%s", publicIP, httpPort, filename)
+	logger.Infof("Sticker thumbnail uploaded: %s", filename)
+	w.Header().Set("Content-Type", "application/json")
+	fmt.Fprintf(w, `{"url": "%s"}`, fileURL)
+}
+
 // turnCredentialsHandler generates temporary TURN credentials using HMAC
 // Client sends GET /turn-credentials and receives JSON with iceServers array
 func turnCredentialsHandler(w http.ResponseWriter, r *http.Request) {
@@ -569,4 +725,118 @@ func turnCredentialsHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(servers)
+}
+
+func requestPasswordResetHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "Method not allowed"})
+		return
+	}
+
+	var req struct {
+		Username string `json:"username"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Username == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "Username is required"})
+		return
+	}
+
+	if httpDB == nil {
+		logger.Errorf("requestPasswordReset: DB not initialized")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "Server error"})
+		return
+	}
+
+	exists, err := httpDB.UserExists(req.Username)
+	if err != nil || !exists {
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "Пользователь не найден"})
+		return
+	}
+
+	var adminUsername string
+	err = httpDB.QueryRow(`SELECT username FROM users WHERE is_super_admin = TRUE LIMIT 1`).Scan(&adminUsername)
+	if err != nil || adminUsername == "" {
+		logger.Errorf("requestPasswordReset: no super admin found")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "Администратор сервера не найден"})
+		return
+	}
+
+	var adminUserID string
+	httpDB.QueryRow(`SELECT id::text FROM users WHERE username = $1`, adminUsername).Scan(&adminUserID)
+
+	chatID, err := httpDB.GetDirectChatBetweenUsers(req.Username, adminUsername)
+	if err != nil {
+		logger.Errorf("requestPasswordReset: failed to create chat: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "Ошибка создания чата"})
+		return
+	}
+
+	msgID := uuid.New().String()
+	msg := &MessageRowV2{
+		ID:          msgID,
+		RoomID:      chatID,
+		SenderID:    adminUserID,
+		ContentType: "text",
+		Text:        "Пользователь запросил смену пароля",
+		CreatedAt:   time.Now(),
+	}
+	if err := httpDB.SaveMessageV2(msg); err != nil {
+		logger.Errorf("requestPasswordReset: failed to save message: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": "Ошибка отправки сообщения"})
+		return
+	}
+
+	if httpHub != nil {
+		httpHub.BroadcastToRoom(chatID, "NEW_MESSAGE_V2", msgID)
+	}
+
+	logger.Infof("requestPasswordReset: password reset requested by %s, chat=%s", req.Username, chatID)
+	json.NewEncoder(w).Encode(map[string]interface{}{"success": true, "message": "Запрос отправлен админу"})
+}
+
+func corsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path := r.URL.Path
+
+		// OIDC endpoints: restricted CORS with credentials support
+		if strings.HasPrefix(path, "/oidc/") {
+			origin := r.Header.Get("Origin")
+			allowedOrigins := []string{
+				"https://13.140.25.249",
+				"http://13.140.25.249",
+				"http://localhost:3000",
+				"http://localhost:8080",
+			}
+			for _, allowed := range allowedOrigins {
+				if origin == allowed {
+					w.Header().Set("Access-Control-Allow-Origin", origin)
+					w.Header().Set("Access-Control-Allow-Credentials", "true")
+					break
+				}
+			}
+		} else {
+			// .well-known, uploads, health, info — wildcard
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+		}
+
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		w.Header().Set("Access-Control-Max-Age", "86400")
+
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
 }

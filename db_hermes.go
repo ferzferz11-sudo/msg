@@ -148,10 +148,7 @@ func runHermesMigrations(db *sql.DB) {
 		`ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO lavender`,
 
 		// === AI Chat Refactor v1.1.2.3 — unified tables ===
-		// Drop old AI tables if they exist (clean migration)
-		`DROP TABLE IF EXISTS ai_chat_messages CASCADE`,
-		`DROP TABLE IF EXISTS ai_chat_settings CASCADE`,
-		`DROP TABLE IF EXISTS ai_chat_sessions CASCADE`,
+		// NOTE: Old DROP TABLE statements removed — CREATE TABLE IF NOT EXISTS handles idempotency safely
 
 		// AI Chat Sessions — unified for OWL + Hermes
 		`CREATE TABLE IF NOT EXISTS ai_chat_sessions (
@@ -446,13 +443,23 @@ func (h *HermesDB) RevokeAgentToken(agentID string) error {
 	return err
 }
 
+// IsAgentRevoked checks if an agent token has been revoked
+func (h *HermesDB) IsAgentRevoked(agentID string) (bool, error) {
+	var revoked bool
+	err := h.db.QueryRow("SELECT revoked FROM agent_tokens WHERE agent_id = $1", agentID).Scan(&revoked)
+	if err == sql.ErrNoRows {
+		return false, nil // agent not found = not revoked
+	}
+	return revoked, err
+}
+
 // ListAgentTokens возвращает все токены агентов
 func (h *HermesDB) ListAgentTokens() ([]auth.AgentToken, error) {
 	return h.ListAgentTokensFiltered("")
 }
 
 // ListAgentTokensFiltered возвращает токены агентов, отфильтрованные по created_by
-// Если createdBy пусто — возвращает все токены (для супер-админов)
+// Если createdBy пусто — возвращает все токены (для админов)
 func (h *HermesDB) ListAgentTokensFiltered(createdBy string) ([]auth.AgentToken, error) {
 	var rows *sql.Rows
 	var err error

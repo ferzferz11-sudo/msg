@@ -14,7 +14,7 @@ import (
 
 type webSearchTool struct{}
 
-func (t *webSearchTool) Name() string        { return "web_search" }
+func (t *webSearchTool) Name() string         { return "web_search" }
 func (t *webSearchTool) Description() string  { return "Search the web for information" }
 func (t *webSearchTool) RequiredRole() string { return "user" }
 
@@ -59,7 +59,7 @@ func (t *webSearchTool) Execute(ctx context.Context, args map[string]any) (strin
 		Abstract    string `json:"Abstract"`
 		AbstractURL string `json:"AbstractURL"`
 		Results     []struct {
-			Text string `json:"Text"`
+			Text     string `json:"Text"`
 			FirstURL string `json:"FirstURL"`
 		} `json:"Results"`
 		RelatedTopics []struct {

@@ -7,10 +7,15 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log"
 	"sync"
 	"time"
 
 	"github.com/google/uuid"
+
+	"LavenderMessenger/core/rag"
+	"LavenderMessenger/core/rag/memory"
+	"LavenderMessenger/core/rag/qdrant"
 )
 
 // AIGateway handles all AI chat operations
@@ -19,8 +24,12 @@ type AIGateway struct {
 	executor     *AgentExecutor
 	tools        *ToolRegistry
 	router       *HybridRouter
+	rag          rag.RAGPipeline
+	embedder     rag.EmbeddingService
+	vectorDB     rag.VectorSearch
 	mu           sync.RWMutex
-	rateLimiters map[string]*rateLimiter
+	rateLimiters map[string]*RedisRateLimiter
+	userMu       sync.Map // per-user mutex for session dedup
 }
 
 // NewAIGateway creates and initializes the gateway
@@ -30,19 +39,52 @@ func NewAIGateway(db *sql.DB) *AIGateway {
 	executor := NewAgentExecutor(db, registry, tools)
 	router := NewHybridRouter(db)
 
+	ragPipeline, embedder, vectorDB := initRAG()
+
 	g := &AIGateway{
 		db:           db,
 		executor:     executor,
 		tools:        tools,
 		router:       router,
-		rateLimiters: make(map[string]*rateLimiter),
+		rag:          ragPipeline,
+		embedder:     embedder,
+		vectorDB:     vectorDB,
+		rateLimiters: make(map[string]*RedisRateLimiter),
 	}
 	return g
 }
 
+func initRAG() (rag.RAGPipeline, rag.EmbeddingService, rag.VectorSearch) {
+	dim := 1536 // text-embedding-3-small dimensions
+
+	// Try Qdrant first
+	qdrantClient := qdrant.NewClient("rag", dim)
+	if qdrantClient != nil && qdrantClient.IsAvailable() {
+		embedder := qdrant.NewOpenAIEmbeddingService(dim)
+		if embedder != nil {
+			log.Printf("[RAG] production mode: Qdrant + OpenAI embeddings")
+			return memory.NewInMemoryRAGPipeline(embedder, qdrantClient), embedder, qdrantClient
+		}
+		log.Printf("[RAG] Qdrant available but no OPENAI_API_KEY, using in-memory embeddings")
+		inMemEmb := memory.NewInMemoryEmbeddingService(dim)
+		return memory.NewInMemoryRAGPipeline(inMemEmb, qdrantClient), inMemEmb, qdrantClient
+	}
+
+	// Fallback: in-memory everything
+	log.Printf("[RAG] in-memory mode (set QDRANT_URL + OPENAI_API_KEY for production)")
+	inMemEmb := memory.NewInMemoryEmbeddingService(dim)
+	inMemVDB := memory.NewInMemoryVectorDB(dim)
+	return memory.NewInMemoryRAGPipeline(inMemEmb, inMemVDB), inMemEmb, inMemVDB
+}
+
 // Chat is the main entry point for AI chat
-func (g *AIGateway) Chat(ctx context.Context, req *ChatRequest, streamFn func(token string, finished bool) error) error {
+func (g *AIGateway) Chat(ctx context.Context, req *ChatRequest, streamFn StreamFn) error {
 	userID := req.UserID
+
+	// Per-user lock to prevent concurrent session creation
+	userLock := g.getUserLock(userID)
+	userLock.Lock()
+	defer userLock.Unlock()
 
 	// 1. Load or create chat
 	chat, err := g.loadOrCreateChat(ctx, req)
@@ -78,24 +120,40 @@ func (g *AIGateway) Chat(ctx context.Context, req *ChatRequest, streamFn func(to
 	}
 
 	// 7. Build messages for provider
-	messages := g.buildMessages(chat, history, req.Message)
+	messages := g.buildMessages(ctx, chat, agent, history, req.Message)
 
-	// 8. Get settings
+	// 8. Get settings from chat
 	settings := &AIChatSettings{}
+	if chat.Settings != nil {
+		if apiKey, ok := chat.Settings["user_api_key"].(string); ok {
+			settings.UserAPIKey = apiKey
+		}
+		if model, ok := chat.Settings["model_override"].(string); ok {
+			settings.ModelOverride = model
+		}
+	}
 
 	// 9. Execute
 	var fullResponse string
+	hasRagContext := req.Message != "" // Simple heuristic: non-empty message likely used RAG
 	execResult, err := g.executor.Execute(ctx, agent, messages, settings, func(token string, finished bool) error {
 		if !finished {
 			fullResponse += token
 		}
-		return streamFn(token, finished)
+		return streamFn(token, finished, "", agent.ID, agent.Name, hasRagContext, agent.Model)
 	})
 
 	// 10. Refund on error
 	if err != nil {
 		g.refundRateLimit(agent, userID)
 		return err
+	}
+
+	// 10.5 Send image URL if present (e.g. Reve image generation)
+	if execResult != nil && execResult.ImageURL != "" {
+		if err := streamFn("", true, execResult.ImageURL, agent.ID, agent.Name, false, agent.Model); err != nil {
+			logger.Warnf("[AI] streamFn image: %v", err)
+		}
 	}
 
 	// 11. Save assistant response with real token count
@@ -124,6 +182,13 @@ type ChatRequest struct {
 	AgentID  string
 	ChatType string // simple, agent, pipeline
 }
+
+// StreamFn is the callback for streaming tokens. token="" + finished=true signals end.
+// imageURL is set when the agent produces an image (e.g. Reve).
+// agentID and agentName identify which agent produced this token.
+// hasRagContext indicates if RAG context was used.
+// modelUsed is the model name for this response.
+type StreamFn func(token string, finished bool, imageURL string, agentID string, agentName string, hasRagContext bool, modelUsed string) error
 
 func (g *AIGateway) loadOrCreateChat(ctx context.Context, req *ChatRequest) (*AIChatV2, error) {
 	if req.ChatID != "" {
@@ -193,7 +258,7 @@ func (g *AIGateway) refundRateLimit(agent *AgentV2, userID string) {
 	}
 }
 
-func (g *AIGateway) getRateLimiter(agent *AgentV2) *rateLimiter {
+func (g *AIGateway) getRateLimiter(agent *AgentV2) *RedisRateLimiter {
 	key := agent.ID
 	g.mu.RLock()
 	limiter, ok := g.rateLimiters[key]
@@ -202,13 +267,18 @@ func (g *AIGateway) getRateLimiter(agent *AgentV2) *rateLimiter {
 		return limiter
 	}
 
+	g.mu.Lock()
+	limiter, ok = g.rateLimiters[key]
+	if ok {
+		g.mu.Unlock()
+		return limiter
+	}
+
 	limit := 10
 	if agent.RateLimit != nil {
 		limit = *agent.RateLimit
 	}
-	limiter = newRateLimiter(limit, time.Minute)
-
-	g.mu.Lock()
+	limiter = NewRedisRateLimiter(limit, time.Minute, "rl:ai:"+agent.ID+":")
 	g.rateLimiters[key] = limiter
 	g.mu.Unlock()
 	return limiter
@@ -229,7 +299,7 @@ func (g *AIGateway) loadHistory(ctx context.Context, chatID string) ([]AIMessage
 	return history, nil
 }
 
-func (g *AIGateway) buildMessages(chat *AIChatV2, history []AIMessageInput, userMessage string) []AIMessageInput {
+func (g *AIGateway) buildMessages(ctx context.Context, chat *AIChatV2, agent *AgentV2, history []AIMessageInput, userMessage string) []AIMessageInput {
 	var messages []AIMessageInput
 	sysPrompt := chat.SystemPrompt
 	if sysPrompt == "" {
@@ -237,16 +307,31 @@ func (g *AIGateway) buildMessages(chat *AIChatV2, history []AIMessageInput, user
 	}
 	messages = append(messages, AIMessageInput{Role: "system", Content: sysPrompt})
 	messages = append(messages, history...)
-	messages = append(messages, AIMessageInput{Role: "user", Content: userMessage})
+
+	// RAG augmentation: if agent has RAG enabled, search for relevant context
+	augmentedMsg := userMessage
+	if agent != nil && agent.RAGEnabled && g.rag != nil {
+		ragCtx, err := g.rag.BuildContext(ctx, userMessage, nil)
+		if err == nil && ragCtx.HasResults {
+			augmentedMsg = ragCtx.AugmentedPrompt
+			log.Printf("[RAG] augmented query with %d chunks for agent=%s", len(ragCtx.RetrievedChunks), agent.ID)
+		}
+	}
+
+	messages = append(messages, AIMessageInput{Role: "user", Content: augmentedMsg})
 	return messages
 }
 
 func (g *AIGateway) saveUserMessage(ctx context.Context, chatID, message string) error {
-	return g.dbAddMessage(&AIMessageV2{
+	err := g.dbAddMessage(&AIMessageV2{
 		ChatID:  chatID,
 		Role:    "user",
 		Content: message,
 	})
+	if err == nil {
+		go g.indexMessageWithTimeout(chatID, "user", "", message)
+	}
+	return err
 }
 
 func (g *AIGateway) saveAssistantMessage(ctx context.Context, chatID, agentID, content string, tokenCount int, modelUsed string) {
@@ -258,6 +343,42 @@ func (g *AIGateway) saveAssistantMessage(ctx context.Context, chatID, agentID, c
 		TokenCount: tokenCount,
 		ModelUsed:  modelUsed,
 	})
+	go g.indexMessageWithTimeout(chatID, "assistant", agentID, content)
+}
+
+func (g *AIGateway) indexMessageWithTimeout(chatID, role, agentID, content string) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	g.indexMessage(ctx, chatID, role, agentID, content)
+}
+
+func (g *AIGateway) indexMessage(ctx context.Context, chatID, role, agentID, content string) {
+	if g.embedder == nil || g.vectorDB == nil || content == "" {
+		return
+	}
+
+	emb, err := g.embedder.EmbedText(ctx, content)
+	if err != nil {
+		log.Printf("[RAG] indexMessage: embed error: %v", err)
+		return
+	}
+
+	pointID := uuid.New().String()
+	truncated := content
+	if len(truncated) > 2000 {
+		truncated = truncated[:2000]
+	}
+
+	metadata := map[string]any{
+		"content":  truncated,
+		"chat_id":  chatID,
+		"role":     role,
+		"agent_id": agentID,
+	}
+
+	if err := g.vectorDB.Upsert(ctx, pointID, emb, metadata); err != nil {
+		log.Printf("[RAG] indexMessage: upsert error: %v", err)
+	}
 }
 
 func (g *AIGateway) updateChatsLastMessage(ctx context.Context, chatID, content string) {
@@ -266,6 +387,11 @@ func (g *AIGateway) updateChatsLastMessage(ctx context.Context, chatID, content 
 		truncated = truncated[:100] + "..."
 	}
 	g.db.Exec(`UPDATE chats SET last_message_text = $1, last_message_time = NOW() WHERE id = $2`, truncated, chatID)
+}
+
+func (g *AIGateway) getUserLock(userID string) *sync.Mutex {
+	val, _ := g.userMu.LoadOrStore(userID, &sync.Mutex{})
+	return val.(*sync.Mutex)
 }
 
 func (g *AIGateway) generateChatName(chatType string) string {
@@ -312,6 +438,9 @@ func (g *AIGateway) GetAIUsageStats(userID string) ([]*AIUsageStat, error) {
 			return nil, err
 		}
 		stats = append(stats, &s)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return stats, nil
 }
@@ -373,6 +502,9 @@ func (g *AIGateway) dbGetMessages(chatID string, limit int) ([]*AIMessageV2, err
 			return nil, err
 		}
 		msgs = append(msgs, &m)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return msgs, nil
 }

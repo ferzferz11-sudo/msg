@@ -10,9 +10,9 @@ func (s *server) AddContact(ctx context.Context, req *gen.AddContactRequest) (*g
 	if userID == "" {
 		userID = req.UserId
 	}
-	contactID := req.UserId
+	contactID := req.ContactUsername
 	if contactID == "" {
-		contactID = req.ContactUsername
+		contactID = req.UserId
 	}
 
 	var err error
@@ -36,9 +36,9 @@ func (s *server) RemoveContact(ctx context.Context, req *gen.RemoveContactReques
 	if userID == "" {
 		userID = req.UserId
 	}
-	contactID := req.UserId
+	contactID := req.ContactUsername
 	if contactID == "" {
-		contactID = req.ContactUsername
+		contactID = req.UserId
 	}
 
 	var err error

@@ -268,7 +268,7 @@ function restartTimer() {
 }
 
 function clearLog() {
-  ` + clearJS + `
+  `+clearJS+`
 }
 
 function scrollToBottom() {
@@ -303,7 +303,7 @@ function shouldShow(line) {
 async function fetchLogs() {
   if (paused) return;
   try {
-    const resp = await fetch('` + rawPath + `?t=' + Date.now());
+    const resp = await fetch('`+rawPath+`?t=' + Date.now());
     const text = await resp.text();
     if (text === lastData) return;
     lastData = text;

@@ -25,10 +25,10 @@ var openRouterClient = &http.Client{
 }
 
 type openRouterProvider struct {
-	apiKey    string
-	model     string
-	client    *http.Client
-	baseURL   string
+	apiKey  string
+	model   string
+	client  *http.Client
+	baseURL string
 }
 
 func newOpenRouterProvider(config map[string]any, apiKey string) (AgentProvider, error) {
@@ -130,8 +130,8 @@ func (p *openRouterProvider) readSSEStream(ctx context.Context, body io.Reader, 
 				Delta struct {
 					Content   string `json:"content"`
 					ToolCalls []struct {
-						ID   string `json:"id"`
-						Type string `json:"type"`
+						ID       string `json:"id"`
+						Type     string `json:"type"`
 						Function struct {
 							Name      string `json:"name"`
 							Arguments string `json:"arguments"`

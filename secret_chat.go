@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"LavenderMessenger/gen"
+
 	"github.com/google/uuid"
 )
 
@@ -30,7 +31,7 @@ func (s *server) CreateSecretChat(ctx context.Context, req *gen.CreateSecretChat
 
 	targetUser := req.TargetUsername
 	if req.TargetUserId != "" {
-		if resolved := s.resolveUsername(req.TargetUserId); resolved != "" {
+		if resolved := resolveDisplayName(s.db, req.TargetUserId); resolved != "" {
 			targetUser = resolved
 		}
 	}

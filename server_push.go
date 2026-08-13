@@ -11,7 +11,6 @@ import (
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"firebase.google.com/go/v4/messaging"
 )
@@ -49,14 +48,14 @@ func (s *server) RegisterToken(ctx context.Context, req *gen.TokenRequest) (*gen
 	return &gen.TokenResponse{Success: true}, nil
 }
 
-func (s *server) sendPushNotification(userId, username, title, body, roomID string) {
+func (s *server) sendPushNotification(userId, username, title, body, roomID, messageID string) {
 	if s.firebaseApp == nil {
 		s.logFCM("WARN", "Skip %s: Firebase not init", username)
 		return
 	}
 
-	if s.hub.IsUserOnline(userId, username) {
-		s.logFCM("INFO", "Skip %s: user is online", username)
+	if s.hub.IsUserInRoom(userId, username, roomID) {
+		s.logFCM("INFO", "Skip %s: user is in same room", username)
 		return
 	}
 
@@ -81,7 +80,8 @@ func (s *server) sendPushNotification(userId, username, title, body, roomID stri
 		return
 	}
 
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 	client, err := s.firebaseApp.Messaging(ctx)
 	if err != nil {
 		s.logFCM("ERROR", "Client err: %v", err)
@@ -92,20 +92,21 @@ func (s *server) sendPushNotification(userId, username, title, body, roomID stri
 		Token: token,
 		Notification: &messaging.Notification{
 			Title: title,
-			Body:  body,
+			Body:  truncateForFCM(body),
 		},
-		Data: map[string]string{
-			"title":   title,
-			"body":    body,
-			"room_id": roomID,
-			"sender":  title,
-		},
+		Data: buildSafeDataMap(map[string]string{
+			"title":      title,
+			"body":       truncateForFCM(body),
+			"room_id":    roomID,
+			"sender":     title,
+			"message_id": messageID,
+		}),
 		Android: &messaging.AndroidConfig{
 			Priority:    "high",
 			CollapseKey: roomID,
 			TTL:         durationPtr(5 * time.Minute),
 			Notification: &messaging.AndroidNotification{
-				ChannelID: "lavender_messages",
+				ChannelID: "lavender_messages_v2",
 				Priority:  messaging.PriorityHigh,
 				Sound:     "default",
 			},
@@ -126,7 +127,7 @@ type pushTarget struct {
 	Username string
 }
 
-func (s *server) sendBatchPushNotifications(targets []pushTarget, title, body, roomID string) {
+func (s *server) sendBatchPushNotifications(targets []pushTarget, title, body, roomID, messageID string) {
 	if s.firebaseApp == nil || len(targets) == 0 {
 		return
 	}
@@ -146,7 +147,7 @@ func (s *server) sendBatchPushNotifications(targets []pushTarget, title, body, r
 	var tokens []string
 	var tokenUserIDs []string
 	for _, t := range targets {
-		if s.hub.IsUserOnline(t.UserId, t.Username) {
+		if s.hub.IsUserInRoom(t.UserId, t.Username, roomID) {
 			continue
 		}
 		if mutedSet[t.UserId] {
@@ -164,7 +165,8 @@ func (s *server) sendBatchPushNotifications(targets []pushTarget, title, body, r
 		return
 	}
 
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 	client, err := s.firebaseApp.Messaging(ctx)
 	if err != nil {
 		s.logFCM("ERROR", "Batch push client err: %v", err)
@@ -180,30 +182,32 @@ func (s *server) sendBatchPushNotifications(targets []pushTarget, title, body, r
 		chunk := tokens[i:end]
 		chunkIDs := tokenUserIDs[i:end]
 
-		s.sendMulticastWithRetry(client, chunk, chunkIDs, title, body, roomID)
+		s.sendMulticastWithRetry(client, chunk, chunkIDs, title, body, roomID, messageID)
 	}
 }
 
-func (s *server) sendMulticastWithRetry(client *messaging.Client, tokens, userIDs []string, title, body, roomID string) {
-	ctx := context.Background()
+func (s *server) sendMulticastWithRetry(client *messaging.Client, tokens, userIDs []string, title, body, roomID, messageID string) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 	msg := &messaging.MulticastMessage{
 		Tokens: tokens,
 		Notification: &messaging.Notification{
 			Title: title,
-			Body:  body,
+			Body:  truncateForFCM(body),
 		},
-		Data: map[string]string{
-			"title":   title,
-			"body":    body,
-			"room_id": roomID,
-			"sender":  title,
-		},
+		Data: buildSafeDataMap(map[string]string{
+			"title":      title,
+			"body":       truncateForFCM(body),
+			"room_id":    roomID,
+			"sender":     title,
+			"message_id": messageID,
+		}),
 		Android: &messaging.AndroidConfig{
 			Priority:    "high",
 			CollapseKey: roomID,
 			TTL:         durationPtr(5 * time.Minute),
 			Notification: &messaging.AndroidNotification{
-				ChannelID: "lavender_messages",
+				ChannelID: "lavender_messages_v2",
 				Priority:  messaging.PriorityHigh,
 				Sound:     "default",
 			},
@@ -276,7 +280,8 @@ func (s *server) isInvalidTokenError(err error) bool {
 	errStr := err.Error()
 	return strings.Contains(errStr, "UNREGISTERED") ||
 		strings.Contains(errStr, "INVALID_ARGUMENT") ||
-		strings.Contains(errStr, "registration token not registered")
+		strings.Contains(errStr, "registration token not registered") ||
+		strings.Contains(errStr, "Requested entity was not found")
 }
 
 func (s *server) isFirebaseCredentialError(err error) bool {
@@ -308,23 +313,28 @@ func (s *server) saveConferenceSystemMessage(roomID, text, senderName, senderId 
 		uid = senderId
 	}
 
-	encryptedText, _ := encrypt(displayText)
-
-	err := s.db.SaveMessage(msgId, user, uid, encryptedText, createdAt, "", "", "", roomID, "", "[]", "", 0)
+	v2Row := &MessageRowV2{
+		ID:          msgId,
+		RoomID:      roomID,
+		SenderID:    uid,
+		ContentType: "text",
+		Text:        displayText,
+		IsRead:      false,
+		CreatedAt:   createdAt,
+	}
+	if uid == "" {
+		v2Row.SenderID = "00000000-0000-0000-0000-000000000000"
+	}
+	err := s.db.SaveMessageV2(v2Row)
 	if err != nil {
 		logger.Infof("[CONF] Failed to save call system message: %v", err)
 		return
 	}
 
-	broadcastMsg := &gen.Message{
-		Id:        msgId,
-		User:      user,
-		UserId:    uid,
-		Text:      displayText,
-		CreatedAt: timestamppb.New(createdAt),
-		RoomId:    roomID,
-	}
-	s.hub.Broadcast(broadcastMsg)
+	_, _ = s.db.Exec(`UPDATE chats SET last_message_text=$1, last_message_time=$2, last_message_username=$3, last_message_has_image=$4 WHERE id=$5`,
+		displayText, createdAt, user, false, roomID)
+
+	s.hub.BroadcastToRoom(roomID, "CALL_SYSTEM", fmt.Sprintf("%s|%s|%s", msgId, user, displayText))
 }
 
 func (s *server) broadcastConferenceStatus(roomID string) {
@@ -352,7 +362,7 @@ func (s *server) broadcastConferenceStatus(roomID string) {
 	members, _ := s.db.GetChatParticipants(roomID)
 	var memberIDs []string
 	for _, m := range members {
-		memberIDs = append(memberIDs, s.resolveUserId(m))
+		memberIDs = append(memberIDs, m)
 	}
 	s.hub.BroadcastConference(msg, memberIDs)
 }
@@ -377,7 +387,8 @@ func (s *server) sendPushInternal(targetUserID, title, body string, data map[str
 		return
 	}
 
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 	client, err := s.firebaseApp.Messaging(ctx)
 	if err != nil {
 		logger.Errorf("[FCM] Error getting messaging client: %v", err)
@@ -388,9 +399,19 @@ func (s *server) sendPushInternal(targetUserID, title, body string, data map[str
 		Token: token,
 		Notification: &messaging.Notification{
 			Title: title,
-			Body:  body,
+			Body:  truncateForFCM(body),
 		},
-		Data: data,
+		Data: func() map[string]string {
+			safe := make(map[string]string, len(data))
+			for k, v := range data {
+				if k == "text" || k == "body" {
+					safe[k] = truncateForFCM(v)
+				} else {
+					safe[k] = v
+				}
+			}
+			return buildSafeDataMap(safe)
+		}(),
 		Android: &messaging.AndroidConfig{
 			Priority: "high",
 		},
@@ -413,30 +434,34 @@ func (s *server) saveCallSystemMessage(u1, u2, icon, text, senderName, senderId 
 	createdAt := time.Now().UTC()
 	displayText := icon + " " + text
 
-	encryptedText, _ := encrypt(displayText)
-	err = s.db.SaveMessage(msgId, senderName, senderId, encryptedText, createdAt, "", "", "", chatID, "", "[]", "", 0)
+	v2Row := &MessageRowV2{
+		ID:          msgId,
+		RoomID:      chatID,
+		SenderID:    senderId,
+		ContentType: "text",
+		Text:        displayText,
+		IsRead:      false,
+		CreatedAt:   createdAt,
+	}
+	if senderId == "" {
+		v2Row.SenderID = "00000000-0000-0000-0000-000000000000"
+	}
+	err = s.db.SaveMessageV2(v2Row)
 	if err != nil {
 		logger.Infof("[CALL] Failed to save call system message: %v", err)
 		return
 	}
 
-	broadcastMsg := &gen.Message{
-		Id:        msgId,
-		User:      senderName,
-		UserId:    senderId,
-		Text:      displayText,
-		CreatedAt: timestamppb.New(createdAt),
-		RoomId:    chatID,
-	}
-	s.hub.Broadcast(broadcastMsg)
+	_, _ = s.db.Exec(`UPDATE chats SET last_message_text=$1, last_message_time=$2, last_message_username=$3, last_message_has_image=$4 WHERE id=$5`,
+		displayText, createdAt, senderName, false, chatID)
+
+	s.hub.BroadcastToRoom(chatID, "CALL_SYSTEM", fmt.Sprintf("%s|%s|%s", msgId, senderName, displayText))
 }
 
 func (s *server) handleAbruptDisconnect(userId string) {
 	logger.Infof("[CALL] Handling abrupt disconnect for %s", userId)
 
-	resolvedUserId := s.resolveUserId(userId)
-
-	activeCalls, err := s.db.GetActiveCallsByUser(resolvedUserId)
+	activeCalls, err := s.db.GetActiveCallsByUser(userId)
 	if err != nil {
 		logger.Infof("[CALL] Failed to get active calls for %s: %v", userId, err)
 		return
@@ -444,7 +469,7 @@ func (s *server) handleAbruptDisconnect(userId string) {
 
 	for _, call := range activeCalls {
 		otherPartyId := call.CallerID
-		if call.CallerID == resolvedUserId {
+		if call.CallerID == userId {
 			otherPartyId = call.ReceiverID
 		}
 
@@ -452,14 +477,15 @@ func (s *server) handleAbruptDisconnect(userId string) {
 
 		hangupSignal := &gen.CallMessage{
 			CallId:     call.CallID,
-			SenderId:   resolvedUserId,
+			SenderId:   userId,
 			ReceiverId: otherPartyId,
 			Type:       gen.CallMessage_HANGUP,
 		}
 
 		delivered := s.hub.BroadcastCall(hangupSignal)
 		if !delivered {
-			logger.Infof("[CALL] HANGUP not delivered to %s for call %s (receiver offline)", otherPartyId, call.CallID)
+			logger.Infof("[CALL] HANGUP not delivered to %s for call %s (receiver offline), sending push fallback", otherPartyId, call.CallID)
+			s.sendCallEndedPushNotification(otherPartyId, userId, call.CallID)
 		} else {
 			logger.Infof("[CALL] HANGUP sent to %s for call %s", otherPartyId, call.CallID)
 		}
@@ -469,25 +495,25 @@ func (s *server) handleAbruptDisconnect(userId string) {
 			hangupToSender := &gen.CallMessage{
 				CallId:     call.CallID,
 				SenderId:   otherPartyId,
-				ReceiverId: resolvedUserId,
+				ReceiverId: userId,
 				Type:       gen.CallMessage_HANGUP,
 			}
 			s.hub.BroadcastCall(hangupToSender)
 
-			senderName := resolveDisplayName(s.db, resolvedUserId)
+			senderName := resolveDisplayName(s.db, userId)
 			duration, _ := s.db.GetCallDuration(call.CallID)
-			durationText := ""
 			if duration > 0 {
 				minutes := duration / 60
 				seconds := duration % 60
-				durationText = fmt.Sprintf(" (%d:%02d)", minutes, seconds)
+				s.saveCallSystemMessage(senderName, otherUsername, "📞↗️", fmt.Sprintf("Звонок завершен (%d:%02d)", minutes, seconds), senderName, userId)
+			} else {
+				s.saveCallSystemMessage(senderName, otherUsername, "📞↘️", "Не отвечено", senderName, userId)
 			}
-			s.saveCallSystemMessage(senderName, otherUsername, "📞↘️", "Соединение потеряно"+durationText, senderName, resolvedUserId)
 		}
 	}
 }
 
-func (s *server) sendCallPushNotification(receiverId, senderName, callId string) {
+func (s *server) sendCallPushNotification(receiverId, senderId, callId string) {
 	if s.firebaseApp == nil {
 		return
 	}
@@ -497,23 +523,34 @@ func (s *server) sendCallPushNotification(receiverId, senderName, callId string)
 		return
 	}
 
-	ctx := context.Background()
+	senderName := resolveDisplayName(s.db, senderId)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 	client, err := s.firebaseApp.Messaging(ctx)
 	if err != nil {
 		return
 	}
 
-	senderUsername := resolveDisplayName(s.db, senderName)
-
 	message := &messaging.Message{
 		Token: token,
+		Notification: &messaging.Notification{
+			Title: "Входящий звонок",
+			Body:  senderName + " звонит вам",
+		},
 		Data: map[string]string{
-			"type":      "VOIP_CALL",
-			"call_id":   callId,
-			"sender_id": senderUsername,
+			"type":        "VOIP_CALL",
+			"call_id":     callId,
+			"sender_id":   senderId,
+			"sender_name": senderName,
 		},
 		Android: &messaging.AndroidConfig{
 			Priority: "high",
+			Notification: &messaging.AndroidNotification{
+				ChannelID: "lavender_calls",
+				Priority:  messaging.PriorityMax,
+				Sound:     "default",
+			},
 		},
 	}
 
@@ -521,22 +558,95 @@ func (s *server) sendCallPushNotification(receiverId, senderName, callId string)
 	if err != nil {
 		s.logFCM("ERROR", "Call Push to %s failed: %v", receiverId, err)
 	} else {
-		s.logFCM("SUCCESS", "Call Push sent to %s", receiverId)
+		s.logFCM("SUCCESS", "Call Push sent to %s (from %s)", receiverId, senderName)
+	}
+}
+
+func (s *server) sendCallEndedPushNotification(receiverId, senderId, callId string) {
+	if s.firebaseApp == nil {
+		return
+	}
+	token, err := s.db.GetUserTokenByUserID(receiverId)
+	if err != nil || token == "" || token == "DISABLED" {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	client, err := s.firebaseApp.Messaging(ctx)
+	if err != nil {
+		return
+	}
+	message := &messaging.Message{
+		Token: token,
+		Notification: &messaging.Notification{
+			Title: "Звонок завершён",
+			Body:  "Звонок окончен",
+		},
+		Data: map[string]string{
+			"type":      "CALL_ENDED",
+			"call_id":   callId,
+			"sender_id": senderId,
+		},
+		Android: &messaging.AndroidConfig{
+			Priority: "high",
+			Notification: &messaging.AndroidNotification{
+				ChannelID: "lavender_calls",
+				Priority:  messaging.PriorityMax,
+				Sound:     "default",
+			},
+		},
+	}
+	_, err = client.Send(ctx, message)
+	if err != nil {
+		s.logFCM("ERROR", "Call Ended Push to %s failed: %v", receiverId, err)
+	} else {
+		s.logFCM("SUCCESS", "Call Ended Push sent to %s", receiverId)
 	}
 }
 
 func (s *server) broadcastOnlineUsers() {
 	users := s.hub.GetOnlineUsers()
 	usersJson, _ := json.Marshal(users)
-	msg := &gen.Message{
-		User:      "SYSTEM",
-		Text:      "ONLINE_USERS_UPDATE:" + string(usersJson),
-		Id:        uuid.New().String(),
-		CreatedAt: timestamppb.Now(),
-	}
-	s.hub.BroadcastGlobal(msg)
+
+	// Send to v2 clients (ChatV2)
+	s.hub.BroadcastGlobalV2("ONLINE_USERS_UPDATE", string(usersJson))
 }
 
 func durationPtr(d time.Duration) *time.Duration {
 	return &d
+}
+
+const maxFCMDataSize = 3800
+
+func truncateForFCM(s string) string {
+	if len(s) <= maxFCMDataSize {
+		return s
+	}
+	return s[:maxFCMDataSize] + "..."
+}
+
+func buildSafeDataMap(data map[string]string) map[string]string {
+	totalSize := 0
+	for k, v := range data {
+		totalSize += len(k) + len(v)
+	}
+	if totalSize <= maxFCMDataSize {
+		return data
+	}
+	overhead := totalSize
+	safe := make(map[string]string, len(data))
+	for k, v := range data {
+		safe[k] = v
+		overhead -= len(v)
+	}
+	if body, ok := safe["body"]; ok {
+		allowed := maxFCMDataSize - overhead
+		if allowed < 100 {
+			allowed = 100
+		}
+		if len(body) > allowed {
+			safe["body"] = body[:allowed] + "..."
+		}
+	}
+	return safe
 }

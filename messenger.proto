@@ -127,24 +127,31 @@ message ChatInfo {
   bool is_secret = 15;
   string peer_public_key = 16;
   bool e2ee_ready = 17;
-  string active_agent_id = 20;  // For hermes sessions: current active agent
-  string agent_mode = 21;       // For hermes sessions: single/parallel/pipeline
-  bool is_pinned = 22;          // ChatList v2: pinned status
-  bool is_muted = 23;           // ChatList v2: muted status
-  bool is_archived = 24;        // ChatList v2: archived status
-  int64 pinned_at = 25;         // ChatList v2: timestamp when pinned (for sort order)
+  string active_agent_id = 20;
+  string agent_mode = 21;
+  bool is_pinned = 22;
+  bool is_muted = 23;
+  bool is_archived = 24;
+  int64 pinned_at = 25;
+  string company_id = 26;
+  string company_chat_access = 27;
+  int32 company_min_position_level = 28;
+  int32 self_destruct_timer = 29;  // seconds: 0=disabled, 30, 60, 300, 3600, 86400
 }
 
 message GetChatsRequest {
   string username = 1;
   string user_id = 2;
   int32 limit = 3;    // Pagination: max number of chats to return (0 = default 100)
-  int32 offset = 4;   // Pagination: skip N chats
+  int32 offset = 4;   // Pagination: skip N chats (deprecated, use cursor)
   string filter = 5;  // Filter: "all", "pinned", "archived", "muted"
+  string cursor = 6;  // Cursor-based pagination: token from previous response
 }
 
 message GetChatsResponse {
   repeated ChatInfo chats = 1;
+  string next_cursor = 2;  // Cursor for next page (empty if no more)
+  bool has_more = 3;       // Whether there are more results
 }
 
 message CreateDirectChatRequest {
@@ -165,6 +172,7 @@ message CreateGroupChatRequest {
   string creator = 3;
   string creator_id = 4;
   repeated string participant_ids = 5;
+  string type = 6;  // "group" (default), "conference"
 }
 
 message CreateGroupChatResponse {
@@ -640,10 +648,12 @@ message CallMessage {
     INVITE_TO_CONFERENCE = 14;
     REMOVE_FROM_CONFERENCE = 15;
     UPDATE_CONFERENCE = 16;
+    IDENTITY = 17;          // Identity signal for conference lobby registration
   }
   Type type = 4;
 
   string payload = 5; // JSON-строка с SDP или ICE данными
+  bool is_video = 9;  // true = video call, false = audio call (set by client on INITIATE)
 }
 
 service ChatService {
@@ -653,8 +663,11 @@ service ChatService {
   rpc GetClients(ClientListRequest) returns (ClientListResponse);
   rpc GetAllUsers(GetAllUsersRequest) returns (GetAllUsersResponse);
   rpc GetAllChats(GetAllChatsRequest) returns (GetAllChatsResponse);
+  // DEPRECATED: use GetHistoryV2 instead
   rpc GetHistory(GetHistoryRequest) returns (GetHistoryResponse);
+  // DEPRECATED: use SetReactionV2 instead
   rpc SetReaction(ReactionRequest) returns (ReactionResponse);
+  // DEPRECATED: use DeleteMessageV2 instead
   rpc DeleteMessages(DeleteMessagesRequest) returns (DeleteMessagesResponse);
   rpc RegisterToken(TokenRequest) returns (TokenResponse);
   rpc GetChats(GetChatsRequest) returns (GetChatsResponse);
@@ -672,6 +685,7 @@ service ChatService {
   rpc GetUserAvatar(GetUserAvatarRequest) returns (GetUserAvatarResponse);
   rpc AddParticipant(AddParticipantRequest) returns (AddParticipantResponse);
   rpc RemoveParticipant(RemoveParticipantRequest) returns (RemoveParticipantResponse);
+  // DEPRECATED: use EditMessageV2 instead
   rpc EditMessage(EditMessageRequest) returns (EditMessageResponse);
   rpc UpdateChatName(UpdateChatNameRequest) returns (UpdateChatNameResponse);
   rpc UpdateChatAvatar(UpdateChatAvatarRequest) returns (UpdateChatAvatarResponse);
@@ -776,6 +790,22 @@ service ChatService {
   rpc SetFreeModel(SetFreeModelRequest) returns (SetFreeModelResponse);
   rpc RemoveFreeModel(RemoveFreeModelRequest) returns (RemoveFreeModelResponse);
 
+  // === Self-Destruct Timer ===
+  rpc SetSelfDestructTimer(SetSelfDestructTimerRequest) returns (SetSelfDestructTimerResponse);
+
+  // === Chat v2 (bidirectional stream) ===
+  rpc ChatV2(stream ChatV2Message) returns (stream ChatV2Message);
+
+  // === Messages v2 ===
+  rpc GetHistoryV2(GetHistoryV2Request) returns (GetHistoryV2Response);
+  rpc SendMessageV2(SendMessageV2Request) returns (SendMessageV2Response);
+  rpc EditMessageV2(EditMessageV2Request) returns (EditMessageV2Response);
+  rpc DeleteMessageV2(DeleteMessageV2Request) returns (DeleteMessageV2Response);
+  rpc SetReactionV2(SetReactionV2Request) returns (SetReactionV2Response);
+
+  // === Message Search ===
+  rpc SearchMessages(SearchMessagesRequest) returns (SearchMessagesResponse);
+
   // === AI Services v2 ===
   rpc ChatWithAIV2(ChatWithAIV2Request) returns (stream ChatWithAIV2Response);
   rpc CreateAIAgent(CreateAIAgentRequest) returns (CreateAIAgentResponse);
@@ -793,6 +823,13 @@ service ChatService {
   rpc ShareAIAgent(ShareAIAgentRequest) returns (ShareAIAgentResponse);
   rpc InstallAIAgent(InstallAIAgentRequest) returns (InstallAIAgentResponse);
   rpc GetAIUsageStats(GetAIUsageStatsRequest) returns (GetAIUsageStatsResponse);
+  // === AI Chat v2 ===
+  rpc GetAIV2ChatHistory(GetAIV2ChatHistoryRequest) returns (GetAIV2ChatHistoryResponse);
+  rpc ListAIV2Chats(ListAIV2ChatsRequest) returns (ListAIV2ChatsResponse);
+
+  // === Admin User List ===
+  rpc GetAdminUserList(GetAdminUserListRequest) returns (GetAdminUserListResponse);
+  rpc GetAdminUserSessions(GetAdminUserSessionsRequest) returns (GetAdminUserSessionsResponse);
 }
 
 // ======= AI Pipeline Messages =======
@@ -1566,6 +1603,10 @@ message GetProfileResponse {
   bool is_super_admin = 9;
   string created_at = 10;
   string last_seen_at = 11;
+  string company_id = 12;
+  string company_name = 13;
+  string position_title = 14;
+  int32 position_level = 15;
 }
 
 message UpdateProfileV2Request {
@@ -1625,6 +1666,159 @@ message UpdateUserSettingsResponse {
   string message = 2;
 }
 
+// ======= Messages v2 =======
+
+message ChatV2Message {
+  // Auth (first message only)
+  string jwt_token = 1;
+  string room_id = 2;
+  string client_version = 3;  // Client application version (for last_client_version tracking)
+
+  oneof payload {
+    MessageV2 message = 10;
+    ChatV2Typing typing = 11;
+    ChatV2System system = 12;
+  }
+}
+
+message ChatV2Typing {
+  bool is_typing = 1;
+}
+
+message ChatV2System {
+  string type = 1;
+  string message = 2;
+}
+
+// ======= Self-Destruct Timer =======
+
+message SetSelfDestructTimerRequest {
+  string room_id = 1;
+  int32 timer_seconds = 2;  // 0 = disabled, 30, 60, 300, 3600, 86400
+}
+
+message SetSelfDestructTimerResponse {
+  bool success = 1;
+  string error = 2;
+}
+
+message MessageV2 {
+  string id = 1;
+  string room_id = 2;
+  string sender_id = 3;
+
+  oneof content {
+    string text = 10;
+    MessageMedia media = 11;
+  }
+
+  MessageReply reply = 12;
+
+  bool edited = 20;
+  bool is_read = 21;
+  google.protobuf.Timestamp created_at = 22;
+  bytes reactions = 23;
+
+  bool is_e2ee = 30;
+  string e2ee_payload = 31;
+
+  repeated string mentions = 40;
+  string forwarded_from = 50;  // username of original sender when forwarding
+}
+
+message MessageMedia {
+  string type = 1;
+  string url = 2;
+  repeated string urls = 3;
+  int32 duration = 4;
+}
+
+message MessageReply {
+  string message_id = 1;
+  string preview = 2;
+  string sender_id = 3;
+}
+
+message GetHistoryV2Request {
+  string room_id = 1;
+  int32 limit = 2;
+  string cursor = 3;
+}
+
+message GetHistoryV2Response {
+  repeated MessageV2 messages = 1;
+  string next_cursor = 2;
+  bool has_more = 3;
+}
+
+message SendMessageV2Request {
+  string room_id = 1;
+  oneof content {
+    string text = 2;
+    MessageMedia media = 3;
+  }
+  string reply_to_id = 4;
+  bool is_e2ee = 5;
+  string e2ee_payload = 6;
+  repeated string mentions = 7;
+  string forwarded_from = 8;  // username of original sender when forwarding
+}
+
+message SendMessageV2Response {
+  MessageV2 message = 1;
+  bool success = 2;
+  string error = 3;
+}
+
+message EditMessageV2Request {
+  string message_id = 1;
+  string text = 2;
+}
+
+message EditMessageV2Response {
+  bool success = 1;
+  string message = 2;
+}
+
+message DeleteMessageV2Request {
+  repeated string message_ids = 1;
+  string requester_user_id = 2;
+}
+
+message DeleteMessageV2Response {
+  bool success = 1;
+}
+
+message SetReactionV2Request {
+  string message_id = 1;
+  string emoji = 2;
+}
+
+message SetReactionV2Response {
+  bool success = 1;
+  bytes reactions = 2;
+}
+
+// ======= Message Search =======
+
+message SearchMessagesRequest {
+  string room_id = 1;       // optional: limit to specific chat (empty = all user's chats)
+  string query = 2;         // search keyword
+  int32 limit = 3;          // max results (default 20, max 100)
+}
+
+message SearchMessagesResponse {
+  repeated SearchResult messages = 1;
+}
+
+message SearchResult {
+  string message_id = 1;
+  string room_id = 2;
+  string username = 3;      // sender
+  string preview = 4;       // text snippet (first 200 chars)
+  string created_at = 5;    // ISO 8601
+}
+
 // ======= AI Services v2 Messages =======
 
 message ChatWithAIV2Request {
@@ -1639,12 +1833,13 @@ message ChatWithAIV2Response {
   string token = 1;
   bool finished = 2;
   string error = 3;
-  string agent_id = 4;                  // which agent answered
-  string agent_name = 5;                // display name
-  repeated ToolCallRequestV2 tool_calls = 6;  // tool execution requests
+  string agent_id = 4;
+  string agent_name = 5;
+  repeated ToolCallRequestV2 tool_calls = 6;
   bool has_rag_context = 7;
   string model_used = 8;
   int32 token_count = 9;
+  string image_url = 10;
 }
 
 message ToolCallV2 {
@@ -1744,6 +1939,7 @@ message AgentInfoV2 {
   string original_agent_id = 19;
   int32 version = 20;
   string share_code = 21;
+  string provider_config = 22;  // JSON string — API key, model override etc.
 }
 
 message AgentCapabilitiesV2 {
@@ -1877,6 +2073,102 @@ message GetAIUsageStatsResponse {
   int32 total_requests = 3;
 }
 
+// ======= AI Chat v2 Messages =======
+
+message GetAIV2ChatHistoryRequest {
+  string session_id = 1;
+  int32 limit = 2;
+}
+
+message AIV2ChatMessage {
+  int64 id = 1;
+  string chat_id = 2;
+  string role = 3;
+  string content = 4;
+  string agent_id = 5;
+  int32 token_count = 6;
+  string model_used = 7;
+  string created_at = 8;
+}
+
+message GetAIV2ChatHistoryResponse {
+  repeated AIV2ChatMessage messages = 1;
+}
+
+message ListAIV2ChatsRequest {}
+
+message AIV2ChatInfo {
+  string id = 1;
+  string name = 2;
+  string chat_type = 3;
+  string agent_id = 4;
+  string created_at = 5;
+  string updated_at = 6;
+}
+
+message ListAIV2ChatsResponse {
+  repeated AIV2ChatInfo chats = 1;
+}
+
+// ======= Admin User List Messages =======
+
+message AdminUserInfo {
+  // Base info
+  string user_id = 1;
+  string username = 2;
+  string avatar_url = 3;
+  string full_avatar_url = 4;
+  string email = 5;
+  bool is_super_admin = 6;
+
+  // Version & activity
+  string last_client_version = 7;
+  google.protobuf.Timestamp last_seen_at = 8;
+  bool is_online = 9;
+
+  // Last message
+  string last_message_text = 10;
+  google.protobuf.Timestamp last_message_time = 11;
+  string last_message_username = 12;
+
+  // Stats
+  int32 chat_count = 13;
+}
+
+message GetAdminUserListRequest {
+  string query = 1;
+  string cursor = 2;
+  int32 limit = 3;
+  string sort_by = 4;
+}
+
+message GetAdminUserListResponse {
+  repeated AdminUserInfo users = 1;
+  string next_cursor = 2;
+  bool has_more = 3;
+  google.protobuf.Timestamp server_time = 4;
+}
+
+// ======= Admin User Sessions Messages =======
+
+message AdminUserSession {
+  string device_id = 1;
+  string device_name = 2;
+  string device_type = 3;
+  string client_version = 4;
+  string ip_address = 5;
+  google.protobuf.Timestamp last_seen_at = 6;
+  bool is_online = 7;
+}
+
+message GetAdminUserSessionsRequest {
+  string user_id = 1;
+}
+
+message GetAdminUserSessionsResponse {
+  repeated AdminUserSession sessions = 1;
+}
+
 service ProfileService {
   rpc GetProfile(GetProfileRequest) returns (GetProfileResponse);
   rpc UpdateProfile(UpdateProfileV2Request) returns (UpdateProfileV2Response);
@@ -1884,5 +2176,573 @@ service ProfileService {
   rpc DeleteProfile(DeleteProfileV2Request) returns (DeleteProfileV2Response);
   rpc GetUserSettings(GetUserSettingsRequest) returns (GetUserSettingsResponse);
   rpc UpdateUserSettings(UpdateUserSettingsRequest) returns (UpdateUserSettingsResponse);
+}
+
+// ======= Company Settings =======
+
+message CompanySettings {
+  string company_id = 1;
+  bool invite_only = 2;
+  string default_position_id = 3;
+  bool allow_member_invite = 4;
+  string chat_access = 5;       // "member", "management", "owner_only"
+  bool require_approval = 6;
+}
+
+message GetCompanySettingsRequest {
+  string company_id = 1;
+}
+
+message GetCompanySettingsResponse {
+  CompanySettings settings = 1;
+}
+
+message UpdateCompanySettingsRequest {
+  string company_id = 1;
+  CompanySettings settings = 2;
+}
+
+message UpdateCompanySettingsResponse {
+  bool success = 1;
+  string error = 2;
+}
+
+// ======= Company Invite Codes =======
+
+message InviteCodeInfo {
+  string id = 1;
+  string code = 2;
+  string company_id = 3;
+  string created_by = 4;
+  string created_at = 5;
+  string expires_at = 6;
+  int32 max_uses = 7;
+  int32 use_count = 8;
+  bool is_active = 9;
+}
+
+message GenerateInviteCodeRequest {
+  string company_id = 1;
+  int32 expires_hours = 2;   // 0 = no expiry
+  int32 max_uses = 3;        // default 1
+}
+
+message GenerateInviteCodeResponse {
+  bool success = 1;
+  InviteCodeInfo code = 2;
+  string error = 3;
+}
+
+message JoinByInviteCodeRequest {
+  string code = 1;
+}
+
+message JoinByInviteCodeResponse {
+  bool success = 1;
+  string company_id = 2;
+  string error = 3;
+}
+
+message RevokeInviteCodeRequest {
+  string code_id = 1;
+}
+
+message RevokeInviteCodeResponse {
+  bool success = 1;
+}
+
+message ListInviteCodesRequest {
+  string company_id = 1;
+}
+
+message ListInviteCodesResponse {
+  repeated InviteCodeInfo codes = 1;
+}
+
+// ======= Company Notifications =======
+
+enum CompanyEventType {
+  COMPANY_EVENT_UNKNOWN = 0;
+  MEMBER_JOINED = 1;
+  MEMBER_LEFT = 2;
+  POSITION_CHANGED = 3;
+  COMPANY_CHAT_CREATED = 4;
+}
+
+message SendCompanyNotificationRequest {
+  string company_id = 1;
+  CompanyEventType event_type = 2;
+  string actor_username = 3;
+  string target_username = 4;
+  string position_name = 5;
+}
+
+message SendCompanyNotificationResponse {
+  bool success = 1;
+}
+
+// ======= Company System =======
+
+service CompanyService {
+  rpc CreateCompany(CreateCompanyRequest) returns (CreateCompanyResponse);
+  rpc GetCompany(GetCompanyRequest) returns (GetCompanyResponse);
+  rpc UpdateCompany(UpdateCompanyRequest) returns (UpdateCompanyResponse);
+  rpc DeleteCompany(DeleteCompanyRequest) returns (DeleteCompanyResponse);
+  rpc ListCompanies(ListCompaniesRequest) returns (ListCompaniesResponse);
+
+  rpc CreatePosition(CreatePositionRequest) returns (CreatePositionResponse);
+  rpc UpdatePosition(UpdatePositionRequest) returns (UpdatePositionResponse);
+  rpc DeletePosition(DeletePositionRequest) returns (DeletePositionResponse);
+  rpc ListPositions(ListPositionsRequest) returns (ListPositionsResponse);
+
+  rpc AddMember(AddMemberRequest) returns (AddMemberResponse);
+  rpc RemoveMember(RemoveMemberRequest) returns (RemoveMemberResponse);
+  rpc UpdateMemberPosition(UpdateMemberPositionRequest) returns (UpdateMemberPositionResponse);
+  rpc ListMembers(ListMembersRequest) returns (ListMembersResponse);
+
+  rpc CreateCompanyChat(CreateCompanyChatRequest) returns (CreateCompanyChatResponse);
+  rpc SetCompanyChatAccess(SetCompanyChatAccessRequest) returns (SetCompanyChatAccessResponse);
+  rpc GetCompanyChats(GetCompanyChatsRequest) returns (GetCompanyChatsResponse);
+  rpc JoinCompany(JoinCompanyRequest) returns (JoinCompanyResponse);
+  rpc LeaveCompany(LeaveCompanyRequest) returns (LeaveCompanyResponse);
+  rpc GetUserInfo(GetUserInfoRequest) returns (GetUserInfoResponse);
+  rpc GetCompanyByUser(GetCompanyByUserRequest) returns (GetCompanyByUserResponse);
+  rpc SetPrimaryCompany(SetPrimaryCompanyRequest) returns (SetPrimaryCompanyResponse);
+  rpc GetUserCompanies(GetUserCompaniesRequest) returns (GetUserCompaniesResponse);
+
+  // === Company Settings ===
+  rpc GetCompanySettings(GetCompanySettingsRequest) returns (GetCompanySettingsResponse);
+  rpc UpdateCompanySettings(UpdateCompanySettingsRequest) returns (UpdateCompanySettingsResponse);
+
+  // === Company Invite Codes ===
+  rpc GenerateInviteCode(GenerateInviteCodeRequest) returns (GenerateInviteCodeResponse);
+  rpc JoinByInviteCode(JoinByInviteCodeRequest) returns (JoinByInviteCodeResponse);
+  rpc RevokeInviteCode(RevokeInviteCodeRequest) returns (RevokeInviteCodeResponse);
+  rpc ListInviteCodes(ListInviteCodesRequest) returns (ListInviteCodesResponse);
+
+  // === Company Notifications ===
+  rpc SendCompanyNotification(SendCompanyNotificationRequest) returns (SendCompanyNotificationResponse);
+}
+
+message Company {
+  string id = 1;
+  string name = 2;
+  string owner_id = 3;
+  string avatar_url = 4;
+  string created_at = 5;
+  int32 member_count = 6;
+}
+
+message CompanyPosition {
+  string id = 1;
+  string company_id = 2;
+  string title = 3;
+  int32 level = 4;
+  string chat_access = 5;
+}
+
+message CompanyMember {
+  string id = 1;
+  string company_id = 2;
+  string user_id = 3;
+  string username = 4;
+  string avatar_url = 5;
+  CompanyPosition position = 6;
+  string joined_at = 7;
+}
+
+message CompanyChatInfo {
+  string chat_id = 1;
+  string company_id = 2;
+  string access_level = 3;
+  int32 min_position_level = 4;
+}
+
+message CreateCompanyRequest {
+  string name = 1;
+}
+message CreateCompanyResponse {
+  bool success = 1;
+  Company company = 2;
+}
+
+message GetCompanyRequest {
+  string company_id = 1;
+}
+message GetCompanyResponse {
+  Company company = 1;
+  repeated CompanyPosition positions = 2;
+  int32 member_count = 3;
+}
+
+message UpdateCompanyRequest {
+  string company_id = 1;
+  string name = 2;
+  string avatar_url = 3;
+}
+message UpdateCompanyResponse {
+  bool success = 1;
+  Company company = 2;
+}
+
+message DeleteCompanyRequest {
+  string company_id = 1;
+}
+message DeleteCompanyResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message ListCompaniesRequest {
+  string user_id = 1;
+}
+message ListCompaniesResponse {
+  repeated Company companies = 1;
+}
+
+message CreatePositionRequest {
+  string company_id = 1;
+  string title = 2;
+  int32 level = 3;
+  string chat_access = 4;
+}
+message CreatePositionResponse {
+  bool success = 1;
+  CompanyPosition position = 2;
+}
+
+message UpdatePositionRequest {
+  string position_id = 1;
+  string title = 2;
+  int32 level = 3;
+  string chat_access = 4;
+}
+message UpdatePositionResponse {
+  bool success = 1;
+  CompanyPosition position = 2;
+}
+
+message DeletePositionRequest {
+  string position_id = 1;
+}
+message DeletePositionResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message ListPositionsRequest {
+  string company_id = 1;
+}
+message ListPositionsResponse {
+  repeated CompanyPosition positions = 1;
+}
+
+message AddMemberRequest {
+  string company_id = 1;
+  string user_id = 2;
+  string position_id = 3;
+}
+message AddMemberResponse {
+  bool success = 1;
+  CompanyMember member = 2;
+}
+
+message RemoveMemberRequest {
+  string company_id = 1;
+  string user_id = 2;
+}
+message RemoveMemberResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message UpdateMemberPositionRequest {
+  string company_id = 1;
+  string user_id = 2;
+  string position_id = 3;
+}
+message UpdateMemberPositionResponse {
+  bool success = 1;
+  CompanyMember member = 2;
+}
+
+message ListMembersRequest {
+  string company_id = 1;
+  string cursor = 2;
+  int32 limit = 3;
+}
+message ListMembersResponse {
+  repeated CompanyMember members = 1;
+  string next_cursor = 2;
+  bool has_more = 3;
+}
+
+message CreateCompanyChatRequest {
+  string company_id = 1;
+  string name = 2;
+  string access_level = 3;
+  int32 min_position_level = 4;
+  repeated string participant_ids = 5;
+}
+message CreateCompanyChatResponse {
+  bool success = 1;
+  string chat_id = 2;
+}
+
+message SetCompanyChatAccessRequest {
+  string chat_id = 1;
+  string access_level = 2;
+  int32 min_position_level = 3;
+}
+message SetCompanyChatAccessResponse {
+  bool success = 1;
+}
+
+message GetCompanyChatsRequest {
+  string company_id = 1;
+}
+message GetCompanyChatsResponse {
+  repeated CompanyChatInfo chats = 1;
+}
+
+message JoinCompanyRequest {
+  string company_id = 1;
+  string invite_code = 2;
+}
+message JoinCompanyResponse {
+  bool success = 1;
+  CompanyMember member = 2;
+}
+
+message LeaveCompanyRequest {
+  string company_id = 1;
+}
+message LeaveCompanyResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// Public user info (for contacts, profiles)
+message UserPublicInfo {
+  string user_id = 1;
+  string username = 2;
+  string avatar_url = 3;
+  string full_avatar_url = 4;
+  string bio = 5;
+  string status = 6;
+  bool is_online = 7;
+  string last_seen_at = 8;
+  string company_id = 9;
+  string company_name = 10;
+  string position_title = 11;
+  int32 position_level = 12;
+}
+
+message GetUserInfoRequest {
+  string user_id = 1;
+}
+
+message GetUserInfoResponse {
+  UserPublicInfo info = 1;
+}
+
+message GetCompanyByUserRequest {
+  string user_id = 1;
+}
+
+message GetCompanyByUserResponse {
+  Company company = 1;
+  CompanyMember member = 2;
+}
+
+message SetPrimaryCompanyRequest {
+  string company_id = 1;
+}
+message SetPrimaryCompanyResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message GetUserCompaniesRequest {
+  // empty — user_id from JWT
+}
+message GetUserCompaniesResponse {
+  repeated CompanyCompanyMember companies = 1;
+}
+
+message CompanyCompanyMember {
+  Company company = 1;
+  CompanyMember member = 2;
+  bool is_primary = 3;
+}
+
+// ======= Sticker System =======
+
+message Sticker {
+  string id = 1;
+  string pack_id = 2;
+  string lottie_url = 3;
+  string thumbnail_url = 4;
+  string emoji = 5;
+  int32 width = 6;
+  int32 height = 7;
+  int64 created_at = 8;
+}
+
+message StickerPack {
+  string id = 1;
+  string title = 2;
+  string name = 3;
+  string creator_user_id = 4;
+  string creator_username = 5;
+  repeated Sticker stickers = 6;
+  string cover_sticker_id = 7;
+  string status = 8;
+  string rejection_reason = 9;
+  int64 created_at = 10;
+  int64 updated_at = 11;
+  bool is_featured = 12;
+}
+
+message CreateStickerPackRequest {
+  string title = 1;
+  string name = 2;
+}
+
+message CreateStickerPackResponse {
+  bool success = 1;
+  string error = 2;
+  StickerPack pack = 3;
+}
+
+message AddStickerRequest {
+  string pack_id = 1;
+  string lottie_url = 2;
+  string thumbnail_url = 3;
+  string emoji = 4;
+  int32 width = 5;
+  int32 height = 6;
+}
+
+message AddStickerResponse {
+  bool success = 1;
+  string error = 2;
+  Sticker sticker = 3;
+}
+
+message RemoveStickerRequest {
+  string pack_id = 1;
+  string sticker_id = 2;
+}
+
+message RemoveStickerResponse {
+  bool success = 1;
+}
+
+message DeleteStickerPackRequest {
+  string pack_id = 1;
+}
+
+message DeleteStickerPackResponse {
+  bool success = 1;
+}
+
+message GetUserStickerPacksRequest {}
+
+message GetUserStickerPacksResponse {
+  repeated StickerPack packs = 1;
+}
+
+message GetPublicStickerPacksRequest {
+  string cursor = 1;
+  int32 limit = 2;
+}
+
+message GetPublicStickerPacksResponse {
+  repeated StickerPack packs = 1;
+  string next_cursor = 2;
+  bool has_more = 3;
+}
+
+message GetStickerPackRequest {
+  string pack_id = 1;
+}
+
+message GetStickerPackResponse {
+  StickerPack pack = 1;
+}
+
+message SubmitForApprovalRequest {
+  string pack_id = 1;
+}
+
+message SubmitForApprovalResponse {
+  bool success = 1;
+  string error = 2;
+}
+
+message ApproveStickerPackRequest {
+  string pack_id = 1;
+  bool approved = 2;
+  string reason = 3;
+}
+
+message ApproveStickerPackResponse {
+  bool success = 1;
+}
+
+message GetPendingStickerPacksRequest {
+  string cursor = 1;
+  int32 limit = 2;
+}
+
+message GetPendingStickerPacksResponse {
+  repeated StickerPack packs = 1;
+  string next_cursor = 2;
+  bool has_more = 3;
+}
+
+message SearchStickerPacksRequest {
+  string query = 1;
+  int32 limit = 2;
+}
+
+message SearchStickerPacksResponse {
+  repeated StickerPack packs = 1;
+}
+
+message UpdateStickerPackRequest {
+  string pack_id = 1;
+  string title = 2;
+  string cover_sticker_id = 3;
+}
+
+message UpdateStickerPackResponse {
+  bool success = 1;
+}
+
+message SetFeaturedStickerPackRequest {
+  string pack_id = 1;
+  bool featured = 2;
+}
+
+message SetFeaturedStickerPackResponse {
+  bool success = 1;
+}
+
+service StickerService {
+  rpc CreateStickerPack(CreateStickerPackRequest) returns (CreateStickerPackResponse);
+  rpc AddSticker(AddStickerRequest) returns (AddStickerResponse);
+  rpc RemoveSticker(RemoveStickerRequest) returns (RemoveStickerResponse);
+  rpc DeleteStickerPack(DeleteStickerPackRequest) returns (DeleteStickerPackResponse);
+  rpc GetUserStickerPacks(GetUserStickerPacksRequest) returns (GetUserStickerPacksResponse);
+  rpc GetPublicStickerPacks(GetPublicStickerPacksRequest) returns (GetPublicStickerPacksResponse);
+  rpc GetStickerPack(GetStickerPackRequest) returns (GetStickerPackResponse);
+  rpc SubmitForApproval(SubmitForApprovalRequest) returns (SubmitForApprovalResponse);
+  rpc ApproveStickerPack(ApproveStickerPackRequest) returns (ApproveStickerPackResponse);
+  rpc GetPendingStickerPacks(GetPendingStickerPacksRequest) returns (GetPendingStickerPacksResponse);
+  rpc SearchStickerPacks(SearchStickerPacksRequest) returns (SearchStickerPacksResponse);
+  rpc UpdateStickerPack(UpdateStickerPackRequest) returns (UpdateStickerPackResponse);
+  rpc SetFeaturedStickerPack(SetFeaturedStickerPackRequest) returns (SetFeaturedStickerPackResponse);
 }
 

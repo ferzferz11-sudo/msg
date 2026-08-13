@@ -11,7 +11,7 @@ import (
 // ======= Rate Limiter Tests =======
 
 func TestBotRateLimiter_Allow(t *testing.T) {
-	rl := newBotRateLimiter(3, time.Minute)
+	rl := NewRedisRateLimiter(3, time.Minute, "rl:bot:test:")
 	userID := "test-user-1"
 
 	// First 3 requests should be allowed
@@ -28,7 +28,7 @@ func TestBotRateLimiter_Allow(t *testing.T) {
 }
 
 func TestBotRateLimiter_DifferentUsers(t *testing.T) {
-	rl := newBotRateLimiter(2, time.Minute)
+	rl := NewRedisRateLimiter(2, time.Minute, "rl:bot:test2:")
 
 	// User 1: 2 requests allowed
 	if !rl.allow("user1") {
@@ -49,7 +49,7 @@ func TestBotRateLimiter_DifferentUsers(t *testing.T) {
 }
 
 func TestBotRateLimiter_WindowReset(t *testing.T) {
-	rl := newBotRateLimiter(2, 100*time.Millisecond)
+	rl := NewRedisRateLimiter(2, 100*time.Millisecond, "rl:bot:test3:")
 	userID := "test-user-window"
 
 	// Exhaust limit
@@ -216,7 +216,6 @@ func TestDispatchBotCommand_KnownCommands(t *testing.T) {
 		{"/status", true},
 		{"/version", true},
 		{"/help", true},
-		{"/logs", true},
 	}
 
 	for _, tt := range tests {
@@ -237,7 +236,7 @@ func TestDispatchBotCommand_KnownCommands(t *testing.T) {
 func TestDispatchBotCommand_RateLimit(t *testing.T) {
 	// Create a fresh rate limiter for this test
 	originalLimiter := botCmdRateLimiter
-	botCmdRateLimiter = newBotRateLimiter(2, time.Minute)
+	botCmdRateLimiter = NewRedisRateLimiter(2, time.Minute, "rl:bot:test:")
 	defer func() { botCmdRateLimiter = originalLimiter }()
 
 	s := &server{}

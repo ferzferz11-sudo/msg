@@ -180,19 +180,24 @@ func (s *server) GetChatsV2(ctx context.Context, req *gen.GetChatsRequest) (*gen
 	}
 
 	filter := req.GetFilter()
+	cursor := req.GetCursor()
 
-	chats, err := s.db.GetUserChatsV2(userID, username, limit, int(req.GetOffset()), filter)
+	result, err := s.db.GetUserChatsV2Cursor(userID, username, limit, cursor, filter)
 	if err != nil {
 		logger.Errorf("Error fetching chats v2 for user %s: %v", userID, err)
 		return &gen.GetChatsResponse{}, err
 	}
 
 	var chatInfos []*gen.ChatInfo
-	for _, c := range chats {
+	for _, c := range result.Chats {
 		chatInfos = append(chatInfos, chatV2RowToProto(c))
 	}
 
-	return &gen.GetChatsResponse{Chats: chatInfos}, nil
+	return &gen.GetChatsResponse{
+		Chats:      chatInfos,
+		NextCursor: result.NextCursor,
+		HasMore:    result.HasMore,
+	}, nil
 }
 
 // ======= Helpers =======
@@ -202,13 +207,19 @@ func (s *server) isChatParticipant(userID, chatID string) bool {
 	if err != nil {
 		return false
 	}
-	// Parse JSON array properly to avoid false positives
 	var participants []string
 	if err := json.Unmarshal([]byte(chat.Participants), &participants); err != nil {
 		return false
 	}
+	// Check direct match (username) or resolve UUID to username
+	username := userID
+	if isUUID(userID) {
+		if resolved := resolveDisplayName(s.db, userID); resolved != "" {
+			username = resolved
+		}
+	}
 	for _, p := range participants {
-		if p == userID {
+		if p == username || p == userID {
 			return true
 		}
 	}
@@ -218,24 +229,33 @@ func (s *server) isChatParticipant(userID, chatID string) bool {
 // chatV2RowToProto converts a ChatV2Row to proto ChatInfo with v2 fields
 func chatV2RowToProto(c ChatV2Row) *gen.ChatInfo {
 	return &gen.ChatInfo{
-		Id:                  c.ID,
-		Name:                c.Name,
-		Type:                c.Type,
-		Participants:        c.Participants,
-		CreatedAt:           timestamppb.New(c.CreatedAt),
-		UnreadCount:         int32(c.UnreadCount),
-		LastMessageTime:     timestamppb.New(c.LastMessageTime),
-		Creator:             c.Creator,
-		LastMessageText:     c.LastMessageText,
-		AvatarUrl:           c.AvatarURL,
-		FullAvatarUrl:       c.FullAvatarURL,
-		LastMessageUsername: c.LastMessageUsername,
-		LastMessageHasImage: c.LastMessageHasImage,
-		AllowMembersToAdd:   c.AllowMembersToAdd,
-		IsPinned:            c.IsPinned,
-		IsMuted:             c.IsMuted,
-		IsArchived:          c.IsArchived,
-		PinnedAt:            c.PinnedAt,
+		Id:                      c.ID,
+		Name:                    c.Name,
+		Type:                    c.Type,
+		Participants:            c.Participants,
+		CreatedAt:               timestamppb.New(c.CreatedAt),
+		UnreadCount:             int32(c.UnreadCount),
+		LastMessageTime:         timestamppb.New(c.LastMessageTime),
+		Creator:                 c.Creator,
+		LastMessageText:         c.LastMessageText,
+		AvatarUrl:               c.AvatarURL,
+		FullAvatarUrl:           c.FullAvatarURL,
+		LastMessageUsername:     c.LastMessageUsername,
+		LastMessageHasImage:     c.LastMessageHasImage,
+		AllowMembersToAdd:       c.AllowMembersToAdd,
+		IsSecret:                c.IsSecret,
+		PeerPublicKey:           c.PeerPublicKey,
+		E2EeReady:               c.E2eeReady,
+		ActiveAgentId:           c.ActiveAgentId,
+		AgentMode:               c.AgentMode,
+		IsPinned:                c.IsPinned,
+		IsMuted:                 c.IsMuted,
+		IsArchived:              c.IsArchived,
+		PinnedAt:                c.PinnedAt,
+		CompanyId:               c.CompanyId,
+		CompanyChatAccess:       c.CompanyChatAccess,
+		CompanyMinPositionLevel: c.CompanyMinPositionLevel,
+		SelfDestructTimer:       c.SelfDestructTimer,
 	}
 }
 

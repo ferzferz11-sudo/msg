@@ -33,14 +33,27 @@ type ExecutionResult struct {
 	ModelUsed    string
 	TokenCount   int
 	PromptTokens int
+	ImageURL     string
 }
 
 // Execute runs an agent with messages, streaming chunks via onChunk callback
 func (e *AgentExecutor) Execute(ctx context.Context, agent *AgentV2, messages []AIMessageInput, settings *AIChatSettings, onChunk func(token string, finished bool) error) (*ExecutionResult, error) {
-	result := &ExecutionResult{ModelUsed: agent.Model}
+	// Apply model override from user settings
+	effectiveAgent := *agent
+	effectiveModel := agent.Model
+	if settings != nil && settings.ModelOverride != "" {
+		effectiveModel = settings.ModelOverride
+		effectiveAgent.Model = settings.ModelOverride
+		if effectiveAgent.ProviderConfig == nil {
+			effectiveAgent.ProviderConfig = make(map[string]any)
+		}
+		effectiveAgent.ProviderConfig["default_model"] = settings.ModelOverride
+	}
+
+	result := &ExecutionResult{ModelUsed: effectiveModel}
 
 	// 1. Get provider from registry
-	provider, err := e.registry.Create(agent.ProviderType, agent.ProviderConfig, resolveAPIKey(agent, settings))
+	provider, err := e.registry.Create(effectiveAgent.ProviderType, effectiveAgent.ProviderConfig, resolveAPIKey(&effectiveAgent, settings))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create provider: %w", err)
 	}
@@ -73,6 +86,7 @@ func (e *AgentExecutor) Execute(ctx context.Context, agent *AgentV2, messages []
 
 		// Collect response and tool calls
 		var fullContent string
+		var imageURL string
 		var toolCalls []ToolCallRequestInput
 		for chunk := range ch {
 			if chunk.Error != nil {
@@ -81,6 +95,9 @@ func (e *AgentExecutor) Execute(ctx context.Context, agent *AgentV2, messages []
 			if chunk.Content != "" {
 				fullContent += chunk.Content
 				onChunk(chunk.Content, false)
+			}
+			if chunk.ImageURL != "" {
+				imageURL = chunk.ImageURL
 			}
 			if chunk.ToolCall != nil {
 				toolCalls = append(toolCalls, *chunk.ToolCall)
@@ -96,6 +113,9 @@ func (e *AgentExecutor) Execute(ctx context.Context, agent *AgentV2, messages []
 
 		// If no tool calls, we're done
 		if len(toolCalls) == 0 {
+			if imageURL != "" {
+				result.ImageURL = imageURL
+			}
 			onChunk("", true)
 			return result, nil
 		}
@@ -143,6 +163,8 @@ func resolveAPIKey(agent *AgentV2, settings *AIChatSettings) string {
 		return os.Getenv("OPENROUTER_API_KEY")
 	case "mimo":
 		return os.Getenv("MIMO_API_KEY")
+	case "reve":
+		return os.Getenv("REVE_API_KEY")
 	}
 	return ""
 }

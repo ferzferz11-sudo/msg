@@ -1,10 +1,11 @@
 package main
 
 import (
-	"time"
-	"github.com/google/uuid"
 	"LavenderMessenger/gen"
 	"context"
+	"time"
+
+	"github.com/google/uuid"
 )
 
 func (s *server) GetFCMLogs(_ context.Context, _ *gen.GetFCMLogsRequest) (*gen.GetFCMLogsResponse, error) {
@@ -23,28 +24,36 @@ func (s *server) GetFCMLogs(_ context.Context, _ *gen.GetFCMLogsRequest) (*gen.G
 	return &gen.GetFCMLogsResponse{Logs: logs}, nil
 }
 
-func (s *server) SaveDraft(_ context.Context, req *gen.SaveDraftRequest) (*gen.SaveDraftResponse, error) {
-	if req.UserId == "" {
+func (s *server) SaveDraft(ctx context.Context, req *gen.SaveDraftRequest) (*gen.SaveDraftResponse, error) {
+	userID := GetUserID(ctx)
+	if userID == "" {
+		userID = req.UserId
+	}
+	if userID == "" {
 		return &gen.SaveDraftResponse{Success: false, Message: "empty user id"}, nil
 	}
 
 	var err error
-	if _, uuidErr := uuid.Parse(req.UserId); uuidErr == nil {
-		err = s.db.SaveDraftByUserID(req.UserId, req.RoomId, req.DraftText, req.RepliedToMessageId, req.RepliedToUser, req.RepliedToText)
+	if _, uuidErr := uuid.Parse(userID); uuidErr == nil {
+		err = s.db.SaveDraftByUserID(userID, req.RoomId, req.DraftText, req.RepliedToMessageId, req.RepliedToUser, req.RepliedToText)
 	} else {
-		err = s.db.SaveDraft(req.UserId, req.RoomId, req.DraftText, req.RepliedToMessageId, req.RepliedToUser, req.RepliedToText)
+		err = s.db.SaveDraft(userID, req.RoomId, req.DraftText, req.RepliedToMessageId, req.RepliedToUser, req.RepliedToText)
 	}
 
 	if err != nil {
-		s.logErrorOnce("SaveDraft:"+req.UserId, "Failed to save draft for user %s in room %s: %v", req.UserId, req.RoomId, err)
+		s.logErrorOnce("SaveDraft:"+userID, "Failed to save draft for user %s in room %s: %v", userID, req.RoomId, err)
 		return &gen.SaveDraftResponse{Success: false, Message: err.Error()}, nil
 	}
-	logger.Infof("Draft saved for user %s in room %s (length: %d)", req.UserId, req.RoomId, len(req.DraftText))
+	logger.Debugf("Draft saved for user %s in room %s (length: %d)", userID, req.RoomId, len(req.DraftText))
 	return &gen.SaveDraftResponse{Success: true, Message: "Draft saved successfully"}, nil
 }
 
-func (s *server) GetDraft(_ context.Context, req *gen.GetDraftRequest) (*gen.GetDraftResponse, error) {
-	if req.UserId == "" {
+func (s *server) GetDraft(ctx context.Context, req *gen.GetDraftRequest) (*gen.GetDraftResponse, error) {
+	userID := GetUserID(ctx)
+	if userID == "" {
+		userID = req.UserId
+	}
+	if userID == "" {
 		return &gen.GetDraftResponse{HasDraft: false}, nil
 	}
 
@@ -57,14 +66,14 @@ func (s *server) GetDraft(_ context.Context, req *gen.GetDraftRequest) (*gen.Get
 	}
 	var err error
 
-	if _, uuidErr := uuid.Parse(req.UserId); uuidErr == nil {
-		draft, err = s.db.GetDraftByUserID(req.UserId, req.RoomId)
+	if _, uuidErr := uuid.Parse(userID); uuidErr == nil {
+		draft, err = s.db.GetDraftByUserID(userID, req.RoomId)
 	} else {
-		draft, err = s.db.GetDraft(req.UserId, req.RoomId)
+		draft, err = s.db.GetDraft(userID, req.RoomId)
 	}
 
 	if err != nil {
-		s.logErrorOnce("GetDraft:"+req.UserId, "Failed to get draft for user %s in room %s: %v", req.UserId, req.RoomId, err)
+		s.logErrorOnce("GetDraft:"+userID, "Failed to get draft for user %s in room %s: %v", userID, req.RoomId, err)
 		return &gen.GetDraftResponse{HasDraft: false}, nil
 	}
 
@@ -79,27 +88,31 @@ func (s *server) GetDraft(_ context.Context, req *gen.GetDraftRequest) (*gen.Get
 	}, nil
 }
 
-func (s *server) DeleteDraft(_ context.Context, req *gen.DeleteDraftRequest) (*gen.DeleteDraftResponse, error) {
-	if req.UserId == "" {
+func (s *server) DeleteDraft(ctx context.Context, req *gen.DeleteDraftRequest) (*gen.DeleteDraftResponse, error) {
+	userID := GetUserID(ctx)
+	if userID == "" {
+		userID = req.UserId
+	}
+	if userID == "" {
 		return &gen.DeleteDraftResponse{Success: false}, nil
 	}
 
 	var deleted bool
 	var err error
-	if _, uuidErr := uuid.Parse(req.UserId); uuidErr == nil {
-		deleted, err = s.db.DeleteDraftByUserID(req.UserId, req.RoomId)
+	if _, uuidErr := uuid.Parse(userID); uuidErr == nil {
+		deleted, err = s.db.DeleteDraftByUserID(userID, req.RoomId)
 	} else {
-		err = s.db.DeleteDraft(req.UserId, req.RoomId)
+		err = s.db.DeleteDraft(userID, req.RoomId)
 		deleted = err == nil
 	}
 
 	if err != nil {
-		s.logErrorOnce("DeleteDraft:"+req.UserId, "Failed to delete draft for user %s in room %s: %v", req.UserId, req.RoomId, err)
+		s.logErrorOnce("DeleteDraft:"+userID, "Failed to delete draft for user %s in room %s: %v", userID, req.RoomId, err)
 		return &gen.DeleteDraftResponse{Success: false}, nil
 	}
 	// Only log if we actually deleted something (not for empty/duplicate deletions)
 	if deleted {
-		logger.Infof("Draft deleted for user %s in room %s", req.UserId, req.RoomId)
+		logger.Debugf("Draft deleted for user %s in room %s", userID, req.RoomId)
 	}
 	return &gen.DeleteDraftResponse{Success: true}, nil
 }

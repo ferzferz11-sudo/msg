@@ -4,18 +4,103 @@ import (
 	"LavenderMessenger/gen"
 	"context"
 	"fmt"
+	"net"
+	"sync"
+	"time"
 
+	"google.golang.org/grpc/peer"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+type ipRateLimiter struct {
+	mu       sync.Mutex
+	requests map[string][]time.Time
+	limit    int
+	window   time.Duration
+}
+
+func newIPRateLimiter(limit int, window time.Duration) *ipRateLimiter {
+	return &ipRateLimiter{
+		requests: make(map[string][]time.Time),
+		limit:    limit,
+		window:   window,
+	}
+}
+
+func (r *ipRateLimiter) cleanup(ctx context.Context) {
+	ticker := time.NewTicker(5 * time.Minute)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			r.mu.Lock()
+			now := time.Now()
+			for key, times := range r.requests {
+				valid := times[:0]
+				for _, t := range times {
+					if now.Sub(t) < r.window {
+						valid = append(valid, t)
+					}
+				}
+				if len(valid) == 0 {
+					delete(r.requests, key)
+				} else {
+					r.requests[key] = valid
+				}
+			}
+			r.mu.Unlock()
+		}
+	}
+}
+
+func (r *ipRateLimiter) Allow(key string) bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	now := time.Now()
+	cutoff := now.Add(-r.window)
+
+	reqs := r.requests[key]
+	valid := reqs[:0]
+	for _, t := range reqs {
+		if t.After(cutoff) {
+			valid = append(valid, t)
+		}
+	}
+
+	if len(valid) >= r.limit {
+		r.requests[key] = valid
+		return false
+	}
+
+	r.requests[key] = append(valid, now)
+	return true
+}
+
+var authLimiter = newIPRateLimiter(10, time.Minute)
+
+func getIPFromContext(ctx context.Context) string {
+	p, ok := peer.FromContext(ctx)
+	if !ok || p == nil {
+		return "unknown"
+	}
+	host, _, _ := net.SplitHostPort(p.Addr.String())
+	if host == "" {
+		return p.Addr.String()
+	}
+	return host
+}
+
 // authServerV2 implements the V2 AuthService methods with JWT + device management
-// It wraps the existing authServer for v1 methods and adds v2 methods
 type authServerV2 struct {
-	*authServer
+	gen.UnimplementedAuthServiceServer
+	db authDB
 }
 
 func newAuthServerV2(db *DB) *authServerV2 {
-	return &authServerV2{authServer: newAuthServer(db)}
+	return &authServerV2{db: db}
 }
 
 // SignInV2 authenticates a user with username/password, registers the device,
@@ -29,6 +114,15 @@ func (a *authServerV2) SignInV2(ctx context.Context, req *gen.SignInRequestV2) (
 		return &gen.AuthResponseV2{
 			Success: false,
 			Message: "username and password are required",
+		}, nil
+	}
+
+	ip := getIPFromContext(ctx)
+	if !authLimiter.Allow("signin:" + ip) {
+		logger.Warnf("SignInV2: rate limited for IP %s", ip)
+		return &gen.AuthResponseV2{
+			Success: false,
+			Message: "too many attempts, try again later",
 		}, nil
 	}
 
@@ -89,7 +183,7 @@ func (a *authServerV2) SignInV2(ctx context.Context, req *gen.SignInRequestV2) (
 	clientVersion := req.GetClientVersion()
 
 	// Register/update device
-	ipAddress := "unknown" // TODO: extract from gRPC context if needed
+	ipAddress := getIPFromContext(ctx)
 	userAgent := clientVersion
 	_, err = a.db.UpsertDevice(userID, deviceID, deviceName, deviceType, clientVersion, ipAddress, userAgent)
 	if err != nil {
@@ -121,11 +215,11 @@ func (a *authServerV2) SignInV2(ctx context.Context, req *gen.SignInRequestV2) (
 	logger.Infof("SignInV2: %s (ID: %s, device: %s)", username, userID, deviceID)
 
 	return &gen.AuthResponseV2{
-		Success:         true,
-		Message:         "sign in successful",
-		AccessToken:     accessToken,
-		RefreshToken:    refreshToken,
-		AccessExpiresAt: accessExp.Unix(),
+		Success:          true,
+		Message:          "sign in successful",
+		AccessToken:      accessToken,
+		RefreshToken:     refreshToken,
+		AccessExpiresAt:  accessExp.Unix(),
 		RefreshExpiresAt: refreshExp.Unix(),
 		User: &gen.User{
 			Id:         userID,
@@ -151,6 +245,15 @@ func (a *authServerV2) SignUpV2(ctx context.Context, req *gen.SignUpRequestV2) (
 		return &gen.AuthResponseV2{
 			Success: false,
 			Message: "username and password are required",
+		}, nil
+	}
+
+	ip := getIPFromContext(ctx)
+	if !authLimiter.Allow("signup:" + ip) {
+		logger.Warnf("SignUpV2: rate limited for IP %s", ip)
+		return &gen.AuthResponseV2{
+			Success: false,
+			Message: "too many attempts, try again later",
 		}, nil
 	}
 
@@ -201,7 +304,7 @@ func (a *authServerV2) SignUpV2(ctx context.Context, req *gen.SignUpRequestV2) (
 		logger.Errorf("SignUpV2: SaveUserWithEmail error for %s: %v", username, err)
 		return &gen.AuthResponseV2{
 			Success: false,
-			Message: fmt.Sprintf("failed to create user: %v", err),
+			Message: "failed to create user",
 		}, nil
 	}
 
@@ -222,7 +325,7 @@ func (a *authServerV2) SignUpV2(ctx context.Context, req *gen.SignUpRequestV2) (
 	clientVersion := req.GetClientVersion()
 
 	// Register device
-	_, err = a.db.UpsertDevice(userID, deviceID, deviceName, deviceType, clientVersion, "unknown", clientVersion)
+	_, err = a.db.UpsertDevice(userID, deviceID, deviceName, deviceType, clientVersion, ip, clientVersion)
 	if err != nil {
 		logger.Errorf("SignUpV2: UpsertDevice error for %s/%s: %v", username, deviceID, err)
 	}
@@ -243,21 +346,21 @@ func (a *authServerV2) SignUpV2(ctx context.Context, req *gen.SignUpRequestV2) (
 		a.db.UpdateDeviceRefreshToken(userID, deviceID, refreshJTI, refreshExp)
 	}
 
-	a.db.LogAuthEvent(userID, deviceID, "signup_v2", "unknown", clientVersion, true, "")
+	a.db.LogAuthEvent(userID, deviceID, "signup_v2", ip, clientVersion, true, "")
 
 	logger.Infof("SignUpV2: new user %s (ID: %s, device: %s)", username, userID, deviceID)
 
 	return &gen.AuthResponseV2{
-		Success:         true,
-		Message:         "sign up successful",
-		AccessToken:     accessToken,
-		RefreshToken:    refreshToken,
-		AccessExpiresAt: accessExp.Unix(),
+		Success:          true,
+		Message:          "sign up successful",
+		AccessToken:      accessToken,
+		RefreshToken:     refreshToken,
+		AccessExpiresAt:  accessExp.Unix(),
 		RefreshExpiresAt: refreshExp.Unix(),
 		User: &gen.User{
-			Id:        userID,
-			Username:  username,
-			Email:     email,
+			Id:       userID,
+			Username: username,
+			Email:    email,
 		},
 	}, nil
 }
@@ -285,7 +388,11 @@ func (a *authServerV2) RefreshToken(ctx context.Context, req *gen.RefreshTokenRe
 		return &gen.RefreshTokenResponse{}, fmt.Errorf("refresh token revoked or expired")
 	}
 
+	// Refresh token may not have username (old tokens) — resolve from DB
 	username := claims.Username
+	if username == "" {
+		username, _ = a.db.GetUsernameByID(claims.UserID)
+	}
 
 	// Generate new token pair (rotation: new refresh token)
 	accessToken, refreshToken, accessExp, refreshExp, err := GenerateTokenPair(claims.UserID, username, claims.DeviceID)

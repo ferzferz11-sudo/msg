@@ -8,20 +8,23 @@ package main
 
 import (
 	"context"
-	"fmt"     // Standard formatting package for console output
-	"net"     // Network functionality for TCP listener
-	"os"      // Operating system interface for environment variables
+	"fmt" // Standard formatting package for console output
+	"net" // Network functionality for TCP listener
+	"os"  // Operating system interface for environment variables
 	"os/signal"
 	"strings" // String manipulation functions
 	"syscall"
 
-	"LavenderMessenger/gen" // Generated gRPC code package
+	"LavenderMessenger/auth" // Agent JWT token management
+	"LavenderMessenger/gen"  // Generated gRPC code package
 	hermesagent "LavenderMessenger/gen/hermes_agent"
+
+	"time"
 
 	"github.com/joho/godotenv" // Environment variable loading from .env files
 	"google.golang.org/grpc"   // gRPC framework for RPC communication
 	"google.golang.org/grpc/keepalive"
-	"time"
+	"google.golang.org/grpc/reflection"
 
 	firebase "firebase.google.com/go/v4"
 	"google.golang.org/api/option"
@@ -46,6 +49,14 @@ func main() {
 		}
 	} else {
 		godotenv.Load()
+	}
+
+	// Validate critical secrets at startup
+	if secret := os.Getenv("JWT_SECRET"); len(secret) < 32 {
+		logger.Fatal("FATAL: JWT_SECRET is missing or too short (must be >= 32 bytes). Set JWT_SECRET in .env or environment.")
+	}
+	if key := os.Getenv("CHAT_SECRET_KEY"); len(key) < 32 {
+		logger.Fatal("FATAL: CHAT_SECRET_KEY is missing or too short (must be >= 32 bytes). Set CHAT_SECRET_KEY in .env or environment.")
 	}
 
 	// Initialize Firebase Admin SDK
@@ -148,10 +159,19 @@ func main() {
 		owlApiKey:   os.Getenv("OPENROUTER_API_KEY"),
 	}
 	srv.hub = NewHub(srv.broadcastOnlineUsers) // Hub manages all active client connections
+	srv.pushDebouncer = NewPushDebouncer(srv.sendBatchPushNotifications)
 
 	// Initialize Hermes DB
 	srv.hermesDB = NewHermesDB(db.DB)
 	srv.remoteAgentManager = &RemoteAgentManager{agents: make(map[string]*RemoteAgent)}
+
+	// Inject DB into auth package for token revocation
+	auth.SetDB(db.DB)
+
+	// Set agent revocation check hook (queries agent_tokens.revoked)
+	if srv.hermesDB != nil {
+		auth.SetAgentRevocationCheck(srv.hermesDB.IsAgentRevoked)
+	}
 
 	// Initialize AI Gateway v2
 	srv.aiGateway = NewAIGateway(db.DB)
@@ -160,8 +180,7 @@ func main() {
 	// Run Hermes DB migrations
 	runHermesMigrations(db.DB)
 
-	// Drop old AI v1 tables and create v2 tables
-	DropOldAIV1(db.DB)
+	// Create v2 AI tables
 	if err := MigrateAIV2(db.DB); err != nil {
 		logger.Errorf("Failed to migrate AI v2 tables: %v", err)
 	} else {
@@ -175,6 +194,17 @@ func main() {
 		logger.Info("Auth v2 tables (user_devices, device_auth_log) ready")
 	}
 
+	// OIDC tables
+	if os.Getenv("OIDC_ENABLED") != "false" {
+		if err := runOIDCMigrations(db.DB); err != nil {
+			logger.Warnf("Warning: failed to migrate OIDC tables: %v", err)
+		}
+		// Init OIDC keys
+		if err := initOIDCKeys(); err != nil {
+			logger.Warnf("Warning: failed to init OIDC keys: %v", err)
+		}
+	}
+
 	// Register our chat service with the gRPC server
 	gen.RegisterChatServiceServer(s, srv)
 
@@ -186,19 +216,33 @@ func main() {
 	hermesAgentServer := newHermesAgentServer(srv, &Orchestrator{remoteManager: srv.remoteAgentManager})
 	hermesagent.RegisterHermesAgentServiceServer(s, hermesAgentServer)
 
-	// Register ProfileService v2 (JWT-only, dev server only)
-	if appEnv == "dev" {
-		profileServer := newProfileServerV2(db)
-		gen.RegisterProfileServiceServer(s, profileServer)
-		ProfileServiceVersion = "2.0"
-		logger.Info("ProfileService v2 registered (dev)")
-	}
+	// Register ProfileService v2 (JWT-only)
+	profileServer := newProfileServerV2(db)
+	gen.RegisterProfileServiceServer(s, profileServer)
+	ProfileServiceVersion = "2.0"
+	logger.Info("ProfileService v2 registered")
+
+	// Register CompanyService
+	companyServer := newCompanyServer(db)
+	gen.RegisterCompanyServiceServer(s, companyServer)
+	logger.Info("CompanyService registered")
+
+	// Register StickerService
+	stickerServer := newStickerServer(db)
+	gen.RegisterStickerServiceServer(s, stickerServer)
+	logger.Info("StickerService registered")
 
 	// Register server management service (only dev)
 	if appEnv == "dev" {
 		srvMgmt := &serverServiceServer{db: db}
 		gen.RegisterServerServiceServer(s, srvMgmt)
 		logger.Info("ServerService registered (dev)")
+	}
+
+	// Enable gRPC server reflection (for grpcurl, debugging) — dev only
+	if appEnv == "dev" {
+		reflection.Register(s)
+		logger.Info("gRPC reflection enabled (dev)")
 	}
 
 	// Log server startup information
@@ -237,11 +281,35 @@ func main() {
 		}
 	}()
 
+	// Rate limiter cleanup (every 5 minutes)
+	go authLimiter.cleanup(ctx)
+
+	// Self-destruct message cleanup (every 30 seconds)
+	srv.startSelfDestructCleanup(ctx)
+
+	// Deleted messages cleanup (every hour)
+	srv.startDeletedMessagesCleanup(ctx)
+
+	// Revoked token cleanup (every 1 hour)
+	go func() {
+		ticker := time.NewTicker(1 * time.Hour)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				db.Exec(`DELETE FROM revoked_tokens WHERE expires_at < NOW()`)
+			}
+		}
+	}()
+
 	// Start HTTP server for avatar uploads
 	httpPort := os.Getenv("HTTP_PORT")
 	if httpPort == "" {
 		httpPort = "8082"
 	}
+	SetHTTPDependencies(db, srv.hub)
 	httpSrv := StartHTTPServerAndReturn(httpPort)
 
 	// Graceful shutdown on SIGINT/SIGTERM
@@ -250,6 +318,15 @@ func main() {
 		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 		sig := <-sigCh
 		logger.Infof("Received signal %v, shutting down gracefully...", sig)
+
+		// Set shutting down flag
+		srv.isShuttingDown.Store(true)
+		httpShuttingDown.Store(true)
+
+		// Notify all connected clients before stopping
+		srv.hub.BroadcastShutdown()
+		logger.Info("Sent SERVER_SHUTTINGDOWN to all clients")
+		time.Sleep(2 * time.Second) // Give clients time to receive the message
 
 		// Cancel background goroutines
 		cancel()

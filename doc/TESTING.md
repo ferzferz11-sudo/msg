@@ -2,7 +2,7 @@
 
 Документация по модульным тестам: как запускать, что покрыто, как писать новые тесты.
 
-**Актуально:** v1.2.0.9 (2026-06-19)
+**Актуально:** v1.4.0.2 (2026-08-13)
 
 ---
 
@@ -31,16 +31,22 @@ go test -coverprofile=/tmp/cover.out -count=1 . && go tool cover -func=/tmp/cove
 
 | Файл | Что тестирует | Тестов |
 |------|--------------|--------|
+| `crypto_test.go` | AES encrypt/decrypt, HashPassword/CheckPassword, GenerateResetToken, getSecretKey | 22 |
+| `ai_v2_test.go` | ProviderRegistry, ToolRegistry, HybridRouter, AgentExecutor, resolveAPIKey, toolCache, isURLSafe SSRF, OpenRouter SSE, query_database security, tool interfaces | 76 |
 | `auth_jwt_test.go` | JWT generation, validation, expiry, tamper | 2 |
-| `auth_service_test.go` | AuthService v1 (SignIn, SignUp) + v2 (SignInV2, SignUpV2, TokenPair) | 20 |
+| `auth_service_test.go` | AuthService v2 (SignInV2, SignUpV2, TokenPair) + v1 compat | 20 |
 | `owl_test.go` | OWL rate limiter, mock OpenRouter API, streaming | 15 |
 | `bot_commands_test.go` | Bot commands, rate limiter, notifications | 20 |
-| `server_push_test.go` | Hub.IsUserOnline (v1+v2, grace period) | 6 |
+| `server_push_test.go` | Hub.IsUserOnline (v2 only, grace period) | 6 |
 | `server_remote_test.go` | Remote agent deployment, stream updates, done filtering | 8 |
 | `server_stability_test.go` | Pinned messages fix, type assertion, graceful shutdown, panic recovery | 13 |
+| `chatv2_test.go` | ChatV2 stream: auth, message routing, typing | 12 |
+| `messages_v2_test.go` | Messages v2: CRUD, cursor pagination, reactions | 8 |
+| `company_test.go` | removeParticipant, access level thresholds, position hierarchy, chat type validation, default positions, builtin position protection, owner constraints, participants JSON | 9 |
+| `self_destruct_test.go` | allowedTimerValues validation, ChatV2Row self_destruct_timer proto, rowToProtoV2 forwarded_from/mentions/system, SetSelfDestructTimerResponse proto, timerChangeMessage labels | 8 |
 | `core/rag/memory/memory_test.go` | In-memory RAG: embeddings, vector DB, pipeline | 4 |
 
-**Всего:** ~88 тестов (все проходят)
+**Всего:** ~200+ тестов (все проходят)
 
 ---
 
@@ -55,7 +61,7 @@ go test -coverprofile=/tmp/cover.out -count=1 . && go tool cover -func=/tmp/cove
 
 ## auth_service_test.go (20 тестов)
 
-### V1 Auth (deprecated)
+### Auth (SignIn, SignUp)
 
 | Тест | Что проверяет |
 |------|--------------|
@@ -182,11 +188,8 @@ go test -coverprofile=/tmp/cover.out -count=1 . && go tool cover -func=/tmp/cove
 
 | Тест | Что проверяет |
 |------|--------------|
-| `TestIsUserOnline_UserPresent` | v2 клиент (userId) онлайн |
+| `TestIsUserOnline_UserPresent` | Пользователь онлайн |
 | `TestIsUserOnline_UserNotPresent` | Несуществующий пользователь |
-| `TestIsUserOnline_FallbackToUsername` | v1 клиент (только username) |
-| `TestIsUserOnline_BothUserIdAndUsername` | v2 клиент: userId + username fallback |
-| `TestIsUserOnline_MultipleStreams` | 2 стрима, 2 пользователя |
 | `TestIsUserOnline_AfterUnregister` | Grace period после отключения |
 
 ---
@@ -235,6 +238,45 @@ go test -coverprofile=/tmp/cover.out -count=1 . && go tool cover -func=/tmp/cove
 | `TestConnectDB_HaltOnFailure` | Сервер останавливается при падении БД |
 | `TestStreamHandler_PanicRecovery` | Panic recovery в stream handlers |
 | `TestUpdateUsername_TransactionErrorHandling` | Транзакция проверяет ошибки |
+
+---
+
+## company_test.go (9 тестов)
+
+### Position Levels & Access (5)
+
+| Тест | Что проверяет |
+|------|--------------|
+| `TestRemoveParticipant` | Удаление участника из JSON массива (7 под-тестов: list of 3, only user, first, last, not in list, empty, double quotes) |
+| `TestCompanyPositions_AccessLevelThresholds` | Пороги доступа: member→0, management→1, owner_only→3, minLevel override (5 под-тестов) |
+| `TestCompanyPositions_LevelHierarchy` | Иерархия позиций: Owner > Top Manager > Manager > Employee; проверка management и owner-only видимости |
+| `TestCompanyChat_CreationLogic` | Тип "company" является валидным типом чата |
+| `TestCompanyChat_AccessLevelValidation` | Валидные уровни: none, member, management, owner_only, all |
+
+### Defaults & Constraints (4)
+
+| Тест | Что проверяет |
+|------|--------------|
+| `TestCompany_DefaultPositions` | Автосоздание 4 позиций (Owner/Top Manager/Manager/Employee), без дубликатов, уровни 0-3 |
+| `TestCompany_CannotDeleteBuiltinPositions` | Owner/Top Manager/Manager/Employee нельзя удалить |
+| `TestCompany_OwnerCannotLeave` | Владелец не может покинуть свою компанию |
+| `TestCompany_OwnerCannotBeRemoved` | Владелец не может быть удалён |
+| `TestCompanyChat_ParticipantsJSON` | Формирование JSON массива участников |
+
+---
+
+## self_destruct_test.go (8 тестов)
+
+| Тест | Что проверяет |
+|------|--------------|
+| `TestAllowedTimerValues` | Валидные (0,30,60,300,3600,86400) и невалидные значения таймера |
+| `TestChatV2RowToProto_SelfDestructTimer` | ChatV2Row → ChatInfo proto с self_destruct_timer=3600 |
+| `TestChatV2RowToProto_SelfDestructTimerZero` | ChatV2Row → ChatInfo proto с self_destruct_timer=0 (default) |
+| `TestRowToProtoV2_ForwardedFrom` | rowToProtoV2 correctly maps forwarded_from field |
+| `TestRowToProtoV2_Mentions` | rowToProtoV2 correctly parses mentions JSON array |
+| `TestSetSelfDestructTimerResponse_Proto` | Proto response construction (success + error cases) |
+| `TestTimerChangeMessage` | Human-readable labels for all timer values (7 sub-tests) |
+| `TestRowToProtoV2_SystemMessage` | System message with sender_id=00000000-... |
 
 ---
 
@@ -341,6 +383,193 @@ go test -v -count=1 LavenderMessenger
 go build ./...
 go vet ./...
 ```
+
+---
+
+## crypto_test.go (22 теста)
+
+### AES Encrypt/Decrypt (9)
+
+| Тест | Что проверяет |
+|------|--------------|
+| `TestEncryptDecrypt_RoundTrip` | Полный цикл encrypt→decrypt |
+| `TestEncryptDecrypt_EmptyString` | Пустая строка |
+| `TestEncryptDecrypt_Unicode` | Unicode (кириллица, эмодзи,日本語) |
+| `TestEncrypt_WrongKeyLength` | Ключ < 32 байт → ошибка |
+| `TestDecrypt_WrongKeyLength` | Ключ < 32 байт → ошибка |
+| `TestDecrypt_TooShortCiphertext` | Шифротекст < nonce size → ошибка |
+| `TestDecrypt_TamperedCiphertext` | Подмена байта → ошибка |
+| `TestDecrypt_ServiceMarkers` | SERVICE_VOICE_MSG, SERVICE_MEDIA_MSG, FIXED_BY_MAINTENANCE и др. |
+| `TestEncrypt_DifferentCiphertextEachTime` | Random nonce → разный шифротекст |
+
+### HashPassword/CheckPassword (5)
+
+| Тест | Что проверяет |
+|------|--------------|
+| `TestHashPassword_CheckPassword_Success` | Хеширование + проверка пароля |
+| `TestHashPassword_CheckPassword_WrongPassword` | Неверный пароль → false |
+| `TestHashPassword_CheckPassword_EmptyPassword` | Пустой пароль |
+| `TestHashPassword_DifferentHashesSamePassword` | bcrypt random salt |
+| `TestHashPassword_HashFormat` | Префикс $2a$ или $2b$ |
+
+### GenerateResetToken (3)
+
+| Тест | Что проверяет |
+|------|--------------|
+| `TestGenerateResetToken_Length` | 64 hex chars (32 bytes) |
+| `TestGenerateResetToken_HexFormat` | Только 0-9, a-f |
+| `TestGenerateResetToken_Unique` | Уникальность токенов |
+
+### getSecretKey (5)
+
+| Тест | Что проверяет |
+|------|--------------|
+| `TestGetSecretKey_Valid` | 32-byte key → ok |
+| `TestGetSecretKey_TooShort` | < 32 → ошибка |
+| `TestGetSecretKey_Empty` | Пустой env → ошибка |
+| `TestGetSecretKey_TooLong` | > 32 → ошибка |
+
+---
+
+## ai_v2_test.go (76 тестов)
+
+### Mock Infrastructure
+
+- `mockProvider` — in-memory AgentProvider с настраиваемым каналом StreamChunk
+- `mockTool` — in-memory Tool с настраиваемой executeFunc
+
+### ProviderRegistry (4)
+
+| Тест | Что проверяет |
+|------|--------------|
+| `TestProviderRegistry_AllBuiltInRegistered` | 8 built-in провайдеров зарегистрированы |
+| `TestProviderRegistry_CreateUnknown` | Неизвестный тип → ошибка |
+| `TestProviderRegistry_RegisterCustom` | Кастомный провайдер |
+| `TestProviderRegistry_ConcurrentRegister` | 10 goroutines регистрация |
+
+### ToolRegistry (8)
+
+| Тест | Что проверяет |
+|------|--------------|
+| `TestToolRegistry_RegisterAndGet` | Регистрация + получение |
+| `TestToolRegistry_GetNotFound` | Несуществующий инструмент |
+| `TestToolRegistry_GetAll` | Все инструменты |
+| `TestToolRegistry_Execute` | Выполнение инструмента |
+| `TestToolRegistry_Execute_NotFound` | toolNotFoundError |
+| `TestToolRegistry_GetDefs_Whitelist` | Фильтрация по whitelist |
+| `TestToolRegistry_GetDefs_NoWhitelist` | Все инструменты без whitelist |
+| `TestToolRegistry_ListInfo` | Метаданные инструментов |
+
+### HybridRouter (8)
+
+| Тест | Что проверяет |
+|------|--------------|
+| `TestHybridRouter_BoundAgent` | Привязанный агент |
+| `TestHybridRouter_ExplicitAgent` | Явно указанный агент |
+| `TestHybridRouter_BoundOverExplicit` | Bound > Explicit |
+| `TestHybridRouter_KeywordCode` | "bug", "debug" → developer |
+| `TestHybridRouter_KeywordDeploy` | "deploy", "server" → devops |
+| `TestHybridRouter_KeywordTranslate` | "переведи" → translator |
+| `TestHybridRouter_KeywordWrite` | "story", "creative" → writer |
+| `TestHybridRouter_DefaultAssistant` | Без совпадений → assistant |
+
+### AgentExecutor (5)
+
+| Тест | Что проверяет |
+|------|--------------|
+| `TestAgentExecutor_SimpleResponse` | Mock провайдер, простой ответ |
+| `TestAgentExecutor_WithToolCalls` | Tool calling loop |
+| `TestAgentExecutor_ModelOverride` | Настройки пользователя перезаписывают модель |
+| `TestAgentExecutor_CloseProvider` | Провайдер закрывается после Execute |
+| `TestAgentExecutor_UnknownProvider` | Неизвестный тип → ошибка |
+
+### resolveAPIKey (5)
+
+| Тест | Что проверяет |
+|------|--------------|
+| `TestResolveAPIKey_FromSettings` | Ключ из настроек пользователя |
+| `TestResolveAPIKey_FromAgentConfig` | Ключ из provider_config |
+| `TestResolveAPIKey_FromEnv` | Ключ из env var |
+| `TestResolveAPIKey_PrioritySettingsOverAgent` | Settings > AgentConfig |
+| `TestResolveAPIKey_NoKey` | Нет ключа → пустая строка |
+
+### ToolCache (6)
+
+| Тест | Что проверяет |
+|------|--------------|
+| `TestToolCache_SetGet` | Базовый set/get |
+| `TestToolCache_Expiry` | TTL expiration |
+| `TestToolCache_MaxSize` | LRU eviction |
+| `TestToolCache_ConcurrentAccess` | 100 goroutines |
+| `TestCachedTool_CachesResult` | Кеширование (1 call, 2 get) |
+| `TestCachedTool_DifferentKeys` | Разные ключи → разные вызовы |
+
+### isURLSafe / SSRF (10)
+
+| Тест | Что проверяет |
+|------|--------------|
+| `TestIsURLSafe_ValidHTTPS` | https://example.com → ok |
+| `TestIsURLSafe_ValidHTTP` | http://example.com → ok |
+| `TestIsURLSafe_FTPBlocked` | ftp:// → blocked |
+| `TestIsURLSafe_LocalhostBlocked` | localhost → blocked |
+| `TestIsURLSafe_IP127Blocked` | 127.0.0.1 → blocked |
+| `TestIsURLSafe_IPv6LoopbackBlocked` | [::1] → blocked |
+| `TestIsURLSafe_MetadataEndpointBlocked` | 169.254.169.254 → blocked |
+| `TestIsURLSafe_GoogleMetadataBlocked` | metadata.google.internal → blocked |
+| `TestIsURLSafe_EmptyURL` | Пустой URL → error |
+| `TestIsURLSafe_NoScheme` | Без scheme → error |
+
+### OpenRouter Provider (7)
+
+| Тест | Что проверяет |
+|------|--------------|
+| `TestOpenRouterProvider_SSEStreamParsing` | SSE stream → content chunks |
+| `TestOpenRouterProvider_NoAPIKey` | Нет ключа → ошибка |
+| `TestOpenRouterProvider_Capabilities` | Images, Tools, Streaming |
+| `TestOpenRouterProvider_HealthCheck` | Ключ есть → ok |
+| `TestOpenRouterProvider_HealthCheck_NoKey` | Нет ключа → error |
+| `TestMockOpenRouterAPI_SSE` | Mock SSE endpoint |
+| `TestMockOpenRouterAPI_ToolCalls` | Tool calls в SSE stream |
+| `TestMockOpenRouterAPI_HTTPError` | 429 → ошибка |
+
+### query_database Security (4)
+
+| Тест | Что проверяет |
+|------|--------------|
+| `TestQueryDatabaseTool_Security_OnlySelect` | DROP/DELETE/INSERT → blocked |
+| `TestQueryDatabaseTool_Security_NonSelectRejected` | Все не-SELECT → blocked |
+| `TestQueryDatabaseTool_Security_BlockedKeywords` | WITH, RECURSIVE, pg_* → blocked |
+| `TestQueryDatabaseTool_Security_BlockedTables` | users, hermes_sessions → blocked |
+| `TestQueryDatabaseTool_EmptyQuery` | Пустой query → error |
+
+### Tool Interfaces (6)
+
+| Тест | Что проверяет |
+|------|--------------|
+| `TestWebFetchTool_EmptyURL` | Пустой URL → error |
+| `TestWebFetchTool_BlockedLocalhost` | localhost → blocked |
+| `TestWebSearchTool_EmptyQuery` | Пустой query → error |
+| `TestWebSearchTool_MockServer` | Tool interface check |
+| `TestSearchMessagesTool_EmptyQuery` | Пустой query → error |
+| `TestSearchMessagesTool_ParameterSchema` | JSON Schema parameters |
+| `TestSearchUsersTool_EmptyQuery` | Пустой query → error |
+| `TestGetChatInfoTool_EmptyChatID` | Пустой chat_id → error |
+
+### AIGateway Helpers (3)
+
+| Тест | Что проверяет |
+|------|--------------|
+| `TestAIGateway_GenerateChatName` | simple/agent/pipeline/unknown |
+| `TestAIGateway_GetUserLock` | Per-user mutex (same=match, diff=miss) |
+| `TestAIGateway_RecordUsage_ZeroTokens` | 0 tokens → no-op |
+
+### Utility Functions (3)
+
+| Тест | Что проверяет |
+|------|--------------|
+| `TestConvertMessages` | AIMessageInput → map |
+| `TestConvertToolDefs` | ToolDefInput → map |
+| `TestJoinStrings` | joinStrings helper |
 
 ---
 

@@ -10,8 +10,6 @@ import (
 
 // profileServerV2 implements ProfileService — profile management with JWT Bearer auth.
 // All methods extract user_id from gRPC context (set by AuthInterceptor).
-// This service is registered ONLY on dev server (v1.2.1.x+).
-// Prod server continues using legacy profile methods via ChatService.
 type profileServerV2 struct {
 	gen.UnimplementedProfileServiceServer
 	db *DB
@@ -56,19 +54,60 @@ func (p *profileServerV2) GetProfile(ctx context.Context, _ *gen.GetProfileReque
 		locale = localeNull.String
 	}
 
-	return &gen.GetProfileResponse{
-		UserId:         userID,
-		Username:       username,
-		Email:          email,
-		AvatarUrl:      avatarURL,
-		FullAvatarUrl:  fullAvatarURL,
-		Bio:            bio,
-		Status:         status,
-		Locale:         locale,
-		IsSuperAdmin:   isSuperAdmin,
-		CreatedAt:      createdAt.Format(time.RFC3339),
-		LastSeenAt:     lastSeenAt.Format(time.RFC3339),
-	}, nil
+	// Company info (from primary_company_id, fallback to highest level)
+	var companyID, companyName, positionTitle sql.NullString
+	var positionLevel sql.NullInt32
+
+	// Try primary_company_id first
+	var primaryCompanyID sql.NullString
+	_ = p.db.QueryRow(`SELECT primary_company_id FROM users WHERE id=$1::uuid`, userID).Scan(&primaryCompanyID)
+
+	if primaryCompanyID.Valid {
+		_ = p.db.QueryRow(`
+			SELECT c.id, c.name, cp.title, cp.level
+			FROM company_members cm
+			JOIN companies c ON c.id = cm.company_id
+			JOIN company_positions cp ON cp.id = cm.position_id
+			WHERE cm.user_id=$1::uuid AND cm.company_id=$2::uuid`, userID, primaryCompanyID.String).
+			Scan(&companyID, &companyName, &positionTitle, &positionLevel)
+	}
+
+	// Fallback: highest position across all companies
+	if !companyID.Valid {
+		_ = p.db.QueryRow(`
+			SELECT c.id, c.name, cp.title, cp.level
+			FROM company_members cm
+			JOIN companies c ON c.id = cm.company_id
+			JOIN company_positions cp ON cp.id = cm.position_id
+			WHERE cm.user_id=$1::uuid
+			ORDER BY cp.level DESC LIMIT 1`, userID).Scan(&companyID, &companyName, &positionTitle, &positionLevel)
+	}
+
+	resp := &gen.GetProfileResponse{
+		UserId:        userID,
+		Username:      username,
+		Email:         email,
+		AvatarUrl:     avatarURL,
+		FullAvatarUrl: fullAvatarURL,
+		Bio:           bio,
+		Status:        status,
+		Locale:        locale,
+		IsSuperAdmin:  isSuperAdmin,
+		CreatedAt:     createdAt.Format(time.RFC3339),
+		LastSeenAt:    lastSeenAt.Format(time.RFC3339),
+	}
+	if companyID.Valid {
+		resp.CompanyId = companyID.String
+		resp.CompanyName = companyName.String
+	}
+	if positionTitle.Valid {
+		resp.PositionTitle = positionTitle.String
+	}
+	if positionLevel.Valid {
+		resp.PositionLevel = int32(positionLevel.Int32)
+	}
+
+	return resp, nil
 }
 
 // UpdateProfile updates bio, status, locale, and optionally username.
@@ -151,10 +190,10 @@ func (p *profileServerV2) UpdateAvatar(ctx context.Context, req *gen.UpdateAvata
 
 	logger.Infof("ProfileV2: Avatar updated for %s", username)
 	return &gen.UpdateAvatarV2Response{
-		Success:        true,
-		Message:        "Avatar updated",
-		AvatarUrl:      req.AvatarUrl,
-		FullAvatarUrl:  req.FullAvatarUrl,
+		Success:       true,
+		Message:       "Avatar updated",
+		AvatarUrl:     req.AvatarUrl,
+		FullAvatarUrl: req.FullAvatarUrl,
 	}, nil
 }
 

@@ -16,9 +16,9 @@ import (
 // mockDeployStream — mock для gen.ChatService_DeployAgentTaskStreamServer
 type mockDeployStream struct {
 	grpc.ServerStream
-	ctx       context.Context
-	sentMsgs  []*gen.DeployAgentTaskStreamResponse
-	mu        sync.Mutex
+	ctx      context.Context
+	sentMsgs []*gen.DeployAgentTaskStreamResponse
+	mu       sync.Mutex
 }
 
 func (m *mockDeployStream) Send(resp *gen.DeployAgentTaskStreamResponse) error {
@@ -28,12 +28,12 @@ func (m *mockDeployStream) Send(resp *gen.DeployAgentTaskStreamResponse) error {
 	return nil
 }
 
-func (m *mockDeployStream) Context() context.Context { return m.ctx }
-func (m *mockDeployStream) SendHeader(metadata.MD) error  { return nil }
-func (m *mockDeployStream) SetHeader(metadata.MD) error   { return nil }
-func (m *mockDeployStream) SendMsg(interface{}) error      { return nil }
-func (m *mockDeployStream) RecvMsg(interface{}) error      { return nil }
-func (m *mockDeployStream) SetTrailer(metadata.MD)         {}
+func (m *mockDeployStream) Context() context.Context     { return m.ctx }
+func (m *mockDeployStream) SendHeader(metadata.MD) error { return nil }
+func (m *mockDeployStream) SetHeader(metadata.MD) error  { return nil }
+func (m *mockDeployStream) SendMsg(interface{}) error    { return nil }
+func (m *mockDeployStream) RecvMsg(interface{}) error    { return nil }
+func (m *mockDeployStream) SetTrailer(metadata.MD)       {}
 
 func (m *mockDeployStream) getSent() []*gen.DeployAgentTaskStreamResponse {
 	m.mu.Lock()

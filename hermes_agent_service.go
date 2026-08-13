@@ -72,16 +72,16 @@ func (h *hermesAgentServer) Connect(stream hermesagent.HermesAgentService_Connec
 	for {
 		msg, err := stream.Recv()
 		if err == io.EOF {
-   if os.Getenv("DEBUG") != "" {
-			logger.Info("[HermesAgentService] stream closed")
-   }
+			if os.Getenv("DEBUG") != "" {
+				logger.Info("[HermesAgentService] stream closed")
+			}
 			h.unregisterStream(as)
 			return nil
 		}
 		if err != nil {
-   if os.Getenv("DEBUG") != "" {
-			logger.Errorf("[HermesAgentService] recv error: %v", err)
-   }
+			if os.Getenv("DEBUG") != "" {
+				logger.Errorf("[HermesAgentService] recv error: %v", err)
+			}
 			h.unregisterStream(as)
 			return err
 		}
@@ -105,20 +105,20 @@ func (h *hermesAgentServer) Connect(stream hermesagent.HermesAgentService_Connec
 				h.handleTaskStreamUpdate(as, msg)
 			}
 		case hermesagent.AgentMessageType_AGENT_DISCONNECT:
-   if os.Getenv("DEBUG") != "" {
-			logger.Infof("[HermesAgentService] agent %s disconnecting", msg.AgentId)
-   }
+			if os.Getenv("DEBUG") != "" {
+				logger.Infof("[HermesAgentService] agent %s disconnecting", msg.AgentId)
+			}
 			h.unregisterStream(as)
 			return nil
 		case hermesagent.AgentMessageType_AGENT_ERROR:
-   if os.Getenv("DEBUG") != "" {
-			logger.Errorf("[HermesAgentService] agent %s error: %s", msg.AgentId, string(msg.Payload))
-   }
+			if os.Getenv("DEBUG") != "" {
+				logger.Errorf("[HermesAgentService] agent %s error: %s", msg.AgentId, string(msg.Payload))
+			}
 			h.handleAgentError(msg)
 		default:
-   if os.Getenv("DEBUG") != "" {
-			logger.Infof("[HermesAgentService] unknown type: %v", msg.Type)
-   }
+			if os.Getenv("DEBUG") != "" {
+				logger.Infof("[HermesAgentService] unknown type: %v", msg.Type)
+			}
 		}
 	}
 }
@@ -146,10 +146,10 @@ func (h *hermesAgentServer) handleRegister(stream hermesagent.HermesAgentService
 	if agentID == "" {
 		agentID = msg.AgentId
 	}
- if os.Getenv("DEBUG") != "" {
-	logger.Infof("[HermesAgentService] register: id=%s name=%s host=%s caps=%v",
-		agentID, info.AgentName, info.Host, info.Capabilities)
- }
+	if os.Getenv("DEBUG") != "" {
+		logger.Infof("[HermesAgentService] register: id=%s name=%s host=%s caps=%v",
+			agentID, info.AgentName, info.Host, info.Capabilities)
+	}
 
 	if info.AuthToken != "" && !h.validateToken(agentID, info.AuthToken) {
 		return nil, status.Error(codes.Unauthenticated, "invalid auth token")
@@ -187,12 +187,12 @@ func (h *hermesAgentServer) handleHeartbeat(msg *hermesagent.AgentMessage) {
 func (h *hermesAgentServer) handleTaskResult(as *agentStream, msg *hermesagent.AgentMessage) {
 	var result hermesagent.TaskResult
 	if err := proto.Unmarshal(msg.Payload, &result); err != nil {
-  if os.Getenv("DEBUG") != "" {
-		logger.Errorf("[HermesAgentService] result unmarshal error: %v", err)
-  }
+		if os.Getenv("DEBUG") != "" {
+			logger.Errorf("[HermesAgentService] result unmarshal error: %v", err)
+		}
 		return
 	}
- if os.Getenv("DEBUG") != "" {
+	if os.Getenv("DEBUG") != "" {
 		logger.Infof("[HermesAgentService] task=%s status=%v duration=%dms",
 			result.TaskId, result.Status, result.DurationMs)
 	}
@@ -234,9 +234,9 @@ func (h *hermesAgentServer) handleTaskStreamUpdate(as *agentStream, msg *hermesa
 func (h *hermesAgentServer) handleAgentLog(msg *hermesagent.AgentMessage) {
 	var entry hermesagent.LogEntry
 	if err := proto.Unmarshal(msg.Payload, &entry); err == nil {
-  if os.Getenv("DEBUG") != "" {
-		logger.Infof("[AgentLog %s@%s] %s", entry.Level, msg.AgentId, entry.Message)
-  }
+		if os.Getenv("DEBUG") != "" {
+			logger.Infof("[AgentLog %s@%s] %s", entry.Level, msg.AgentId, entry.Message)
+		}
 	}
 }
 
@@ -260,27 +260,27 @@ func (h *hermesAgentServer) unregisterStream(as *agentStream) {
 
 func (h *hermesAgentServer) validateToken(agentID, token string) bool {
 	if token == "" {
-  if os.Getenv("DEBUG") != "" {
-		logger.Infof("[HermesAgentService] reject %s: empty token", agentID)
-  }
+		if os.Getenv("DEBUG") != "" {
+			logger.Infof("[HermesAgentService] reject %s: empty token", agentID)
+		}
 		return false
 	}
 
 	// Парсим и валидируем JWT
 	claims, err := auth.ValidateAgentToken(token)
 	if err != nil {
-  if os.Getenv("DEBUG") != "" {
-		logger.Infof("[HermesAgentService] reject %s: invalid token: %v", agentID, err)
-  }
+		if os.Getenv("DEBUG") != "" {
+			logger.Infof("[HermesAgentService] reject %s: invalid token: %v", agentID, err)
+		}
 		return false
 	}
 
 	// Проверяем что agent_id в токене совпадает с заявленным
 	if claims.AgentID != agentID {
-  if os.Getenv("DEBUG") != "" {
-		logger.Infof("[HermesAgentService] reject %s: token agent_id mismatch (token=%s)",
-			agentID, claims.AgentID)
-  }
+		if os.Getenv("DEBUG") != "" {
+			logger.Infof("[HermesAgentService] reject %s: token agent_id mismatch (token=%s)",
+				agentID, claims.AgentID)
+		}
 		return false
 	}
 
@@ -289,22 +289,22 @@ func (h *hermesAgentServer) validateToken(agentID, token string) bool {
 		tokenHash := hashToken(token)
 		storedToken, err := h.server.hermesDB.GetAgentTokenByHash(tokenHash)
 		if err != nil {
-   if os.Getenv("DEBUG") != "" {
-			logger.Infof("[HermesAgentService] reject %s: token not found in DB: %v", agentID, err)
-   }
+			if os.Getenv("DEBUG") != "" {
+				logger.Infof("[HermesAgentService] reject %s: token not found in DB: %v", agentID, err)
+			}
 			return false
 		}
 		if storedToken.Revoked {
-   if os.Getenv("DEBUG") != "" {
-			logger.Infof("[HermesAgentService] reject %s: token revoked", agentID)
-   }
+			if os.Getenv("DEBUG") != "" {
+				logger.Infof("[HermesAgentService] reject %s: token revoked", agentID)
+			}
 			return false
 		}
 	}
 
- if os.Getenv("DEBUG") != "" {
-	logger.Infof("[HermesAgentService] token valid: %s (%s)", agentID, claims.AgentName)
- }
+	if os.Getenv("DEBUG") != "" {
+		logger.Infof("[HermesAgentService] token valid: %s (%s)", agentID, claims.AgentName)
+	}
 	return true
 }
 
@@ -315,7 +315,7 @@ func hashToken(token string) string {
 	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
-// isAdmin проверяет является ли пользователь супер-админом
+// isAdmin проверяет является ли пользователь админом
 func (h *hermesAgentServer) isAdmin(userID string) bool {
 	if h.server == nil || h.server.db == nil || userID == "" {
 		return false

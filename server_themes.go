@@ -53,7 +53,7 @@ func (s *server) GetThemes(ctx context.Context, req *gen.GetThemesRequest) (*gen
 		})
 	}
 
-	logger.Infof("Retrieved %d custom themes for user %s (Current: %s)", len(customThemes), userID, currentID)
+	logger.Debugf("Retrieved %d custom themes for user %s (Current: %s)", len(customThemes), userID, currentID)
 
 	return &gen.GetThemesResponse{
 		CurrentThemeId: currentID,

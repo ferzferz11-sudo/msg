@@ -15,7 +15,7 @@ type queryDatabaseTool struct {
 	db *sql.DB
 }
 
-func (t *queryDatabaseTool) Name() string        { return "query_database" }
+func (t *queryDatabaseTool) Name() string         { return "query_database" }
 func (t *queryDatabaseTool) RequiredRole() string { return "admin" }
 
 func (t *queryDatabaseTool) Description() string {
@@ -52,11 +52,32 @@ func (t *queryDatabaseTool) Execute(ctx context.Context, args map[string]any) (s
 		return "", fmt.Errorf("only SELECT queries are allowed")
 	}
 
-	// Block dangerous patterns
-	dangerous := []string{"DROP", "DELETE", "INSERT", "UPDATE", "ALTER", "TRUNCATE", "CREATE", "EXEC", "EXECUTE"}
+	// Block dangerous patterns — expanded blocklist
+	dangerous := []string{
+		"DROP", "DELETE", "INSERT", "UPDATE", "ALTER", "TRUNCATE", "CREATE",
+		"EXEC", "EXECUTE", "INTO", "GRANT", "REVOKE",
+		"PG_READ_FILE", "PG_WRITE_FILE", "DBLINK", "COPY",
+		"pg_", "information_schema", "pg_catalog",
+		"pg_stat_", "pg_tables", "pg_class", "pg_namespace",
+		"pg_roles", "pg_authid", "pg_shdescription",
+		"WITH", "RECURSIVE",
+	}
 	for _, d := range dangerous {
 		if strings.Contains(trimmed, d) {
 			return "", fmt.Errorf("query contains forbidden keyword: %s", d)
+		}
+	}
+
+	// Block access to sensitive tables
+	blockedTables := []string{
+		"users", "user_tokens", "user_devices", "user_chat_metadata",
+		"password_reset_tokens", "ai_usage_stats", "ai_messages_v2",
+		"ai_chats_v2", "ai_agents_v2", "device_auth_log",
+		"hermes_sessions", "hermes_messages", "hermes_agent_runs",
+	}
+	for _, t := range blockedTables {
+		if strings.Contains(trimmed, strings.ToUpper(t)) {
+			return "", fmt.Errorf("access to table '%s' is not allowed", t)
 		}
 	}
 
@@ -76,7 +97,14 @@ func (t *queryDatabaseTool) Execute(ctx context.Context, args map[string]any) (s
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	rows, err := t.db.QueryContext(ctx, query)
+	// Execute in a read-only transaction for defense-in-depth
+	tx, err := t.db.BeginTx(ctx, &sql.TxOptions{ReadOnly: true})
+	if err != nil {
+		return "", fmt.Errorf("failed to start read-only transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	rows, err := tx.QueryContext(ctx, query)
 	if err != nil {
 		return "", fmt.Errorf("query failed: %w", err)
 	}
@@ -107,6 +135,10 @@ func (t *queryDatabaseTool) Execute(ctx context.Context, args map[string]any) (s
 			}
 		}
 		results = append(results, row)
+	}
+
+	if err := rows.Err(); err != nil {
+		return "", fmt.Errorf("row iteration error: %w", err)
 	}
 
 	if results == nil {

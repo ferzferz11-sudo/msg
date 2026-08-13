@@ -123,6 +123,14 @@ const (
 	ChatService_GetFreeModels_FullMethodName          = "/messenger.ChatService/GetFreeModels"
 	ChatService_SetFreeModel_FullMethodName           = "/messenger.ChatService/SetFreeModel"
 	ChatService_RemoveFreeModel_FullMethodName        = "/messenger.ChatService/RemoveFreeModel"
+	ChatService_SetSelfDestructTimer_FullMethodName   = "/messenger.ChatService/SetSelfDestructTimer"
+	ChatService_ChatV2_FullMethodName                 = "/messenger.ChatService/ChatV2"
+	ChatService_GetHistoryV2_FullMethodName           = "/messenger.ChatService/GetHistoryV2"
+	ChatService_SendMessageV2_FullMethodName          = "/messenger.ChatService/SendMessageV2"
+	ChatService_EditMessageV2_FullMethodName          = "/messenger.ChatService/EditMessageV2"
+	ChatService_DeleteMessageV2_FullMethodName        = "/messenger.ChatService/DeleteMessageV2"
+	ChatService_SetReactionV2_FullMethodName          = "/messenger.ChatService/SetReactionV2"
+	ChatService_SearchMessages_FullMethodName         = "/messenger.ChatService/SearchMessages"
 	ChatService_ChatWithAIV2_FullMethodName           = "/messenger.ChatService/ChatWithAIV2"
 	ChatService_CreateAIAgent_FullMethodName          = "/messenger.ChatService/CreateAIAgent"
 	ChatService_UpdateAIAgent_FullMethodName          = "/messenger.ChatService/UpdateAIAgent"
@@ -138,6 +146,10 @@ const (
 	ChatService_ShareAIAgent_FullMethodName           = "/messenger.ChatService/ShareAIAgent"
 	ChatService_InstallAIAgent_FullMethodName         = "/messenger.ChatService/InstallAIAgent"
 	ChatService_GetAIUsageStats_FullMethodName        = "/messenger.ChatService/GetAIUsageStats"
+	ChatService_GetAIV2ChatHistory_FullMethodName     = "/messenger.ChatService/GetAIV2ChatHistory"
+	ChatService_ListAIV2Chats_FullMethodName          = "/messenger.ChatService/ListAIV2Chats"
+	ChatService_GetAdminUserList_FullMethodName       = "/messenger.ChatService/GetAdminUserList"
+	ChatService_GetAdminUserSessions_FullMethodName   = "/messenger.ChatService/GetAdminUserSessions"
 )
 
 // ChatServiceClient is the client API for ChatService service.
@@ -150,8 +162,11 @@ type ChatServiceClient interface {
 	GetClients(ctx context.Context, in *ClientListRequest, opts ...grpc.CallOption) (*ClientListResponse, error)
 	GetAllUsers(ctx context.Context, in *GetAllUsersRequest, opts ...grpc.CallOption) (*GetAllUsersResponse, error)
 	GetAllChats(ctx context.Context, in *GetAllChatsRequest, opts ...grpc.CallOption) (*GetAllChatsResponse, error)
+	// DEPRECATED: use GetHistoryV2 instead
 	GetHistory(ctx context.Context, in *GetHistoryRequest, opts ...grpc.CallOption) (*GetHistoryResponse, error)
+	// DEPRECATED: use SetReactionV2 instead
 	SetReaction(ctx context.Context, in *ReactionRequest, opts ...grpc.CallOption) (*ReactionResponse, error)
+	// DEPRECATED: use DeleteMessageV2 instead
 	DeleteMessages(ctx context.Context, in *DeleteMessagesRequest, opts ...grpc.CallOption) (*DeleteMessagesResponse, error)
 	RegisterToken(ctx context.Context, in *TokenRequest, opts ...grpc.CallOption) (*TokenResponse, error)
 	GetChats(ctx context.Context, in *GetChatsRequest, opts ...grpc.CallOption) (*GetChatsResponse, error)
@@ -169,6 +184,7 @@ type ChatServiceClient interface {
 	GetUserAvatar(ctx context.Context, in *GetUserAvatarRequest, opts ...grpc.CallOption) (*GetUserAvatarResponse, error)
 	AddParticipant(ctx context.Context, in *AddParticipantRequest, opts ...grpc.CallOption) (*AddParticipantResponse, error)
 	RemoveParticipant(ctx context.Context, in *RemoveParticipantRequest, opts ...grpc.CallOption) (*RemoveParticipantResponse, error)
+	// DEPRECATED: use EditMessageV2 instead
 	EditMessage(ctx context.Context, in *EditMessageRequest, opts ...grpc.CallOption) (*EditMessageResponse, error)
 	UpdateChatName(ctx context.Context, in *UpdateChatNameRequest, opts ...grpc.CallOption) (*UpdateChatNameResponse, error)
 	UpdateChatAvatar(ctx context.Context, in *UpdateChatAvatarRequest, opts ...grpc.CallOption) (*UpdateChatAvatarResponse, error)
@@ -260,6 +276,18 @@ type ChatServiceClient interface {
 	GetFreeModels(ctx context.Context, in *GetFreeModelsRequest, opts ...grpc.CallOption) (*GetFreeModelsResponse, error)
 	SetFreeModel(ctx context.Context, in *SetFreeModelRequest, opts ...grpc.CallOption) (*SetFreeModelResponse, error)
 	RemoveFreeModel(ctx context.Context, in *RemoveFreeModelRequest, opts ...grpc.CallOption) (*RemoveFreeModelResponse, error)
+	// === Self-Destruct Timer ===
+	SetSelfDestructTimer(ctx context.Context, in *SetSelfDestructTimerRequest, opts ...grpc.CallOption) (*SetSelfDestructTimerResponse, error)
+	// === Chat v2 (bidirectional stream) ===
+	ChatV2(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[ChatV2Message, ChatV2Message], error)
+	// === Messages v2 ===
+	GetHistoryV2(ctx context.Context, in *GetHistoryV2Request, opts ...grpc.CallOption) (*GetHistoryV2Response, error)
+	SendMessageV2(ctx context.Context, in *SendMessageV2Request, opts ...grpc.CallOption) (*SendMessageV2Response, error)
+	EditMessageV2(ctx context.Context, in *EditMessageV2Request, opts ...grpc.CallOption) (*EditMessageV2Response, error)
+	DeleteMessageV2(ctx context.Context, in *DeleteMessageV2Request, opts ...grpc.CallOption) (*DeleteMessageV2Response, error)
+	SetReactionV2(ctx context.Context, in *SetReactionV2Request, opts ...grpc.CallOption) (*SetReactionV2Response, error)
+	// === Message Search ===
+	SearchMessages(ctx context.Context, in *SearchMessagesRequest, opts ...grpc.CallOption) (*SearchMessagesResponse, error)
 	// === AI Services v2 ===
 	ChatWithAIV2(ctx context.Context, in *ChatWithAIV2Request, opts ...grpc.CallOption) (grpc.ServerStreamingClient[ChatWithAIV2Response], error)
 	CreateAIAgent(ctx context.Context, in *CreateAIAgentRequest, opts ...grpc.CallOption) (*CreateAIAgentResponse, error)
@@ -277,6 +305,12 @@ type ChatServiceClient interface {
 	ShareAIAgent(ctx context.Context, in *ShareAIAgentRequest, opts ...grpc.CallOption) (*ShareAIAgentResponse, error)
 	InstallAIAgent(ctx context.Context, in *InstallAIAgentRequest, opts ...grpc.CallOption) (*InstallAIAgentResponse, error)
 	GetAIUsageStats(ctx context.Context, in *GetAIUsageStatsRequest, opts ...grpc.CallOption) (*GetAIUsageStatsResponse, error)
+	// === AI Chat v2 ===
+	GetAIV2ChatHistory(ctx context.Context, in *GetAIV2ChatHistoryRequest, opts ...grpc.CallOption) (*GetAIV2ChatHistoryResponse, error)
+	ListAIV2Chats(ctx context.Context, in *ListAIV2ChatsRequest, opts ...grpc.CallOption) (*ListAIV2ChatsResponse, error)
+	// === Admin User List ===
+	GetAdminUserList(ctx context.Context, in *GetAdminUserListRequest, opts ...grpc.CallOption) (*GetAdminUserListResponse, error)
+	GetAdminUserSessions(ctx context.Context, in *GetAdminUserSessionsRequest, opts ...grpc.CallOption) (*GetAdminUserSessionsResponse, error)
 }
 
 type chatServiceClient struct {
@@ -1390,9 +1424,92 @@ func (c *chatServiceClient) RemoveFreeModel(ctx context.Context, in *RemoveFreeM
 	return out, nil
 }
 
+func (c *chatServiceClient) SetSelfDestructTimer(ctx context.Context, in *SetSelfDestructTimerRequest, opts ...grpc.CallOption) (*SetSelfDestructTimerResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SetSelfDestructTimerResponse)
+	err := c.cc.Invoke(ctx, ChatService_SetSelfDestructTimer_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) ChatV2(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[ChatV2Message, ChatV2Message], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &ChatService_ServiceDesc.Streams[9], ChatService_ChatV2_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[ChatV2Message, ChatV2Message]{ClientStream: stream}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type ChatService_ChatV2Client = grpc.BidiStreamingClient[ChatV2Message, ChatV2Message]
+
+func (c *chatServiceClient) GetHistoryV2(ctx context.Context, in *GetHistoryV2Request, opts ...grpc.CallOption) (*GetHistoryV2Response, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetHistoryV2Response)
+	err := c.cc.Invoke(ctx, ChatService_GetHistoryV2_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) SendMessageV2(ctx context.Context, in *SendMessageV2Request, opts ...grpc.CallOption) (*SendMessageV2Response, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SendMessageV2Response)
+	err := c.cc.Invoke(ctx, ChatService_SendMessageV2_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) EditMessageV2(ctx context.Context, in *EditMessageV2Request, opts ...grpc.CallOption) (*EditMessageV2Response, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(EditMessageV2Response)
+	err := c.cc.Invoke(ctx, ChatService_EditMessageV2_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) DeleteMessageV2(ctx context.Context, in *DeleteMessageV2Request, opts ...grpc.CallOption) (*DeleteMessageV2Response, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteMessageV2Response)
+	err := c.cc.Invoke(ctx, ChatService_DeleteMessageV2_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) SetReactionV2(ctx context.Context, in *SetReactionV2Request, opts ...grpc.CallOption) (*SetReactionV2Response, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SetReactionV2Response)
+	err := c.cc.Invoke(ctx, ChatService_SetReactionV2_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) SearchMessages(ctx context.Context, in *SearchMessagesRequest, opts ...grpc.CallOption) (*SearchMessagesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SearchMessagesResponse)
+	err := c.cc.Invoke(ctx, ChatService_SearchMessages_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *chatServiceClient) ChatWithAIV2(ctx context.Context, in *ChatWithAIV2Request, opts ...grpc.CallOption) (grpc.ServerStreamingClient[ChatWithAIV2Response], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &ChatService_ServiceDesc.Streams[9], ChatService_ChatWithAIV2_FullMethodName, cOpts...)
+	stream, err := c.cc.NewStream(ctx, &ChatService_ServiceDesc.Streams[10], ChatService_ChatWithAIV2_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1549,6 +1666,46 @@ func (c *chatServiceClient) GetAIUsageStats(ctx context.Context, in *GetAIUsageS
 	return out, nil
 }
 
+func (c *chatServiceClient) GetAIV2ChatHistory(ctx context.Context, in *GetAIV2ChatHistoryRequest, opts ...grpc.CallOption) (*GetAIV2ChatHistoryResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetAIV2ChatHistoryResponse)
+	err := c.cc.Invoke(ctx, ChatService_GetAIV2ChatHistory_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) ListAIV2Chats(ctx context.Context, in *ListAIV2ChatsRequest, opts ...grpc.CallOption) (*ListAIV2ChatsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListAIV2ChatsResponse)
+	err := c.cc.Invoke(ctx, ChatService_ListAIV2Chats_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) GetAdminUserList(ctx context.Context, in *GetAdminUserListRequest, opts ...grpc.CallOption) (*GetAdminUserListResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetAdminUserListResponse)
+	err := c.cc.Invoke(ctx, ChatService_GetAdminUserList_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) GetAdminUserSessions(ctx context.Context, in *GetAdminUserSessionsRequest, opts ...grpc.CallOption) (*GetAdminUserSessionsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetAdminUserSessionsResponse)
+	err := c.cc.Invoke(ctx, ChatService_GetAdminUserSessions_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ChatServiceServer is the server API for ChatService service.
 // All implementations must embed UnimplementedChatServiceServer
 // for forward compatibility.
@@ -1559,8 +1716,11 @@ type ChatServiceServer interface {
 	GetClients(context.Context, *ClientListRequest) (*ClientListResponse, error)
 	GetAllUsers(context.Context, *GetAllUsersRequest) (*GetAllUsersResponse, error)
 	GetAllChats(context.Context, *GetAllChatsRequest) (*GetAllChatsResponse, error)
+	// DEPRECATED: use GetHistoryV2 instead
 	GetHistory(context.Context, *GetHistoryRequest) (*GetHistoryResponse, error)
+	// DEPRECATED: use SetReactionV2 instead
 	SetReaction(context.Context, *ReactionRequest) (*ReactionResponse, error)
+	// DEPRECATED: use DeleteMessageV2 instead
 	DeleteMessages(context.Context, *DeleteMessagesRequest) (*DeleteMessagesResponse, error)
 	RegisterToken(context.Context, *TokenRequest) (*TokenResponse, error)
 	GetChats(context.Context, *GetChatsRequest) (*GetChatsResponse, error)
@@ -1578,6 +1738,7 @@ type ChatServiceServer interface {
 	GetUserAvatar(context.Context, *GetUserAvatarRequest) (*GetUserAvatarResponse, error)
 	AddParticipant(context.Context, *AddParticipantRequest) (*AddParticipantResponse, error)
 	RemoveParticipant(context.Context, *RemoveParticipantRequest) (*RemoveParticipantResponse, error)
+	// DEPRECATED: use EditMessageV2 instead
 	EditMessage(context.Context, *EditMessageRequest) (*EditMessageResponse, error)
 	UpdateChatName(context.Context, *UpdateChatNameRequest) (*UpdateChatNameResponse, error)
 	UpdateChatAvatar(context.Context, *UpdateChatAvatarRequest) (*UpdateChatAvatarResponse, error)
@@ -1669,6 +1830,18 @@ type ChatServiceServer interface {
 	GetFreeModels(context.Context, *GetFreeModelsRequest) (*GetFreeModelsResponse, error)
 	SetFreeModel(context.Context, *SetFreeModelRequest) (*SetFreeModelResponse, error)
 	RemoveFreeModel(context.Context, *RemoveFreeModelRequest) (*RemoveFreeModelResponse, error)
+	// === Self-Destruct Timer ===
+	SetSelfDestructTimer(context.Context, *SetSelfDestructTimerRequest) (*SetSelfDestructTimerResponse, error)
+	// === Chat v2 (bidirectional stream) ===
+	ChatV2(grpc.BidiStreamingServer[ChatV2Message, ChatV2Message]) error
+	// === Messages v2 ===
+	GetHistoryV2(context.Context, *GetHistoryV2Request) (*GetHistoryV2Response, error)
+	SendMessageV2(context.Context, *SendMessageV2Request) (*SendMessageV2Response, error)
+	EditMessageV2(context.Context, *EditMessageV2Request) (*EditMessageV2Response, error)
+	DeleteMessageV2(context.Context, *DeleteMessageV2Request) (*DeleteMessageV2Response, error)
+	SetReactionV2(context.Context, *SetReactionV2Request) (*SetReactionV2Response, error)
+	// === Message Search ===
+	SearchMessages(context.Context, *SearchMessagesRequest) (*SearchMessagesResponse, error)
 	// === AI Services v2 ===
 	ChatWithAIV2(*ChatWithAIV2Request, grpc.ServerStreamingServer[ChatWithAIV2Response]) error
 	CreateAIAgent(context.Context, *CreateAIAgentRequest) (*CreateAIAgentResponse, error)
@@ -1686,6 +1859,12 @@ type ChatServiceServer interface {
 	ShareAIAgent(context.Context, *ShareAIAgentRequest) (*ShareAIAgentResponse, error)
 	InstallAIAgent(context.Context, *InstallAIAgentRequest) (*InstallAIAgentResponse, error)
 	GetAIUsageStats(context.Context, *GetAIUsageStatsRequest) (*GetAIUsageStatsResponse, error)
+	// === AI Chat v2 ===
+	GetAIV2ChatHistory(context.Context, *GetAIV2ChatHistoryRequest) (*GetAIV2ChatHistoryResponse, error)
+	ListAIV2Chats(context.Context, *ListAIV2ChatsRequest) (*ListAIV2ChatsResponse, error)
+	// === Admin User List ===
+	GetAdminUserList(context.Context, *GetAdminUserListRequest) (*GetAdminUserListResponse, error)
+	GetAdminUserSessions(context.Context, *GetAdminUserSessionsRequest) (*GetAdminUserSessionsResponse, error)
 	mustEmbedUnimplementedChatServiceServer()
 }
 
@@ -2008,6 +2187,30 @@ func (UnimplementedChatServiceServer) SetFreeModel(context.Context, *SetFreeMode
 func (UnimplementedChatServiceServer) RemoveFreeModel(context.Context, *RemoveFreeModelRequest) (*RemoveFreeModelResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RemoveFreeModel not implemented")
 }
+func (UnimplementedChatServiceServer) SetSelfDestructTimer(context.Context, *SetSelfDestructTimerRequest) (*SetSelfDestructTimerResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetSelfDestructTimer not implemented")
+}
+func (UnimplementedChatServiceServer) ChatV2(grpc.BidiStreamingServer[ChatV2Message, ChatV2Message]) error {
+	return status.Error(codes.Unimplemented, "method ChatV2 not implemented")
+}
+func (UnimplementedChatServiceServer) GetHistoryV2(context.Context, *GetHistoryV2Request) (*GetHistoryV2Response, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetHistoryV2 not implemented")
+}
+func (UnimplementedChatServiceServer) SendMessageV2(context.Context, *SendMessageV2Request) (*SendMessageV2Response, error) {
+	return nil, status.Error(codes.Unimplemented, "method SendMessageV2 not implemented")
+}
+func (UnimplementedChatServiceServer) EditMessageV2(context.Context, *EditMessageV2Request) (*EditMessageV2Response, error) {
+	return nil, status.Error(codes.Unimplemented, "method EditMessageV2 not implemented")
+}
+func (UnimplementedChatServiceServer) DeleteMessageV2(context.Context, *DeleteMessageV2Request) (*DeleteMessageV2Response, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteMessageV2 not implemented")
+}
+func (UnimplementedChatServiceServer) SetReactionV2(context.Context, *SetReactionV2Request) (*SetReactionV2Response, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetReactionV2 not implemented")
+}
+func (UnimplementedChatServiceServer) SearchMessages(context.Context, *SearchMessagesRequest) (*SearchMessagesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SearchMessages not implemented")
+}
 func (UnimplementedChatServiceServer) ChatWithAIV2(*ChatWithAIV2Request, grpc.ServerStreamingServer[ChatWithAIV2Response]) error {
 	return status.Error(codes.Unimplemented, "method ChatWithAIV2 not implemented")
 }
@@ -2052,6 +2255,18 @@ func (UnimplementedChatServiceServer) InstallAIAgent(context.Context, *InstallAI
 }
 func (UnimplementedChatServiceServer) GetAIUsageStats(context.Context, *GetAIUsageStatsRequest) (*GetAIUsageStatsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetAIUsageStats not implemented")
+}
+func (UnimplementedChatServiceServer) GetAIV2ChatHistory(context.Context, *GetAIV2ChatHistoryRequest) (*GetAIV2ChatHistoryResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetAIV2ChatHistory not implemented")
+}
+func (UnimplementedChatServiceServer) ListAIV2Chats(context.Context, *ListAIV2ChatsRequest) (*ListAIV2ChatsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListAIV2Chats not implemented")
+}
+func (UnimplementedChatServiceServer) GetAdminUserList(context.Context, *GetAdminUserListRequest) (*GetAdminUserListResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetAdminUserList not implemented")
+}
+func (UnimplementedChatServiceServer) GetAdminUserSessions(context.Context, *GetAdminUserSessionsRequest) (*GetAdminUserSessionsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetAdminUserSessions not implemented")
 }
 func (UnimplementedChatServiceServer) mustEmbedUnimplementedChatServiceServer() {}
 func (UnimplementedChatServiceServer) testEmbeddedByValue()                     {}
@@ -3871,6 +4086,139 @@ func _ChatService_RemoveFreeModel_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ChatService_SetSelfDestructTimer_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetSelfDestructTimerRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).SetSelfDestructTimer(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_SetSelfDestructTimer_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).SetSelfDestructTimer(ctx, req.(*SetSelfDestructTimerRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_ChatV2_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(ChatServiceServer).ChatV2(&grpc.GenericServerStream[ChatV2Message, ChatV2Message]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type ChatService_ChatV2Server = grpc.BidiStreamingServer[ChatV2Message, ChatV2Message]
+
+func _ChatService_GetHistoryV2_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetHistoryV2Request)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).GetHistoryV2(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_GetHistoryV2_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).GetHistoryV2(ctx, req.(*GetHistoryV2Request))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_SendMessageV2_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SendMessageV2Request)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).SendMessageV2(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_SendMessageV2_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).SendMessageV2(ctx, req.(*SendMessageV2Request))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_EditMessageV2_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(EditMessageV2Request)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).EditMessageV2(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_EditMessageV2_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).EditMessageV2(ctx, req.(*EditMessageV2Request))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_DeleteMessageV2_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteMessageV2Request)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).DeleteMessageV2(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_DeleteMessageV2_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).DeleteMessageV2(ctx, req.(*DeleteMessageV2Request))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_SetReactionV2_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetReactionV2Request)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).SetReactionV2(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_SetReactionV2_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).SetReactionV2(ctx, req.(*SetReactionV2Request))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_SearchMessages_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SearchMessagesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).SearchMessages(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_SearchMessages_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).SearchMessages(ctx, req.(*SearchMessagesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ChatService_ChatWithAIV2_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(ChatWithAIV2Request)
 	if err := stream.RecvMsg(m); err != nil {
@@ -4130,6 +4478,78 @@ func _ChatService_GetAIUsageStats_Handler(srv interface{}, ctx context.Context, 
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ChatServiceServer).GetAIUsageStats(ctx, req.(*GetAIUsageStatsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_GetAIV2ChatHistory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetAIV2ChatHistoryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).GetAIV2ChatHistory(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_GetAIV2ChatHistory_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).GetAIV2ChatHistory(ctx, req.(*GetAIV2ChatHistoryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_ListAIV2Chats_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListAIV2ChatsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).ListAIV2Chats(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_ListAIV2Chats_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).ListAIV2Chats(ctx, req.(*ListAIV2ChatsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_GetAdminUserList_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetAdminUserListRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).GetAdminUserList(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_GetAdminUserList_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).GetAdminUserList(ctx, req.(*GetAdminUserListRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_GetAdminUserSessions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetAdminUserSessionsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).GetAdminUserSessions(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_GetAdminUserSessions_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).GetAdminUserSessions(ctx, req.(*GetAdminUserSessionsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4522,6 +4942,34 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _ChatService_RemoveFreeModel_Handler,
 		},
 		{
+			MethodName: "SetSelfDestructTimer",
+			Handler:    _ChatService_SetSelfDestructTimer_Handler,
+		},
+		{
+			MethodName: "GetHistoryV2",
+			Handler:    _ChatService_GetHistoryV2_Handler,
+		},
+		{
+			MethodName: "SendMessageV2",
+			Handler:    _ChatService_SendMessageV2_Handler,
+		},
+		{
+			MethodName: "EditMessageV2",
+			Handler:    _ChatService_EditMessageV2_Handler,
+		},
+		{
+			MethodName: "DeleteMessageV2",
+			Handler:    _ChatService_DeleteMessageV2_Handler,
+		},
+		{
+			MethodName: "SetReactionV2",
+			Handler:    _ChatService_SetReactionV2_Handler,
+		},
+		{
+			MethodName: "SearchMessages",
+			Handler:    _ChatService_SearchMessages_Handler,
+		},
+		{
 			MethodName: "CreateAIAgent",
 			Handler:    _ChatService_CreateAIAgent_Handler,
 		},
@@ -4577,6 +5025,22 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "GetAIUsageStats",
 			Handler:    _ChatService_GetAIUsageStats_Handler,
 		},
+		{
+			MethodName: "GetAIV2ChatHistory",
+			Handler:    _ChatService_GetAIV2ChatHistory_Handler,
+		},
+		{
+			MethodName: "ListAIV2Chats",
+			Handler:    _ChatService_ListAIV2Chats_Handler,
+		},
+		{
+			MethodName: "GetAdminUserList",
+			Handler:    _ChatService_GetAdminUserList_Handler,
+		},
+		{
+			MethodName: "GetAdminUserSessions",
+			Handler:    _ChatService_GetAdminUserSessions_Handler,
+		},
 	},
 	Streams: []grpc.StreamDesc{
 		{
@@ -4626,6 +5090,12 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 			StreamName:    "SubscribeNotifications",
 			Handler:       _ChatService_SubscribeNotifications_Handler,
 			ServerStreams: true,
+		},
+		{
+			StreamName:    "ChatV2",
+			Handler:       _ChatService_ChatV2_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
 		},
 		{
 			StreamName:    "ChatWithAIV2",
@@ -5254,6 +5724,1736 @@ var ProfileService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateUserSettings",
 			Handler:    _ProfileService_UpdateUserSettings_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "messenger.proto",
+}
+
+const (
+	CompanyService_CreateCompany_FullMethodName           = "/messenger.CompanyService/CreateCompany"
+	CompanyService_GetCompany_FullMethodName              = "/messenger.CompanyService/GetCompany"
+	CompanyService_UpdateCompany_FullMethodName           = "/messenger.CompanyService/UpdateCompany"
+	CompanyService_DeleteCompany_FullMethodName           = "/messenger.CompanyService/DeleteCompany"
+	CompanyService_ListCompanies_FullMethodName           = "/messenger.CompanyService/ListCompanies"
+	CompanyService_CreatePosition_FullMethodName          = "/messenger.CompanyService/CreatePosition"
+	CompanyService_UpdatePosition_FullMethodName          = "/messenger.CompanyService/UpdatePosition"
+	CompanyService_DeletePosition_FullMethodName          = "/messenger.CompanyService/DeletePosition"
+	CompanyService_ListPositions_FullMethodName           = "/messenger.CompanyService/ListPositions"
+	CompanyService_AddMember_FullMethodName               = "/messenger.CompanyService/AddMember"
+	CompanyService_RemoveMember_FullMethodName            = "/messenger.CompanyService/RemoveMember"
+	CompanyService_UpdateMemberPosition_FullMethodName    = "/messenger.CompanyService/UpdateMemberPosition"
+	CompanyService_ListMembers_FullMethodName             = "/messenger.CompanyService/ListMembers"
+	CompanyService_CreateCompanyChat_FullMethodName       = "/messenger.CompanyService/CreateCompanyChat"
+	CompanyService_SetCompanyChatAccess_FullMethodName    = "/messenger.CompanyService/SetCompanyChatAccess"
+	CompanyService_GetCompanyChats_FullMethodName         = "/messenger.CompanyService/GetCompanyChats"
+	CompanyService_JoinCompany_FullMethodName             = "/messenger.CompanyService/JoinCompany"
+	CompanyService_LeaveCompany_FullMethodName            = "/messenger.CompanyService/LeaveCompany"
+	CompanyService_GetUserInfo_FullMethodName             = "/messenger.CompanyService/GetUserInfo"
+	CompanyService_GetCompanyByUser_FullMethodName        = "/messenger.CompanyService/GetCompanyByUser"
+	CompanyService_SetPrimaryCompany_FullMethodName       = "/messenger.CompanyService/SetPrimaryCompany"
+	CompanyService_GetUserCompanies_FullMethodName        = "/messenger.CompanyService/GetUserCompanies"
+	CompanyService_GetCompanySettings_FullMethodName      = "/messenger.CompanyService/GetCompanySettings"
+	CompanyService_UpdateCompanySettings_FullMethodName   = "/messenger.CompanyService/UpdateCompanySettings"
+	CompanyService_GenerateInviteCode_FullMethodName      = "/messenger.CompanyService/GenerateInviteCode"
+	CompanyService_JoinByInviteCode_FullMethodName        = "/messenger.CompanyService/JoinByInviteCode"
+	CompanyService_RevokeInviteCode_FullMethodName        = "/messenger.CompanyService/RevokeInviteCode"
+	CompanyService_ListInviteCodes_FullMethodName         = "/messenger.CompanyService/ListInviteCodes"
+	CompanyService_SendCompanyNotification_FullMethodName = "/messenger.CompanyService/SendCompanyNotification"
+)
+
+// CompanyServiceClient is the client API for CompanyService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+type CompanyServiceClient interface {
+	CreateCompany(ctx context.Context, in *CreateCompanyRequest, opts ...grpc.CallOption) (*CreateCompanyResponse, error)
+	GetCompany(ctx context.Context, in *GetCompanyRequest, opts ...grpc.CallOption) (*GetCompanyResponse, error)
+	UpdateCompany(ctx context.Context, in *UpdateCompanyRequest, opts ...grpc.CallOption) (*UpdateCompanyResponse, error)
+	DeleteCompany(ctx context.Context, in *DeleteCompanyRequest, opts ...grpc.CallOption) (*DeleteCompanyResponse, error)
+	ListCompanies(ctx context.Context, in *ListCompaniesRequest, opts ...grpc.CallOption) (*ListCompaniesResponse, error)
+	CreatePosition(ctx context.Context, in *CreatePositionRequest, opts ...grpc.CallOption) (*CreatePositionResponse, error)
+	UpdatePosition(ctx context.Context, in *UpdatePositionRequest, opts ...grpc.CallOption) (*UpdatePositionResponse, error)
+	DeletePosition(ctx context.Context, in *DeletePositionRequest, opts ...grpc.CallOption) (*DeletePositionResponse, error)
+	ListPositions(ctx context.Context, in *ListPositionsRequest, opts ...grpc.CallOption) (*ListPositionsResponse, error)
+	AddMember(ctx context.Context, in *AddMemberRequest, opts ...grpc.CallOption) (*AddMemberResponse, error)
+	RemoveMember(ctx context.Context, in *RemoveMemberRequest, opts ...grpc.CallOption) (*RemoveMemberResponse, error)
+	UpdateMemberPosition(ctx context.Context, in *UpdateMemberPositionRequest, opts ...grpc.CallOption) (*UpdateMemberPositionResponse, error)
+	ListMembers(ctx context.Context, in *ListMembersRequest, opts ...grpc.CallOption) (*ListMembersResponse, error)
+	CreateCompanyChat(ctx context.Context, in *CreateCompanyChatRequest, opts ...grpc.CallOption) (*CreateCompanyChatResponse, error)
+	SetCompanyChatAccess(ctx context.Context, in *SetCompanyChatAccessRequest, opts ...grpc.CallOption) (*SetCompanyChatAccessResponse, error)
+	GetCompanyChats(ctx context.Context, in *GetCompanyChatsRequest, opts ...grpc.CallOption) (*GetCompanyChatsResponse, error)
+	JoinCompany(ctx context.Context, in *JoinCompanyRequest, opts ...grpc.CallOption) (*JoinCompanyResponse, error)
+	LeaveCompany(ctx context.Context, in *LeaveCompanyRequest, opts ...grpc.CallOption) (*LeaveCompanyResponse, error)
+	GetUserInfo(ctx context.Context, in *GetUserInfoRequest, opts ...grpc.CallOption) (*GetUserInfoResponse, error)
+	GetCompanyByUser(ctx context.Context, in *GetCompanyByUserRequest, opts ...grpc.CallOption) (*GetCompanyByUserResponse, error)
+	SetPrimaryCompany(ctx context.Context, in *SetPrimaryCompanyRequest, opts ...grpc.CallOption) (*SetPrimaryCompanyResponse, error)
+	GetUserCompanies(ctx context.Context, in *GetUserCompaniesRequest, opts ...grpc.CallOption) (*GetUserCompaniesResponse, error)
+	// === Company Settings ===
+	GetCompanySettings(ctx context.Context, in *GetCompanySettingsRequest, opts ...grpc.CallOption) (*GetCompanySettingsResponse, error)
+	UpdateCompanySettings(ctx context.Context, in *UpdateCompanySettingsRequest, opts ...grpc.CallOption) (*UpdateCompanySettingsResponse, error)
+	// === Company Invite Codes ===
+	GenerateInviteCode(ctx context.Context, in *GenerateInviteCodeRequest, opts ...grpc.CallOption) (*GenerateInviteCodeResponse, error)
+	JoinByInviteCode(ctx context.Context, in *JoinByInviteCodeRequest, opts ...grpc.CallOption) (*JoinByInviteCodeResponse, error)
+	RevokeInviteCode(ctx context.Context, in *RevokeInviteCodeRequest, opts ...grpc.CallOption) (*RevokeInviteCodeResponse, error)
+	ListInviteCodes(ctx context.Context, in *ListInviteCodesRequest, opts ...grpc.CallOption) (*ListInviteCodesResponse, error)
+	// === Company Notifications ===
+	SendCompanyNotification(ctx context.Context, in *SendCompanyNotificationRequest, opts ...grpc.CallOption) (*SendCompanyNotificationResponse, error)
+}
+
+type companyServiceClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewCompanyServiceClient(cc grpc.ClientConnInterface) CompanyServiceClient {
+	return &companyServiceClient{cc}
+}
+
+func (c *companyServiceClient) CreateCompany(ctx context.Context, in *CreateCompanyRequest, opts ...grpc.CallOption) (*CreateCompanyResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateCompanyResponse)
+	err := c.cc.Invoke(ctx, CompanyService_CreateCompany_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *companyServiceClient) GetCompany(ctx context.Context, in *GetCompanyRequest, opts ...grpc.CallOption) (*GetCompanyResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetCompanyResponse)
+	err := c.cc.Invoke(ctx, CompanyService_GetCompany_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *companyServiceClient) UpdateCompany(ctx context.Context, in *UpdateCompanyRequest, opts ...grpc.CallOption) (*UpdateCompanyResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateCompanyResponse)
+	err := c.cc.Invoke(ctx, CompanyService_UpdateCompany_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *companyServiceClient) DeleteCompany(ctx context.Context, in *DeleteCompanyRequest, opts ...grpc.CallOption) (*DeleteCompanyResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteCompanyResponse)
+	err := c.cc.Invoke(ctx, CompanyService_DeleteCompany_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *companyServiceClient) ListCompanies(ctx context.Context, in *ListCompaniesRequest, opts ...grpc.CallOption) (*ListCompaniesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListCompaniesResponse)
+	err := c.cc.Invoke(ctx, CompanyService_ListCompanies_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *companyServiceClient) CreatePosition(ctx context.Context, in *CreatePositionRequest, opts ...grpc.CallOption) (*CreatePositionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreatePositionResponse)
+	err := c.cc.Invoke(ctx, CompanyService_CreatePosition_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *companyServiceClient) UpdatePosition(ctx context.Context, in *UpdatePositionRequest, opts ...grpc.CallOption) (*UpdatePositionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdatePositionResponse)
+	err := c.cc.Invoke(ctx, CompanyService_UpdatePosition_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *companyServiceClient) DeletePosition(ctx context.Context, in *DeletePositionRequest, opts ...grpc.CallOption) (*DeletePositionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeletePositionResponse)
+	err := c.cc.Invoke(ctx, CompanyService_DeletePosition_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *companyServiceClient) ListPositions(ctx context.Context, in *ListPositionsRequest, opts ...grpc.CallOption) (*ListPositionsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListPositionsResponse)
+	err := c.cc.Invoke(ctx, CompanyService_ListPositions_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *companyServiceClient) AddMember(ctx context.Context, in *AddMemberRequest, opts ...grpc.CallOption) (*AddMemberResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AddMemberResponse)
+	err := c.cc.Invoke(ctx, CompanyService_AddMember_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *companyServiceClient) RemoveMember(ctx context.Context, in *RemoveMemberRequest, opts ...grpc.CallOption) (*RemoveMemberResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RemoveMemberResponse)
+	err := c.cc.Invoke(ctx, CompanyService_RemoveMember_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *companyServiceClient) UpdateMemberPosition(ctx context.Context, in *UpdateMemberPositionRequest, opts ...grpc.CallOption) (*UpdateMemberPositionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateMemberPositionResponse)
+	err := c.cc.Invoke(ctx, CompanyService_UpdateMemberPosition_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *companyServiceClient) ListMembers(ctx context.Context, in *ListMembersRequest, opts ...grpc.CallOption) (*ListMembersResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListMembersResponse)
+	err := c.cc.Invoke(ctx, CompanyService_ListMembers_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *companyServiceClient) CreateCompanyChat(ctx context.Context, in *CreateCompanyChatRequest, opts ...grpc.CallOption) (*CreateCompanyChatResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateCompanyChatResponse)
+	err := c.cc.Invoke(ctx, CompanyService_CreateCompanyChat_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *companyServiceClient) SetCompanyChatAccess(ctx context.Context, in *SetCompanyChatAccessRequest, opts ...grpc.CallOption) (*SetCompanyChatAccessResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SetCompanyChatAccessResponse)
+	err := c.cc.Invoke(ctx, CompanyService_SetCompanyChatAccess_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *companyServiceClient) GetCompanyChats(ctx context.Context, in *GetCompanyChatsRequest, opts ...grpc.CallOption) (*GetCompanyChatsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetCompanyChatsResponse)
+	err := c.cc.Invoke(ctx, CompanyService_GetCompanyChats_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *companyServiceClient) JoinCompany(ctx context.Context, in *JoinCompanyRequest, opts ...grpc.CallOption) (*JoinCompanyResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(JoinCompanyResponse)
+	err := c.cc.Invoke(ctx, CompanyService_JoinCompany_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *companyServiceClient) LeaveCompany(ctx context.Context, in *LeaveCompanyRequest, opts ...grpc.CallOption) (*LeaveCompanyResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(LeaveCompanyResponse)
+	err := c.cc.Invoke(ctx, CompanyService_LeaveCompany_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *companyServiceClient) GetUserInfo(ctx context.Context, in *GetUserInfoRequest, opts ...grpc.CallOption) (*GetUserInfoResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetUserInfoResponse)
+	err := c.cc.Invoke(ctx, CompanyService_GetUserInfo_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *companyServiceClient) GetCompanyByUser(ctx context.Context, in *GetCompanyByUserRequest, opts ...grpc.CallOption) (*GetCompanyByUserResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetCompanyByUserResponse)
+	err := c.cc.Invoke(ctx, CompanyService_GetCompanyByUser_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *companyServiceClient) SetPrimaryCompany(ctx context.Context, in *SetPrimaryCompanyRequest, opts ...grpc.CallOption) (*SetPrimaryCompanyResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SetPrimaryCompanyResponse)
+	err := c.cc.Invoke(ctx, CompanyService_SetPrimaryCompany_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *companyServiceClient) GetUserCompanies(ctx context.Context, in *GetUserCompaniesRequest, opts ...grpc.CallOption) (*GetUserCompaniesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetUserCompaniesResponse)
+	err := c.cc.Invoke(ctx, CompanyService_GetUserCompanies_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *companyServiceClient) GetCompanySettings(ctx context.Context, in *GetCompanySettingsRequest, opts ...grpc.CallOption) (*GetCompanySettingsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetCompanySettingsResponse)
+	err := c.cc.Invoke(ctx, CompanyService_GetCompanySettings_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *companyServiceClient) UpdateCompanySettings(ctx context.Context, in *UpdateCompanySettingsRequest, opts ...grpc.CallOption) (*UpdateCompanySettingsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateCompanySettingsResponse)
+	err := c.cc.Invoke(ctx, CompanyService_UpdateCompanySettings_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *companyServiceClient) GenerateInviteCode(ctx context.Context, in *GenerateInviteCodeRequest, opts ...grpc.CallOption) (*GenerateInviteCodeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GenerateInviteCodeResponse)
+	err := c.cc.Invoke(ctx, CompanyService_GenerateInviteCode_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *companyServiceClient) JoinByInviteCode(ctx context.Context, in *JoinByInviteCodeRequest, opts ...grpc.CallOption) (*JoinByInviteCodeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(JoinByInviteCodeResponse)
+	err := c.cc.Invoke(ctx, CompanyService_JoinByInviteCode_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *companyServiceClient) RevokeInviteCode(ctx context.Context, in *RevokeInviteCodeRequest, opts ...grpc.CallOption) (*RevokeInviteCodeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RevokeInviteCodeResponse)
+	err := c.cc.Invoke(ctx, CompanyService_RevokeInviteCode_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *companyServiceClient) ListInviteCodes(ctx context.Context, in *ListInviteCodesRequest, opts ...grpc.CallOption) (*ListInviteCodesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListInviteCodesResponse)
+	err := c.cc.Invoke(ctx, CompanyService_ListInviteCodes_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *companyServiceClient) SendCompanyNotification(ctx context.Context, in *SendCompanyNotificationRequest, opts ...grpc.CallOption) (*SendCompanyNotificationResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SendCompanyNotificationResponse)
+	err := c.cc.Invoke(ctx, CompanyService_SendCompanyNotification_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// CompanyServiceServer is the server API for CompanyService service.
+// All implementations must embed UnimplementedCompanyServiceServer
+// for forward compatibility.
+type CompanyServiceServer interface {
+	CreateCompany(context.Context, *CreateCompanyRequest) (*CreateCompanyResponse, error)
+	GetCompany(context.Context, *GetCompanyRequest) (*GetCompanyResponse, error)
+	UpdateCompany(context.Context, *UpdateCompanyRequest) (*UpdateCompanyResponse, error)
+	DeleteCompany(context.Context, *DeleteCompanyRequest) (*DeleteCompanyResponse, error)
+	ListCompanies(context.Context, *ListCompaniesRequest) (*ListCompaniesResponse, error)
+	CreatePosition(context.Context, *CreatePositionRequest) (*CreatePositionResponse, error)
+	UpdatePosition(context.Context, *UpdatePositionRequest) (*UpdatePositionResponse, error)
+	DeletePosition(context.Context, *DeletePositionRequest) (*DeletePositionResponse, error)
+	ListPositions(context.Context, *ListPositionsRequest) (*ListPositionsResponse, error)
+	AddMember(context.Context, *AddMemberRequest) (*AddMemberResponse, error)
+	RemoveMember(context.Context, *RemoveMemberRequest) (*RemoveMemberResponse, error)
+	UpdateMemberPosition(context.Context, *UpdateMemberPositionRequest) (*UpdateMemberPositionResponse, error)
+	ListMembers(context.Context, *ListMembersRequest) (*ListMembersResponse, error)
+	CreateCompanyChat(context.Context, *CreateCompanyChatRequest) (*CreateCompanyChatResponse, error)
+	SetCompanyChatAccess(context.Context, *SetCompanyChatAccessRequest) (*SetCompanyChatAccessResponse, error)
+	GetCompanyChats(context.Context, *GetCompanyChatsRequest) (*GetCompanyChatsResponse, error)
+	JoinCompany(context.Context, *JoinCompanyRequest) (*JoinCompanyResponse, error)
+	LeaveCompany(context.Context, *LeaveCompanyRequest) (*LeaveCompanyResponse, error)
+	GetUserInfo(context.Context, *GetUserInfoRequest) (*GetUserInfoResponse, error)
+	GetCompanyByUser(context.Context, *GetCompanyByUserRequest) (*GetCompanyByUserResponse, error)
+	SetPrimaryCompany(context.Context, *SetPrimaryCompanyRequest) (*SetPrimaryCompanyResponse, error)
+	GetUserCompanies(context.Context, *GetUserCompaniesRequest) (*GetUserCompaniesResponse, error)
+	// === Company Settings ===
+	GetCompanySettings(context.Context, *GetCompanySettingsRequest) (*GetCompanySettingsResponse, error)
+	UpdateCompanySettings(context.Context, *UpdateCompanySettingsRequest) (*UpdateCompanySettingsResponse, error)
+	// === Company Invite Codes ===
+	GenerateInviteCode(context.Context, *GenerateInviteCodeRequest) (*GenerateInviteCodeResponse, error)
+	JoinByInviteCode(context.Context, *JoinByInviteCodeRequest) (*JoinByInviteCodeResponse, error)
+	RevokeInviteCode(context.Context, *RevokeInviteCodeRequest) (*RevokeInviteCodeResponse, error)
+	ListInviteCodes(context.Context, *ListInviteCodesRequest) (*ListInviteCodesResponse, error)
+	// === Company Notifications ===
+	SendCompanyNotification(context.Context, *SendCompanyNotificationRequest) (*SendCompanyNotificationResponse, error)
+	mustEmbedUnimplementedCompanyServiceServer()
+}
+
+// UnimplementedCompanyServiceServer must be embedded to have
+// forward compatible implementations.
+//
+// NOTE: this should be embedded by value instead of pointer to avoid a nil
+// pointer dereference when methods are called.
+type UnimplementedCompanyServiceServer struct{}
+
+func (UnimplementedCompanyServiceServer) CreateCompany(context.Context, *CreateCompanyRequest) (*CreateCompanyResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateCompany not implemented")
+}
+func (UnimplementedCompanyServiceServer) GetCompany(context.Context, *GetCompanyRequest) (*GetCompanyResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetCompany not implemented")
+}
+func (UnimplementedCompanyServiceServer) UpdateCompany(context.Context, *UpdateCompanyRequest) (*UpdateCompanyResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateCompany not implemented")
+}
+func (UnimplementedCompanyServiceServer) DeleteCompany(context.Context, *DeleteCompanyRequest) (*DeleteCompanyResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteCompany not implemented")
+}
+func (UnimplementedCompanyServiceServer) ListCompanies(context.Context, *ListCompaniesRequest) (*ListCompaniesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListCompanies not implemented")
+}
+func (UnimplementedCompanyServiceServer) CreatePosition(context.Context, *CreatePositionRequest) (*CreatePositionResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreatePosition not implemented")
+}
+func (UnimplementedCompanyServiceServer) UpdatePosition(context.Context, *UpdatePositionRequest) (*UpdatePositionResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdatePosition not implemented")
+}
+func (UnimplementedCompanyServiceServer) DeletePosition(context.Context, *DeletePositionRequest) (*DeletePositionResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeletePosition not implemented")
+}
+func (UnimplementedCompanyServiceServer) ListPositions(context.Context, *ListPositionsRequest) (*ListPositionsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListPositions not implemented")
+}
+func (UnimplementedCompanyServiceServer) AddMember(context.Context, *AddMemberRequest) (*AddMemberResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method AddMember not implemented")
+}
+func (UnimplementedCompanyServiceServer) RemoveMember(context.Context, *RemoveMemberRequest) (*RemoveMemberResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RemoveMember not implemented")
+}
+func (UnimplementedCompanyServiceServer) UpdateMemberPosition(context.Context, *UpdateMemberPositionRequest) (*UpdateMemberPositionResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateMemberPosition not implemented")
+}
+func (UnimplementedCompanyServiceServer) ListMembers(context.Context, *ListMembersRequest) (*ListMembersResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListMembers not implemented")
+}
+func (UnimplementedCompanyServiceServer) CreateCompanyChat(context.Context, *CreateCompanyChatRequest) (*CreateCompanyChatResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateCompanyChat not implemented")
+}
+func (UnimplementedCompanyServiceServer) SetCompanyChatAccess(context.Context, *SetCompanyChatAccessRequest) (*SetCompanyChatAccessResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetCompanyChatAccess not implemented")
+}
+func (UnimplementedCompanyServiceServer) GetCompanyChats(context.Context, *GetCompanyChatsRequest) (*GetCompanyChatsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetCompanyChats not implemented")
+}
+func (UnimplementedCompanyServiceServer) JoinCompany(context.Context, *JoinCompanyRequest) (*JoinCompanyResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method JoinCompany not implemented")
+}
+func (UnimplementedCompanyServiceServer) LeaveCompany(context.Context, *LeaveCompanyRequest) (*LeaveCompanyResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method LeaveCompany not implemented")
+}
+func (UnimplementedCompanyServiceServer) GetUserInfo(context.Context, *GetUserInfoRequest) (*GetUserInfoResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetUserInfo not implemented")
+}
+func (UnimplementedCompanyServiceServer) GetCompanyByUser(context.Context, *GetCompanyByUserRequest) (*GetCompanyByUserResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetCompanyByUser not implemented")
+}
+func (UnimplementedCompanyServiceServer) SetPrimaryCompany(context.Context, *SetPrimaryCompanyRequest) (*SetPrimaryCompanyResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetPrimaryCompany not implemented")
+}
+func (UnimplementedCompanyServiceServer) GetUserCompanies(context.Context, *GetUserCompaniesRequest) (*GetUserCompaniesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetUserCompanies not implemented")
+}
+func (UnimplementedCompanyServiceServer) GetCompanySettings(context.Context, *GetCompanySettingsRequest) (*GetCompanySettingsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetCompanySettings not implemented")
+}
+func (UnimplementedCompanyServiceServer) UpdateCompanySettings(context.Context, *UpdateCompanySettingsRequest) (*UpdateCompanySettingsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateCompanySettings not implemented")
+}
+func (UnimplementedCompanyServiceServer) GenerateInviteCode(context.Context, *GenerateInviteCodeRequest) (*GenerateInviteCodeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GenerateInviteCode not implemented")
+}
+func (UnimplementedCompanyServiceServer) JoinByInviteCode(context.Context, *JoinByInviteCodeRequest) (*JoinByInviteCodeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method JoinByInviteCode not implemented")
+}
+func (UnimplementedCompanyServiceServer) RevokeInviteCode(context.Context, *RevokeInviteCodeRequest) (*RevokeInviteCodeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RevokeInviteCode not implemented")
+}
+func (UnimplementedCompanyServiceServer) ListInviteCodes(context.Context, *ListInviteCodesRequest) (*ListInviteCodesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListInviteCodes not implemented")
+}
+func (UnimplementedCompanyServiceServer) SendCompanyNotification(context.Context, *SendCompanyNotificationRequest) (*SendCompanyNotificationResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SendCompanyNotification not implemented")
+}
+func (UnimplementedCompanyServiceServer) mustEmbedUnimplementedCompanyServiceServer() {}
+func (UnimplementedCompanyServiceServer) testEmbeddedByValue()                        {}
+
+// UnsafeCompanyServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to CompanyServiceServer will
+// result in compilation errors.
+type UnsafeCompanyServiceServer interface {
+	mustEmbedUnimplementedCompanyServiceServer()
+}
+
+func RegisterCompanyServiceServer(s grpc.ServiceRegistrar, srv CompanyServiceServer) {
+	// If the following call panics, it indicates UnimplementedCompanyServiceServer was
+	// embedded by pointer and is nil.  This will cause panics if an
+	// unimplemented method is ever invoked, so we test this at initialization
+	// time to prevent it from happening at runtime later due to I/O.
+	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
+		t.testEmbeddedByValue()
+	}
+	s.RegisterService(&CompanyService_ServiceDesc, srv)
+}
+
+func _CompanyService_CreateCompany_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateCompanyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompanyServiceServer).CreateCompany(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CompanyService_CreateCompany_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompanyServiceServer).CreateCompany(ctx, req.(*CreateCompanyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CompanyService_GetCompany_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetCompanyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompanyServiceServer).GetCompany(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CompanyService_GetCompany_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompanyServiceServer).GetCompany(ctx, req.(*GetCompanyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CompanyService_UpdateCompany_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateCompanyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompanyServiceServer).UpdateCompany(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CompanyService_UpdateCompany_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompanyServiceServer).UpdateCompany(ctx, req.(*UpdateCompanyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CompanyService_DeleteCompany_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteCompanyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompanyServiceServer).DeleteCompany(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CompanyService_DeleteCompany_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompanyServiceServer).DeleteCompany(ctx, req.(*DeleteCompanyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CompanyService_ListCompanies_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListCompaniesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompanyServiceServer).ListCompanies(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CompanyService_ListCompanies_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompanyServiceServer).ListCompanies(ctx, req.(*ListCompaniesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CompanyService_CreatePosition_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreatePositionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompanyServiceServer).CreatePosition(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CompanyService_CreatePosition_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompanyServiceServer).CreatePosition(ctx, req.(*CreatePositionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CompanyService_UpdatePosition_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdatePositionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompanyServiceServer).UpdatePosition(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CompanyService_UpdatePosition_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompanyServiceServer).UpdatePosition(ctx, req.(*UpdatePositionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CompanyService_DeletePosition_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeletePositionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompanyServiceServer).DeletePosition(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CompanyService_DeletePosition_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompanyServiceServer).DeletePosition(ctx, req.(*DeletePositionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CompanyService_ListPositions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListPositionsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompanyServiceServer).ListPositions(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CompanyService_ListPositions_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompanyServiceServer).ListPositions(ctx, req.(*ListPositionsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CompanyService_AddMember_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AddMemberRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompanyServiceServer).AddMember(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CompanyService_AddMember_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompanyServiceServer).AddMember(ctx, req.(*AddMemberRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CompanyService_RemoveMember_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveMemberRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompanyServiceServer).RemoveMember(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CompanyService_RemoveMember_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompanyServiceServer).RemoveMember(ctx, req.(*RemoveMemberRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CompanyService_UpdateMemberPosition_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateMemberPositionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompanyServiceServer).UpdateMemberPosition(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CompanyService_UpdateMemberPosition_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompanyServiceServer).UpdateMemberPosition(ctx, req.(*UpdateMemberPositionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CompanyService_ListMembers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListMembersRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompanyServiceServer).ListMembers(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CompanyService_ListMembers_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompanyServiceServer).ListMembers(ctx, req.(*ListMembersRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CompanyService_CreateCompanyChat_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateCompanyChatRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompanyServiceServer).CreateCompanyChat(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CompanyService_CreateCompanyChat_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompanyServiceServer).CreateCompanyChat(ctx, req.(*CreateCompanyChatRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CompanyService_SetCompanyChatAccess_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetCompanyChatAccessRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompanyServiceServer).SetCompanyChatAccess(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CompanyService_SetCompanyChatAccess_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompanyServiceServer).SetCompanyChatAccess(ctx, req.(*SetCompanyChatAccessRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CompanyService_GetCompanyChats_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetCompanyChatsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompanyServiceServer).GetCompanyChats(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CompanyService_GetCompanyChats_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompanyServiceServer).GetCompanyChats(ctx, req.(*GetCompanyChatsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CompanyService_JoinCompany_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(JoinCompanyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompanyServiceServer).JoinCompany(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CompanyService_JoinCompany_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompanyServiceServer).JoinCompany(ctx, req.(*JoinCompanyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CompanyService_LeaveCompany_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LeaveCompanyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompanyServiceServer).LeaveCompany(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CompanyService_LeaveCompany_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompanyServiceServer).LeaveCompany(ctx, req.(*LeaveCompanyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CompanyService_GetUserInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetUserInfoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompanyServiceServer).GetUserInfo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CompanyService_GetUserInfo_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompanyServiceServer).GetUserInfo(ctx, req.(*GetUserInfoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CompanyService_GetCompanyByUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetCompanyByUserRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompanyServiceServer).GetCompanyByUser(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CompanyService_GetCompanyByUser_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompanyServiceServer).GetCompanyByUser(ctx, req.(*GetCompanyByUserRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CompanyService_SetPrimaryCompany_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetPrimaryCompanyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompanyServiceServer).SetPrimaryCompany(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CompanyService_SetPrimaryCompany_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompanyServiceServer).SetPrimaryCompany(ctx, req.(*SetPrimaryCompanyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CompanyService_GetUserCompanies_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetUserCompaniesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompanyServiceServer).GetUserCompanies(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CompanyService_GetUserCompanies_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompanyServiceServer).GetUserCompanies(ctx, req.(*GetUserCompaniesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CompanyService_GetCompanySettings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetCompanySettingsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompanyServiceServer).GetCompanySettings(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CompanyService_GetCompanySettings_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompanyServiceServer).GetCompanySettings(ctx, req.(*GetCompanySettingsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CompanyService_UpdateCompanySettings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateCompanySettingsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompanyServiceServer).UpdateCompanySettings(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CompanyService_UpdateCompanySettings_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompanyServiceServer).UpdateCompanySettings(ctx, req.(*UpdateCompanySettingsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CompanyService_GenerateInviteCode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GenerateInviteCodeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompanyServiceServer).GenerateInviteCode(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CompanyService_GenerateInviteCode_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompanyServiceServer).GenerateInviteCode(ctx, req.(*GenerateInviteCodeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CompanyService_JoinByInviteCode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(JoinByInviteCodeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompanyServiceServer).JoinByInviteCode(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CompanyService_JoinByInviteCode_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompanyServiceServer).JoinByInviteCode(ctx, req.(*JoinByInviteCodeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CompanyService_RevokeInviteCode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RevokeInviteCodeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompanyServiceServer).RevokeInviteCode(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CompanyService_RevokeInviteCode_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompanyServiceServer).RevokeInviteCode(ctx, req.(*RevokeInviteCodeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CompanyService_ListInviteCodes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListInviteCodesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompanyServiceServer).ListInviteCodes(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CompanyService_ListInviteCodes_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompanyServiceServer).ListInviteCodes(ctx, req.(*ListInviteCodesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CompanyService_SendCompanyNotification_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SendCompanyNotificationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CompanyServiceServer).SendCompanyNotification(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CompanyService_SendCompanyNotification_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CompanyServiceServer).SendCompanyNotification(ctx, req.(*SendCompanyNotificationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// CompanyService_ServiceDesc is the grpc.ServiceDesc for CompanyService service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var CompanyService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "messenger.CompanyService",
+	HandlerType: (*CompanyServiceServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "CreateCompany",
+			Handler:    _CompanyService_CreateCompany_Handler,
+		},
+		{
+			MethodName: "GetCompany",
+			Handler:    _CompanyService_GetCompany_Handler,
+		},
+		{
+			MethodName: "UpdateCompany",
+			Handler:    _CompanyService_UpdateCompany_Handler,
+		},
+		{
+			MethodName: "DeleteCompany",
+			Handler:    _CompanyService_DeleteCompany_Handler,
+		},
+		{
+			MethodName: "ListCompanies",
+			Handler:    _CompanyService_ListCompanies_Handler,
+		},
+		{
+			MethodName: "CreatePosition",
+			Handler:    _CompanyService_CreatePosition_Handler,
+		},
+		{
+			MethodName: "UpdatePosition",
+			Handler:    _CompanyService_UpdatePosition_Handler,
+		},
+		{
+			MethodName: "DeletePosition",
+			Handler:    _CompanyService_DeletePosition_Handler,
+		},
+		{
+			MethodName: "ListPositions",
+			Handler:    _CompanyService_ListPositions_Handler,
+		},
+		{
+			MethodName: "AddMember",
+			Handler:    _CompanyService_AddMember_Handler,
+		},
+		{
+			MethodName: "RemoveMember",
+			Handler:    _CompanyService_RemoveMember_Handler,
+		},
+		{
+			MethodName: "UpdateMemberPosition",
+			Handler:    _CompanyService_UpdateMemberPosition_Handler,
+		},
+		{
+			MethodName: "ListMembers",
+			Handler:    _CompanyService_ListMembers_Handler,
+		},
+		{
+			MethodName: "CreateCompanyChat",
+			Handler:    _CompanyService_CreateCompanyChat_Handler,
+		},
+		{
+			MethodName: "SetCompanyChatAccess",
+			Handler:    _CompanyService_SetCompanyChatAccess_Handler,
+		},
+		{
+			MethodName: "GetCompanyChats",
+			Handler:    _CompanyService_GetCompanyChats_Handler,
+		},
+		{
+			MethodName: "JoinCompany",
+			Handler:    _CompanyService_JoinCompany_Handler,
+		},
+		{
+			MethodName: "LeaveCompany",
+			Handler:    _CompanyService_LeaveCompany_Handler,
+		},
+		{
+			MethodName: "GetUserInfo",
+			Handler:    _CompanyService_GetUserInfo_Handler,
+		},
+		{
+			MethodName: "GetCompanyByUser",
+			Handler:    _CompanyService_GetCompanyByUser_Handler,
+		},
+		{
+			MethodName: "SetPrimaryCompany",
+			Handler:    _CompanyService_SetPrimaryCompany_Handler,
+		},
+		{
+			MethodName: "GetUserCompanies",
+			Handler:    _CompanyService_GetUserCompanies_Handler,
+		},
+		{
+			MethodName: "GetCompanySettings",
+			Handler:    _CompanyService_GetCompanySettings_Handler,
+		},
+		{
+			MethodName: "UpdateCompanySettings",
+			Handler:    _CompanyService_UpdateCompanySettings_Handler,
+		},
+		{
+			MethodName: "GenerateInviteCode",
+			Handler:    _CompanyService_GenerateInviteCode_Handler,
+		},
+		{
+			MethodName: "JoinByInviteCode",
+			Handler:    _CompanyService_JoinByInviteCode_Handler,
+		},
+		{
+			MethodName: "RevokeInviteCode",
+			Handler:    _CompanyService_RevokeInviteCode_Handler,
+		},
+		{
+			MethodName: "ListInviteCodes",
+			Handler:    _CompanyService_ListInviteCodes_Handler,
+		},
+		{
+			MethodName: "SendCompanyNotification",
+			Handler:    _CompanyService_SendCompanyNotification_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "messenger.proto",
+}
+
+const (
+	StickerService_CreateStickerPack_FullMethodName      = "/messenger.StickerService/CreateStickerPack"
+	StickerService_AddSticker_FullMethodName             = "/messenger.StickerService/AddSticker"
+	StickerService_RemoveSticker_FullMethodName          = "/messenger.StickerService/RemoveSticker"
+	StickerService_DeleteStickerPack_FullMethodName      = "/messenger.StickerService/DeleteStickerPack"
+	StickerService_GetUserStickerPacks_FullMethodName    = "/messenger.StickerService/GetUserStickerPacks"
+	StickerService_GetPublicStickerPacks_FullMethodName  = "/messenger.StickerService/GetPublicStickerPacks"
+	StickerService_GetStickerPack_FullMethodName         = "/messenger.StickerService/GetStickerPack"
+	StickerService_SubmitForApproval_FullMethodName      = "/messenger.StickerService/SubmitForApproval"
+	StickerService_ApproveStickerPack_FullMethodName     = "/messenger.StickerService/ApproveStickerPack"
+	StickerService_GetPendingStickerPacks_FullMethodName = "/messenger.StickerService/GetPendingStickerPacks"
+	StickerService_SearchStickerPacks_FullMethodName     = "/messenger.StickerService/SearchStickerPacks"
+	StickerService_UpdateStickerPack_FullMethodName      = "/messenger.StickerService/UpdateStickerPack"
+	StickerService_SetFeaturedStickerPack_FullMethodName = "/messenger.StickerService/SetFeaturedStickerPack"
+)
+
+// StickerServiceClient is the client API for StickerService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+type StickerServiceClient interface {
+	CreateStickerPack(ctx context.Context, in *CreateStickerPackRequest, opts ...grpc.CallOption) (*CreateStickerPackResponse, error)
+	AddSticker(ctx context.Context, in *AddStickerRequest, opts ...grpc.CallOption) (*AddStickerResponse, error)
+	RemoveSticker(ctx context.Context, in *RemoveStickerRequest, opts ...grpc.CallOption) (*RemoveStickerResponse, error)
+	DeleteStickerPack(ctx context.Context, in *DeleteStickerPackRequest, opts ...grpc.CallOption) (*DeleteStickerPackResponse, error)
+	GetUserStickerPacks(ctx context.Context, in *GetUserStickerPacksRequest, opts ...grpc.CallOption) (*GetUserStickerPacksResponse, error)
+	GetPublicStickerPacks(ctx context.Context, in *GetPublicStickerPacksRequest, opts ...grpc.CallOption) (*GetPublicStickerPacksResponse, error)
+	GetStickerPack(ctx context.Context, in *GetStickerPackRequest, opts ...grpc.CallOption) (*GetStickerPackResponse, error)
+	SubmitForApproval(ctx context.Context, in *SubmitForApprovalRequest, opts ...grpc.CallOption) (*SubmitForApprovalResponse, error)
+	ApproveStickerPack(ctx context.Context, in *ApproveStickerPackRequest, opts ...grpc.CallOption) (*ApproveStickerPackResponse, error)
+	GetPendingStickerPacks(ctx context.Context, in *GetPendingStickerPacksRequest, opts ...grpc.CallOption) (*GetPendingStickerPacksResponse, error)
+	SearchStickerPacks(ctx context.Context, in *SearchStickerPacksRequest, opts ...grpc.CallOption) (*SearchStickerPacksResponse, error)
+	UpdateStickerPack(ctx context.Context, in *UpdateStickerPackRequest, opts ...grpc.CallOption) (*UpdateStickerPackResponse, error)
+	SetFeaturedStickerPack(ctx context.Context, in *SetFeaturedStickerPackRequest, opts ...grpc.CallOption) (*SetFeaturedStickerPackResponse, error)
+}
+
+type stickerServiceClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewStickerServiceClient(cc grpc.ClientConnInterface) StickerServiceClient {
+	return &stickerServiceClient{cc}
+}
+
+func (c *stickerServiceClient) CreateStickerPack(ctx context.Context, in *CreateStickerPackRequest, opts ...grpc.CallOption) (*CreateStickerPackResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateStickerPackResponse)
+	err := c.cc.Invoke(ctx, StickerService_CreateStickerPack_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *stickerServiceClient) AddSticker(ctx context.Context, in *AddStickerRequest, opts ...grpc.CallOption) (*AddStickerResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AddStickerResponse)
+	err := c.cc.Invoke(ctx, StickerService_AddSticker_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *stickerServiceClient) RemoveSticker(ctx context.Context, in *RemoveStickerRequest, opts ...grpc.CallOption) (*RemoveStickerResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RemoveStickerResponse)
+	err := c.cc.Invoke(ctx, StickerService_RemoveSticker_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *stickerServiceClient) DeleteStickerPack(ctx context.Context, in *DeleteStickerPackRequest, opts ...grpc.CallOption) (*DeleteStickerPackResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteStickerPackResponse)
+	err := c.cc.Invoke(ctx, StickerService_DeleteStickerPack_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *stickerServiceClient) GetUserStickerPacks(ctx context.Context, in *GetUserStickerPacksRequest, opts ...grpc.CallOption) (*GetUserStickerPacksResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetUserStickerPacksResponse)
+	err := c.cc.Invoke(ctx, StickerService_GetUserStickerPacks_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *stickerServiceClient) GetPublicStickerPacks(ctx context.Context, in *GetPublicStickerPacksRequest, opts ...grpc.CallOption) (*GetPublicStickerPacksResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetPublicStickerPacksResponse)
+	err := c.cc.Invoke(ctx, StickerService_GetPublicStickerPacks_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *stickerServiceClient) GetStickerPack(ctx context.Context, in *GetStickerPackRequest, opts ...grpc.CallOption) (*GetStickerPackResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetStickerPackResponse)
+	err := c.cc.Invoke(ctx, StickerService_GetStickerPack_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *stickerServiceClient) SubmitForApproval(ctx context.Context, in *SubmitForApprovalRequest, opts ...grpc.CallOption) (*SubmitForApprovalResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SubmitForApprovalResponse)
+	err := c.cc.Invoke(ctx, StickerService_SubmitForApproval_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *stickerServiceClient) ApproveStickerPack(ctx context.Context, in *ApproveStickerPackRequest, opts ...grpc.CallOption) (*ApproveStickerPackResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ApproveStickerPackResponse)
+	err := c.cc.Invoke(ctx, StickerService_ApproveStickerPack_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *stickerServiceClient) GetPendingStickerPacks(ctx context.Context, in *GetPendingStickerPacksRequest, opts ...grpc.CallOption) (*GetPendingStickerPacksResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetPendingStickerPacksResponse)
+	err := c.cc.Invoke(ctx, StickerService_GetPendingStickerPacks_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *stickerServiceClient) SearchStickerPacks(ctx context.Context, in *SearchStickerPacksRequest, opts ...grpc.CallOption) (*SearchStickerPacksResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SearchStickerPacksResponse)
+	err := c.cc.Invoke(ctx, StickerService_SearchStickerPacks_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *stickerServiceClient) UpdateStickerPack(ctx context.Context, in *UpdateStickerPackRequest, opts ...grpc.CallOption) (*UpdateStickerPackResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateStickerPackResponse)
+	err := c.cc.Invoke(ctx, StickerService_UpdateStickerPack_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *stickerServiceClient) SetFeaturedStickerPack(ctx context.Context, in *SetFeaturedStickerPackRequest, opts ...grpc.CallOption) (*SetFeaturedStickerPackResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SetFeaturedStickerPackResponse)
+	err := c.cc.Invoke(ctx, StickerService_SetFeaturedStickerPack_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// StickerServiceServer is the server API for StickerService service.
+// All implementations must embed UnimplementedStickerServiceServer
+// for forward compatibility.
+type StickerServiceServer interface {
+	CreateStickerPack(context.Context, *CreateStickerPackRequest) (*CreateStickerPackResponse, error)
+	AddSticker(context.Context, *AddStickerRequest) (*AddStickerResponse, error)
+	RemoveSticker(context.Context, *RemoveStickerRequest) (*RemoveStickerResponse, error)
+	DeleteStickerPack(context.Context, *DeleteStickerPackRequest) (*DeleteStickerPackResponse, error)
+	GetUserStickerPacks(context.Context, *GetUserStickerPacksRequest) (*GetUserStickerPacksResponse, error)
+	GetPublicStickerPacks(context.Context, *GetPublicStickerPacksRequest) (*GetPublicStickerPacksResponse, error)
+	GetStickerPack(context.Context, *GetStickerPackRequest) (*GetStickerPackResponse, error)
+	SubmitForApproval(context.Context, *SubmitForApprovalRequest) (*SubmitForApprovalResponse, error)
+	ApproveStickerPack(context.Context, *ApproveStickerPackRequest) (*ApproveStickerPackResponse, error)
+	GetPendingStickerPacks(context.Context, *GetPendingStickerPacksRequest) (*GetPendingStickerPacksResponse, error)
+	SearchStickerPacks(context.Context, *SearchStickerPacksRequest) (*SearchStickerPacksResponse, error)
+	UpdateStickerPack(context.Context, *UpdateStickerPackRequest) (*UpdateStickerPackResponse, error)
+	SetFeaturedStickerPack(context.Context, *SetFeaturedStickerPackRequest) (*SetFeaturedStickerPackResponse, error)
+	mustEmbedUnimplementedStickerServiceServer()
+}
+
+// UnimplementedStickerServiceServer must be embedded to have
+// forward compatible implementations.
+//
+// NOTE: this should be embedded by value instead of pointer to avoid a nil
+// pointer dereference when methods are called.
+type UnimplementedStickerServiceServer struct{}
+
+func (UnimplementedStickerServiceServer) CreateStickerPack(context.Context, *CreateStickerPackRequest) (*CreateStickerPackResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateStickerPack not implemented")
+}
+func (UnimplementedStickerServiceServer) AddSticker(context.Context, *AddStickerRequest) (*AddStickerResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method AddSticker not implemented")
+}
+func (UnimplementedStickerServiceServer) RemoveSticker(context.Context, *RemoveStickerRequest) (*RemoveStickerResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RemoveSticker not implemented")
+}
+func (UnimplementedStickerServiceServer) DeleteStickerPack(context.Context, *DeleteStickerPackRequest) (*DeleteStickerPackResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteStickerPack not implemented")
+}
+func (UnimplementedStickerServiceServer) GetUserStickerPacks(context.Context, *GetUserStickerPacksRequest) (*GetUserStickerPacksResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetUserStickerPacks not implemented")
+}
+func (UnimplementedStickerServiceServer) GetPublicStickerPacks(context.Context, *GetPublicStickerPacksRequest) (*GetPublicStickerPacksResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetPublicStickerPacks not implemented")
+}
+func (UnimplementedStickerServiceServer) GetStickerPack(context.Context, *GetStickerPackRequest) (*GetStickerPackResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetStickerPack not implemented")
+}
+func (UnimplementedStickerServiceServer) SubmitForApproval(context.Context, *SubmitForApprovalRequest) (*SubmitForApprovalResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SubmitForApproval not implemented")
+}
+func (UnimplementedStickerServiceServer) ApproveStickerPack(context.Context, *ApproveStickerPackRequest) (*ApproveStickerPackResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ApproveStickerPack not implemented")
+}
+func (UnimplementedStickerServiceServer) GetPendingStickerPacks(context.Context, *GetPendingStickerPacksRequest) (*GetPendingStickerPacksResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetPendingStickerPacks not implemented")
+}
+func (UnimplementedStickerServiceServer) SearchStickerPacks(context.Context, *SearchStickerPacksRequest) (*SearchStickerPacksResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SearchStickerPacks not implemented")
+}
+func (UnimplementedStickerServiceServer) UpdateStickerPack(context.Context, *UpdateStickerPackRequest) (*UpdateStickerPackResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateStickerPack not implemented")
+}
+func (UnimplementedStickerServiceServer) SetFeaturedStickerPack(context.Context, *SetFeaturedStickerPackRequest) (*SetFeaturedStickerPackResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetFeaturedStickerPack not implemented")
+}
+func (UnimplementedStickerServiceServer) mustEmbedUnimplementedStickerServiceServer() {}
+func (UnimplementedStickerServiceServer) testEmbeddedByValue()                        {}
+
+// UnsafeStickerServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to StickerServiceServer will
+// result in compilation errors.
+type UnsafeStickerServiceServer interface {
+	mustEmbedUnimplementedStickerServiceServer()
+}
+
+func RegisterStickerServiceServer(s grpc.ServiceRegistrar, srv StickerServiceServer) {
+	// If the following call panics, it indicates UnimplementedStickerServiceServer was
+	// embedded by pointer and is nil.  This will cause panics if an
+	// unimplemented method is ever invoked, so we test this at initialization
+	// time to prevent it from happening at runtime later due to I/O.
+	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
+		t.testEmbeddedByValue()
+	}
+	s.RegisterService(&StickerService_ServiceDesc, srv)
+}
+
+func _StickerService_CreateStickerPack_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateStickerPackRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StickerServiceServer).CreateStickerPack(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: StickerService_CreateStickerPack_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StickerServiceServer).CreateStickerPack(ctx, req.(*CreateStickerPackRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _StickerService_AddSticker_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AddStickerRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StickerServiceServer).AddSticker(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: StickerService_AddSticker_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StickerServiceServer).AddSticker(ctx, req.(*AddStickerRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _StickerService_RemoveSticker_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveStickerRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StickerServiceServer).RemoveSticker(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: StickerService_RemoveSticker_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StickerServiceServer).RemoveSticker(ctx, req.(*RemoveStickerRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _StickerService_DeleteStickerPack_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteStickerPackRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StickerServiceServer).DeleteStickerPack(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: StickerService_DeleteStickerPack_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StickerServiceServer).DeleteStickerPack(ctx, req.(*DeleteStickerPackRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _StickerService_GetUserStickerPacks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetUserStickerPacksRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StickerServiceServer).GetUserStickerPacks(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: StickerService_GetUserStickerPacks_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StickerServiceServer).GetUserStickerPacks(ctx, req.(*GetUserStickerPacksRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _StickerService_GetPublicStickerPacks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetPublicStickerPacksRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StickerServiceServer).GetPublicStickerPacks(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: StickerService_GetPublicStickerPacks_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StickerServiceServer).GetPublicStickerPacks(ctx, req.(*GetPublicStickerPacksRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _StickerService_GetStickerPack_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetStickerPackRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StickerServiceServer).GetStickerPack(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: StickerService_GetStickerPack_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StickerServiceServer).GetStickerPack(ctx, req.(*GetStickerPackRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _StickerService_SubmitForApproval_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SubmitForApprovalRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StickerServiceServer).SubmitForApproval(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: StickerService_SubmitForApproval_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StickerServiceServer).SubmitForApproval(ctx, req.(*SubmitForApprovalRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _StickerService_ApproveStickerPack_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ApproveStickerPackRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StickerServiceServer).ApproveStickerPack(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: StickerService_ApproveStickerPack_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StickerServiceServer).ApproveStickerPack(ctx, req.(*ApproveStickerPackRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _StickerService_GetPendingStickerPacks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetPendingStickerPacksRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StickerServiceServer).GetPendingStickerPacks(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: StickerService_GetPendingStickerPacks_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StickerServiceServer).GetPendingStickerPacks(ctx, req.(*GetPendingStickerPacksRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _StickerService_SearchStickerPacks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SearchStickerPacksRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StickerServiceServer).SearchStickerPacks(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: StickerService_SearchStickerPacks_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StickerServiceServer).SearchStickerPacks(ctx, req.(*SearchStickerPacksRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _StickerService_UpdateStickerPack_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateStickerPackRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StickerServiceServer).UpdateStickerPack(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: StickerService_UpdateStickerPack_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StickerServiceServer).UpdateStickerPack(ctx, req.(*UpdateStickerPackRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _StickerService_SetFeaturedStickerPack_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetFeaturedStickerPackRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StickerServiceServer).SetFeaturedStickerPack(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: StickerService_SetFeaturedStickerPack_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StickerServiceServer).SetFeaturedStickerPack(ctx, req.(*SetFeaturedStickerPackRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// StickerService_ServiceDesc is the grpc.ServiceDesc for StickerService service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var StickerService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "messenger.StickerService",
+	HandlerType: (*StickerServiceServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "CreateStickerPack",
+			Handler:    _StickerService_CreateStickerPack_Handler,
+		},
+		{
+			MethodName: "AddSticker",
+			Handler:    _StickerService_AddSticker_Handler,
+		},
+		{
+			MethodName: "RemoveSticker",
+			Handler:    _StickerService_RemoveSticker_Handler,
+		},
+		{
+			MethodName: "DeleteStickerPack",
+			Handler:    _StickerService_DeleteStickerPack_Handler,
+		},
+		{
+			MethodName: "GetUserStickerPacks",
+			Handler:    _StickerService_GetUserStickerPacks_Handler,
+		},
+		{
+			MethodName: "GetPublicStickerPacks",
+			Handler:    _StickerService_GetPublicStickerPacks_Handler,
+		},
+		{
+			MethodName: "GetStickerPack",
+			Handler:    _StickerService_GetStickerPack_Handler,
+		},
+		{
+			MethodName: "SubmitForApproval",
+			Handler:    _StickerService_SubmitForApproval_Handler,
+		},
+		{
+			MethodName: "ApproveStickerPack",
+			Handler:    _StickerService_ApproveStickerPack_Handler,
+		},
+		{
+			MethodName: "GetPendingStickerPacks",
+			Handler:    _StickerService_GetPendingStickerPacks_Handler,
+		},
+		{
+			MethodName: "SearchStickerPacks",
+			Handler:    _StickerService_SearchStickerPacks_Handler,
+		},
+		{
+			MethodName: "UpdateStickerPack",
+			Handler:    _StickerService_UpdateStickerPack_Handler,
+		},
+		{
+			MethodName: "SetFeaturedStickerPack",
+			Handler:    _StickerService_SetFeaturedStickerPack_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

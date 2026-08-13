@@ -1,13 +1,13 @@
 package main
 
 import (
-	"time"
-	"os"
-	"google.golang.org/protobuf/types/known/timestamppb"
-	"github.com/google/uuid"
-	"encoding/json"
 	"LavenderMessenger/gen"
 	"context"
+	"encoding/json"
+	"os"
+	"time"
+
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func (s *server) GetUserId(_ context.Context, req *gen.GetUserIdRequest) (*gen.GetUserIdResponse, error) {
@@ -20,10 +20,14 @@ func (s *server) GetUserId(_ context.Context, req *gen.GetUserIdRequest) (*gen.G
 }
 
 func (s *server) AddFavorite(ctx context.Context, req *gen.AddFavoriteRequest) (*gen.AddFavoriteResponse, error) {
-	if req.UserId == "" || req.MessageId == "" {
+	userID := GetUserID(ctx)
+	if userID == "" {
+		userID = req.UserId
+	}
+	if userID == "" || req.MessageId == "" {
 		return &gen.AddFavoriteResponse{Success: false, Message: "empty user id or message id"}, nil
 	}
-	err := s.db.AddFavorite(req.UserId, req.MessageId)
+	err := s.db.AddFavorite(userID, req.MessageId)
 	if err != nil {
 		logger.Infof("Failed to add favorite: %v", err)
 		return &gen.AddFavoriteResponse{Success: false, Message: err.Error()}, nil
@@ -32,10 +36,14 @@ func (s *server) AddFavorite(ctx context.Context, req *gen.AddFavoriteRequest) (
 }
 
 func (s *server) RemoveFavorite(ctx context.Context, req *gen.RemoveFavoriteRequest) (*gen.RemoveFavoriteResponse, error) {
-	if req.UserId == "" || req.MessageId == "" {
+	userID := GetUserID(ctx)
+	if userID == "" {
+		userID = req.UserId
+	}
+	if userID == "" || req.MessageId == "" {
 		return &gen.RemoveFavoriteResponse{Success: false}, nil
 	}
-	err := s.db.RemoveFavorite(req.UserId, req.MessageId)
+	err := s.db.RemoveFavorite(userID, req.MessageId)
 	if err != nil {
 		logger.Infof("Failed to remove favorite: %v", err)
 		return &gen.RemoveFavoriteResponse{Success: false}, nil
@@ -44,10 +52,14 @@ func (s *server) RemoveFavorite(ctx context.Context, req *gen.RemoveFavoriteRequ
 }
 
 func (s *server) GetFavorites(ctx context.Context, req *gen.GetFavoritesRequest) (*gen.GetFavoritesResponse, error) {
-	if req.UserId == "" {
+	userID := GetUserID(ctx)
+	if userID == "" {
+		userID = req.UserId
+	}
+	if userID == "" {
 		return &gen.GetFavoritesResponse{Messages: nil}, nil
 	}
-	favs, err := s.db.GetFavorites(req.UserId)
+	favs, err := s.db.GetFavorites(userID)
 	if err != nil {
 		logger.Infof("Failed to get favorites: %v", err)
 		return &gen.GetFavoritesResponse{Messages: nil}, nil
@@ -114,52 +126,28 @@ func (s *server) SaveFavoriteMessage(ctx context.Context, req *gen.Message) (*ge
 		return &gen.AddFavoriteResponse{Success: false, Message: "username required"}, nil
 	}
 
-	// 1. Generate ID and Timestamp
-	req.Id = uuid.New().String()
-	req.CreatedAt = timestamppb.Now()
-
-	// 2. Encrypt text
-	encryptedText, err := encrypt(req.Text)
-	if err != nil {
-		return &gen.AddFavoriteResponse{Success: false, Message: "encryption failed"}, nil
-	}
-
-	// 3. Get User UUID
+	// Get User UUID
 	userID, err := s.db.GetUserIdByUsername(req.User)
 	if err != nil {
 		return &gen.AddFavoriteResponse{Success: false, Message: "user not found"}, nil
 	}
 
-	// 4. Save message to DB in a special "favorites" room for consistency
-	// Room ID is "favorites_" + username
-	favRoomID := "favorites_" + req.User
-	imageURLsJSON := "[]"
-	if len(req.ImageUrls) > 0 {
-		imageURLsBytes, _ := json.Marshal(req.ImageUrls)
-		imageURLsJSON = string(imageURLsBytes)
-	}
-	err = s.db.SaveMessage(req.Id, req.User, req.UserId, encryptedText, req.CreatedAt.AsTime(), req.RepliedToMessageId, req.RepliedToUser, req.RepliedToText, favRoomID, req.ImageUrl, imageURLsJSON, req.VoiceUrl, req.Duration)
-	if err != nil {
-		return &gen.AddFavoriteResponse{Success: false, Message: "failed to save message"}, nil
-	}
-
-	// 5. Add to favorites table
+	// Add to favorites table only — no copy in messages_v2
+	// This preserves the original message ID so reactions work correctly
 	err = s.db.AddFavorite(userID, req.Id)
 	if err != nil {
 		return &gen.AddFavoriteResponse{Success: false, Message: "failed to link favorite"}, nil
 	}
 
-	// 6. Broadcast to favorites room for live update
-	// Get reactions for the message we just saved (should be empty but good for consistency)
-	req.RoomId = favRoomID
-	s.hub.Broadcast(req)
-
 	return &gen.AddFavoriteResponse{Success: true}, nil
 }
 
 func (s *server) GetDevices(ctx context.Context, req *gen.GetDevicesRequest) (*gen.GetDevicesResponse, error) {
-	_ = ctx
-	dbDevices, err := s.db.GetUserDevices(req.UserId)
+	userID := GetUserID(ctx)
+	if userID == "" {
+		userID = req.UserId
+	}
+	dbDevices, err := s.db.GetUserDevices(userID)
 	if err != nil {
 		return nil, err
 	}
@@ -179,33 +167,31 @@ func (s *server) GetDevices(ctx context.Context, req *gen.GetDevicesRequest) (*g
 }
 
 func (s *server) DeleteDevice(ctx context.Context, req *gen.DeleteDeviceRequest) (*gen.DeleteDeviceResponse, error) {
-	_ = ctx
-	err := s.db.DeleteUserDevice(req.DeviceId, req.UserId)
+	userID := GetUserID(ctx)
+	if userID == "" {
+		userID = req.UserId
+	}
+	err := s.db.DeleteUserDevice(req.DeviceId, userID)
 	if err != nil {
 		return &gen.DeleteDeviceResponse{Success: false, Message: err.Error()}, nil
 	}
 
-	// Tell connected client to logout
-	s.hub.BroadcastGlobal(&gen.Message{
-		User: "SYSTEM",
-		Text: "FORCE_DISCONNECT_DEVICE:" + req.DeviceId,
-	})
+	s.hub.BroadcastGlobalV2("FORCE_DISCONNECT_DEVICE", req.DeviceId)
 
 	return &gen.DeleteDeviceResponse{Success: true, Message: "Device removed"}, nil
 }
 
 func (s *server) DeleteOtherDevices(ctx context.Context, req *gen.DeleteDeviceRequest) (*gen.DeleteDeviceResponse, error) {
-	_ = ctx
-	err := s.db.DeleteOtherDevices(req.UserId, req.DeviceId)
+	userID := GetUserID(ctx)
+	if userID == "" {
+		userID = req.UserId
+	}
+	err := s.db.DeleteOtherDevices(userID, req.DeviceId)
 	if err != nil {
 		return &gen.DeleteDeviceResponse{Success: false, Message: err.Error()}, nil
 	}
 
-	// Tell all other devices of this user to logout
-	s.hub.BroadcastGlobal(&gen.Message{
-		User: "SYSTEM",
-		Text: "FORCE_LOGOUT_EXCEPT:" + req.DeviceId,
-	})
+	s.hub.BroadcastGlobalV2("FORCE_LOGOUT_EXCEPT", req.DeviceId)
 
 	return &gen.DeleteDeviceResponse{Success: true, Message: "All other sessions terminated"}, nil
 }

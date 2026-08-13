@@ -12,8 +12,10 @@ type getChatInfoTool struct {
 	db *sql.DB
 }
 
-func (t *getChatInfoTool) Name() string        { return "get_chat_info" }
-func (t *getChatInfoTool) Description() string  { return "Get metadata about a chat (name, type, member count)" }
+func (t *getChatInfoTool) Name() string { return "get_chat_info" }
+func (t *getChatInfoTool) Description() string {
+	return "Get metadata about a chat (name, type, member count)"
+}
 func (t *getChatInfoTool) RequiredRole() string { return "user" }
 
 func (t *getChatInfoTool) Parameters() map[string]any {

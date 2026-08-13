@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	AccessTokenTTL  = 15 * time.Minute   // 15 minutes
+	AccessTokenTTL  = 15 * time.Minute    // 15 minutes
 	RefreshTokenTTL = 30 * 24 * time.Hour // 30 days
 )
 
@@ -26,9 +26,9 @@ type authClaims struct {
 
 // getJWTSecret returns the JWT signing secret from env (cached, re-reads if env changes)
 var (
-	cachedJWTSecret     []byte
-	cachedJWTSecretEnv  string
-	jwtSecretMu         sync.Mutex
+	cachedJWTSecret    []byte
+	cachedJWTSecretEnv string
+	jwtSecretMu        sync.Mutex
 )
 
 func getJWTSecret() ([]byte, error) {
@@ -67,6 +67,8 @@ func GenerateTokenPair(userID, username, deviceID string) (accessToken, refreshT
 			ExpiresAt: jwt.NewNumericDate(accessExp),
 			IssuedAt:  jwt.NewNumericDate(now),
 			ID:        uuid.New().String(),
+			Issuer:    "lavender-server",
+			Audience:  jwt.ClaimStrings{"lavender-server"},
 		},
 	}
 	accessTokenObj := jwt.NewWithClaims(jwt.SigningMethodHS256, accessClaims)
@@ -80,12 +82,15 @@ func GenerateTokenPair(userID, username, deviceID string) (accessToken, refreshT
 	refreshJTI := uuid.New().String()
 	refreshClaims := authClaims{
 		UserID:   userID,
+		Username: username,
 		DeviceID: deviceID,
 		Type:     "refresh",
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(refreshExp),
 			IssuedAt:  jwt.NewNumericDate(now),
 			ID:        refreshJTI,
+			Issuer:    "lavender-server",
+			Audience:  jwt.ClaimStrings{"lavender-server"},
 		},
 	}
 	refreshTokenObj := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshClaims)
@@ -113,6 +118,25 @@ func ValidateToken(tokenString string) (*authClaims, error) {
 	})
 	if err != nil {
 		return nil, fmt.Errorf("token validation failed: %w", err)
+	}
+
+	// Validate issuer/audience only if present (backward compat for old tokens)
+	if claims, ok := token.Claims.(*authClaims); ok {
+		if claims.Issuer != "" && claims.Issuer != "lavender-server" {
+			return nil, fmt.Errorf("invalid issuer: %s", claims.Issuer)
+		}
+		if len(claims.Audience) > 0 {
+			validAud := false
+			for _, aud := range claims.Audience {
+				if aud == "lavender-server" {
+					validAud = true
+					break
+				}
+			}
+			if !validAud {
+				return nil, fmt.Errorf("invalid audience: %v", claims.Audience)
+			}
+		}
 	}
 
 	claims, ok := token.Claims.(*authClaims)

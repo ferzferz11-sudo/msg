@@ -13,7 +13,7 @@ type searchUsersTool struct {
 	db *sql.DB
 }
 
-func (t *searchUsersTool) Name() string        { return "search_users" }
+func (t *searchUsersTool) Name() string         { return "search_users" }
 func (t *searchUsersTool) Description() string  { return "Search users by name, username, or phone" }
 func (t *searchUsersTool) RequiredRole() string { return "user" }
 

@@ -4,18 +4,19 @@
 // This file implements the gRPC server for the Lavender Messenger.
 // It handles client connections, message broadcasting, and encryption.
 //
-// Refactored in v1.1.2.9: methods split into separate files by domain:
-//   server_chat.go      — Chat, Typing, CallSession, GetClients
+// Methods split into separate files by domain:
+//   server_chat.go      — ChatV2, CallSession, GetClients
+//   server_chatlist_v2.go — GetChatsV2, Pin/Unpin, Search, Archive
+//   server_messages_v2.go — GetHistoryV2, SendMessageV2, Edit/Delete/ReactionV2, SearchMessages
 //   server_users.go     — GetAllUsers, UpdateProfile, GetUserProfile, GetUserAvatar
-//   server_chats.go     — GetAllChats, GetChats, CreateDirectChat, CreateGroupChat, DeleteChat, etc.
-//   server_messages.go  — GetHistory, SetReaction, DeleteMessages, EditMessage
-//   server_profile.go   — UpdateUsername, UpdatePassword, AdminUpdatePassword, MarkRead, UpdateAvatar, DeleteProfile
+//   server_chats.go     — CreateDirectChat, CreateGroupChat, DeleteChat, etc.
 //   server_push.go      — RegisterToken, sendPushNotification, broadcastOnlineUsers, etc.
 //   server_contacts.go  — AddContact, RemoveContact, GetContacts, GetChatListVersion
 //   server_themes.go    — GetThemes, SaveTheme, SetCurrentTheme, DeleteTheme
 //   server_drafts.go    — GetFCMLogs, SaveDraft, GetDraft, DeleteDraft
 //   server_muted.go     — GetMutedChats, SetMutedChat
 //   server_favorites.go — GetUserId, AddFavorite, RemoveFavorite, GetFavorites
+//   server_profile_v2.go — ProfileService v2: GetProfile, UpdateProfile, UpdateAvatar, DeleteProfile
 //   server_ai_v2.go     — AI Services v2: ChatWithAIV2, Agent CRUD, ListTools
 
 package main
@@ -24,22 +25,25 @@ import (
 	"LavenderMessenger/gen"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
-	"github.com/google/uuid"
 	firebase "firebase.google.com/go/v4"
+	"github.com/google/uuid"
 )
 
-const ServerVersion = "1.3.0.2"
+const ServerVersion = "1.4.0.2"
 
 // Service versions for client capability negotiation.
 // Service versions for client capability negotiation.
 const (
-	AuthServiceVersion = "2.0" // AuthService v2 (JWT) — current
-	ChatServiceVersion = "2.0" // ChatService v2: Bearer token in Chat stream + Pin/Mute/Search/Read
-	AIServiceVersion   = "2.0"
-	FileServiceVersion = "1.0"
-	PushServiceVersion = "1.0"
+	AuthServiceVersion    = "2.0" // AuthService v2 (JWT) — current
+	ChatServiceVersion    = "2.0" // ChatService v2: Bearer token in Chat stream + Pin/Mute/Search/Read
+	AIServiceVersion      = "2.0"
+	FileServiceVersion    = "1.0"
+	PushServiceVersion    = "1.0"
+	CompanyServiceVersion = "1.0"
+	StickerServiceVersion = "1.0"
 )
 
 // ProfileServiceVersion is set in main() — "2.0" on dev, "1.0" on prod.
@@ -55,8 +59,8 @@ type server struct {
 	recentErrors sync.Map      // map[string]time.Time to prevent duplicate error logs
 	fcmLogs      []*gen.FCMLogEntry
 	fcmLogsMu    sync.Mutex
-	owlModel     string        // Default OWL model
-	owlApiKey    string        // Default OpenRouter API key
+	owlModel     string // Default OWL model
+	owlApiKey    string // Default OpenRouter API key
 
 	// Hermes DB (for hermes-agent service)
 	hermesDB *HermesDB
@@ -64,8 +68,14 @@ type server struct {
 	// Remote Agent Manager
 	remoteAgentManager *RemoteAgentManager
 
+	// Push debouncer — batches rapid messages into single notification
+	pushDebouncer *PushDebouncer
+
 	// AI Gateway v2
 	aiGateway *AIGateway
+
+	// Shutdown state
+	isShuttingDown atomic.Bool
 }
 
 func (s *server) logErrorOnce(key string, format string, v ...interface{}) {
@@ -93,7 +103,11 @@ func (s *server) logFCM(level, format string, v ...interface{}) {
 	if len(s.fcmLogs) > 100 {
 		s.fcmLogs = s.fcmLogs[1:]
 	}
-	logger.Infof("[FCM %s] %s", level, msg)
+	if level == "SUCCESS" {
+		logger.Debugf("[FCM %s] %s", level, msg)
+	} else {
+		logger.Infof("[FCM %s] %s", level, msg)
+	}
 }
 
 // isUUID checks if a string is a valid UUID
@@ -115,36 +129,4 @@ func resolveDisplayName(db *DB, identifier string) string {
 		return identifier
 	}
 	return identifier
-}
-
-// resolveUserId converts a potential username to a user ID if needed
-// Deprecated: v1 username→UUID fallback. Use UUID identifiers directly for v2-only handlers.
-func (s *server) resolveUserId(identifier string) string {
-	if identifier == "" {
-		return ""
-	}
-	// Check if it's a UUID
-	if _, err := uuid.Parse(identifier); err == nil {
-		return identifier
-	}
-	// It's a username, try to get the ID
-	id, err := s.db.GetUserIdByUsername(identifier)
-	if err == nil && id != "" {
-		return id
-	}
-	return identifier
-}
-
-// resolveUsername converts a potential user ID to a username if needed
-// Deprecated: v1 UUID→username fallback. Use UUID identifiers directly for v2-only handlers.
-func (s *server) resolveUsername(identifier string) string {
-	if identifier == "" {
-		return ""
-	}
-	var name string
-	err := s.db.QueryRow("SELECT username FROM users WHERE id=$1::uuid", identifier).Scan(&name)
-	if err != nil {
-		return identifier
-	}
-	return name
 }

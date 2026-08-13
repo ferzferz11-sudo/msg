@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
+
+	"github.com/lib/pq"
 )
 
 func (db *DB) GetChat(id string) (struct {
@@ -75,8 +77,16 @@ func (db *DB) GetUserChats(uid, user string) ([]struct {
 	UnreadCount                                                                                           int
 	LastMessageHasImage, AllowMembersToAdd                                                                bool
 }, error) {
-	query := `WITH unread_counts AS (
-		SELECT room_id, COUNT(*) as count FROM messages WHERE is_read = FALSE AND username != $1 GROUP BY room_id
+	query := `WITH user_last_read AS (
+		SELECT room_id, COALESCE(last_read_at, '1970-01-01') as last_read FROM user_chat_metadata WHERE user_id = $2::uuid
+	),
+	unread_counts AS (
+		SELECT mv.room_id, COUNT(*) as count
+		FROM messages_v2 mv
+		LEFT JOIN user_last_read ulr ON ulr.room_id = mv.room_id
+		WHERE mv.sender_id != $2::uuid
+		AND mv.created_at > ulr.last_read
+		GROUP BY mv.room_id
 	)
 	SELECT c.id, c.name, c.type, c.participants, c.created_at,
 	       COALESCE(uc.count, 0),
@@ -89,10 +99,10 @@ func (db *DB) GetUserChats(uid, user string) ([]struct {
 	       COALESCE(c.allow_members_to_add, FALSE)
 	FROM chats c
 	LEFT JOIN unread_counts uc ON c.id = uc.room_id
-	WHERE c.type NOT IN ('owl', 'hermes')
-	  AND c.participants::jsonb @> jsonb_build_array($2::text)
+	WHERE c.type NOT IN ('ai', 'owl', 'hermes')
+	  AND c.participants::jsonb @> jsonb_build_array($1::text)
 	ORDER BY COALESCE(c.last_message_time, c.created_at) DESC`
-	rows, err := db.Query(query, user, user)
+	rows, err := db.Query(query, user, uid)
 	if err != nil {
 		return nil, err
 	}
@@ -128,8 +138,16 @@ func (db *DB) GetUserChatsByUserID(userID string) ([]struct {
 	UnreadCount                                                                                           int
 	LastMessageHasImage, AllowMembersToAdd                                                                bool
 }, error) {
-	query := `WITH unread_counts AS (
-		SELECT room_id, COUNT(*) as count FROM messages WHERE is_read = FALSE AND user_id = $1::uuid GROUP BY room_id
+	query := `WITH user_last_read AS (
+		SELECT room_id, COALESCE(last_read_at, '1970-01-01') as last_read FROM user_chat_metadata WHERE user_id = $1::uuid
+	),
+	unread_counts AS (
+		SELECT mv.room_id, COUNT(*) as count
+		FROM messages_v2 mv
+		LEFT JOIN user_last_read ulr ON ulr.room_id = mv.room_id
+		WHERE mv.sender_id != $1::uuid
+		AND mv.created_at > ulr.last_read
+		GROUP BY mv.room_id
 	)
 	SELECT c.id, c.name, c.type, c.participants, c.created_at,
 	       COALESCE(uc.count, 0),
@@ -189,6 +207,15 @@ func (db *DB) IncrementParticipantsChatListVersionByChatID(chatID string) error 
 	return err
 }
 
+// IncrementChatListVersionByUsernames batch-updates chat_list_version for a list of usernames
+func (db *DB) IncrementChatListVersionByUsernames(usernames []string) error {
+	if len(usernames) == 0 {
+		return nil
+	}
+	_, err := db.Exec(`UPDATE users SET chat_list_version=chat_list_version+1 WHERE username = ANY($1::text[])`, pq.Array(usernames))
+	return err
+}
+
 func (db *DB) CreateChat(id, name, t, p, creatorUsername, creatorId string) error {
 	_, err := db.Exec(`WITH parts AS (SELECT json_array_elements_text($1::json) AS username)
 		INSERT INTO chats (id, name, type, participants, creator_username, creator_id, participant_ids)
@@ -244,8 +271,8 @@ func (db *DB) UpdateChatSettings(id string, allowAdd bool) error {
 
 func (db *DB) UpdateChatParticipants(id, p string) error {
 	_, err := db.Exec(`UPDATE chats SET participants=$1,
-		participant_ids=(SELECT array_agg(u.id ORDER BY u.username) FROM users u WHERE u.username = ANY(SELECT json_array_elements_text($1::json)))
-		WHERE id=$2`, p, id)
+		participant_ids=(SELECT array_agg(u.id ORDER BY u.username) FROM users u WHERE u.username = ANY(SELECT json_array_elements_text($2::json)))
+		WHERE id=$3`, p, p, id)
 	return err
 }
 
@@ -256,7 +283,7 @@ func (db *DB) DeleteChat(id string) error {
 	}
 	defer tx.Rollback()
 
-	_, _ = tx.Exec(`DELETE FROM messages WHERE room_id = $1`, id)
+	_, _ = tx.Exec(`DELETE FROM messages_v2 WHERE room_id = $1`, id)
 	_, _ = tx.Exec(`DELETE FROM user_chat_metadata WHERE room_id = $1`, id)
 	_, _ = tx.Exec(`DELETE FROM muted_chats WHERE room_id = $1`, id)
 	_, _ = tx.Exec(`DELETE FROM draft_messages WHERE room_id = $1`, id)
@@ -356,6 +383,16 @@ func (db *DB) MarkReadAndCheck(room, userID string) (bool, error) {
 	}
 
 	affected, _ = res.RowsAffected()
+
+	// Also mark messages_v2 as read (only messages from other users)
+	res2, err := tx.Exec(`UPDATE messages_v2 SET is_read=TRUE WHERE room_id=$1 AND sender_id!=$2 AND is_read=FALSE`, room, userID)
+	if err != nil {
+		return false, err
+	}
+	affected2, _ := res2.RowsAffected()
+	if affected2 > 0 {
+		affected += affected2
+	}
 
 	err = tx.Commit()
 	if err == nil && affected > 0 {
@@ -505,11 +542,17 @@ func (db *DB) GetCallDuration(callID string) (int, error) {
 	return int(duration), err
 }
 
+func (db *DB) GetCallStatus(callID string) (string, error) {
+	var status string
+	err := db.QueryRow(`SELECT status FROM calls WHERE id = $1::uuid`, callID).Scan(&status)
+	return status, err
+}
+
 func (db *DB) GetActiveCallsByUser(userID string) ([]struct {
-	CallID    string
-	CallerID  string
+	CallID     string
+	CallerID   string
 	ReceiverID string
-	RoomID    string
+	RoomID     string
 }, error) {
 	rows, err := db.Query(`SELECT id, caller_id::text, receiver_id::text, COALESCE(room_id, '') FROM calls WHERE (caller_id = $1::uuid OR receiver_id = $1::uuid) AND status IN ('pending', 'active')`, userID)
 	if err != nil {
@@ -517,17 +560,17 @@ func (db *DB) GetActiveCallsByUser(userID string) ([]struct {
 	}
 	defer rows.Close()
 	var calls []struct {
-		CallID    string
-		CallerID  string
+		CallID     string
+		CallerID   string
 		ReceiverID string
-		RoomID    string
+		RoomID     string
 	}
 	for rows.Next() {
 		var c struct {
-			CallID    string
-			CallerID  string
+			CallID     string
+			CallerID   string
 			ReceiverID string
-			RoomID    string
+			RoomID     string
 		}
 		if err := rows.Scan(&c.CallID, &c.CallerID, &c.ReceiverID, &c.RoomID); err == nil {
 			calls = append(calls, c)
@@ -631,80 +674,4 @@ func (db *DB) DeleteServer(id string) error {
 	}
 	_, err = db.Exec(`DELETE FROM servers WHERE id = $1`, id)
 	return err
-}
-
-func (db *DB) backfillLastMessageText() {
-	type chatPreview struct {
-		id       string
-		enc      []byte
-		msgTime  time.Time
-		username string
-		hasImage bool
-	}
-
-	rows, err := db.Query(`
-		SELECT c.id, m.encrypted_text, m.created_at, m.username,
-		       (COALESCE(m.image_url, '') != '' OR COALESCE(m.image_urls, '[]') != '[]')
-		FROM chats c
-		JOIN LATERAL (
-			SELECT encrypted_text, created_at, username, image_url, image_urls
-			FROM messages WHERE room_id = c.id
-			ORDER BY created_at DESC LIMIT 1
-		) m ON TRUE
-		WHERE (c.last_message_text IS NULL OR c.last_message_text = '' OR c.last_message_text = 'Message')
-		AND c.type NOT IN ('owl', 'hermes')
-		AND COALESCE(c.is_secret, FALSE) = FALSE`)
-	if err != nil {
-		logger.Errorf("Backfill: query error: %v", err)
-		return
-	}
-	defer rows.Close()
-
-	var previews []chatPreview
-	for rows.Next() {
-		var p chatPreview
-		if err := rows.Scan(&p.id, &p.enc, &p.msgTime, &p.username, &p.hasImage); err == nil {
-			previews = append(previews, p)
-		}
-	}
-
-	if len(previews) == 0 {
-		return
-	}
-
-	logger.Infof("Backfill: updating last_message_text for %d chats", len(previews))
-
-	tx, err := db.Begin()
-	if err != nil {
-		logger.Errorf("Backfill: begin tx error: %v", err)
-		return
-	}
-	defer tx.Rollback()
-
-	for _, p := range previews {
-		preview, _ := decrypt(p.enc)
-		if len(preview) > 500 {
-			preview = preview[:500]
-		}
-		if preview == "" {
-			if p.hasImage {
-				preview = "Image"
-			} else {
-				preview = "Message"
-			}
-		}
-		_, _ = tx.Exec(`UPDATE chats SET
-			last_message_text = $1,
-			last_message_time = $2,
-			last_message_username = $3,
-			last_message_has_image = $4
-		WHERE id = $5`, preview, p.msgTime, p.username, p.hasImage, p.id)
-	}
-
-	if err := tx.Commit(); err != nil {
-		logger.Errorf("Backfill: commit error: %v", err)
-		return
-	}
-
-	logger.Infof("Backfill: last_message_text updated for %d chats", len(previews))
 }

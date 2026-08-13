@@ -12,7 +12,9 @@ package auth
 import (
 	"crypto/hmac"
 	"crypto/sha256"
+	"database/sql"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -20,6 +22,26 @@ import (
 	"strings"
 	"time"
 )
+
+// db is the database connection for token revocation (injected via SetDB)
+var db *sql.DB
+
+// AgentRevocationCheck is an optional hook called during ValidateAgentToken
+// to check if an agent has been revoked in external systems (e.g. agent_tokens table).
+// Set via SetAgentRevocationCheck.
+var AgentRevocationCheck func(agentID string) (bool, error)
+
+// SetDB sets the database connection for the auth package.
+// Must be called before using RevokeToken or blacklist checks.
+func SetDB(database *sql.DB) {
+	db = database
+}
+
+// SetAgentRevocationCheck sets a hook that checks agent-level revocation.
+// Called during ValidateAgentToken after blacklist check, before signature validation.
+func SetAgentRevocationCheck(fn func(agentID string) (bool, error)) {
+	AgentRevocationCheck = fn
+}
 
 // AgentClaims — данные внутри JWT токена агента
 type AgentClaims struct {
@@ -124,6 +146,20 @@ func ValidateAgentToken(token string) (*AgentClaims, error) {
 		return nil, fmt.Errorf("empty token")
 	}
 
+	// Check blacklist before signature validation
+	if revoked, err := isTokenRevoked(token); err == nil && revoked {
+		return nil, fmt.Errorf("token has been revoked")
+	}
+
+	// Check agent-level revocation (e.g. agent_tokens.revoked flag)
+	if AgentRevocationCheck != nil {
+		if quickClaims, err := parseAgentClaims(token); err == nil {
+			if revoked, err := AgentRevocationCheck(quickClaims.AgentID); err == nil && revoked {
+				return nil, fmt.Errorf("agent %s has been revoked", quickClaims.AgentID)
+			}
+		}
+	}
+
 	// Разбираем на части
 	parts := strings.Split(token, ".")
 	if len(parts) != 3 {
@@ -171,9 +207,64 @@ func ValidateAgentToken(token string) (*AgentClaims, error) {
 	return &claims, nil
 }
 
-// RevokeToken — заглушка для отзыва токена
-// В production — добавить в чёрный список (Redis или таблица в БД)
+// RevokeToken adds a token to the revoked_tokens blacklist.
+// The token hash is stored with its expiry for automatic cleanup.
 func RevokeToken(token string) error {
-	// TODO: реализовать через БД blacklist при необходимости
+	if db == nil {
+		return fmt.Errorf("database not initialized — call auth.SetDB first")
+	}
+
+	hash := sha256.Sum256([]byte(token))
+	hashHex := hex.EncodeToString(hash[:])
+
+	// Parse claims to extract expiry (reuse existing parser)
+	claims, err := parseAgentClaims(token)
+	if err != nil {
+		return fmt.Errorf("parse token for revocation: %w", err)
+	}
+
+	expiresAt := time.Unix(claims.ExpiresAt, 0)
+
+	_, err = db.Exec(`INSERT INTO revoked_tokens (token_hash, expires_at) VALUES ($1, $2) ON CONFLICT (token_hash) DO NOTHING`, hashHex, expiresAt)
+	if err != nil {
+		return fmt.Errorf("insert revoked token: %w", err)
+	}
 	return nil
+}
+
+// isTokenRevoked checks if a token hash exists in the revoked_tokens blacklist.
+func isTokenRevoked(token string) (bool, error) {
+	if db == nil {
+		return false, nil // no DB = no blacklist
+	}
+
+	hash := sha256.Sum256([]byte(token))
+	hashHex := hex.EncodeToString(hash[:])
+
+	var exists bool
+	err := db.QueryRow(`SELECT EXISTS(SELECT 1 FROM revoked_tokens WHERE token_hash = $1 AND expires_at > NOW())`, hashHex).Scan(&exists)
+	if err != nil {
+		return false, err
+	}
+	return exists, nil
+}
+
+// parseAgentClaims extracts AgentClaims from a JWT token without signature validation.
+func parseAgentClaims(token string) (*AgentClaims, error) {
+	parts := strings.Split(token, ".")
+	if len(parts) != 3 {
+		return nil, fmt.Errorf("invalid token format")
+	}
+
+	claimsBytes, err := base64URLDecode(parts[1])
+	if err != nil {
+		return nil, fmt.Errorf("decode claims: %w", err)
+	}
+
+	var claims AgentClaims
+	if err := json.Unmarshal(claimsBytes, &claims); err != nil {
+		return nil, fmt.Errorf("unmarshal claims: %w", err)
+	}
+
+	return &claims, nil
 }

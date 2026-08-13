@@ -1,107 +1,15 @@
 package main
 
 import (
-	"fmt"
-	"github.com/google/uuid"
 	"LavenderMessenger/gen"
 	"context"
 	"encoding/json"
+	"fmt"
 
-	"google.golang.org/protobuf/types/known/timestamppb"
+	"github.com/google/uuid"
 )
 
-func (s *server) GetAllChats(ctx context.Context, req *gen.GetAllChatsRequest) (*gen.GetAllChatsResponse, error) {
-	chats, err := s.db.GetAllChats()
-	if err != nil {
-		logger.Errorf("Error fetching all chats: %v", err)
-		return nil, err
-	}
-
-	var chatInfos []*gen.ChatInfo
-	for _, c := range chats {
-		chatInfos = append(chatInfos, &gen.ChatInfo{
-			Id:                  c.ID,
-			Name:                c.Name,
-			Type:                c.Type,
-			Participants:        c.Participants,
-			CreatedAt:           timestamppb.New(c.CreatedAt),
-			UnreadCount:         int32(c.UnreadCount),
-			LastMessageTime:     timestamppb.New(c.LastMessageTime),
-			Creator:             c.Creator,
-			LastMessageText:     c.LastMessageText,
-			AvatarUrl:           c.AvatarURL,
-			FullAvatarUrl:       c.FullAvatarURL,
-			LastMessageUsername: c.LastMessageUsername,
-			LastMessageHasImage: c.LastMessageHasImage,
-			AllowMembersToAdd:   c.AllowMembersToAdd,
-			IsPinned:            false,
-			IsMuted:             false,
-			IsArchived:          false,
-			PinnedAt:            0,
-		})
-	}
-
-	return &gen.GetAllChatsResponse{
-		Chats: chatInfos,
-	}, nil
-}
-
-// Deprecated: v1 chat list endpoint. Clients should use GetChatsV2 instead.
-func (s *server) GetChats(_ context.Context, req *gen.GetChatsRequest) (*gen.GetChatsResponse, error) {
-	// Используем username для логов, а ID для запросов в БД
-	// Убираем спам в логах, так как клиент опрашивает этот эндпоинт каждые 3 секунды
-	// logger.Infof("GetChats requested by user %s (ID: %s)", req.Username, req.UserId)
-
-	// Если ID передан, используем его, иначе ищем по username (для старых клиентов)
-	// Deprecated: username fallback — will be removed when all clients use GetChatsV2 with JWT.
-	queryIdentifier := req.UserId
-	if queryIdentifier == "" {
-		id, err := s.db.GetUserIdByUsername(req.Username)
-		if err == nil && id != "" {
-			queryIdentifier = id
-		} else {
-			// Если не нашли ID, ставим нулевой UUID, чтобы запрос к БД не падал с ошибкой синтаксиса $1::uuid
-			queryIdentifier = "00000000-0000-0000-0000-000000000000"
-		}
-	}
-
-	chats, err := s.db.GetUserChats(queryIdentifier, req.Username)
-	if err != nil {
-		logger.Errorf("Error fetching chats for user %s: %v", req.Username, err)
-		return nil, err
-	}
-
-	var chatInfos []*gen.ChatInfo
-	for _, c := range chats {
-		chatInfos = append(chatInfos, &gen.ChatInfo{
-			Id:                  c.ID,
-			Name:                c.Name,
-			Type:                c.Type,
-			Participants:        c.Participants,
-			CreatedAt:           timestamppb.New(c.CreatedAt),
-			UnreadCount:         int32(c.UnreadCount),
-			LastMessageTime:     timestamppb.New(c.LastMessageTime),
-			Creator:             c.Creator,
-			LastMessageText:     c.LastMessageText,
-			AvatarUrl:           c.AvatarURL,
-			FullAvatarUrl:       c.FullAvatarURL,
-			LastMessageUsername: c.LastMessageUsername,
-			LastMessageHasImage: c.LastMessageHasImage,
-			AllowMembersToAdd:   c.AllowMembersToAdd,
-			IsPinned:            false,
-			IsMuted:             false,
-			IsArchived:          false,
-			PinnedAt:            0,
-		})
-	}
-
-	// Note: AI chats (owl/hermes) are NOT included in GetAllChats.
-	// They are fetched separately via GetAIChats RPC and shown in AIBottomSheet.
-
-	return &gen.GetChatsResponse{Chats: chatInfos}, nil
-}
-
-func (s *server) CreateDirectChat(_ context.Context, req *gen.CreateDirectChatRequest) (*gen.CreateDirectChatResponse, error) {
+func (s *server) CreateDirectChat(ctx context.Context, req *gen.CreateDirectChatRequest) (*gen.CreateDirectChatResponse, error) {
 	u1 := req.User1
 	if req.User1Id != "" {
 		resolved := resolveDisplayName(s.db, req.User1Id)
@@ -136,7 +44,7 @@ func (s *server) CreateDirectChat(_ context.Context, req *gen.CreateDirectChatRe
 	return &gen.CreateDirectChatResponse{ChatId: chatID, Success: true}, nil
 }
 
-func (s *server) CreateGroupChat(_ context.Context, req *gen.CreateGroupChatRequest) (*gen.CreateGroupChatResponse, error) {
+func (s *server) CreateGroupChat(ctx context.Context, req *gen.CreateGroupChatRequest) (*gen.CreateGroupChatResponse, error) {
 	creator := req.Creator
 	if req.CreatorId != "" {
 		resolved := resolveDisplayName(s.db, req.CreatorId)
@@ -148,26 +56,27 @@ func (s *server) CreateGroupChat(_ context.Context, req *gen.CreateGroupChatRequ
 	logger.Infof("CreateGroupChat: %s (Creator: %s)", req.Name, creator)
 	chatID := uuid.New().String()
 
-	// Convert participants slice to JSON string
-	participants := "["
-	for i, p := range req.Participants {
-		participants += "\"" + p + "\""
-		if i < len(req.Participants)-1 {
-			participants += ", "
-		}
+	// Convert participants slice to JSON string safely
+	participantsJSON, err := json.Marshal(req.Participants)
+	if err != nil {
+		return &gen.CreateGroupChatResponse{Success: false}, fmt.Errorf("failed to encode participants: %w", err)
 	}
-	participants += "]"
 
-	err := s.db.CreateChat(chatID, req.Name, "group", participants, creator, req.CreatorId)
+	chatType := req.Type
+	if chatType == "" {
+		chatType = "group"
+	}
+
+	err = s.db.CreateChat(chatID, req.Name, chatType, string(participantsJSON), creator, req.CreatorId)
 	if err != nil {
 		logger.Infof("Failed to create group chat in DB: %v", err)
 		return &gen.CreateGroupChatResponse{Success: false}, err
 	}
-	logger.Infof("Group chat created: %s (%s)", chatID, req.Name)
+	logger.Infof("Group chat created: %s (%s) type=%s", chatID, req.Name, chatType)
 	return &gen.CreateGroupChatResponse{ChatId: chatID, Success: true}, nil
 }
 
-func (s *server) AddParticipant(_ context.Context, req *gen.AddParticipantRequest) (*gen.AddParticipantResponse, error) {
+func (s *server) AddParticipant(ctx context.Context, req *gen.AddParticipantRequest) (*gen.AddParticipantResponse, error) {
 	username := req.Username
 	if req.UserId != "" {
 		resolved := resolveDisplayName(s.db, req.UserId)
@@ -183,9 +92,9 @@ func (s *server) AddParticipant(_ context.Context, req *gen.AddParticipantReques
 		return &gen.AddParticipantResponse{Success: false, Message: "Chat not found"}, nil
 	}
 
-	if chat.Type != "group" {
-		logger.Errorf("AddParticipant error: Chat %s is not a group chat (type: %s)", req.ChatId, chat.Type)
-		return &gen.AddParticipantResponse{Success: false, Message: "Participants can only be added to group chats"}, nil
+	if chat.Type != "group" && chat.Type != "company" {
+		logger.Errorf("AddParticipant error: Chat %s is not a group/company chat (type: %s)", req.ChatId, chat.Type)
+		return &gen.AddParticipantResponse{Success: false, Message: "Participants can only be added to group or company chats"}, nil
 	}
 
 	var participants []string
@@ -218,7 +127,7 @@ func (s *server) AddParticipant(_ context.Context, req *gen.AddParticipantReques
 	return &gen.AddParticipantResponse{Success: true, Message: "User added successfully"}, nil
 }
 
-func (s *server) RemoveParticipant(_ context.Context, req *gen.RemoveParticipantRequest) (*gen.RemoveParticipantResponse, error) {
+func (s *server) RemoveParticipant(ctx context.Context, req *gen.RemoveParticipantRequest) (*gen.RemoveParticipantResponse, error) {
 	username := req.Username
 	if req.UserId != "" {
 		resolved := resolveDisplayName(s.db, req.UserId)
@@ -234,9 +143,9 @@ func (s *server) RemoveParticipant(_ context.Context, req *gen.RemoveParticipant
 		return &gen.RemoveParticipantResponse{Success: false, Message: "Chat not found"}, nil
 	}
 
-	if chat.Type != "group" {
-		logger.Errorf("RemoveParticipant error: Chat %s is not a group chat", req.ChatId)
-		return &gen.RemoveParticipantResponse{Success: false, Message: "Participants can only be removed from group chats"}, nil
+	if chat.Type != "group" && chat.Type != "company" {
+		logger.Errorf("RemoveParticipant error: Chat %s is not a group/company chat (type: %s)", req.ChatId, chat.Type)
+		return &gen.RemoveParticipantResponse{Success: false, Message: "Participants can only be removed from group or company chats"}, nil
 	}
 
 	var participants []string
@@ -276,17 +185,21 @@ func (s *server) RemoveParticipant(_ context.Context, req *gen.RemoveParticipant
 	return &gen.RemoveParticipantResponse{Success: true, Message: "User removed successfully"}, nil
 }
 
-func (s *server) DeleteChat(_ context.Context, req *gen.DeleteChatRequest) (*gen.DeleteChatResponse, error) {
+func (s *server) DeleteChat(ctx context.Context, req *gen.DeleteChatRequest) (*gen.DeleteChatResponse, error) {
 	if req.ChatId == "" {
 		return &gen.DeleteChatResponse{Success: false, Message: "Chat ID is required"}, nil
 	}
 
-	requesterUsername := req.RequesterUsername
-	if req.RequesterUserId != "" {
-		resolved := resolveDisplayName(s.db, req.RequesterUserId)
-		if resolved != "" {
-			requesterUsername = resolved
-		}
+	requesterUsername := GetUsername(ctx)
+	requesterUserID := GetUserID(ctx)
+	if requesterUserID == "" {
+		requesterUserID = req.RequesterUserId
+	}
+	if requesterUsername == "" && requesterUserID != "" {
+		requesterUsername = resolveDisplayName(s.db, requesterUserID)
+	}
+	if requesterUsername == "" {
+		requesterUsername = req.RequesterUsername
 	}
 
 	logger.Infof("DeleteChat: Request to delete chat %s by %s", req.ChatId, requesterUsername)
@@ -309,15 +222,19 @@ func (s *server) DeleteChat(_ context.Context, req *gen.DeleteChatRequest) (*gen
 		return &gen.DeleteChatResponse{Success: false, Message: "Chat or group already deleted"}, nil
 	}
 
-	// Security check: only creator can delete group chats
-	// We allow users to delete their own direct chats, but groups must be deleted by the creator
+	// Security check: only creator or admin can delete group chats
 	if chat.Type == "group" && chat.CreatorUsername != requesterUsername {
-		logger.Errorf("DeleteChat error: User %s is not authorized to delete group chat %s (creator: %s)",
-			requesterUsername, req.ChatId, chat.CreatorUsername)
-		return &gen.DeleteChatResponse{
-			Success: false,
-			Message: "You don't have permission to delete this group. Only the group administrator can delete it.",
-		}, nil
+		// Check if requester is admin
+		isAdmin := s.db.IsSuperAdmin(requesterUsername)
+		if !isAdmin {
+			logger.Errorf("DeleteChat error: User %s is not authorized to delete group chat %s (creator: %s)",
+				requesterUsername, req.ChatId, chat.CreatorUsername)
+			return &gen.DeleteChatResponse{
+				Success: false,
+				Message: "You don't have permission to delete this group. Only the group creator (" + chat.CreatorUsername + ") or an admin can delete it.",
+			}, nil
+		}
+		logger.Infof("DeleteChat: Admin %s deleting group chat %s (creator: %s)", requesterUsername, req.ChatId, chat.CreatorUsername)
 	}
 
 	var participants []string
@@ -366,24 +283,11 @@ func (s *server) DeleteChat(_ context.Context, req *gen.DeleteChatRequest) (*gen
 	// and the deleting user already knows the chat is gone. Broadcast below is enough.
 	if chat.Type != "owl" && chat.Type != "hermes" {
 		logger.Infof("DeleteChat: Notifying %d participants.", len(participants))
-		for _, p := range participants {
-			_ = s.db.IncrementUserChatListVersion(p)
-		}
+		_ = s.db.IncrementChatListVersionByUsernames(participants)
 	}
 
-	// 6. Send signal to clear cache for all participants
-	s.hub.Broadcast(&gen.Message{
-		User:   "SYSTEM",
-		Text:   "CLEAR_CACHE:" + req.ChatId,
-		RoomId: req.ChatId,
-	})
-
-	// 7. Send signal to exit the deleted chat for all participants
-	s.hub.Broadcast(&gen.Message{
-		User:   "SYSTEM",
-		Text:   "CHAT_DELETED:" + req.ChatId,
-		RoomId: req.ChatId,
-	})
+	s.hub.BroadcastToRoom(req.ChatId, "CLEAR_CACHE", req.ChatId)
+	s.hub.BroadcastToRoom(req.ChatId, "CHAT_DELETED", req.ChatId)
 
 	// 8. Broadcast update signal
 	s.broadcastOnlineUsers()
@@ -411,17 +315,18 @@ func (s *server) UpdateChatName(_ context.Context, req *gen.UpdateChatNameReques
 	return &gen.UpdateChatNameResponse{Success: true, Message: "Chat name updated successfully"}, nil
 }
 
-func (s *server) UpdateChatAvatar(_ context.Context, req *gen.UpdateChatAvatarRequest) (*gen.UpdateChatAvatarResponse, error) {
+func (s *server) UpdateChatAvatar(ctx context.Context, req *gen.UpdateChatAvatarRequest) (*gen.UpdateChatAvatarResponse, error) {
 	if req.ChatId == "" || req.AvatarUrl == "" {
 		return &gen.UpdateChatAvatarResponse{Success: false, Message: "Chat ID and Avatar URL are required"}, nil
 	}
 
-	username := req.Username
-	if req.UserId != "" {
-		resolved := resolveDisplayName(s.db, req.UserId)
-		if resolved != "" {
-			username = resolved
-		}
+	userID := GetUserID(ctx)
+	if userID == "" {
+		userID = req.UserId
+	}
+	username := resolveDisplayName(s.db, userID)
+	if username == "" {
+		username = req.Username
 	}
 
 	logger.Infof("UpdateChatAvatar: Checking admin status for chat %s, user %s", req.ChatId, username)
@@ -455,7 +360,7 @@ func (s *server) UpdateChatAvatar(_ context.Context, req *gen.UpdateChatAvatarRe
 	return &gen.UpdateChatAvatarResponse{Success: true, Message: "Chat avatar updated successfully"}, nil
 }
 
-func (s *server) UpdateChatSettings(_ context.Context, req *gen.UpdateChatSettingsRequest) (*gen.UpdateChatSettingsResponse, error) {
+func (s *server) UpdateChatSettings(ctx context.Context, req *gen.UpdateChatSettingsRequest) (*gen.UpdateChatSettingsResponse, error) {
 	if req.ChatId == "" {
 		return &gen.UpdateChatSettingsResponse{Success: false, Message: "Chat ID is required"}, nil
 	}
@@ -466,7 +371,11 @@ func (s *server) UpdateChatSettings(_ context.Context, req *gen.UpdateChatSettin
 		return &gen.UpdateChatSettingsResponse{Success: false, Message: "Chat not found"}, nil
 	}
 
-	username := resolveDisplayName(s.db, req.UserId)
+	userID := GetUserID(ctx)
+	if userID == "" {
+		userID = req.UserId
+	}
+	username := resolveDisplayName(s.db, userID)
 	if chat.CreatorUsername != username {
 		return &gen.UpdateChatSettingsResponse{Success: false, Message: "Unauthorized: only admin can change settings"}, nil
 	}

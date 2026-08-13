@@ -6,19 +6,19 @@ import (
 
 // UserDevice represents a registered device for a user
 type UserDevice struct {
-	ID                   string    `json:"id"`
-	UserID               string    `json:"user_id"`
-	DeviceID             string    `json:"device_id"`
-	DeviceName           string    `json:"device_name"`
-	DeviceType           string    `json:"device_type"`
-	ClientVersion        string    `json:"client_version"`
-	IPAddress            string    `json:"ip_address"`
-	UserAgent            string    `json:"user_agent"`
-	RefreshTokenJTI      string    `json:"refresh_token_jti"`
+	ID                    string     `json:"id"`
+	UserID                string     `json:"user_id"`
+	DeviceID              string     `json:"device_id"`
+	DeviceName            string     `json:"device_name"`
+	DeviceType            string     `json:"device_type"`
+	ClientVersion         string     `json:"client_version"`
+	IPAddress             string     `json:"ip_address"`
+	UserAgent             string     `json:"user_agent"`
+	RefreshTokenJTI       string     `json:"refresh_token_jti"`
 	RefreshTokenExpiresAt *time.Time `json:"refresh_token_expires_at"`
-	IsActive             bool      `json:"is_active"`
-	CreatedAt            time.Time `json:"created_at"`
-	LastSeenAt           time.Time `json:"last_seen_at"`
+	IsActive              bool       `json:"is_active"`
+	CreatedAt             time.Time  `json:"created_at"`
+	LastSeenAt            time.Time  `json:"last_seen_at"`
 }
 
 // DeviceAuthLog represents an audit entry for device authentication events
@@ -222,4 +222,32 @@ func (db *DB) LogAuthEvent(userID, deviceID, action, ipAddress, clientVersion st
 func (db *DB) CleanupDeviceAuthLog() {
 	_, _ = db.Exec(`DELETE FROM device_auth_log WHERE created_at < NOW() - INTERVAL '90 days'`)
 	_, _ = db.Exec(`UPDATE user_devices SET is_active = FALSE WHERE refresh_token_expires_at < NOW() AND is_active = TRUE`)
+}
+
+// GetUserActiveSessions returns devices seen in the last 24 hours for admin panel.
+func (db *DB) GetUserActiveSessions(userID string) ([]UserDevice, error) {
+	rows, err := db.Query(`
+		SELECT id, user_id, device_id, device_name, device_type, client_version, ip_address, user_agent,
+		       refresh_token_jti, refresh_token_expires_at, is_active, created_at, last_seen_at
+		FROM user_devices WHERE user_id = $1 AND last_seen_at > NOW() - INTERVAL '24 hours'
+		ORDER BY last_seen_at DESC
+	`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var devices []UserDevice
+	for rows.Next() {
+		var d UserDevice
+		err := rows.Scan(&d.ID, &d.UserID, &d.DeviceID, &d.DeviceName, &d.DeviceType,
+			&d.ClientVersion, &d.IPAddress, &d.UserAgent,
+			&d.RefreshTokenJTI, &d.RefreshTokenExpiresAt, &d.IsActive,
+			&d.CreatedAt, &d.LastSeenAt)
+		if err != nil {
+			return nil, err
+		}
+		devices = append(devices, d)
+	}
+	return devices, nil
 }

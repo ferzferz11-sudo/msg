@@ -8,6 +8,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
+
+	"github.com/lib/pq"
 )
 
 // ======= Types =======
@@ -43,18 +45,18 @@ type AgentV2 struct {
 }
 
 type AIChatV2 struct {
-	ID            string         `json:"id"`
-	UserID        string         `json:"user_id"`
-	ChatType      string         `json:"chat_type"`
-	Name          string         `json:"name"`
-	AgentID       string         `json:"agent_id"`
-	Model         string         `json:"model"`
-	SystemPrompt  string         `json:"system_prompt"`
-	BoundAgentID  string         `json:"bound_agent_id"`
-	BindUntilMsg  int            `json:"bind_until_msg"`
-	Settings      map[string]any `json:"settings"`
-	CreatedAt     time.Time      `json:"created_at"`
-	UpdatedAt     time.Time      `json:"updated_at"`
+	ID           string         `json:"id"`
+	UserID       string         `json:"user_id"`
+	ChatType     string         `json:"chat_type"`
+	Name         string         `json:"name"`
+	AgentID      string         `json:"agent_id"`
+	Model        string         `json:"model"`
+	SystemPrompt string         `json:"system_prompt"`
+	BoundAgentID string         `json:"bound_agent_id"`
+	BindUntilMsg int            `json:"bind_until_msg"`
+	Settings     map[string]any `json:"settings"`
+	CreatedAt    time.Time      `json:"created_at"`
+	UpdatedAt    time.Time      `json:"updated_at"`
 }
 
 type AIMessageV2 struct {
@@ -79,28 +81,6 @@ type ToolCallResult struct {
 }
 
 // ======= Migrations =======
-
-// DropOldAIV1 removes all v1 AI tables and data
-func DropOldAIV1(db *sql.DB) {
-	queries := []string{
-		`DROP TABLE IF EXISTS ai_chat_messages CASCADE`,
-		`DROP TABLE IF EXISTS ai_chat_settings CASCADE`,
-		`DROP TABLE IF EXISTS ai_chat_sessions CASCADE`,
-		`DROP TABLE IF EXISTS owl_messages CASCADE`,
-		`DROP TABLE IF EXISTS owl_chat_settings CASCADE`,
-		`DROP TABLE IF EXISTS hermes_chat_settings CASCADE`,
-		`DROP TABLE IF EXISTS hermes_messages CASCADE`,
-		`DROP TABLE IF EXISTS hermes_sessions CASCADE`,
-		`DROP TABLE IF EXISTS hermes_custom_agents CASCADE`,
-		`DROP TABLE IF EXISTS hermes_agent_runs CASCADE`,
-	}
-	for _, q := range queries {
-		if _, err := db.Exec(q); err != nil {
-			logger.Warnf("DropOldAIV1: %v", err)
-		}
-	}
-	logger.Info("Old AI v1 tables dropped")
-}
 
 // MigrateAIV2 creates all v2 AI tables and seeds preset agents
 func MigrateAIV2(db *sql.DB) error {
@@ -227,21 +207,36 @@ func seedPresetAgents(db *sql.DB) error {
 		tools, rag                              bool
 	}{
 		{"mimo", "MiMo", "AI assistant integrated into Lavender Messenger", "mimo", "mimo-auto", "You are MiMo, an AI assistant integrated into Lavender Messenger. You help users with their tasks, answer questions, and use available tools when needed.", true, true},
-		{"assistant", "Assistant", "Universal AI assistant", "openrouter", "anthropic/claude-sonnet-4", "You are a helpful AI assistant. Be concise, accurate, and helpful.", true, true},
-		{"developer", "Developer", "Code writing, refactoring, debugging", "openrouter", "anthropic/claude-sonnet-4", "You are an expert software developer. Help with code writing, refactoring, debugging, and code review. Always provide clean, production-ready code.", true, false},
-		{"devops", "DevOps", "Server management, deploy, monitoring", "openrouter", "anthropic/claude-sonnet-4", "You are a DevOps engineer. Help with server management, deployment, CI/CD, monitoring, and infrastructure.", true, false},
-		{"architect", "Architect", "System design, architecture decisions", "openrouter", "anthropic/claude-sonnet-4", "You are a system architect. Help with system design, architecture decisions, trade-offs, and scalability.", false, false},
-		{"writer", "Writer", "Creative writing, content creation", "openrouter", "openai/gpt-4o", "You are a creative writer. Help with writing, editing, content creation, and storytelling.", false, false},
-		{"analyst", "Analyst", "Data analysis, metrics, reports", "openrouter", "anthropic/claude-sonnet-4", "You are a data analyst. Help with data analysis, metrics interpretation, report generation, and insights.", true, true},
-		{"translator", "Translator", "Multi-language translation", "openrouter", "openai/gpt-4o-mini", "You are a professional translator. Translate text accurately between languages, preserving meaning and tone.", false, false},
+		{"assistant", "Assistant", "Universal AI assistant (free)", "openrouter", "meta-llama/llama-3.3-70b-instruct:free", "You are a helpful AI assistant. Be concise, accurate, and helpful.", true, true},
+		{"developer", "Developer", "Code writing, refactoring, debugging (free)", "openrouter", "qwen/qwen3-coder:free", "You are an expert software developer. Help with code writing, refactoring, debugging, and code review. Always provide clean, production-ready code.", true, false},
+		{"devops", "DevOps", "Server management, deploy, monitoring (free)", "openrouter", "meta-llama/llama-3.3-70b-instruct:free", "You are a DevOps engineer. Help with server management, deployment, CI/CD, monitoring, and infrastructure.", true, false},
+		{"architect", "Architect", "System design, architecture decisions (free)", "openrouter", "nvidia/nemotron-3-super-120b-a12b:free", "You are a system architect. Help with system design, architecture decisions, trade-offs, and scalability.", false, false},
+		{"writer", "Writer", "Creative writing, content creation (free)", "openrouter", "meta-llama/llama-3.3-70b-instruct:free", "You are a creative writer. Help with writing, editing, content creation, and storytelling.", false, false},
+		{"analyst", "Analyst", "Data analysis, metrics, reports (free)", "openrouter", "qwen/qwen3-next-80b-a3b-instruct:free", "You are a data analyst. Help with data analysis, metrics interpretation, report generation, and insights.", true, true},
+		{"translator", "Translator", "Multi-language translation (free)", "openrouter", "meta-llama/llama-3.3-70b-instruct:free", "You are a professional translator. Translate text accurately between languages, preserving meaning and tone.", false, false},
+		{"vision", "Vision", "Image analysis and visual Q&A (free)", "openrouter", "google/gemma-4-26b-a4b-it:free", "You are a visual assistant. Analyze images, describe what you see, answer questions about visual content.", true, false},
+		{"reve", "Reve Image", "AI image generation (text-to-image, edit, remix)", "reve", "reve-2.0", "You are Reve, an AI image generation assistant. Generate images based on user descriptions. Be creative and detailed in your prompts.", false, false},
+		{"hermes", "Hermes Agent", "Hermes Agent with ACP — persistent sessions, tool calling", "hermes_acp", "hermes-local", "You are Hermes, an AI coding agent. You can read/write files, run commands, and help with software development. Be helpful, accurate, and proactive.", true, false},
 	}
 
 	for _, p := range presets {
-		pc := map[string]any{"api_key_source": "user", "default_model": p.model}
+		pc := map[string]any{"api_key_source": "server", "default_model": p.model}
+		// Add hermes_path for hermes_acp provider
+		if p.provider == "hermes_acp" {
+			pc["hermes_path"] = findHermesBinary()
+		}
 		pcJSON, _ := json.Marshal(pc)
 		query := `INSERT INTO agents_v2 (id, name, description, provider_type, provider_config, system_prompt, model, tools_enabled, rag_enabled, is_preset, is_public, is_active)
 			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, TRUE, TRUE, TRUE)
-			ON CONFLICT (id) DO NOTHING`
+			ON CONFLICT (id) DO UPDATE SET
+				name = EXCLUDED.name,
+				description = EXCLUDED.description,
+				provider_config = EXCLUDED.provider_config,
+				system_prompt = EXCLUDED.system_prompt,
+				model = EXCLUDED.model,
+				tools_enabled = EXCLUDED.tools_enabled,
+				rag_enabled = EXCLUDED.rag_enabled,
+				updated_at = NOW()`
 		if _, err := db.Exec(query, p.id, p.name, p.desc, p.provider, string(pcJSON), p.prompt, p.model, p.tools, p.rag); err != nil {
 			return fmt.Errorf("seed %s: %v", p.id, err)
 		}
@@ -270,16 +265,18 @@ func (d *DB) CreateAgentV2(a *AgentV2) error {
 func (d *DB) GetAgentV2(id string) (*AgentV2, error) {
 	var a AgentV2
 	var pcJSON, rcJSON string
-	var toolWL []string
-	query := `SELECT id, name, description, provider_type, provider_config, system_prompt, model, max_tokens, temperature, tools_enabled, tool_whitelist, rag_enabled, rag_config, rate_limit, is_preset, is_public, is_active, COALESCE(created_by,''), install_count, avg_rating, review_count, tags, original_agent_id, version, share_code, created_at, updated_at
+	toolWL := pq.StringArray{}
+	tags := pq.StringArray{}
+	query := `SELECT id, name, description, provider_type, provider_config, system_prompt, model, max_tokens, temperature, tools_enabled, tool_whitelist, rag_enabled, rag_config, rate_limit, is_preset, is_public, is_active, COALESCE(created_by::text,''), install_count, avg_rating, review_count, tags, original_agent_id, version, share_code, created_at, updated_at
 		FROM agents_v2 WHERE id = $1 AND is_active = TRUE`
-	err := d.QueryRow(query, id).Scan(&a.ID, &a.Name, &a.Description, &a.ProviderType, &pcJSON, &a.SystemPrompt, &a.Model, &a.MaxTokens, &a.Temperature, &a.ToolsEnabled, &toolWL, &a.RAGEnabled, &rcJSON, &a.RateLimit, &a.IsPreset, &a.IsPublic, &a.IsActive, &a.CreatedBy, &a.InstallCount, &a.AvgRating, &a.ReviewCount, &a.Tags, &a.OriginalAgentID, &a.Version, &a.ShareCode, &a.CreatedAt, &a.UpdatedAt)
+	err := d.QueryRow(query, id).Scan(&a.ID, &a.Name, &a.Description, &a.ProviderType, &pcJSON, &a.SystemPrompt, &a.Model, &a.MaxTokens, &a.Temperature, &a.ToolsEnabled, &toolWL, &a.RAGEnabled, &rcJSON, &a.RateLimit, &a.IsPreset, &a.IsPublic, &a.IsActive, &a.CreatedBy, &a.InstallCount, &a.AvgRating, &a.ReviewCount, &tags, &a.OriginalAgentID, &a.Version, &a.ShareCode, &a.CreatedAt, &a.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
 	json.Unmarshal([]byte(pcJSON), &a.ProviderConfig)
 	json.Unmarshal([]byte(rcJSON), &a.RAGConfig)
-	a.ToolWhitelist = toolWL
+	a.ToolWhitelist = []string(toolWL)
+	a.Tags = []string(tags)
 	return &a, nil
 }
 
@@ -287,11 +284,20 @@ func (d *DB) ListAgentsV2(userID string, includePublic bool) ([]*AgentV2, error)
 	var query string
 	var args []any
 	if includePublic {
-		query = `SELECT id, name, description, provider_type, provider_config, system_prompt, model, max_tokens, temperature, tools_enabled, tool_whitelist, rag_enabled, rag_config, rate_limit, is_preset, is_public, is_active, COALESCE(created_by,''), install_count, avg_rating, review_count, tags, original_agent_id, version, share_code, created_at, updated_at
-			FROM agents_v2 WHERE is_active = TRUE AND (created_by = $1::uuid OR is_public = TRUE) ORDER BY is_preset DESC, name ASC`
-		args = []any{userID}
+		if userID == "" {
+			query = `SELECT id, name, description, provider_type, provider_config, system_prompt, model, max_tokens, temperature, tools_enabled, tool_whitelist, rag_enabled, rag_config, rate_limit, is_preset, is_public, is_active, COALESCE(created_by::text,''), install_count, avg_rating, review_count, tags, original_agent_id, version, share_code, created_at, updated_at
+				FROM agents_v2 WHERE is_active = TRUE AND is_public = TRUE ORDER BY is_preset DESC, name ASC`
+			args = []any{}
+		} else {
+			query = `SELECT id, name, description, provider_type, provider_config, system_prompt, model, max_tokens, temperature, tools_enabled, tool_whitelist, rag_enabled, rag_config, rate_limit, is_preset, is_public, is_active, COALESCE(created_by::text,''), install_count, avg_rating, review_count, tags, original_agent_id, version, share_code, created_at, updated_at
+				FROM agents_v2 WHERE is_active = TRUE AND (created_by = $1::uuid OR is_public = TRUE) ORDER BY is_preset DESC, name ASC`
+			args = []any{userID}
+		}
 	} else {
-		query = `SELECT id, name, description, provider_type, provider_config, system_prompt, model, max_tokens, temperature, tools_enabled, tool_whitelist, rag_enabled, rag_config, rate_limit, is_preset, is_public, is_active, COALESCE(created_by,''), install_count, avg_rating, review_count, tags, original_agent_id, version, share_code, created_at, updated_at
+		if userID == "" {
+			return []*AgentV2{}, nil
+		}
+		query = `SELECT id, name, description, provider_type, provider_config, system_prompt, model, max_tokens, temperature, tools_enabled, tool_whitelist, rag_enabled, rag_config, rate_limit, is_preset, is_public, is_active, COALESCE(created_by::text,''), install_count, avg_rating, review_count, tags, original_agent_id, version, share_code, created_at, updated_at
 			FROM agents_v2 WHERE is_active = TRUE AND created_by = $1::uuid ORDER BY name ASC`
 		args = []any{userID}
 	}
@@ -299,13 +305,13 @@ func (d *DB) ListAgentsV2(userID string, includePublic bool) ([]*AgentV2, error)
 }
 
 func (d *DB) ListPresetAgentsV2() ([]*AgentV2, error) {
-	query := `SELECT id, name, description, provider_type, provider_config, system_prompt, model, max_tokens, temperature, tools_enabled, tool_whitelist, rag_enabled, rag_config, rate_limit, is_preset, is_public, is_active, COALESCE(created_by,''), install_count, avg_rating, review_count, tags, original_agent_id, version, share_code, created_at, updated_at
+	query := `SELECT id, name, description, provider_type, provider_config, system_prompt, model, max_tokens, temperature, tools_enabled, tool_whitelist, rag_enabled, rag_config, rate_limit, is_preset, is_public, is_active, COALESCE(created_by::text,''), install_count, avg_rating, review_count, tags, original_agent_id, version, share_code, created_at, updated_at
 		FROM agents_v2 WHERE is_active = TRUE AND is_preset = TRUE ORDER BY name ASC`
 	return d.scanAgents(query)
 }
 
 func (d *DB) ListAllActiveAgentsV2() ([]*AgentV2, error) {
-	query := `SELECT id, name, description, provider_type, provider_config, system_prompt, model, max_tokens, temperature, tools_enabled, tool_whitelist, rag_enabled, rag_config, rate_limit, is_preset, is_public, is_active, COALESCE(created_by,''), install_count, avg_rating, review_count, tags, original_agent_id, version, share_code, created_at, updated_at
+	query := `SELECT id, name, description, provider_type, provider_config, system_prompt, model, max_tokens, temperature, tools_enabled, tool_whitelist, rag_enabled, rag_config, rate_limit, is_preset, is_public, is_active, COALESCE(created_by::text,''), install_count, avg_rating, review_count, tags, original_agent_id, version, share_code, created_at, updated_at
 		FROM agents_v2 WHERE is_active = TRUE ORDER BY is_preset DESC, name ASC`
 	return d.scanAgents(query)
 }
@@ -340,15 +346,17 @@ func (d *DB) scanAgents(query string, args ...any) ([]*AgentV2, error) {
 	for rows.Next() {
 		var a AgentV2
 		var pcJSON, rcJSON string
-		var toolWL []string
-		if err := rows.Scan(&a.ID, &a.Name, &a.Description, &a.ProviderType, &pcJSON, &a.SystemPrompt, &a.Model, &a.MaxTokens, &a.Temperature, &a.ToolsEnabled, &toolWL, &a.RAGEnabled, &rcJSON, &a.RateLimit, &a.IsPreset, &a.IsPublic, &a.IsActive, &a.CreatedBy, &a.InstallCount, &a.AvgRating, &a.ReviewCount, &a.Tags, &a.OriginalAgentID, &a.Version, &a.ShareCode, &a.CreatedAt, &a.UpdatedAt); err != nil {
+		toolWL := pq.StringArray{}
+		tags := pq.StringArray{}
+		if err := rows.Scan(&a.ID, &a.Name, &a.Description, &a.ProviderType, &pcJSON, &a.SystemPrompt, &a.Model, &a.MaxTokens, &a.Temperature, &a.ToolsEnabled, &toolWL, &a.RAGEnabled, &rcJSON, &a.RateLimit, &a.IsPreset, &a.IsPublic, &a.IsActive, &a.CreatedBy, &a.InstallCount, &a.AvgRating, &a.ReviewCount, &tags, &a.OriginalAgentID, &a.Version, &a.ShareCode, &a.CreatedAt, &a.UpdatedAt); err != nil {
 			return nil, err
 		}
 		a.ProviderConfig = make(map[string]any)
 		json.Unmarshal([]byte(pcJSON), &a.ProviderConfig)
 		a.RAGConfig = make(map[string]any)
 		json.Unmarshal([]byte(rcJSON), &a.RAGConfig)
-		a.ToolWhitelist = toolWL
+		a.ToolWhitelist = []string(toolWL)
+		a.Tags = []string(tags)
 		agents = append(agents, &a)
 	}
 	return agents, nil
@@ -425,16 +433,18 @@ func (d *DB) DeleteAIChatV2(id string) error {
 func GetAgentV2FromDB(d *sql.DB, id string) (*AgentV2, error) {
 	var a AgentV2
 	var pcJSON, rcJSON string
-	var toolWL []string
-	query := `SELECT id, name, description, provider_type, provider_config, system_prompt, model, max_tokens, temperature, tools_enabled, tool_whitelist, rag_enabled, rag_config, rate_limit, is_preset, is_public, is_active, COALESCE(created_by,''), install_count, avg_rating, review_count, tags, original_agent_id, version, share_code, created_at, updated_at
+	toolWL := pq.StringArray{}
+	tags := pq.StringArray{}
+	query := `SELECT id, name, description, provider_type, provider_config, system_prompt, model, max_tokens, temperature, tools_enabled, tool_whitelist, rag_enabled, rag_config, rate_limit, is_preset, is_public, is_active, COALESCE(created_by::text,''), install_count, avg_rating, review_count, tags, original_agent_id, version, share_code, created_at, updated_at
 		FROM agents_v2 WHERE id = $1 AND is_active = TRUE`
-	err := d.QueryRow(query, id).Scan(&a.ID, &a.Name, &a.Description, &a.ProviderType, &pcJSON, &a.SystemPrompt, &a.Model, &a.MaxTokens, &a.Temperature, &a.ToolsEnabled, &toolWL, &a.RAGEnabled, &rcJSON, &a.RateLimit, &a.IsPreset, &a.IsPublic, &a.IsActive, &a.CreatedBy, &a.InstallCount, &a.AvgRating, &a.ReviewCount, &a.Tags, &a.OriginalAgentID, &a.Version, &a.ShareCode, &a.CreatedAt, &a.UpdatedAt)
+	err := d.QueryRow(query, id).Scan(&a.ID, &a.Name, &a.Description, &a.ProviderType, &pcJSON, &a.SystemPrompt, &a.Model, &a.MaxTokens, &a.Temperature, &a.ToolsEnabled, &toolWL, &a.RAGEnabled, &rcJSON, &a.RateLimit, &a.IsPreset, &a.IsPublic, &a.IsActive, &a.CreatedBy, &a.InstallCount, &a.AvgRating, &a.ReviewCount, &tags, &a.OriginalAgentID, &a.Version, &a.ShareCode, &a.CreatedAt, &a.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
 	json.Unmarshal([]byte(pcJSON), &a.ProviderConfig)
 	json.Unmarshal([]byte(rcJSON), &a.RAGConfig)
-	a.ToolWhitelist = toolWL
+	a.ToolWhitelist = []string(toolWL)
+	a.Tags = []string(tags)
 	return &a, nil
 }
 
@@ -562,7 +572,7 @@ func (d *DB) ListMarketplaceAgents(query string, limit, offset int) ([]*AgentV2,
 	if limit <= 0 {
 		limit = 20
 	}
-	sqlQuery := `SELECT id, name, description, provider_type, provider_config, system_prompt, model, max_tokens, temperature, tools_enabled, tool_whitelist, rag_enabled, rag_config, rate_limit, is_preset, is_public, is_active, COALESCE(created_by,''), install_count, avg_rating, review_count, tags, original_agent_id, version, share_code, created_at, updated_at
+	sqlQuery := `SELECT id, name, description, provider_type, provider_config, system_prompt, model, max_tokens, temperature, tools_enabled, tool_whitelist, rag_enabled, rag_config, rate_limit, is_preset, is_public, is_active, COALESCE(created_by::text,''), install_count, avg_rating, review_count, tags, original_agent_id, version, share_code, created_at, updated_at
 		FROM agents_v2 WHERE is_active = TRUE AND is_public = TRUE`
 	var args []any
 	if query != "" {
@@ -580,16 +590,18 @@ func (d *DB) ListMarketplaceAgents(query string, limit, offset int) ([]*AgentV2,
 func (d *DB) GetAgentByShareCode(shareCode string) (*AgentV2, error) {
 	var a AgentV2
 	var pcJSON, rcJSON string
-	var toolWL []string
-	query := `SELECT id, name, description, provider_type, provider_config, system_prompt, model, max_tokens, temperature, tools_enabled, tool_whitelist, rag_enabled, rag_config, rate_limit, is_preset, is_public, is_active, COALESCE(created_by,''), install_count, avg_rating, review_count, tags, original_agent_id, version, share_code, created_at, updated_at
+	toolWL := pq.StringArray{}
+	tags := pq.StringArray{}
+	query := `SELECT id, name, description, provider_type, provider_config, system_prompt, model, max_tokens, temperature, tools_enabled, tool_whitelist, rag_enabled, rag_config, rate_limit, is_preset, is_public, is_active, COALESCE(created_by::text,''), install_count, avg_rating, review_count, tags, original_agent_id, version, share_code, created_at, updated_at
 		FROM agents_v2 WHERE share_code = $1 AND is_active = TRUE`
-	err := d.QueryRow(query, shareCode).Scan(&a.ID, &a.Name, &a.Description, &a.ProviderType, &pcJSON, &a.SystemPrompt, &a.Model, &a.MaxTokens, &a.Temperature, &a.ToolsEnabled, &toolWL, &a.RAGEnabled, &rcJSON, &a.RateLimit, &a.IsPreset, &a.IsPublic, &a.IsActive, &a.CreatedBy, &a.InstallCount, &a.AvgRating, &a.ReviewCount, &a.Tags, &a.OriginalAgentID, &a.Version, &a.ShareCode, &a.CreatedAt, &a.UpdatedAt)
+	err := d.QueryRow(query, shareCode).Scan(&a.ID, &a.Name, &a.Description, &a.ProviderType, &pcJSON, &a.SystemPrompt, &a.Model, &a.MaxTokens, &a.Temperature, &a.ToolsEnabled, &toolWL, &a.RAGEnabled, &rcJSON, &a.RateLimit, &a.IsPreset, &a.IsPublic, &a.IsActive, &a.CreatedBy, &a.InstallCount, &a.AvgRating, &a.ReviewCount, &tags, &a.OriginalAgentID, &a.Version, &a.ShareCode, &a.CreatedAt, &a.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
 	json.Unmarshal([]byte(pcJSON), &a.ProviderConfig)
 	json.Unmarshal([]byte(rcJSON), &a.RAGConfig)
-	a.ToolWhitelist = toolWL
+	a.ToolWhitelist = []string(toolWL)
+	a.Tags = []string(tags)
 	return &a, nil
 }
 

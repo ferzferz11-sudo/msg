@@ -16,9 +16,9 @@ import (
 // ======= ChatWithAIV2 =======
 
 func (s *server) ChatWithAIV2(req *gen.ChatWithAIV2Request, stream gen.ChatService_ChatWithAIV2Server) error {
-	userID := getAIV2UserID(stream.Context())
-	if userID == "" {
-		return status.Error(codes.Unauthenticated, "unauthorized")
+	userID, err := requireValidAIV2UserID(stream.Context())
+	if err != nil {
+		return err
 	}
 
 	gateway := s.aiGateway
@@ -33,14 +33,22 @@ func (s *server) ChatWithAIV2(req *gen.ChatWithAIV2Request, stream gen.ChatServi
 		AgentID: req.AgentId,
 	}
 
-	err := gateway.Chat(stream.Context(), chatReq, func(token string, finished bool) error {
+	logger.Infof("[AI] ChatWithAIV2: user=%s agent=%s session=%s msg=%dchars", userID, req.AgentId, req.SessionId, len(req.Message))
+
+	err = gateway.Chat(stream.Context(), chatReq, func(token string, finished bool, imageURL string, agentID string, agentName string, hasRagContext bool, modelUsed string) error {
 		return stream.Send(&gen.ChatWithAIV2Response{
-			Token:    token,
-			Finished: finished,
+			Token:         token,
+			Finished:      finished,
+			ImageUrl:      imageURL,
+			AgentId:       agentID,
+			AgentName:     agentName,
+			HasRagContext: hasRagContext,
+			ModelUsed:     modelUsed,
 		})
 	})
 
 	if err != nil {
+		logger.Infof("[AI] ChatWithAIV2 error: user=%s agent=%s err=%v", userID, req.AgentId, err)
 		stream.Send(&gen.ChatWithAIV2Response{
 			Error:    err.Error(),
 			Finished: true,
@@ -53,8 +61,8 @@ func (s *server) ChatWithAIV2(req *gen.ChatWithAIV2Request, stream gen.ChatServi
 // ======= Agent CRUD =======
 
 func (s *server) CreateAIAgent(ctx context.Context, req *gen.CreateAIAgentRequest) (*gen.CreateAIAgentResponse, error) {
-	userID := getAIV2UserID(ctx)
-	if userID == "" {
+	userID, err := requireValidAIV2UserID(ctx)
+	if err != nil {
 		return &gen.CreateAIAgentResponse{Error: "unauthorized"}, nil
 	}
 
@@ -110,10 +118,12 @@ func (s *server) CreateAIAgent(ctx context.Context, req *gen.CreateAIAgentReques
 		agent.Temperature = 0.7
 	}
 
-	err := s.db.CreateAgentV2(agent)
+	err = s.db.CreateAgentV2(agent)
 	if err != nil {
 		return &gen.CreateAIAgentResponse{Error: err.Error()}, nil
 	}
+
+	logger.Infof("[AI] CreateAgent: id=%s name=%s provider=%s user=%s", agentID, req.Name, req.ProviderType, userID)
 
 	return &gen.CreateAIAgentResponse{
 		Success: true,
@@ -122,8 +132,8 @@ func (s *server) CreateAIAgent(ctx context.Context, req *gen.CreateAIAgentReques
 }
 
 func (s *server) UpdateAIAgent(ctx context.Context, req *gen.UpdateAIAgentRequest) (*gen.UpdateAIAgentResponse, error) {
-	userID := getAIV2UserID(ctx)
-	if userID == "" {
+	userID, err := requireValidAIV2UserID(ctx)
+	if err != nil {
 		return &gen.UpdateAIAgentResponse{Error: "unauthorized"}, nil
 	}
 
@@ -173,12 +183,14 @@ func (s *server) UpdateAIAgent(ctx context.Context, req *gen.UpdateAIAgentReques
 		return &gen.UpdateAIAgentResponse{Error: err.Error()}, nil
 	}
 
+	logger.Infof("[AI] UpdateAgent: id=%s user=%s", req.AgentId, userID)
+
 	return &gen.UpdateAIAgentResponse{Success: true}, nil
 }
 
 func (s *server) DeleteAIAgent(ctx context.Context, req *gen.DeleteAIAgentRequest) (*gen.DeleteAIAgentResponse, error) {
-	userID := getAIV2UserID(ctx)
-	if userID == "" {
+	userID, err := requireValidAIV2UserID(ctx)
+	if err != nil {
 		return &gen.DeleteAIAgentResponse{Error: "unauthorized"}, nil
 	}
 
@@ -199,6 +211,8 @@ func (s *server) DeleteAIAgent(ctx context.Context, req *gen.DeleteAIAgentReques
 		return &gen.DeleteAIAgentResponse{Error: err.Error()}, nil
 	}
 
+	logger.Infof("[AI] DeleteAgent: id=%s user=%s", req.AgentId, userID)
+
 	return &gen.DeleteAIAgentResponse{Success: true}, nil
 }
 
@@ -214,13 +228,17 @@ func (s *server) GetAIAgent(ctx context.Context, req *gen.GetAIAgentRequest) (*g
 }
 
 func (s *server) ListAIAgents(ctx context.Context, req *gen.ListAIAgentsRequest) (*gen.ListAIAgentsResponse, error) {
-	userID := getAIV2UserID(ctx)
-	if userID == "" {
+	userID, err := requireValidAIV2UserID(ctx)
+	if err != nil {
+		logger.Warnf("[AI] ListAgents: auth failed err=%v", err)
 		return &gen.ListAIAgentsResponse{}, nil
 	}
 
+	logger.Infof("[AI] ListAgents: user=%s includePublic=%v", userID, req.IncludePublic)
+
 	agents, err := s.db.ListAgentsV2(userID, req.IncludePublic)
 	if err != nil {
+		logger.Errorf("[AI] ListAgents: db error user=%s err=%v", userID, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
@@ -229,12 +247,14 @@ func (s *server) ListAIAgents(ctx context.Context, req *gen.ListAIAgentsRequest)
 		result = append(result, agentToProto(a))
 	}
 
+	logger.Infof("[AI] ListAgents: user=%s includePublic=%v count=%d", userID, req.IncludePublic, len(result))
+
 	return &gen.ListAIAgentsResponse{Agents: result}, nil
 }
 
 func (s *server) CloneAIAgent(ctx context.Context, req *gen.CloneAIAgentRequest) (*gen.CloneAIAgentResponse, error) {
-	userID := getAIV2UserID(ctx)
-	if userID == "" {
+	userID, err := requireValidAIV2UserID(ctx)
+	if err != nil {
 		return &gen.CloneAIAgentResponse{Error: "unauthorized"}, nil
 	}
 
@@ -272,6 +292,8 @@ func (s *server) CloneAIAgent(ctx context.Context, req *gen.CloneAIAgentRequest)
 		return &gen.CloneAIAgentResponse{Error: err.Error()}, nil
 	}
 
+	logger.Infof("[AI] CloneAgent: from=%s new=%s user=%s", req.AgentId, newID, userID)
+
 	return &gen.CloneAIAgentResponse{
 		Success: true,
 		AgentId: newID,
@@ -301,8 +323,8 @@ func (s *server) ListAITools(ctx context.Context, req *gen.ListAIToolsRequest) (
 // ======= Marketplace Handlers =======
 
 func (s *server) RateAIAgent(ctx context.Context, req *gen.RateAIAgentRequest) (*gen.RateAIAgentResponse, error) {
-	userID := getAIV2UserID(ctx)
-	if userID == "" {
+	userID, err := requireValidAIV2UserID(ctx)
+	if err != nil {
 		return &gen.RateAIAgentResponse{Error: "unauthorized"}, nil
 	}
 
@@ -336,6 +358,8 @@ func (s *server) RateAIAgent(ctx context.Context, req *gen.RateAIAgentRequest) (
 		avgRating = float32(updated.AvgRating)
 		reviewCount = int32(updated.ReviewCount)
 	}
+
+	logger.Infof("[AI] RateAgent: agent=%s user=%s rating=%d", req.AgentId, userID, req.Rating)
 
 	return &gen.RateAIAgentResponse{
 		Success:     true,
@@ -373,6 +397,8 @@ func (s *server) GetAIAgentReviews(ctx context.Context, req *gen.GetAIAgentRevie
 		reviewCount = int32(agent.ReviewCount)
 	}
 
+	logger.Infof("[AI] GetReviews: agent=%s count=%d", req.AgentId, len(result))
+
 	return &gen.GetAIAgentReviewsResponse{
 		Reviews:     result,
 		AvgRating:   avgRating,
@@ -397,6 +423,8 @@ func (s *server) ListMarketplaceAgents(ctx context.Context, req *gen.ListMarketp
 		result = append(result, agentToProto(a))
 	}
 
+	logger.Infof("[AI] Marketplace: query=%q limit=%d offset=%d results=%d", req.Query, limit, offset, len(result))
+
 	return &gen.ListMarketplaceAgentsResponse{
 		Agents: result,
 		Total:  int32(len(result)),
@@ -417,8 +445,8 @@ func (s *server) GetAIAgentStats(ctx context.Context, req *gen.GetAIAgentStatsRe
 }
 
 func (s *server) ShareAIAgent(ctx context.Context, req *gen.ShareAIAgentRequest) (*gen.ShareAIAgentResponse, error) {
-	userID := getAIV2UserID(ctx)
-	if userID == "" {
+	userID, err := requireValidAIV2UserID(ctx)
+	if err != nil {
 		return &gen.ShareAIAgentResponse{Error: "unauthorized"}, nil
 	}
 
@@ -439,6 +467,8 @@ func (s *server) ShareAIAgent(ctx context.Context, req *gen.ShareAIAgentRequest)
 		}
 	}
 
+	logger.Infof("[AI] ShareAgent: agent=%s code=%s user=%s", req.AgentId, shareCode, userID)
+
 	return &gen.ShareAIAgentResponse{
 		Success:   true,
 		ShareCode: shareCode,
@@ -446,8 +476,8 @@ func (s *server) ShareAIAgent(ctx context.Context, req *gen.ShareAIAgentRequest)
 }
 
 func (s *server) InstallAIAgent(ctx context.Context, req *gen.InstallAIAgentRequest) (*gen.InstallAIAgentResponse, error) {
-	userID := getAIV2UserID(ctx)
-	if userID == "" {
+	userID, err := requireValidAIV2UserID(ctx)
+	if err != nil {
 		return &gen.InstallAIAgentResponse{Error: "unauthorized"}, nil
 	}
 
@@ -492,6 +522,8 @@ func (s *server) InstallAIAgent(ctx context.Context, req *gen.InstallAIAgentRequ
 
 	s.db.IncrementInstallCount(original.ID)
 
+	logger.Infof("[AI] InstallAgent: code=%s from=%s new=%s user=%s", req.ShareCode, original.ID, newID, userID)
+
 	return &gen.InstallAIAgentResponse{
 		Success: true,
 		AgentId: newID,
@@ -499,8 +531,8 @@ func (s *server) InstallAIAgent(ctx context.Context, req *gen.InstallAIAgentRequ
 }
 
 func (s *server) GetAIUsageStats(ctx context.Context, req *gen.GetAIUsageStatsRequest) (*gen.GetAIUsageStatsResponse, error) {
-	userID := getAIV2UserID(ctx)
-	if userID == "" {
+	userID, err := requireValidAIV2UserID(ctx)
+	if err != nil {
 		return &gen.GetAIUsageStatsResponse{}, nil
 	}
 
@@ -531,6 +563,8 @@ func (s *server) GetAIUsageStats(ctx context.Context, req *gen.GetAIUsageStatsRe
 		})
 	}
 
+	logger.Infof("[AI] UsageStats: user=%s tokens=%d requests=%d", userID, totalTokens, totalRequests)
+
 	return &gen.GetAIUsageStatsResponse{
 		Stats:         result,
 		TotalTokens:   int32(totalTokens),
@@ -547,6 +581,14 @@ func agentToProto(a *AgentV2) *gen.AgentInfoV2 {
 		SupportsStreaming: true,
 		MaxTokens:         int32(a.MaxTokens),
 	}
+
+	pcJSON := ""
+	if a.ProviderConfig != nil {
+		if b, err := json.Marshal(a.ProviderConfig); err == nil {
+			pcJSON = string(b)
+		}
+	}
+
 	return &gen.AgentInfoV2{
 		Id:              a.ID,
 		Name:            a.Name,
@@ -569,15 +611,177 @@ func agentToProto(a *AgentV2) *gen.AgentInfoV2 {
 		OriginalAgentId: a.OriginalAgentID,
 		Version:         int32(a.Version),
 		ShareCode:       a.ShareCode,
+		ProviderConfig:  pcJSON,
 	}
 }
 
 func getAIV2UserID(ctx context.Context) string {
-	if ctx == nil {
-		return ""
+	return GetUserID(ctx)
+}
+
+// requireValidAIV2UserID extracts user ID from context and validates it's a non-empty UUID.
+// Returns userID and nil on success, or empty string and error on failure.
+func requireValidAIV2UserID(ctx context.Context) (string, error) {
+	userID := getAIV2UserID(ctx)
+	if userID == "" {
+		logger.Warnf("[AI] requireValidAIV2UserID: empty userID")
+		return "", status.Error(codes.Unauthenticated, "unauthorized")
 	}
-	if id, ok := ctx.Value("user_id").(string); ok {
-		return id
+	if _, err := uuid.Parse(userID); err != nil {
+		logger.Warnf("[AI] requireValidAIV2UserID: invalid userID=%q err=%v", userID, err)
+		return "", status.Error(codes.Unauthenticated, "invalid user id")
 	}
-	return ""
+	return userID, nil
+}
+
+// ======= AI Chat Settings (per-session user API key & model override) =======
+
+func (s *server) GetAIChatSettings(ctx context.Context, req *gen.GetAIChatSettingsRequest) (*gen.AIChatSettings, error) {
+	userID, err := requireValidAIV2UserID(ctx)
+	if err != nil {
+		return &gen.AIChatSettings{}, nil
+	}
+
+	if req.SessionId == "" {
+		return &gen.AIChatSettings{}, nil
+	}
+
+	chat, err := s.db.GetAIChatV2(req.SessionId)
+	if err != nil {
+		return &gen.AIChatSettings{}, nil
+	}
+	if chat.UserID != userID {
+		return &gen.AIChatSettings{}, nil
+	}
+
+	apiKey, _ := chat.Settings["user_api_key"].(string)
+	model, _ := chat.Settings["model_override"].(string)
+	isCustom := apiKey != ""
+
+	var remaining, limit, windowSeconds int32
+
+	return &gen.AIChatSettings{
+		SessionId:        req.SessionId,
+		UserApiKey:       apiKey,
+		Model:            model,
+		IsUsingCustomKey: isCustom,
+		Remaining:        remaining,
+		Limit:            limit,
+		WindowSeconds:    windowSeconds,
+	}, nil
+}
+
+func (s *server) UpdateAIChatSettings(ctx context.Context, req *gen.UpdateAIChatSettingsRequest) (*gen.UpdateAIChatSettingsResponse, error) {
+	userID, err := requireValidAIV2UserID(ctx)
+	if err != nil {
+		return &gen.UpdateAIChatSettingsResponse{Success: false, Message: "unauthorized"}, nil
+	}
+
+	if req.SessionId == "" {
+		return &gen.UpdateAIChatSettingsResponse{Success: false, Message: "session_id required"}, nil
+	}
+
+	chat, err := s.db.GetAIChatV2(req.SessionId)
+	if err != nil {
+		return &gen.UpdateAIChatSettingsResponse{Success: false, Message: "chat not found"}, nil
+	}
+	if chat.UserID != userID {
+		return &gen.UpdateAIChatSettingsResponse{Success: false, Message: "permission denied"}, nil
+	}
+
+	if chat.Settings == nil {
+		chat.Settings = make(map[string]any)
+	}
+
+	if req.ApiKey != "" {
+		chat.Settings["user_api_key"] = req.ApiKey
+	} else {
+		delete(chat.Settings, "user_api_key")
+	}
+
+	if req.Model != "" {
+		chat.Settings["model_override"] = req.Model
+	} else {
+		delete(chat.Settings, "model_override")
+	}
+
+	if err := s.db.UpdateAIChatV2(chat); err != nil {
+		return &gen.UpdateAIChatSettingsResponse{Success: false, Message: err.Error()}, nil
+	}
+
+	logger.Infof("[AI] UpdateSettings: session=%s user=%s hasKey=%v model=%s", req.SessionId, userID, req.ApiKey != "", req.Model)
+
+	return &gen.UpdateAIChatSettingsResponse{
+		Success: true,
+		Message: "settings updated",
+	}, nil
+}
+
+// ======= AI Chat v2 History & List =======
+
+func (s *server) GetAIV2ChatHistory(ctx context.Context, req *gen.GetAIV2ChatHistoryRequest) (*gen.GetAIV2ChatHistoryResponse, error) {
+	userID, err := requireValidAIV2UserID(ctx)
+	if err != nil {
+		return &gen.GetAIV2ChatHistoryResponse{}, nil
+	}
+
+	chat, err := s.db.GetAIChatV2(req.SessionId)
+	if err != nil {
+		return &gen.GetAIV2ChatHistoryResponse{}, nil
+	}
+	if chat.UserID != userID {
+		return &gen.GetAIV2ChatHistoryResponse{}, nil
+	}
+
+	limit := int(req.Limit)
+	if limit <= 0 {
+		limit = 50
+	}
+
+	msgs, err := s.db.GetAIMessagesV2(req.SessionId, limit)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	var result []*gen.AIV2ChatMessage
+	for _, m := range msgs {
+		result = append(result, &gen.AIV2ChatMessage{
+			Id:         m.ID,
+			ChatId:     m.ChatID,
+			Role:       m.Role,
+			Content:    m.Content,
+			AgentId:    m.AgentID,
+			TokenCount: int32(m.TokenCount),
+			ModelUsed:  m.ModelUsed,
+			CreatedAt:  m.CreatedAt.Format("2006-01-02T15:04:05Z"),
+		})
+	}
+
+	return &gen.GetAIV2ChatHistoryResponse{Messages: result}, nil
+}
+
+func (s *server) ListAIV2Chats(ctx context.Context, req *gen.ListAIV2ChatsRequest) (*gen.ListAIV2ChatsResponse, error) {
+	userID, err := requireValidAIV2UserID(ctx)
+	if err != nil {
+		return &gen.ListAIV2ChatsResponse{}, nil
+	}
+
+	chats, err := s.db.ListAIChatsV2(userID)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	var result []*gen.AIV2ChatInfo
+	for _, c := range chats {
+		result = append(result, &gen.AIV2ChatInfo{
+			Id:        c.ID,
+			Name:      c.Name,
+			ChatType:  c.ChatType,
+			AgentId:   c.AgentID,
+			CreatedAt: c.CreatedAt.Format("2006-01-02T15:04:05Z"),
+			UpdatedAt: c.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+		})
+	}
+
+	return &gen.ListAIV2ChatsResponse{Chats: result}, nil
 }

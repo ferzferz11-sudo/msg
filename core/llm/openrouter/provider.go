@@ -174,7 +174,7 @@ func (p *Provider) StreamChat(
 			var chunk struct {
 				Choices []struct {
 					Delta struct {
-						Content string `json:"content"`
+						Content   string `json:"content"`
 						ToolCalls []struct {
 							ID       string `json:"id"`
 							Function struct {
