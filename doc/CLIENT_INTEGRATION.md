@@ -767,8 +767,9 @@ message SetSelfDestructTimerResponse {
 **Behavior:**
 - Only chat participants can set the timer
 - Server sends a system message to the chat (content_type=`"system"`, sender_id=`00000000-...`):
-  - Timer set: `"Автоудаление сообщений установлено на N"`
-  - Timer disabled: `"Автоудаление сообщений отключено"`
+  - Bilingual format: `"ru_text\nen_text"` — client splits by `\n` and picks locale
+  - Timer set: `"Авто-удаление: 5 мин\nAuto-delete: 5 min"`
+  - Timer disabled: `"Авто-удаление отключено\nAuto-delete disabled"`
 - Server broadcasts `SELF_DESTRUCT_TIMER` system event to all room streams
 - Only messages created AFTER the timer was set are eligible for auto-deletion
 - System messages (content_type=`"system"`) are never auto-deleted
