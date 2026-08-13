@@ -1,7 +1,7 @@
 # Lavender Messenger — Архитектура
 
-**Дата:** 2026-07-19
-**Версия сервера:** 1.3.4.0 (2026-07-31)
+**Дата:** 2026-08-13
+**Версия сервера:** 1.4.0.0 (2026-08-13)
 **Модуль:** `LavenderMessenger` (Go 1.26)
 
 ---
@@ -52,6 +52,7 @@
 | `server_chatlist_v2.go` | **GetChatsV2** (основной), Pin/UnPin chats, Search, Archive, Pin messages | ChatService |
 | `server_chats.go` | Chat CRUD: GetAllChats, Create, Delete, Update | ChatService |
 | `server_messages_v2.go` | GetHistoryV2, SendMessageV2, Edit/Delete/ReactionV2, SearchMessages | ChatService |
+| `server_self_destruct.go` | SetSelfDestructTimer, self-destruct cleanup goroutine, deleted_messages cleanup | ChatService |
 | `server_users.go` | Profiles: list, update, get profile, get avatar | ChatService |
 | `server_push.go` | FCM push, call push, conference push, online broadcast | ChatService |
 | `server_contacts.go` | Contact list, chat list version | ChatService |
@@ -298,10 +299,10 @@ Health endpoint returns 503 `{"status":"shutting_down"}` during shutdown window.
 
 | Команда | Описание |
 |---------|----------|
-| `go test ./...` | Все тесты (~88) |
+| `go test ./...` | Все тесты (~130) |
 | `go test -race -count=1 .` | С race detector |
 
-Тесты: `auth_jwt_test.go`, `auth_service_test.go`, `owl_test.go`, `bot_commands_test.go`, `server_push_test.go`, `server_remote_test.go`, `server_stability_test.go`, `chatv2_test.go`, `messages_v2_test.go`, `company_test.go`, `core/rag/memory/memory_test.go`
+Тесты: `auth_jwt_test.go`, `auth_service_test.go`, `owl_test.go`, `bot_commands_test.go`, `server_push_test.go`, `server_remote_test.go`, `server_stability_test.go`, `chatv2_test.go`, `messages_v2_test.go`, `company_test.go`, `self_destruct_test.go`, `core/rag/memory/memory_test.go`
 
 ---
 

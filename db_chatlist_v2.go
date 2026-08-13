@@ -63,6 +63,7 @@ type ChatV2Row struct {
 	CompanyId               string
 	CompanyChatAccess       string
 	CompanyMinPositionLevel int32
+	SelfDestructTimer       int32
 }
 
 // ChatV2Result extends ChatV2Row with pagination metadata
@@ -233,7 +234,8 @@ func (db *DB) SearchChats(userID, query string, limit, offset int) ([]ChatV2Row,
 		       COALESCE(uc2.count, 0),
 		       COALESCE(c.agent_id, ''), COALESCE(c.agent_mode, 'single'),
 		       COALESCE(cc.company_id::text, ''), COALESCE(cc.access_level, 'member'),
-		       COALESCE(cc.min_position_level, 0)
+		       COALESCE(cc.min_position_level, 0),
+		       COALESCE(c.self_destruct_timer, 0)
 		FROM chats c
 		LEFT JOIN user_chat_metadata ucm ON ucm.room_id = c.id AND ucm.user_id = $2::uuid
 		LEFT JOIN unread_counts uc2 ON c.id = uc2.room_id
@@ -267,6 +269,7 @@ func (db *DB) SearchChats(userID, query string, limit, offset int) ([]ChatV2Row,
 			&c.UnreadCount,
 			&c.ActiveAgentId, &c.AgentMode,
 			&c.CompanyId, &c.CompanyChatAccess, &c.CompanyMinPositionLevel,
+			&c.SelfDestructTimer,
 		)
 		if err != nil {
 			logger.Errorf("SearchChats scan error: %v", err)
@@ -368,7 +371,8 @@ func (db *DB) GetUserChatsV2Cursor(userID, username string, limit int, cursor, f
 		       COALESCE(uc2.count, 0),
 		       COALESCE(c.agent_id, ''), COALESCE(c.agent_mode, 'single'),
 		       COALESCE(cc.company_id::text, ''), COALESCE(cc.access_level, 'member'),
-		       COALESCE(cc.min_position_level, 0)
+		       COALESCE(cc.min_position_level, 0),
+		       COALESCE(c.self_destruct_timer, 0)
 		FROM chats c
 		LEFT JOIN user_chat_metadata ucm ON ucm.room_id = c.id AND ucm.user_id = $1::uuid
 		LEFT JOIN muted_chats mc ON mc.room_id = c.id AND mc.user_id = $1::uuid
@@ -404,6 +408,7 @@ func (db *DB) GetUserChatsV2Cursor(userID, username string, limit int, cursor, f
 			&c.UnreadCount,
 			&c.ActiveAgentId, &c.AgentMode,
 			&c.CompanyId, &c.CompanyChatAccess, &c.CompanyMinPositionLevel,
+			&c.SelfDestructTimer,
 		)
 		if err != nil {
 			logger.Errorf("GetUserChatsV2 scan error: %v", err)

@@ -95,6 +95,29 @@
 
 ---
 
+## Self-Destruct Timer
+
+### Timer values
+- Только `0, 30, 60, 300, 3600, 86400` — другие значения отклоняются handler'ом
+- `0` = выключен (default)
+
+### Background cleanup
+- Goroutine проверяет каждые 30 секунд
+- Удаляет сообщения старше `self_destruct_timer` секунд
+- Перед удалением записывает в `deleted_messages` (для persistence)
+- Широковещает `DELETE_MESSAGE_V2` для каждого удалённого сообщения
+
+### deleted_messages table
+- Хранит ID удалённых сообщений (physical delete + tracking)
+- `GetHistoryV2` фильтрует по этой таблице — удалённые не появляются при перезагрузке
+- Cleanup: записи старше 30 дней удаляются автоматически (каждый час)
+
+### DeleteMessageV2 persistence
+- Теперь при удалении сообщения сначала записывается в `deleted_messages`, потом физически удаляется
+- Это исправляет баг: ранее удалённые сообщения появлялись при GetHistoryV2
+
+---
+
 ## Dev Server Management
 
 ### Systemd service

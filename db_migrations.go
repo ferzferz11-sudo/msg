@@ -213,6 +213,20 @@ var coreMigrations = []string{
 	)`,
 	`CREATE INDEX IF NOT EXISTS idx_revoked_tokens_expires ON revoked_tokens(expires_at)`,
 
+	// --- Self-Destruct Timer ---
+	`DO $$ BEGIN
+		IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='chats' AND column_name='self_destruct_timer') THEN ALTER TABLE chats ADD COLUMN self_destruct_timer INTEGER NOT NULL DEFAULT 0; END IF;
+	END $$;`,
+
+	// --- Deleted Messages (persistence for delete tracking) ---
+	`CREATE TABLE IF NOT EXISTS deleted_messages (
+		message_id VARCHAR(64) PRIMARY KEY,
+		room_id VARCHAR(64) NOT NULL,
+		deleted_by VARCHAR(64) NOT NULL,
+		deleted_at TIMESTAMPTZ DEFAULT NOW()
+	)`,
+	`CREATE INDEX IF NOT EXISTS idx_deleted_messages_room ON deleted_messages(room_id)`,
+
 	// --- Fix invalid UTF-8 in existing messages ---
 	`DO $$ BEGIN
 		UPDATE messages_v2 SET text = convert_to(convert_from(text::bytea, 'UTF8'), 'UTF8') WHERE text IS NOT NULL AND NOT octet_length(text) = octet_length(convert_to(text, 'UTF8'));

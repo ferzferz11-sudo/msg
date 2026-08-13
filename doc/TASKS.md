@@ -1,11 +1,11 @@
 # Лава — Задачи
 
 **Ветка:** feat/1.3.0.x
-**Обновлено:** 2026-08-01
+**Обновлено:** 2026-08-13
 
 ---
 
-## ✅ Серверная часть завершена (50/50 задач + 2 test suites + Hermes ACP + Company System)
+## ✅ Серверная часть завершена (52/52 задач + 3 test suites + Hermes ACP + Company System)
 
 Прогресс: **100%**
 
@@ -16,6 +16,7 @@
 | `crypto_test.go` | encrypt/decrypt (roundtrip, unicode, markers, tamper), HashPassword/CheckPassword, GenerateResetToken, getSecretKey | 22 |
 | `ai_v2_test.go` | ProviderRegistry, ToolRegistry (whitelist, cache), HybridRouter (keywords, binding), AgentExecutor (mock provider, tool calls, model override), resolveAPIKey, toolCache (TTL, LRU, concurrent), isURLSafe SSRF, OpenRouter SSE streaming, query_database security, all tool interfaces | 76 |
 | `company_test.go` | removeParticipant, access level thresholds, position hierarchy, chat type validation, default positions, builtin position protection, owner constraints, participants JSON | 9 |
+| `self_destruct_test.go` | allowedTimerValues validation, ChatV2Row self_destruct_timer proto, rowToProtoV2 forwarded_from/mentions, SetSelfDestructTimerResponse proto | 6 |
 
 ---
 
@@ -23,6 +24,7 @@
 
 | Версия | Описание |
 |--------|----------|
+| v1.4.0.0 | Self-Destruct Timer (auto-delete messages per chat: 30s/1m/5m/1h/24h), Delete Message Persistence (deleted_messages table prevents reappearance in history), fixed isChatParticipant UUID resolution |
 | v1.3.4.7 | Conference improvements: IDENTITY signal type (replaces ICE_CANDIDATE hack), verified LEAVE/END_CONFERENCE + state cleanup |
 | v1.3.4.2 | OIDC session validation (HMAC-SHA256 signed cookies), login flow fix |
 | v1.3.4.0 | OIDC SSO Provider + Security Fixes (JWT issuer/audience, Agent Revoke, Rate Limiter, CORS, IP Extraction) |

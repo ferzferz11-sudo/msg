@@ -123,6 +123,7 @@ const (
 	ChatService_GetFreeModels_FullMethodName          = "/messenger.ChatService/GetFreeModels"
 	ChatService_SetFreeModel_FullMethodName           = "/messenger.ChatService/SetFreeModel"
 	ChatService_RemoveFreeModel_FullMethodName        = "/messenger.ChatService/RemoveFreeModel"
+	ChatService_SetSelfDestructTimer_FullMethodName   = "/messenger.ChatService/SetSelfDestructTimer"
 	ChatService_ChatV2_FullMethodName                 = "/messenger.ChatService/ChatV2"
 	ChatService_GetHistoryV2_FullMethodName           = "/messenger.ChatService/GetHistoryV2"
 	ChatService_SendMessageV2_FullMethodName          = "/messenger.ChatService/SendMessageV2"
@@ -275,6 +276,8 @@ type ChatServiceClient interface {
 	GetFreeModels(ctx context.Context, in *GetFreeModelsRequest, opts ...grpc.CallOption) (*GetFreeModelsResponse, error)
 	SetFreeModel(ctx context.Context, in *SetFreeModelRequest, opts ...grpc.CallOption) (*SetFreeModelResponse, error)
 	RemoveFreeModel(ctx context.Context, in *RemoveFreeModelRequest, opts ...grpc.CallOption) (*RemoveFreeModelResponse, error)
+	// === Self-Destruct Timer ===
+	SetSelfDestructTimer(ctx context.Context, in *SetSelfDestructTimerRequest, opts ...grpc.CallOption) (*SetSelfDestructTimerResponse, error)
 	// === Chat v2 (bidirectional stream) ===
 	ChatV2(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[ChatV2Message, ChatV2Message], error)
 	// === Messages v2 ===
@@ -1421,6 +1424,16 @@ func (c *chatServiceClient) RemoveFreeModel(ctx context.Context, in *RemoveFreeM
 	return out, nil
 }
 
+func (c *chatServiceClient) SetSelfDestructTimer(ctx context.Context, in *SetSelfDestructTimerRequest, opts ...grpc.CallOption) (*SetSelfDestructTimerResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SetSelfDestructTimerResponse)
+	err := c.cc.Invoke(ctx, ChatService_SetSelfDestructTimer_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *chatServiceClient) ChatV2(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[ChatV2Message, ChatV2Message], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	stream, err := c.cc.NewStream(ctx, &ChatService_ServiceDesc.Streams[9], ChatService_ChatV2_FullMethodName, cOpts...)
@@ -1817,6 +1830,8 @@ type ChatServiceServer interface {
 	GetFreeModels(context.Context, *GetFreeModelsRequest) (*GetFreeModelsResponse, error)
 	SetFreeModel(context.Context, *SetFreeModelRequest) (*SetFreeModelResponse, error)
 	RemoveFreeModel(context.Context, *RemoveFreeModelRequest) (*RemoveFreeModelResponse, error)
+	// === Self-Destruct Timer ===
+	SetSelfDestructTimer(context.Context, *SetSelfDestructTimerRequest) (*SetSelfDestructTimerResponse, error)
 	// === Chat v2 (bidirectional stream) ===
 	ChatV2(grpc.BidiStreamingServer[ChatV2Message, ChatV2Message]) error
 	// === Messages v2 ===
@@ -2171,6 +2186,9 @@ func (UnimplementedChatServiceServer) SetFreeModel(context.Context, *SetFreeMode
 }
 func (UnimplementedChatServiceServer) RemoveFreeModel(context.Context, *RemoveFreeModelRequest) (*RemoveFreeModelResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RemoveFreeModel not implemented")
+}
+func (UnimplementedChatServiceServer) SetSelfDestructTimer(context.Context, *SetSelfDestructTimerRequest) (*SetSelfDestructTimerResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetSelfDestructTimer not implemented")
 }
 func (UnimplementedChatServiceServer) ChatV2(grpc.BidiStreamingServer[ChatV2Message, ChatV2Message]) error {
 	return status.Error(codes.Unimplemented, "method ChatV2 not implemented")
@@ -4068,6 +4086,24 @@ func _ChatService_RemoveFreeModel_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ChatService_SetSelfDestructTimer_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetSelfDestructTimerRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).SetSelfDestructTimer(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_SetSelfDestructTimer_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).SetSelfDestructTimer(ctx, req.(*SetSelfDestructTimerRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ChatService_ChatV2_Handler(srv interface{}, stream grpc.ServerStream) error {
 	return srv.(ChatServiceServer).ChatV2(&grpc.GenericServerStream[ChatV2Message, ChatV2Message]{ServerStream: stream})
 }
@@ -4904,6 +4940,10 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RemoveFreeModel",
 			Handler:    _ChatService_RemoveFreeModel_Handler,
+		},
+		{
+			MethodName: "SetSelfDestructTimer",
+			Handler:    _ChatService_SetSelfDestructTimer_Handler,
 		},
 		{
 			MethodName: "GetHistoryV2",

@@ -2,7 +2,7 @@
 
 Документация по модульным тестам: как запускать, что покрыто, как писать новые тесты.
 
-**Актуально:** v1.3.4.2 (2026-08-01)
+**Актуально:** v1.4.0.0 (2026-08-13)
 
 ---
 
@@ -43,9 +43,10 @@ go test -coverprofile=/tmp/cover.out -count=1 . && go tool cover -func=/tmp/cove
 | `chatv2_test.go` | ChatV2 stream: auth, message routing, typing | 12 |
 | `messages_v2_test.go` | Messages v2: CRUD, cursor pagination, reactions | 8 |
 | `company_test.go` | removeParticipant, access level thresholds, position hierarchy, chat type validation, default positions, builtin position protection, owner constraints, participants JSON | 9 |
+| `self_destruct_test.go` | allowedTimerValues validation, ChatV2Row self_destruct_timer proto, rowToProtoV2 forwarded_from/mentions, SetSelfDestructTimerResponse proto | 6 |
 | `core/rag/memory/memory_test.go` | In-memory RAG: embeddings, vector DB, pipeline | 4 |
 
-**Всего:** ~195+ тестов (все проходят)
+**Всего:** ~200+ тестов (все проходят)
 
 ---
 
@@ -261,6 +262,19 @@ go test -coverprofile=/tmp/cover.out -count=1 . && go tool cover -func=/tmp/cove
 | `TestCompany_OwnerCannotLeave` | Владелец не может покинуть свою компанию |
 | `TestCompany_OwnerCannotBeRemoved` | Владелец не может быть удалён |
 | `TestCompanyChat_ParticipantsJSON` | Формирование JSON массива участников |
+
+---
+
+## self_destruct_test.go (6 тестов)
+
+| Тест | Что проверяет |
+|------|--------------|
+| `TestAllowedTimerValues` | Валидные (0,30,60,300,3600,86400) и невалидные значения таймера |
+| `TestChatV2RowToProto_SelfDestructTimer` | ChatV2Row → ChatInfo proto с self_destruct_timer=3600 |
+| `TestChatV2RowToProto_SelfDestructTimerZero` | ChatV2Row → ChatInfo proto с self_destruct_timer=0 (default) |
+| `TestRowToProtoV2_ForwardedFrom` | rowToProtoV2 correctly maps forwarded_from field |
+| `TestRowToProtoV2_Mentions` | rowToProtoV2 correctly parses mentions JSON array |
+| `TestSetSelfDestructTimerResponse_Proto` | Proto response construction (success + error cases) |
 
 ---
 

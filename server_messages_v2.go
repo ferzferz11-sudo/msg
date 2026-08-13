@@ -33,8 +33,14 @@ func (s *server) GetHistoryV2(_ context.Context, req *gen.GetHistoryV2Request) (
 		return nil, status.Errorf(codes.Internal, "failed to get history: %v", err)
 	}
 
+	// Filter out deleted messages
+	deletedSet, _ := s.db.GetDeletedMessageIDs(req.RoomId)
+
 	var messages []*gen.MessageV2
 	for _, r := range rows {
+		if deletedSet[r.ID] {
+			continue
+		}
 		m := rowToProtoV2(&r)
 		if m != nil {
 			messages = append(messages, m)
@@ -299,6 +305,11 @@ func (s *server) DeleteMessageV2(ctx context.Context, req *gen.DeleteMessageV2Re
 		if err == nil {
 			updatedRooms[msg.RoomID] = true
 		}
+	}
+
+	// Persist deletions in deleted_messages table before deleting
+	for roomID := range updatedRooms {
+		_ = s.db.InsertDeletedMessages(canDelete, roomID, userID)
 	}
 
 	if err := s.db.DeleteMessageV2(canDelete); err != nil {

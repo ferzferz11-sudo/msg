@@ -284,6 +284,12 @@ func main() {
 	// Rate limiter cleanup (every 5 minutes)
 	go authLimiter.cleanup(ctx)
 
+	// Self-destruct message cleanup (every 30 seconds)
+	srv.startSelfDestructCleanup(ctx)
+
+	// Deleted messages cleanup (every hour)
+	srv.startDeletedMessagesCleanup(ctx)
+
 	// Revoked token cleanup (every 1 hour)
 	go func() {
 		ticker := time.NewTicker(1 * time.Hour)

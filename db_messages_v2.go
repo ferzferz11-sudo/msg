@@ -269,6 +269,121 @@ func base64Decode(s string) string {
 	return string(b)
 }
 
+// ======= Self-Destruct Timer =======
+
+// SetSelfDestructTimer sets the self-destruct timer for a chat.
+func (db *DB) SetSelfDestructTimer(roomID string, timerSeconds int) error {
+	_, err := db.Exec(`UPDATE chats SET self_destruct_timer = $1 WHERE id = $2`, timerSeconds, roomID)
+	return err
+}
+
+// GetSelfDestructTimer returns the self-destruct timer value for a chat.
+func (db *DB) GetSelfDestructTimer(roomID string) (int, error) {
+	var timer int
+	err := db.QueryRow(`SELECT COALESCE(self_destruct_timer, 0) FROM chats WHERE id = $1`, roomID).Scan(&timer)
+	return timer, err
+}
+
+// GetChatsWithSelfDestruct returns all chat IDs that have self-destruct enabled.
+func (db *DB) GetChatsWithSelfDestruct() ([]struct {
+	RoomID string
+	Timer  int
+}, error) {
+	rows, err := db.Query(`SELECT id, self_destruct_timer FROM chats WHERE self_destruct_timer > 0`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var result []struct {
+		RoomID string
+		Timer  int
+	}
+	for rows.Next() {
+		var r struct {
+			RoomID string
+			Timer  int
+		}
+		if err := rows.Scan(&r.RoomID, &r.Timer); err == nil {
+			result = append(result, r)
+		}
+	}
+	return result, nil
+}
+
+// DeleteExpiredSelfDestructMessages deletes messages older than the timer for chats with self-destruct enabled.
+// Returns the number of deleted messages and a map of roomID -> []messageID for broadcasting.
+func (db *DB) DeleteExpiredSelfDestructMessages() (map[string][]string, error) {
+	type sdChat struct {
+		RoomID string
+		Timer  int
+	}
+	chats, err := db.GetChatsWithSelfDestruct()
+	if err != nil {
+		return nil, err
+	}
+
+	affected := make(map[string][]string)
+	for _, c := range chats {
+		rows, err := db.Query(`SELECT id FROM messages_v2 WHERE room_id = $1 AND created_at < NOW() - INTERVAL '1 second' * $2`, c.RoomID, c.Timer)
+		if err != nil {
+			continue
+		}
+		var ids []string
+		for rows.Next() {
+			var id string
+			if err := rows.Scan(&id); err == nil {
+				ids = append(ids, id)
+			}
+		}
+		rows.Close()
+
+		if len(ids) > 0 {
+			// Insert into deleted_messages before deleting
+			for _, id := range ids {
+				db.Exec(`INSERT INTO deleted_messages (message_id, room_id, deleted_by) VALUES ($1, $2, 'self_destruct') ON CONFLICT DO NOTHING`, id, c.RoomID)
+			}
+			db.Exec(`DELETE FROM messages_v2 WHERE id = ANY($1)`, ids)
+			affected[c.RoomID] = ids
+		}
+	}
+	return affected, nil
+}
+
+// ======= Deleted Messages =======
+
+// InsertDeletedMessages records deleted message IDs for persistence.
+func (db *DB) InsertDeletedMessages(ids []string, roomID, deletedBy string) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	for _, id := range ids {
+		_, _ = db.Exec(`INSERT INTO deleted_messages (message_id, room_id, deleted_by) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`, id, roomID, deletedBy)
+	}
+	return nil
+}
+
+// GetDeletedMessageIDs returns a set of deleted message IDs for a room.
+func (db *DB) GetDeletedMessageIDs(roomID string) (map[string]bool, error) {
+	rows, err := db.Query(`SELECT message_id FROM deleted_messages WHERE room_id = $1`, roomID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	set := make(map[string]bool)
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err == nil {
+			set[id] = true
+		}
+	}
+	return set, nil
+}
+
+// CleanupDeletedMessages removes entries older than 30 days.
+func (db *DB) CleanupDeletedMessages() {
+	db.Exec(`DELETE FROM deleted_messages WHERE deleted_at < NOW() - INTERVAL '30 days'`)
+}
+
 // SearchResultRow represents a single search result.
 type SearchResultRow struct {
 	MessageID string

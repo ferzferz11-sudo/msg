@@ -207,13 +207,19 @@ func (s *server) isChatParticipant(userID, chatID string) bool {
 	if err != nil {
 		return false
 	}
-	// Parse JSON array properly to avoid false positives
 	var participants []string
 	if err := json.Unmarshal([]byte(chat.Participants), &participants); err != nil {
 		return false
 	}
+	// Check direct match (username) or resolve UUID to username
+	username := userID
+	if isUUID(userID) {
+		if resolved := resolveDisplayName(s.db, userID); resolved != "" {
+			username = resolved
+		}
+	}
 	for _, p := range participants {
-		if p == userID {
+		if p == username || p == userID {
 			return true
 		}
 	}
@@ -249,6 +255,7 @@ func chatV2RowToProto(c ChatV2Row) *gen.ChatInfo {
 		CompanyId:               c.CompanyId,
 		CompanyChatAccess:       c.CompanyChatAccess,
 		CompanyMinPositionLevel: c.CompanyMinPositionLevel,
+		SelfDestructTimer:       c.SelfDestructTimer,
 	}
 }
 

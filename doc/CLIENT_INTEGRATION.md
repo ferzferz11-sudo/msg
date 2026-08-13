@@ -1,6 +1,6 @@
 # Lavender Messenger — Client Integration Guide
 
-**Server:** v1.3.4.6 | **Protocol:** gRPC + Protocol Buffers | **Date:** 2026-08-11
+**Server:** v1.4.0.0 | **Protocol:** gRPC + Protocol Buffers | **Date:** 2026-08-13
 
 This document covers everything a client needs to integrate with the Lavender Messenger server. Platform-agnostic — applies to Android, iOS, Web, Desktop, or any gRPC-capable client.
 
@@ -295,6 +295,14 @@ ChatV2 stream receives system messages via `ChatV2System`:
 | `ONLINE_USERS_UPDATE` | `["uuid1","uuid2",...]` | JSON array of online user IDs |
 | `REACTION_V2` | `"messageId\|reactionsJSON"` | Reaction update (pipe-separated) |
 | `READ_ALL` | `"userId"` | All messages in room marked as read by userId |
+| `DELETE_MESSAGE_V2` | `"messageId"` | Message deleted (by user or self-destruct timer) |
+| `NEW_MESSAGE_V2` | `"messageId"` | New message in room (client fetches via GetHistoryV2) |
+| `EDIT_MESSAGE_V2` | `"messageId"` | Message edited |
+| `SELF_DESTRUCT_TIMER` | `"seconds"` | Self-destruct timer changed (0=disabled, 30, 60, 300, 3600, 86400) |
+| `TYPING` | `"username\|isTyping"` | Typing indicator |
+| `BOT_RESPONSE` | `"responseText"` | Bot command response |
+| `SET_SUPER_ADMIN` | `"true"` | User is super admin |
+| `CLEAR_CACHE` | `"roomId"` | Client should clear cached data for room |
 
 **REACTION_V2 parsing:**
 ```kotlin
@@ -701,6 +709,43 @@ message DeleteMessageV2Request {
   string requester_user_id = 2;
 }
 ```
+
+Deleted messages are tracked in a `deleted_messages` table — they won't reappear in `GetHistoryV2` responses even if the physical row is removed.
+
+### SetSelfDestructTimer
+
+Per-chat auto-deletion timer (Telegram-style). When enabled, all messages in the chat are automatically deleted after the specified time.
+
+```protobuf
+rpc SetSelfDestructTimer(SetSelfDestructTimerRequest) returns (SetSelfDestructTimerResponse);
+
+message SetSelfDestructTimerRequest {
+  string room_id = 1;
+  int32 timer_seconds = 2;  // 0 = disabled, 30, 60, 300, 3600, 86400
+}
+
+message SetSelfDestructTimerResponse {
+  bool success = 1;
+  string error = 2;
+}
+```
+
+**Timer values:**
+
+| Value | Duration |
+|-------|----------|
+| `0` | Disabled (default) |
+| `30` | 30 seconds |
+| `60` | 1 minute |
+| `300` | 5 minutes |
+| `3600` | 1 hour |
+| `86400` | 24 hours |
+
+**Behavior:**
+- Only chat participants can set the timer
+- Server broadcasts `SELF_DESTRUCT_TIMER` system message to all room streams when changed
+- Background cleanup runs every 30 seconds — expired messages are deleted and `DELETE_MESSAGE_V2` is broadcast
+- `self_destruct_timer` field is returned in `ChatInfo` via `GetChatsV2` — client can show timer icon in chat list
 
 ### SetReactionV2
 

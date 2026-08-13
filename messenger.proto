@@ -136,6 +136,7 @@ message ChatInfo {
   string company_id = 26;
   string company_chat_access = 27;
   int32 company_min_position_level = 28;
+  int32 self_destruct_timer = 29;  // seconds: 0=disabled, 30, 60, 300, 3600, 86400
 }
 
 message GetChatsRequest {
@@ -787,6 +788,9 @@ service ChatService {
   rpc GetFreeModels(GetFreeModelsRequest) returns (GetFreeModelsResponse);
   rpc SetFreeModel(SetFreeModelRequest) returns (SetFreeModelResponse);
   rpc RemoveFreeModel(RemoveFreeModelRequest) returns (RemoveFreeModelResponse);
+
+  // === Self-Destruct Timer ===
+  rpc SetSelfDestructTimer(SetSelfDestructTimerRequest) returns (SetSelfDestructTimerResponse);
 
   // === Chat v2 (bidirectional stream) ===
   rpc ChatV2(stream ChatV2Message) returns (stream ChatV2Message);
@@ -1683,6 +1687,18 @@ message ChatV2Typing {
 message ChatV2System {
   string type = 1;
   string message = 2;
+}
+
+// ======= Self-Destruct Timer =======
+
+message SetSelfDestructTimerRequest {
+  string room_id = 1;
+  int32 timer_seconds = 2;  // 0 = disabled, 30, 60, 300, 3600, 86400
+}
+
+message SetSelfDestructTimerResponse {
+  bool success = 1;
+  string error = 2;
 }
 
 message MessageV2 {
