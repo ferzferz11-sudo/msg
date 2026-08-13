@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -110,21 +111,29 @@ func TestSetSelfDestructTimerResponse_Proto(t *testing.T) {
 func TestTimerChangeMessage(t *testing.T) {
 	tests := []struct {
 		seconds int32
-		want    string
+		wantRu  string
+		wantEn  string
 	}{
-		{0, "Автоудаление сообщений отключено"},
-		{30, "Автоудаление сообщений установлено на 30 сек"},
-		{60, "Автоудаление сообщений установлено на 1 мин"},
-		{300, "Автоудаление сообщений установлено на 5 мин"},
-		{3600, "Автоудаление сообщений установлено на 1 час"},
-		{86400, "Автоудаление сообщений установлено на 24 часа"},
-		{120, "Автоудаление сообщений установлено на 120 сек"},
+		{0, "Авто-удаление отключено", "Auto-delete disabled"},
+		{30, "Авто-удаление: 30 сек", "Auto-delete: 30 sec"},
+		{60, "Авто-удаление: 1 мин", "Auto-delete: 1 min"},
+		{300, "Авто-удаление: 5 мин", "Auto-delete: 5 min"},
+		{3600, "Авто-удаление: 1 час", "Auto-delete: 1 hour"},
+		{86400, "Авто-удаление: 24 часа", "Auto-delete: 24 hours"},
+		{120, "Авто-удаление: 120 сек", "Auto-delete: 120 sec"},
 	}
 	for _, tt := range tests {
 		t.Run(fmt.Sprintf("timer_%d", tt.seconds), func(t *testing.T) {
 			got := timerChangeMessage(tt.seconds)
-			if got != tt.want {
-				t.Errorf("timerChangeMessage(%d) = %q, want %q", tt.seconds, got, tt.want)
+			parts := strings.SplitN(got, "\n", 2)
+			if len(parts) != 2 {
+				t.Fatalf("expected 2 lines, got %q", got)
+			}
+			if parts[0] != tt.wantRu {
+				t.Errorf("ru = %q, want %q", parts[0], tt.wantRu)
+			}
+			if parts[1] != tt.wantEn {
+				t.Errorf("en = %q, want %q", parts[1], tt.wantEn)
 			}
 		})
 	}
@@ -136,7 +145,7 @@ func TestRowToProtoV2_SystemMessage(t *testing.T) {
 		RoomID:      "room-1",
 		SenderID:    "00000000-0000-0000-0000-000000000000",
 		ContentType: "system",
-		Text:        "Автоудаление сообщений установлено на 5 мин",
+		Text:        "Авто-удаление: 5 мин\nAuto-delete: 5 min",
 		CreatedAt:   time.Now().UTC(),
 	}
 	proto := rowToProtoV2(row)

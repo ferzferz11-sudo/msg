@@ -121,22 +121,23 @@ func newStaggeredTicker(seconds int) *time.Ticker {
 	return time.NewTicker(time.Duration(seconds) * time.Second)
 }
 
-// timerChangeMessage returns a human-readable message about timer change.
+// timerChangeMessage returns a bilingual message about timer change.
+// Format: "ru_text\nen_text" — client splits by \n and picks locale.
 func timerChangeMessage(seconds int32) string {
 	switch seconds {
 	case 0:
-		return "Автоудаление сообщений отключено"
+		return "Авто-удаление отключено\nAuto-delete disabled"
 	case 30:
-		return "Автоудаление сообщений установлено на 30 сек"
+		return "Авто-удаление: 30 сек\nAuto-delete: 30 sec"
 	case 60:
-		return "Автоудаление сообщений установлено на 1 мин"
+		return "Авто-удаление: 1 мин\nAuto-delete: 1 min"
 	case 300:
-		return "Автоудаление сообщений установлено на 5 мин"
+		return "Авто-удаление: 5 мин\nAuto-delete: 5 min"
 	case 3600:
-		return "Автоудаление сообщений установлено на 1 час"
+		return "Авто-удаление: 1 час\nAuto-delete: 1 hour"
 	case 86400:
-		return "Автоудаление сообщений установлено на 24 часа"
+		return "Авто-удаление: 24 часа\nAuto-delete: 24 hours"
 	default:
-		return fmt.Sprintf("Автоудаление сообщений установлено на %d сек", seconds)
+		return fmt.Sprintf("Авто-удаление: %d сек\nAuto-delete: %d sec", seconds, seconds)
 	}
 }
