@@ -1,5 +1,15 @@
 # Лава — Server Changelog
 
+## [1.4.0.4] - 2026-08-13
+
+### Features
+- **ClearRoomHistory RPC** — `rpc ClearRoomHistory(ClearRoomHistoryRequest) returns (ClearRoomHistoryResponse)`. Удаляет все сообщения в чате, очищает deleted_messages, обновляет last_message, инкрементирует chat_list_version, broadcast'ит `CLEAR_HISTORY` в комнату.
+
+### Bug Fixes
+- **Favorites orphaned references** — `DeleteMessageV2`, `DeleteExpiredSelfDestructMessages`, `DeleteChat` теперь очищают `favorites` при удалении сообщений. Ранее favorites оставались висеть как orphaned записи, ссылаясь на несуществующие сообщения. Клиент видел пустой список избранного из-за JOIN с messages_v2.
+
+---
+
 ## [1.4.0.3] - 2026-08-13
 
 ### Stability & Performance (Android client support)

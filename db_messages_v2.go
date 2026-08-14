@@ -143,9 +143,23 @@ func (db *DB) DeleteMessageV2(ids []string) error {
 	if len(ids) == 0 {
 		return nil
 	}
+	// Clean up favorites references before deleting messages
+	db.Exec(`DELETE FROM favorites WHERE message_id = ANY($1)`, ids)
 	query := `DELETE FROM messages_v2 WHERE id = ANY($1)`
 	_, err := db.Exec(query, ids)
 	return err
+}
+
+// ClearRoomHistory deletes all messages in a room for the requesting user.
+func (db *DB) ClearRoomHistory(roomID string) error {
+	db.Exec(`DELETE FROM favorites WHERE message_id IN (SELECT id FROM messages_v2 WHERE room_id = $1)`, roomID)
+	_, err := db.Exec(`DELETE FROM messages_v2 WHERE room_id = $1`, roomID)
+	if err != nil {
+		return err
+	}
+	// Also clean up deleted_messages tracking for this room
+	db.Exec(`DELETE FROM deleted_messages WHERE room_id = $1`, roomID)
+	return nil
 }
 
 // UpdateChatLastMessage recalculates and updates the last message fields in chats table
@@ -352,6 +366,7 @@ func (db *DB) DeleteExpiredSelfDestructMessages() (map[string][]string, error) {
 			for _, id := range ids {
 				db.Exec(`INSERT INTO deleted_messages (message_id, room_id, deleted_by) VALUES ($1, $2, 'self_destruct') ON CONFLICT DO NOTHING`, id, c.RoomID)
 			}
+			db.Exec(`DELETE FROM favorites WHERE message_id = ANY($1)`, ids)
 			db.Exec(`DELETE FROM messages_v2 WHERE id = ANY($1)`, ids)
 			affected[c.RoomID] = ids
 		}

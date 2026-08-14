@@ -71,6 +71,11 @@ func (s *server) SendMessageV2(ctx context.Context, req *gen.SendMessageV2Reques
 		return &gen.SendMessageV2Response{Success: false, Error: "room_id required"}, nil
 	}
 
+	// Handle saved_messages / favorites room — save message and auto-add to favorites
+	if strings.HasPrefix(req.RoomId, "saved_messages_") || strings.HasPrefix(req.RoomId, "favorites_") {
+		return s.handleSavedMessagesSend(ctx, req)
+	}
+
 	msgID := uuid.New().String()
 	now := time.Now().UTC()
 
@@ -343,6 +348,33 @@ func (s *server) DeleteMessageV2(ctx context.Context, req *gen.DeleteMessageV2Re
 	return &gen.DeleteMessageV2Response{Success: true}, nil
 }
 
+// ClearRoomHistory deletes all messages in a room.
+func (s *server) ClearRoomHistory(ctx context.Context, req *gen.ClearRoomHistoryRequest) (*gen.ClearRoomHistoryResponse, error) {
+	if req.RoomId == "" {
+		return &gen.ClearRoomHistoryResponse{Success: false}, nil
+	}
+
+	if err := s.db.ClearRoomHistory(req.RoomId); err != nil {
+		log.Printf("ClearRoomHistory error: %v", err)
+		return &gen.ClearRoomHistoryResponse{Success: false}, nil
+	}
+
+	// Update last message in chat
+	s.db.UpdateChatLastMessage(req.RoomId)
+
+	// Increment chat list version so clients refresh
+	_ = s.db.IncrementParticipantsChatListVersion(req.RoomId)
+
+	// Broadcast clear to connected clients
+	s.hub.BroadcastToRoom(req.RoomId, "CLEAR_HISTORY", req.RoomId)
+
+	if username := GetUsername(ctx); username != "" {
+		_ = s.db.UpdateLastSeen(username)
+	}
+
+	return &gen.ClearRoomHistoryResponse{Success: true}, nil
+}
+
 // SetReactionV2 sets or removes a reaction.
 func (s *server) SetReactionV2(ctx context.Context, req *gen.SetReactionV2Request) (*gen.SetReactionV2Response, error) {
 	userID := GetUserID(ctx)
@@ -482,4 +514,120 @@ func rowToProtoV2(r *MessageRowV2) *gen.MessageV2 {
 	}
 
 	return m
+}
+
+// handleSavedMessagesSend processes messages sent to saved_messages or favorites rooms.
+// It creates the message in messages_v2 and auto-adds it to the user's favorites.
+func (s *server) handleSavedMessagesSend(ctx context.Context, req *gen.SendMessageV2Request) (*gen.SendMessageV2Response, error) {
+	userID := GetUserID(ctx)
+	username := GetUsername(ctx)
+
+	// Resolve roomId: "saved_messages_{userId}" or "favorites_{username}" → "saved_messages_{userId}"
+	var savedRoomID string
+	if strings.HasPrefix(req.RoomId, "saved_messages_") {
+		savedRoomID = req.RoomId
+	} else {
+		// favorites_{username} → look up userId
+		favUser := strings.TrimPrefix(req.RoomId, "favorites_")
+		if favUser == "" {
+			favUser = username
+		}
+		uid, err := s.db.GetUserIdByUsername(favUser)
+		if err != nil || uid == "" {
+			return &gen.SendMessageV2Response{Success: false, Error: "user not found"}, nil
+		}
+		savedRoomID = "saved_messages_" + uid
+	}
+
+	// Ensure the saved_messages chat exists
+	s.ensureSavedMessagesChat(ctx, savedRoomID, userID, username)
+
+	// Build message
+	msgID := uuid.New().String()
+	now := time.Now().UTC()
+
+	row := &MessageRowV2{
+		ID:        msgID,
+		RoomID:    savedRoomID,
+		SenderID:  userID,
+		IsRead:    true,
+		CreatedAt: now,
+	}
+
+	switch c := req.Content.(type) {
+	case *gen.SendMessageV2Request_Text:
+		if !utf8.ValidString(c.Text) {
+			return &gen.SendMessageV2Response{Success: false, Error: "invalid UTF-8 in text"}, nil
+		}
+		row.Text = c.Text
+		row.ContentType = "text"
+	case *gen.SendMessageV2Request_Media:
+		row.MediaURL = c.Media.Url
+		if len(c.Media.Urls) > 0 {
+			b, _ := json.Marshal(c.Media.Urls)
+			row.MediaURLs = string(b)
+		}
+		row.Duration = c.Media.Duration
+		row.ContentType = c.Media.Type
+	default:
+		row.ContentType = "text"
+	}
+
+	if req.IsE2Ee {
+		row.IsE2EE = true
+		row.E2EEPayload = []byte(req.E2EePayload)
+	}
+
+	if req.ReplyToId != "" {
+		row.ReplyToID = sql.NullString{String: req.ReplyToId, Valid: true}
+		orig, err := s.db.GetMessageV2ByUUID(req.ReplyToId)
+		if err == nil {
+			preview := orig.Text
+			if len(preview) > 100 {
+				preview = preview[:100]
+			}
+			row.ReplyPreview = sql.NullString{String: preview, Valid: true}
+			row.ReplySenderID = sql.NullString{String: orig.SenderID, Valid: true}
+		}
+	}
+
+	if len(req.Mentions) > 0 {
+		b, _ := json.Marshal(req.Mentions)
+		row.Mentions = sql.NullString{String: string(b), Valid: true}
+	}
+
+	if req.ForwardedFrom != "" {
+		row.ForwardedFrom = req.ForwardedFrom
+	}
+
+	if err := s.db.SaveMessageV2(row); err != nil {
+		logger.Errorf("SendMessageV2 (saved_messages): %v", err)
+		return &gen.SendMessageV2Response{Success: false, Error: err.Error()}, nil
+	}
+
+	// Auto-add to favorites
+	if err := s.db.AddFavorite(userID, msgID); err != nil {
+		logger.Infof("SendMessageV2 (saved_messages): failed to add favorite: %v", err)
+	}
+
+	logger.Infof("SendMessageV2 (saved_messages): user=%s room=%s msg=%s", username, savedRoomID, msgID)
+
+	return &gen.SendMessageV2Response{
+		Message: rowToProtoV2(row),
+		Success: true,
+	}, nil
+}
+
+// ensureSavedMessagesChat creates the saved_messages chat if it doesn't exist.
+func (s *server) ensureSavedMessagesChat(ctx context.Context, roomID, userID, username string) {
+	var exists bool
+	err := s.db.QueryRow(`SELECT EXISTS(SELECT 1 FROM chats WHERE id=$1)`, roomID).Scan(&exists)
+	if err == nil && exists {
+		return
+	}
+
+	participants, _ := json.Marshal([]string{username})
+	if err := s.db.CreateChat(roomID, "Saved Messages", "saved_messages", string(participants), username, userID); err != nil {
+		logger.Infof("ensureSavedMessagesChat: create error: %v", err)
+	}
 }

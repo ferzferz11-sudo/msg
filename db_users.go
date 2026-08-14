@@ -689,7 +689,9 @@ func (db *DB) GetAdminUserList(query string, limit int, sortBy string, lastMessa
 		LEFT JOIN user_last_messages lm ON lm.sender_id = u.id AND lm.rn = 1
 		LEFT JOIN users lm_sender ON lm_sender.id = lm.sender_id
 		LEFT JOIN user_chat_counts cc ON cc.user_id = u.id
-		WHERE ($1::text = '' OR u.username ILIKE '%' || $1 || '%' OR u.email ILIKE '%' || $1 || '%')`
+		WHERE u.username NOT IN ('[deleted]')
+			AND u.username NOT LIKE 'deleted_%'
+			AND ($1::text = '' OR u.username ILIKE '%' || $1 || '%' OR u.email ILIKE '%' || $1 || '%')`
 
 	var cursorClause string
 	args := []interface{}{query}

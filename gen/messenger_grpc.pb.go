@@ -28,6 +28,7 @@ const (
 	ChatService_GetHistory_FullMethodName             = "/messenger.ChatService/GetHistory"
 	ChatService_SetReaction_FullMethodName            = "/messenger.ChatService/SetReaction"
 	ChatService_DeleteMessages_FullMethodName         = "/messenger.ChatService/DeleteMessages"
+	ChatService_ClearRoomHistory_FullMethodName       = "/messenger.ChatService/ClearRoomHistory"
 	ChatService_RegisterToken_FullMethodName          = "/messenger.ChatService/RegisterToken"
 	ChatService_GetChats_FullMethodName               = "/messenger.ChatService/GetChats"
 	ChatService_GetChatsV2_FullMethodName             = "/messenger.ChatService/GetChatsV2"
@@ -168,6 +169,7 @@ type ChatServiceClient interface {
 	SetReaction(ctx context.Context, in *ReactionRequest, opts ...grpc.CallOption) (*ReactionResponse, error)
 	// DEPRECATED: use DeleteMessageV2 instead
 	DeleteMessages(ctx context.Context, in *DeleteMessagesRequest, opts ...grpc.CallOption) (*DeleteMessagesResponse, error)
+	ClearRoomHistory(ctx context.Context, in *ClearRoomHistoryRequest, opts ...grpc.CallOption) (*ClearRoomHistoryResponse, error)
 	RegisterToken(ctx context.Context, in *TokenRequest, opts ...grpc.CallOption) (*TokenResponse, error)
 	GetChats(ctx context.Context, in *GetChatsRequest, opts ...grpc.CallOption) (*GetChatsResponse, error)
 	GetChatsV2(ctx context.Context, in *GetChatsRequest, opts ...grpc.CallOption) (*GetChatsResponse, error)
@@ -414,6 +416,16 @@ func (c *chatServiceClient) DeleteMessages(ctx context.Context, in *DeleteMessag
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(DeleteMessagesResponse)
 	err := c.cc.Invoke(ctx, ChatService_DeleteMessages_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) ClearRoomHistory(ctx context.Context, in *ClearRoomHistoryRequest, opts ...grpc.CallOption) (*ClearRoomHistoryResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ClearRoomHistoryResponse)
+	err := c.cc.Invoke(ctx, ChatService_ClearRoomHistory_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1722,6 +1734,7 @@ type ChatServiceServer interface {
 	SetReaction(context.Context, *ReactionRequest) (*ReactionResponse, error)
 	// DEPRECATED: use DeleteMessageV2 instead
 	DeleteMessages(context.Context, *DeleteMessagesRequest) (*DeleteMessagesResponse, error)
+	ClearRoomHistory(context.Context, *ClearRoomHistoryRequest) (*ClearRoomHistoryResponse, error)
 	RegisterToken(context.Context, *TokenRequest) (*TokenResponse, error)
 	GetChats(context.Context, *GetChatsRequest) (*GetChatsResponse, error)
 	GetChatsV2(context.Context, *GetChatsRequest) (*GetChatsResponse, error)
@@ -1901,6 +1914,9 @@ func (UnimplementedChatServiceServer) SetReaction(context.Context, *ReactionRequ
 }
 func (UnimplementedChatServiceServer) DeleteMessages(context.Context, *DeleteMessagesRequest) (*DeleteMessagesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteMessages not implemented")
+}
+func (UnimplementedChatServiceServer) ClearRoomHistory(context.Context, *ClearRoomHistoryRequest) (*ClearRoomHistoryResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ClearRoomHistory not implemented")
 }
 func (UnimplementedChatServiceServer) RegisterToken(context.Context, *TokenRequest) (*TokenResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RegisterToken not implemented")
@@ -2414,6 +2430,24 @@ func _ChatService_DeleteMessages_Handler(srv interface{}, ctx context.Context, d
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ChatServiceServer).DeleteMessages(ctx, req.(*DeleteMessagesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_ClearRoomHistory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ClearRoomHistoryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).ClearRoomHistory(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_ClearRoomHistory_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).ClearRoomHistory(ctx, req.(*ClearRoomHistoryRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4584,6 +4618,10 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteMessages",
 			Handler:    _ChatService_DeleteMessages_Handler,
+		},
+		{
+			MethodName: "ClearRoomHistory",
+			Handler:    _ChatService_ClearRoomHistory_Handler,
 		},
 		{
 			MethodName: "RegisterToken",

@@ -98,6 +98,15 @@ message DeleteMessagesResponse {
   bool success = 1;
 }
 
+message ClearRoomHistoryRequest {
+  string room_id = 1;
+  string requester_username = 2;
+}
+
+message ClearRoomHistoryResponse {
+  bool success = 1;
+}
+
 message TokenRequest {
   string user = 1;
   string token = 2;
@@ -669,6 +678,7 @@ service ChatService {
   rpc SetReaction(ReactionRequest) returns (ReactionResponse);
   // DEPRECATED: use DeleteMessageV2 instead
   rpc DeleteMessages(DeleteMessagesRequest) returns (DeleteMessagesResponse);
+  rpc ClearRoomHistory(ClearRoomHistoryRequest) returns (ClearRoomHistoryResponse);
   rpc RegisterToken(TokenRequest) returns (TokenResponse);
   rpc GetChats(GetChatsRequest) returns (GetChatsResponse);
   rpc GetChatsV2(GetChatsRequest) returns (GetChatsResponse);

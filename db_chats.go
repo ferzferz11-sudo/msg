@@ -283,6 +283,7 @@ func (db *DB) DeleteChat(id string) error {
 	}
 	defer tx.Rollback()
 
+	_, _ = tx.Exec(`DELETE FROM favorites WHERE message_id IN (SELECT id FROM messages_v2 WHERE room_id = $1)`, id)
 	_, _ = tx.Exec(`DELETE FROM messages_v2 WHERE room_id = $1`, id)
 	_, _ = tx.Exec(`DELETE FROM user_chat_metadata WHERE room_id = $1`, id)
 	_, _ = tx.Exec(`DELETE FROM muted_chats WHERE room_id = $1`, id)

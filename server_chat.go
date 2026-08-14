@@ -34,6 +34,7 @@ func (s *server) ChatV2(stream gen.ChatService_ChatV2Server) error {
 	go func() {
 		ticker := time.NewTicker(30 * time.Second)
 		defer ticker.Stop()
+		logged := false
 		for {
 			select {
 			case <-deadlineDone:
@@ -42,8 +43,13 @@ func (s *server) ChatV2(stream gen.ChatService_ChatV2Server) error {
 				return
 			case <-ticker.C:
 				if time.Since(lastActivityTime) > streamInactivityTimeout {
-					logger.Infof("[ChatV2] Stream inactive >%v for user=%s room=%s — gRPC keepalive will close",
-						streamInactivityTimeout, connectedUser, currentRoom)
+					if !logged {
+						logger.Infof("[ChatV2] Stream inactive >%v for user=%s room=%s — gRPC keepalive will close",
+							streamInactivityTimeout, connectedUser, currentRoom)
+						logged = true
+					}
+				} else {
+					logged = false
 				}
 			}
 		}

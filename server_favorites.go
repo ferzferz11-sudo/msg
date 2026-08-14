@@ -25,13 +25,16 @@ func (s *server) AddFavorite(ctx context.Context, req *gen.AddFavoriteRequest) (
 		userID = req.UserId
 	}
 	if userID == "" || req.MessageId == "" {
+		logger.Infof("[Favorites] AddFavorite rejected: empty user_id=%s or message_id=%s", userID, req.MessageId)
 		return &gen.AddFavoriteResponse{Success: false, Message: "empty user id or message id"}, nil
 	}
+	logger.Infof("[Favorites] AddFavorite: user_id=%s message_id=%s", userID, req.MessageId)
 	err := s.db.AddFavorite(userID, req.MessageId)
 	if err != nil {
-		logger.Infof("Failed to add favorite: %v", err)
+		logger.Infof("[Favorites] AddFavorite DB error: %v", err)
 		return &gen.AddFavoriteResponse{Success: false, Message: err.Error()}, nil
 	}
+	logger.Infof("[Favorites] AddFavorite success: user_id=%s message_id=%s", userID, req.MessageId)
 	return &gen.AddFavoriteResponse{Success: true}, nil
 }
 
@@ -123,22 +126,28 @@ func (s *server) GetFavorites(ctx context.Context, req *gen.GetFavoritesRequest)
 
 func (s *server) SaveFavoriteMessage(ctx context.Context, req *gen.Message) (*gen.AddFavoriteResponse, error) {
 	if req.User == "" {
+		logger.Infof("[Favorites] SaveFavoriteMessage rejected: empty username")
 		return &gen.AddFavoriteResponse{Success: false, Message: "username required"}, nil
 	}
 
 	// Get User UUID
 	userID, err := s.db.GetUserIdByUsername(req.User)
 	if err != nil {
+		logger.Infof("[Favorites] SaveFavoriteMessage user not found: %s", req.User)
 		return &gen.AddFavoriteResponse{Success: false, Message: "user not found"}, nil
 	}
+
+	logger.Infof("[Favorites] SaveFavoriteMessage: user=%s user_id=%s message_id=%s", req.User, userID, req.Id)
 
 	// Add to favorites table only — no copy in messages_v2
 	// This preserves the original message ID so reactions work correctly
 	err = s.db.AddFavorite(userID, req.Id)
 	if err != nil {
+		logger.Infof("[Favorites] SaveFavoriteMessage DB error: %v", err)
 		return &gen.AddFavoriteResponse{Success: false, Message: "failed to link favorite"}, nil
 	}
 
+	logger.Infof("[Favorites] SaveFavoriteMessage success: user=%s message_id=%s", req.User, req.Id)
 	return &gen.AddFavoriteResponse{Success: true}, nil
 }
 
