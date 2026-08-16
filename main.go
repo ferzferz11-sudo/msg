@@ -140,9 +140,9 @@ func main() {
 			PermitWithoutStream: true,            // Allow pings even without active streams
 		}),
 		grpc.KeepaliveParams(keepalive.ServerParameters{
-			MaxConnectionIdle:     15 * time.Minute,
-			MaxConnectionAge:      30 * time.Minute,
-			MaxConnectionAgeGrace: 5 * time.Second,
+			MaxConnectionIdle:     30 * time.Minute,
+			MaxConnectionAge:      2 * time.Hour,
+			MaxConnectionAgeGrace: 30 * time.Second,
 			Time:                  20 * time.Second, // Ping clients every 20s
 			Timeout:               20 * time.Second, // Allow 20s for response (lenient for emulators/mobile)
 		}),
