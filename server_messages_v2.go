@@ -169,8 +169,13 @@ func (s *server) SendMessageV2(ctx context.Context, req *gen.SendMessageV2Reques
 	} else if row.ContentType == "voice" {
 		preview = "Voice message"
 	}
-	_, _ = s.db.Exec(`UPDATE chats SET last_message_text=$1, last_message_time=$2, last_message_username=(SELECT username FROM users WHERE id=$3::uuid), last_message_has_image=$4 WHERE id=$5`,
-		preview, now, userID, row.ContentType == "image", req.RoomId)
+	if !isSystemMessage(preview) {
+		_, _ = s.db.Exec(`UPDATE chats SET last_message_text=$1, last_message_time=$2, last_message_username=(SELECT username FROM users WHERE id=$3::uuid), last_message_has_image=$4 WHERE id=$5`,
+			preview, now, userID, row.ContentType == "image", req.RoomId)
+	} else {
+		// System message — update time only for ordering, skip text
+		_, _ = s.db.Exec(`UPDATE chats SET last_message_time=$1 WHERE id=$2`, now, req.RoomId)
+	}
 
 	// Increment chat list version
 	_ = s.db.IncrementParticipantsChatListVersion(req.RoomId)
@@ -516,23 +521,49 @@ func rowToProtoV2(r *MessageRowV2) *gen.MessageV2 {
 	return m
 }
 
+// isSystemMessage returns true for system-generated messages that should not update last_message_text.
+func isSystemMessage(text string) bool {
+	if text == "" {
+		return false
+	}
+	// Self-destruct timer messages
+	if strings.HasPrefix(text, "\U0001F525") { // 🔥
+		return true
+	}
+	// Video call messages
+	if strings.HasPrefix(text, "\U0001F4F9") { // 📹
+		return true
+	}
+	// Audio call messages
+	if strings.HasPrefix(text, "\U0001F4DE") { // 📞
+		return true
+	}
+	return false
+}
+
 // handleSavedMessagesSend processes messages sent to saved_messages or favorites rooms.
 // It creates the message in messages_v2 and auto-adds it to the user's favorites.
 func (s *server) handleSavedMessagesSend(ctx context.Context, req *gen.SendMessageV2Request) (*gen.SendMessageV2Response, error) {
 	userID := GetUserID(ctx)
 	username := GetUsername(ctx)
+	logger.Infof("[SavedMessages] handleSavedMessagesSend: reqRoomId=%s userID=%s username=%s", req.RoomId, userID, username)
 
-	// Resolve roomId: "saved_messages_{userId}" or "favorites_{username}" → "saved_messages_{userId}"
+	// Resolve roomId: "saved_messages_{username/userId}" or "favorites_{username}" → "saved_messages_{userId}"
 	var savedRoomID string
+	suffix := ""
 	if strings.HasPrefix(req.RoomId, "saved_messages_") {
-		savedRoomID = req.RoomId
+		suffix = strings.TrimPrefix(req.RoomId, "saved_messages_")
+	} else if strings.HasPrefix(req.RoomId, "favorites_") {
+		suffix = strings.TrimPrefix(req.RoomId, "favorites_")
+	}
+	if suffix == "" {
+		suffix = username
+	}
+	// Normalize to userId — client may send username or userId as suffix
+	if isUUID(suffix) {
+		savedRoomID = "saved_messages_" + suffix
 	} else {
-		// favorites_{username} → look up userId
-		favUser := strings.TrimPrefix(req.RoomId, "favorites_")
-		if favUser == "" {
-			favUser = username
-		}
-		uid, err := s.db.GetUserIdByUsername(favUser)
+		uid, err := s.db.GetUserIdByUsername(suffix)
 		if err != nil || uid == "" {
 			return &gen.SendMessageV2Response{Success: false, Error: "user not found"}, nil
 		}
@@ -626,6 +657,7 @@ func (s *server) ensureSavedMessagesChat(ctx context.Context, roomID, userID, us
 		return
 	}
 
+	logger.Infof("[SavedMessages] ensureSavedMessagesChat: creating chat roomID=%s user=%s", roomID, username)
 	participants, _ := json.Marshal([]string{username})
 	if err := s.db.CreateChat(roomID, "Saved Messages", "saved_messages", string(participants), username, userID); err != nil {
 		logger.Infof("ensureSavedMessagesChat: create error: %v", err)

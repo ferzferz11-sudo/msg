@@ -243,8 +243,12 @@ func (s *server) ChatV2(stream gen.ChatService_ChatV2Server) error {
 			} else if row.ContentType == "voice" {
 				preview = "Voice message"
 			}
-			_, _ = s.db.Exec(`UPDATE chats SET last_message_text=$1, last_message_time=$2, last_message_username=$3, last_message_has_image=$4 WHERE id=$5`,
-				preview, row.CreatedAt, connectedUser, row.ContentType == "image", row.RoomID)
+			if !isSystemMessage(preview) {
+				_, _ = s.db.Exec(`UPDATE chats SET last_message_text=$1, last_message_time=$2, last_message_username=$3, last_message_has_image=$4 WHERE id=$5`,
+					preview, row.CreatedAt, connectedUser, row.ContentType == "image", row.RoomID)
+			} else {
+				_, _ = s.db.Exec(`UPDATE chats SET last_message_time=$1 WHERE id=$2`, row.CreatedAt, row.RoomID)
+			}
 			_ = s.db.IncrementParticipantsChatListVersion(row.RoomID)
 
 			protoMsg := rowToProtoV2(row)

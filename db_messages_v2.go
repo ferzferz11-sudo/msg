@@ -195,6 +195,36 @@ func (db *DB) UpdateChatLastMessage(roomID string) {
 		preview = "Voice message"
 	}
 
+	// Skip system messages (🔥, 📹, 📞) — find the last non-system message
+	if isSystemMessage(preview) {
+		var altText, altSender, altContentType string
+		var altTime time.Time
+		err = db.QueryRow(`
+			SELECT COALESCE(m.text, ''), COALESCE(u.username, ''), m.created_at, m.content_type
+			FROM messages_v2 m
+			LEFT JOIN users u ON u.id = m.sender_id::uuid
+			WHERE m.room_id = $1 AND m.text NOT LIKE '🔥%' AND m.text NOT LIKE '📹%' AND m.text NOT LIKE '📞%'
+			ORDER BY m.created_at DESC
+			LIMIT 1
+		`, roomID).Scan(&altText, &altSender, &altTime, &altContentType)
+		if err == nil {
+			text = altText
+			senderName = altSender
+			createdAt = altTime
+			contentType = altContentType
+			preview = text
+			if len(preview) > 500 {
+				preview = preview[:500]
+			}
+			if contentType == "image" {
+				preview = "Image"
+				hasImage = true
+			} else if contentType == "voice" {
+				preview = "Voice message"
+			}
+		}
+	}
+
 	db.Exec(`UPDATE chats SET last_message_text = $1, last_message_time = $2, last_message_username = $3, last_message_has_image = $4 WHERE id = $5`,
 		preview, createdAt, senderName, hasImage, roomID)
 }

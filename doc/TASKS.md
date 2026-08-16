@@ -24,6 +24,7 @@
 
 | Версия | Описание |
 |--------|----------|
+| v1.4.0.5 | System messages filter (🔥/📹/📞) from last_message_text, saved_messages roomId normalization, gRPC keepalive tuning |
 | v1.4.0.4 | ClearRoomHistory RPC, favorites orphaned references fix (cleanup on message deletion) |
 | v1.4.0.3 | Stream keepalive, health endpoints, GetHistoryV2 rate limit, DB indexes, FCM cleanup, graceful shutdown retry |
 | v1.4.0.1 | Call Messages: distinguish audio (📞Звонок) vs video (📹Видеозвонок), "Не отвечено" for unanswered calls, is_video proto field |

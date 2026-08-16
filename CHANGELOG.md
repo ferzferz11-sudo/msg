@@ -1,5 +1,16 @@
 # Лава — Server Changelog
 
+## [1.4.0.5] - 2026-08-16
+
+### Bug Fixes
+- **System messages filtered from chat list preview** — `SendMessageV2`, `ChatV2` stream и call-хэндлеры больше не обновляют `last_message_text` системными сообщениями (🔥 таймер, 📹/📞 звонки). `UpdateChatLastMessage` при пересчёте пропускает системные и берёт последнее пользовательское.
+- **Saved Messages roomId normalization** — `handleSavedMessagesSend` теперь всегда нормализует `saved_messages_{username}` → `saved_messages_{userId}`, устраняя рассинхрон между клиентом (шлёт username) и сервером (хранит userId). Добавлено логирование на входе.
+
+### Improvements
+- **gRPC keepalive** — `MaxConnectionAge` 30m→2h, `MaxConnectionAgeGrace` 5s→30s, `MaxConnectionIdle` 15m→30m. Уменьшает количество принудительных разрывов для мобильных клиентов.
+
+---
+
 ## [1.4.0.4] - 2026-08-13
 
 ### Features
