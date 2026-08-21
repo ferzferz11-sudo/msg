@@ -5677,7 +5677,7 @@ func (x *GetUserIdResponse) GetFound() bool {
 	return false
 }
 
-type AddFavoriteRequest struct {
+type AddSavedMessageRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	MessageId     string                 `protobuf:"bytes,2,opt,name=message_id,json=messageId,proto3" json:"message_id,omitempty"`
@@ -5685,20 +5685,20 @@ type AddFavoriteRequest struct {
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *AddFavoriteRequest) Reset() {
-	*x = AddFavoriteRequest{}
+func (x *AddSavedMessageRequest) Reset() {
+	*x = AddSavedMessageRequest{}
 	mi := &file_messenger_proto_msgTypes[91]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *AddFavoriteRequest) String() string {
+func (x *AddSavedMessageRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AddFavoriteRequest) ProtoMessage() {}
+func (*AddSavedMessageRequest) ProtoMessage() {}
 
-func (x *AddFavoriteRequest) ProtoReflect() protoreflect.Message {
+func (x *AddSavedMessageRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_messenger_proto_msgTypes[91]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -5710,26 +5710,26 @@ func (x *AddFavoriteRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use AddFavoriteRequest.ProtoReflect.Descriptor instead.
-func (*AddFavoriteRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use AddSavedMessageRequest.ProtoReflect.Descriptor instead.
+func (*AddSavedMessageRequest) Descriptor() ([]byte, []int) {
 	return file_messenger_proto_rawDescGZIP(), []int{91}
 }
 
-func (x *AddFavoriteRequest) GetUserId() string {
+func (x *AddSavedMessageRequest) GetUserId() string {
 	if x != nil {
 		return x.UserId
 	}
 	return ""
 }
 
-func (x *AddFavoriteRequest) GetMessageId() string {
+func (x *AddSavedMessageRequest) GetMessageId() string {
 	if x != nil {
 		return x.MessageId
 	}
 	return ""
 }
 
-type AddFavoriteResponse struct {
+type AddSavedMessageResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
 	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
@@ -5737,20 +5737,20 @@ type AddFavoriteResponse struct {
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *AddFavoriteResponse) Reset() {
-	*x = AddFavoriteResponse{}
+func (x *AddSavedMessageResponse) Reset() {
+	*x = AddSavedMessageResponse{}
 	mi := &file_messenger_proto_msgTypes[92]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *AddFavoriteResponse) String() string {
+func (x *AddSavedMessageResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AddFavoriteResponse) ProtoMessage() {}
+func (*AddSavedMessageResponse) ProtoMessage() {}
 
-func (x *AddFavoriteResponse) ProtoReflect() protoreflect.Message {
+func (x *AddSavedMessageResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_messenger_proto_msgTypes[92]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -5762,26 +5762,26 @@ func (x *AddFavoriteResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use AddFavoriteResponse.ProtoReflect.Descriptor instead.
-func (*AddFavoriteResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use AddSavedMessageResponse.ProtoReflect.Descriptor instead.
+func (*AddSavedMessageResponse) Descriptor() ([]byte, []int) {
 	return file_messenger_proto_rawDescGZIP(), []int{92}
 }
 
-func (x *AddFavoriteResponse) GetSuccess() bool {
+func (x *AddSavedMessageResponse) GetSuccess() bool {
 	if x != nil {
 		return x.Success
 	}
 	return false
 }
 
-func (x *AddFavoriteResponse) GetMessage() string {
+func (x *AddSavedMessageResponse) GetMessage() string {
 	if x != nil {
 		return x.Message
 	}
 	return ""
 }
 
-type RemoveFavoriteRequest struct {
+type RemoveSavedMessageRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	MessageId     string                 `protobuf:"bytes,2,opt,name=message_id,json=messageId,proto3" json:"message_id,omitempty"`
@@ -5789,20 +5789,20 @@ type RemoveFavoriteRequest struct {
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *RemoveFavoriteRequest) Reset() {
-	*x = RemoveFavoriteRequest{}
+func (x *RemoveSavedMessageRequest) Reset() {
+	*x = RemoveSavedMessageRequest{}
 	mi := &file_messenger_proto_msgTypes[93]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *RemoveFavoriteRequest) String() string {
+func (x *RemoveSavedMessageRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*RemoveFavoriteRequest) ProtoMessage() {}
+func (*RemoveSavedMessageRequest) ProtoMessage() {}
 
-func (x *RemoveFavoriteRequest) ProtoReflect() protoreflect.Message {
+func (x *RemoveSavedMessageRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_messenger_proto_msgTypes[93]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -5814,46 +5814,46 @@ func (x *RemoveFavoriteRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use RemoveFavoriteRequest.ProtoReflect.Descriptor instead.
-func (*RemoveFavoriteRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use RemoveSavedMessageRequest.ProtoReflect.Descriptor instead.
+func (*RemoveSavedMessageRequest) Descriptor() ([]byte, []int) {
 	return file_messenger_proto_rawDescGZIP(), []int{93}
 }
 
-func (x *RemoveFavoriteRequest) GetUserId() string {
+func (x *RemoveSavedMessageRequest) GetUserId() string {
 	if x != nil {
 		return x.UserId
 	}
 	return ""
 }
 
-func (x *RemoveFavoriteRequest) GetMessageId() string {
+func (x *RemoveSavedMessageRequest) GetMessageId() string {
 	if x != nil {
 		return x.MessageId
 	}
 	return ""
 }
 
-type RemoveFavoriteResponse struct {
+type RemoveSavedMessageResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *RemoveFavoriteResponse) Reset() {
-	*x = RemoveFavoriteResponse{}
+func (x *RemoveSavedMessageResponse) Reset() {
+	*x = RemoveSavedMessageResponse{}
 	mi := &file_messenger_proto_msgTypes[94]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *RemoveFavoriteResponse) String() string {
+func (x *RemoveSavedMessageResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*RemoveFavoriteResponse) ProtoMessage() {}
+func (*RemoveSavedMessageResponse) ProtoMessage() {}
 
-func (x *RemoveFavoriteResponse) ProtoReflect() protoreflect.Message {
+func (x *RemoveSavedMessageResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_messenger_proto_msgTypes[94]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -5865,39 +5865,39 @@ func (x *RemoveFavoriteResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use RemoveFavoriteResponse.ProtoReflect.Descriptor instead.
-func (*RemoveFavoriteResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use RemoveSavedMessageResponse.ProtoReflect.Descriptor instead.
+func (*RemoveSavedMessageResponse) Descriptor() ([]byte, []int) {
 	return file_messenger_proto_rawDescGZIP(), []int{94}
 }
 
-func (x *RemoveFavoriteResponse) GetSuccess() bool {
+func (x *RemoveSavedMessageResponse) GetSuccess() bool {
 	if x != nil {
 		return x.Success
 	}
 	return false
 }
 
-type GetFavoritesRequest struct {
+type GetSavedMessagesRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *GetFavoritesRequest) Reset() {
-	*x = GetFavoritesRequest{}
+func (x *GetSavedMessagesRequest) Reset() {
+	*x = GetSavedMessagesRequest{}
 	mi := &file_messenger_proto_msgTypes[95]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *GetFavoritesRequest) String() string {
+func (x *GetSavedMessagesRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GetFavoritesRequest) ProtoMessage() {}
+func (*GetSavedMessagesRequest) ProtoMessage() {}
 
-func (x *GetFavoritesRequest) ProtoReflect() protoreflect.Message {
+func (x *GetSavedMessagesRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_messenger_proto_msgTypes[95]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -5909,39 +5909,39 @@ func (x *GetFavoritesRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use GetFavoritesRequest.ProtoReflect.Descriptor instead.
-func (*GetFavoritesRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use GetSavedMessagesRequest.ProtoReflect.Descriptor instead.
+func (*GetSavedMessagesRequest) Descriptor() ([]byte, []int) {
 	return file_messenger_proto_rawDescGZIP(), []int{95}
 }
 
-func (x *GetFavoritesRequest) GetUserId() string {
+func (x *GetSavedMessagesRequest) GetUserId() string {
 	if x != nil {
 		return x.UserId
 	}
 	return ""
 }
 
-type GetFavoritesResponse struct {
+type GetSavedMessagesResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Messages      []*Message             `protobuf:"bytes,1,rep,name=messages,proto3" json:"messages,omitempty"`
+	Messages      []*MessageV2           `protobuf:"bytes,1,rep,name=messages,proto3" json:"messages,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *GetFavoritesResponse) Reset() {
-	*x = GetFavoritesResponse{}
+func (x *GetSavedMessagesResponse) Reset() {
+	*x = GetSavedMessagesResponse{}
 	mi := &file_messenger_proto_msgTypes[96]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *GetFavoritesResponse) String() string {
+func (x *GetSavedMessagesResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GetFavoritesResponse) ProtoMessage() {}
+func (*GetSavedMessagesResponse) ProtoMessage() {}
 
-func (x *GetFavoritesResponse) ProtoReflect() protoreflect.Message {
+func (x *GetSavedMessagesResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_messenger_proto_msgTypes[96]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -5953,12 +5953,12 @@ func (x *GetFavoritesResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use GetFavoritesResponse.ProtoReflect.Descriptor instead.
-func (*GetFavoritesResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use GetSavedMessagesResponse.ProtoReflect.Descriptor instead.
+func (*GetSavedMessagesResponse) Descriptor() ([]byte, []int) {
 	return file_messenger_proto_rawDescGZIP(), []int{96}
 }
 
-func (x *GetFavoritesResponse) GetMessages() []*Message {
+func (x *GetSavedMessagesResponse) GetMessages() []*MessageV2 {
 	if x != nil {
 		return x.Messages
 	}
@@ -24837,24 +24837,24 @@ const file_messenger_proto_rawDesc = "" +
 	"\busername\x18\x01 \x01(\tR\busername\"B\n" +
 	"\x11GetUserIdResponse\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x14\n" +
-	"\x05found\x18\x02 \x01(\bR\x05found\"L\n" +
-	"\x12AddFavoriteRequest\x12\x17\n" +
+	"\x05found\x18\x02 \x01(\bR\x05found\"P\n" +
+	"\x16AddSavedMessageRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1d\n" +
 	"\n" +
-	"message_id\x18\x02 \x01(\tR\tmessageId\"I\n" +
-	"\x13AddFavoriteResponse\x12\x18\n" +
+	"message_id\x18\x02 \x01(\tR\tmessageId\"M\n" +
+	"\x17AddSavedMessageResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage\"O\n" +
-	"\x15RemoveFavoriteRequest\x12\x17\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"S\n" +
+	"\x19RemoveSavedMessageRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1d\n" +
 	"\n" +
-	"message_id\x18\x02 \x01(\tR\tmessageId\"2\n" +
-	"\x16RemoveFavoriteResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess\".\n" +
-	"\x13GetFavoritesRequest\x12\x17\n" +
-	"\auser_id\x18\x01 \x01(\tR\x06userId\"F\n" +
-	"\x14GetFavoritesResponse\x12.\n" +
-	"\bmessages\x18\x01 \x03(\v2\x12.messenger.MessageR\bmessages\"z\n" +
+	"message_id\x18\x02 \x01(\tR\tmessageId\"6\n" +
+	"\x1aRemoveSavedMessageResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\"2\n" +
+	"\x17GetSavedMessagesRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\"L\n" +
+	"\x18GetSavedMessagesResponse\x120\n" +
+	"\bmessages\x18\x01 \x03(\v2\x14.messenger.MessageV2R\bmessages\"z\n" +
 	"\rTypingRequest\x12\x17\n" +
 	"\aroom_id\x18\x01 \x01(\tR\x06roomId\x12\x1a\n" +
 	"\busername\x18\x02 \x01(\tR\busername\x12\x1b\n" +
@@ -26303,7 +26303,7 @@ const file_messenger_proto_rawDesc = "" +
 	"\rMEMBER_JOINED\x10\x01\x12\x0f\n" +
 	"\vMEMBER_LEFT\x10\x02\x12\x14\n" +
 	"\x10POSITION_CHANGED\x10\x03\x12\x18\n" +
-	"\x14COMPANY_CHAT_CREATED\x10\x042\xb6W\n" +
+	"\x14COMPANY_CHAT_CREATED\x10\x042\xdbW\n" +
 	"\vChatService\x122\n" +
 	"\x04Chat\x12\x12.messenger.Message\x1a\x12.messenger.Message(\x010\x01\x12?\n" +
 	"\x06Typing\x12\x18.messenger.TypingRequest\x1a\x17.messenger.TypingSignal(\x010\x01\x12A\n" +
@@ -26356,11 +26356,11 @@ const file_messenger_proto_rawDesc = "" +
 	"\vDeleteDraft\x12\x1d.messenger.DeleteDraftRequest\x1a\x1e.messenger.DeleteDraftResponse\x12R\n" +
 	"\rGetMutedChats\x12\x1f.messenger.GetMutedChatsRequest\x1a .messenger.GetMutedChatsResponse\x12O\n" +
 	"\fSetMutedChat\x12\x1e.messenger.SetMutedChatRequest\x1a\x1f.messenger.SetMutedChatResponse\x12F\n" +
-	"\tGetUserId\x12\x1b.messenger.GetUserIdRequest\x1a\x1c.messenger.GetUserIdResponse\x12L\n" +
-	"\vAddFavorite\x12\x1d.messenger.AddFavoriteRequest\x1a\x1e.messenger.AddFavoriteResponse\x12U\n" +
-	"\x0eRemoveFavorite\x12 .messenger.RemoveFavoriteRequest\x1a!.messenger.RemoveFavoriteResponse\x12O\n" +
-	"\fGetFavorites\x12\x1e.messenger.GetFavoritesRequest\x1a\x1f.messenger.GetFavoritesResponse\x12I\n" +
-	"\x13SaveFavoriteMessage\x12\x12.messenger.Message\x1a\x1e.messenger.AddFavoriteResponse\x12I\n" +
+	"\tGetUserId\x12\x1b.messenger.GetUserIdRequest\x1a\x1c.messenger.GetUserIdResponse\x12X\n" +
+	"\x0fAddSavedMessage\x12!.messenger.AddSavedMessageRequest\x1a\".messenger.AddSavedMessageResponse\x12a\n" +
+	"\x12RemoveSavedMessage\x12$.messenger.RemoveSavedMessageRequest\x1a%.messenger.RemoveSavedMessageResponse\x12[\n" +
+	"\x10GetSavedMessages\x12\".messenger.GetSavedMessagesRequest\x1a#.messenger.GetSavedMessagesResponse\x12J\n" +
+	"\x10SaveSavedMessage\x12\x12.messenger.Message\x1a\".messenger.AddSavedMessageResponse\x12I\n" +
 	"\n" +
 	"GetDevices\x12\x1c.messenger.GetDevicesRequest\x1a\x1d.messenger.GetDevicesResponse\x12O\n" +
 	"\fDeleteDevice\x12\x1e.messenger.DeleteDeviceRequest\x1a\x1f.messenger.DeleteDeviceResponse\x12U\n" +
@@ -26621,12 +26621,12 @@ var file_messenger_proto_goTypes = []any{
 	(*SetMutedChatResponse)(nil),            // 91: messenger.SetMutedChatResponse
 	(*GetUserIdRequest)(nil),                // 92: messenger.GetUserIdRequest
 	(*GetUserIdResponse)(nil),               // 93: messenger.GetUserIdResponse
-	(*AddFavoriteRequest)(nil),              // 94: messenger.AddFavoriteRequest
-	(*AddFavoriteResponse)(nil),             // 95: messenger.AddFavoriteResponse
-	(*RemoveFavoriteRequest)(nil),           // 96: messenger.RemoveFavoriteRequest
-	(*RemoveFavoriteResponse)(nil),          // 97: messenger.RemoveFavoriteResponse
-	(*GetFavoritesRequest)(nil),             // 98: messenger.GetFavoritesRequest
-	(*GetFavoritesResponse)(nil),            // 99: messenger.GetFavoritesResponse
+	(*AddSavedMessageRequest)(nil),          // 94: messenger.AddSavedMessageRequest
+	(*AddSavedMessageResponse)(nil),         // 95: messenger.AddSavedMessageResponse
+	(*RemoveSavedMessageRequest)(nil),       // 96: messenger.RemoveSavedMessageRequest
+	(*RemoveSavedMessageResponse)(nil),      // 97: messenger.RemoveSavedMessageResponse
+	(*GetSavedMessagesRequest)(nil),         // 98: messenger.GetSavedMessagesRequest
+	(*GetSavedMessagesResponse)(nil),        // 99: messenger.GetSavedMessagesResponse
 	(*TypingRequest)(nil),                   // 100: messenger.TypingRequest
 	(*TypingSignal)(nil),                    // 101: messenger.TypingSignal
 	(*DeviceInfo)(nil),                      // 102: messenger.DeviceInfo
@@ -26957,7 +26957,7 @@ var file_messenger_proto_depIdxs = []int32{
 	64,  // 13: messenger.GetThemesResponse.custom_themes:type_name -> messenger.CustomTheme
 	64,  // 14: messenger.SaveThemeRequest.theme:type_name -> messenger.CustomTheme
 	80,  // 15: messenger.GetFCMLogsResponse.logs:type_name -> messenger.FCMLogEntry
-	3,   // 16: messenger.GetFavoritesResponse.messages:type_name -> messenger.Message
+	248, // 16: messenger.GetSavedMessagesResponse.messages:type_name -> messenger.MessageV2
 	411, // 17: messenger.DeviceInfo.last_seen_at:type_name -> google.protobuf.Timestamp
 	102, // 18: messenger.GetDevicesResponse.devices:type_name -> messenger.DeviceInfo
 	2,   // 19: messenger.CallMessage.type:type_name -> messenger.CallMessage.Type
@@ -27093,10 +27093,10 @@ var file_messenger_proto_depIdxs = []int32{
 	88,  // 149: messenger.ChatService.GetMutedChats:input_type -> messenger.GetMutedChatsRequest
 	90,  // 150: messenger.ChatService.SetMutedChat:input_type -> messenger.SetMutedChatRequest
 	92,  // 151: messenger.ChatService.GetUserId:input_type -> messenger.GetUserIdRequest
-	94,  // 152: messenger.ChatService.AddFavorite:input_type -> messenger.AddFavoriteRequest
-	96,  // 153: messenger.ChatService.RemoveFavorite:input_type -> messenger.RemoveFavoriteRequest
-	98,  // 154: messenger.ChatService.GetFavorites:input_type -> messenger.GetFavoritesRequest
-	3,   // 155: messenger.ChatService.SaveFavoriteMessage:input_type -> messenger.Message
+	94,  // 152: messenger.ChatService.AddSavedMessage:input_type -> messenger.AddSavedMessageRequest
+	96,  // 153: messenger.ChatService.RemoveSavedMessage:input_type -> messenger.RemoveSavedMessageRequest
+	98,  // 154: messenger.ChatService.GetSavedMessages:input_type -> messenger.GetSavedMessagesRequest
+	3,   // 155: messenger.ChatService.SaveSavedMessage:input_type -> messenger.Message
 	103, // 156: messenger.ChatService.GetDevices:input_type -> messenger.GetDevicesRequest
 	105, // 157: messenger.ChatService.DeleteDevice:input_type -> messenger.DeleteDeviceRequest
 	105, // 158: messenger.ChatService.DeleteOtherDevices:input_type -> messenger.DeleteDeviceRequest
@@ -27280,10 +27280,10 @@ var file_messenger_proto_depIdxs = []int32{
 	89,  // 336: messenger.ChatService.GetMutedChats:output_type -> messenger.GetMutedChatsResponse
 	91,  // 337: messenger.ChatService.SetMutedChat:output_type -> messenger.SetMutedChatResponse
 	93,  // 338: messenger.ChatService.GetUserId:output_type -> messenger.GetUserIdResponse
-	95,  // 339: messenger.ChatService.AddFavorite:output_type -> messenger.AddFavoriteResponse
-	97,  // 340: messenger.ChatService.RemoveFavorite:output_type -> messenger.RemoveFavoriteResponse
-	99,  // 341: messenger.ChatService.GetFavorites:output_type -> messenger.GetFavoritesResponse
-	95,  // 342: messenger.ChatService.SaveFavoriteMessage:output_type -> messenger.AddFavoriteResponse
+	95,  // 339: messenger.ChatService.AddSavedMessage:output_type -> messenger.AddSavedMessageResponse
+	97,  // 340: messenger.ChatService.RemoveSavedMessage:output_type -> messenger.RemoveSavedMessageResponse
+	99,  // 341: messenger.ChatService.GetSavedMessages:output_type -> messenger.GetSavedMessagesResponse
+	95,  // 342: messenger.ChatService.SaveSavedMessage:output_type -> messenger.AddSavedMessageResponse
 	104, // 343: messenger.ChatService.GetDevices:output_type -> messenger.GetDevicesResponse
 	106, // 344: messenger.ChatService.DeleteDevice:output_type -> messenger.DeleteDeviceResponse
 	106, // 345: messenger.ChatService.DeleteOtherDevices:output_type -> messenger.DeleteDeviceResponse

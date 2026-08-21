@@ -59,7 +59,7 @@
 | `server_themes.go` | Custom themes | ChatService |
 | `server_drafts.go` | Draft messages | ChatService |
 | `server_muted.go` | Muted chats | ChatService |
-| `server_favorites.go` | Favorites, device mgmt, password reset, user ID | ChatService |
+| `server_favorites.go` | Saved Messages, device mgmt, password reset, user ID | ChatService |
 | `server_profile_v2.go` | ProfileService: GetProfile, UpdateProfile, UpdateAvatar, DeleteProfile | ProfileService |
 | `server_company.go` | CompanyService: companies, positions, members, company chats | CompanyService |
 | `server_company_settings.go` | CompanyService: GetCompanySettings, UpdateCompanySettings | CompanyService |

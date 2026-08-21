@@ -101,8 +101,17 @@ var coreMigrations = []string{
 	// --- Pinned Messages ---
 	`CREATE TABLE IF NOT EXISTS pinned_messages (id SERIAL PRIMARY KEY, message_id VARCHAR(255) UNIQUE NOT NULL, room_id VARCHAR(255) NOT NULL, username VARCHAR(255) NOT NULL, pinned_by VARCHAR(255) NOT NULL, pinned_at TIMESTAMP NOT NULL DEFAULT NOW())`,
 
-	// --- Favorites ---
-	`CREATE TABLE IF NOT EXISTS favorites (id SERIAL PRIMARY KEY, user_id UUID NOT NULL, message_id VARCHAR(255) NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT NOW(), UNIQUE(user_id, message_id))`,
+	// --- Saved Messages (renamed from favorites) ---
+	`CREATE TABLE IF NOT EXISTS saved_messages (id SERIAL PRIMARY KEY, user_id UUID NOT NULL, message_id VARCHAR(255) NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT NOW(), UNIQUE(user_id, message_id))`,
+	// Migrate data from legacy favorites table if it exists
+	`DO $$ BEGIN
+		IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='favorites') THEN
+			INSERT INTO saved_messages (user_id, message_id, created_at)
+			SELECT user_id, message_id, created_at FROM favorites
+			ON CONFLICT DO NOTHING;
+			DROP TABLE favorites;
+		END IF;
+	END $$;`,
 
 	// --- Chat List v2 ---
 	`CREATE TABLE IF NOT EXISTS chat_list_v2 (id SERIAL PRIMARY KEY, user_id UUID NOT NULL, chat_id VARCHAR(255) NOT NULL, unread_count INTEGER DEFAULT 0, last_message_preview TEXT, last_message_at TIMESTAMP, is_pinned BOOLEAN DEFAULT FALSE, is_muted BOOLEAN DEFAULT FALSE, UNIQUE(user_id, chat_id))`,

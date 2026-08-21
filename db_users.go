@@ -244,7 +244,7 @@ func (db *DB) DeleteProfile(user string) error {
 	tx.Exec(`DELETE FROM user_tokens WHERE username=$1`, user)
 	tx.Exec(`DELETE FROM user_devices WHERE user_id = `+userID, user)
 	tx.Exec(`DELETE FROM user_themes WHERE user_id = `+userID, user)
-	tx.Exec(`DELETE FROM favorites WHERE user_id = `+userID, user)
+	tx.Exec(`DELETE FROM saved_messages WHERE user_id = `+userID, user)
 	tx.Exec(`DELETE FROM pinned_messages WHERE username=$1`, user)
 	tx.Exec(`DELETE FROM chat_list_v2 WHERE user_id = `+userID, user)
 	tx.Exec(`DELETE FROM calls WHERE caller_id = `+userID+` OR receiver_id = `+userID, user)

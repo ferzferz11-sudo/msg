@@ -15,7 +15,7 @@
 //   server_themes.go    — GetThemes, SaveTheme, SetCurrentTheme, DeleteTheme
 //   server_drafts.go    — GetFCMLogs, SaveDraft, GetDraft, DeleteDraft
 //   server_muted.go     — GetMutedChats, SetMutedChat
-//   server_favorites.go — GetUserId, AddFavorite, RemoveFavorite, GetFavorites
+//   server_favorites.go — GetUserId, AddSavedMessage, RemoveSavedMessage, GetSavedMessages
 //   server_profile_v2.go — ProfileService v2: GetProfile, UpdateProfile, UpdateAvatar, DeleteProfile
 //   server_ai_v2.go     — AI Services v2: ChatWithAIV2, Agent CRUD, ListTools
 
@@ -32,7 +32,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const ServerVersion = "1.4.0.5"
+const ServerVersion = "1.4.0.6"
 
 // Service versions for client capability negotiation.
 // Service versions for client capability negotiation.

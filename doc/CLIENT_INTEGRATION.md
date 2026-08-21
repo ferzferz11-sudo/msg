@@ -892,7 +892,7 @@ message DeleteProfileV2Request {
 // Returns: DeleteProfileV2Response { success, message }
 ```
 
-**Warning:** Deleting a profile permanently removes all user data including AI chats, themes, contacts, favorites, and pins. Messages in group chats are preserved (shared history).
+**Warning:** Deleting a profile permanently removes all user data including AI chats, themes, contacts, saved messages, and pins. Messages in group chats are preserved (shared history).
 
 ### User Settings
 
@@ -1001,12 +1001,76 @@ rpc GetContacts(GetContactsRequest) returns (GetContactsResponse);
 
 ---
 
-## Favorites
+## Saved Messages
 
 ```protobuf
-rpc AddFavorite(AddFavoriteRequest) returns (AddFavoriteResponse);
-rpc RemoveFavorite(RemoveFavoriteRequest) returns (RemoveFavoriteResponse);
-rpc GetFavorites(GetFavoritesRequest) returns (GetFavoritesResponse);
+rpc AddSavedMessage(AddSavedMessageRequest) returns (AddSavedMessageResponse);
+rpc RemoveSavedMessage(RemoveSavedMessageRequest) returns (RemoveSavedMessageResponse);
+rpc GetSavedMessages(GetSavedMessagesRequest) returns (GetSavedMessagesResponse);
+rpc SaveSavedMessage(Message) returns (AddSavedMessageResponse);
+```
+
+### Получение сохранённых сообщений (v2)
+
+Используйте `GetSavedMessages` — возвращает `MessageV2`:
+
+```kotlin
+// Вариант 1: через JWT контекст (user_id берётся из токена)
+val request = GetSavedMessagesRequest.getDefaultInstance()
+val response = chatService.getSavedMessages(request)
+val messages = response.messagesList  // List<MessageV2>
+
+// Вариант 2: с явным user_id
+val request = GetSavedMessagesRequest.newBuilder()
+    .setUserId(currentUserId)  // UUID пользователя
+    .build()
+val response = chatService.getSavedMessages(request)
+```
+
+### Добавление сообщения в сохранённые
+
+```kotlin
+// Сохранить существующее сообщение (например, из чата)
+val request = AddSavedMessageRequest.newBuilder()
+    .setUserId(currentUserId)
+    .setMessageId(messageId)  // UUID сообщения
+    .build()
+val response = chatService.addSavedMessage(request)
+```
+
+### Отправка нового сообщения в Saved Messages
+
+Используйте `SendMessageV2` с `roomId = "saved_messages_{userId}"`:
+
+```kotlin
+val roomId = "saved_messages_$currentUserId"
+val request = SendMessageV2Request.newBuilder()
+    .setRoomId(roomId)
+    .setText("Моё сообщение")
+    .build()
+val response = chatService.sendMessageV2(request)
+// Сообщение автоматически сохраняется в saved_messages таблицу
+```
+
+### Удаление из сохранённых
+
+```kotlin
+val request = RemoveSavedMessageRequest.newBuilder()
+    .setUserId(currentUserId)
+    .setMessageId(messageId)
+    .build()
+val response = chatService.removeSavedMessage(request)
+```
+
+### Получение через GetHistoryV2 (альтернативный способ)
+
+```kotlin
+val roomId = "saved_messages_$currentUserId"
+val request = GetHistoryV2Request.newBuilder()
+    .setRoomId(roomId)
+    .setLimit(50)
+    .build()
+val response = chatService.getHistoryV2(request)
 ```
 
 ---

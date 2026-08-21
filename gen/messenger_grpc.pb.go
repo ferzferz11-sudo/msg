@@ -65,10 +65,10 @@ const (
 	ChatService_GetMutedChats_FullMethodName          = "/messenger.ChatService/GetMutedChats"
 	ChatService_SetMutedChat_FullMethodName           = "/messenger.ChatService/SetMutedChat"
 	ChatService_GetUserId_FullMethodName              = "/messenger.ChatService/GetUserId"
-	ChatService_AddFavorite_FullMethodName            = "/messenger.ChatService/AddFavorite"
-	ChatService_RemoveFavorite_FullMethodName         = "/messenger.ChatService/RemoveFavorite"
-	ChatService_GetFavorites_FullMethodName           = "/messenger.ChatService/GetFavorites"
-	ChatService_SaveFavoriteMessage_FullMethodName    = "/messenger.ChatService/SaveFavoriteMessage"
+	ChatService_AddSavedMessage_FullMethodName        = "/messenger.ChatService/AddSavedMessage"
+	ChatService_RemoveSavedMessage_FullMethodName     = "/messenger.ChatService/RemoveSavedMessage"
+	ChatService_GetSavedMessages_FullMethodName       = "/messenger.ChatService/GetSavedMessages"
+	ChatService_SaveSavedMessage_FullMethodName       = "/messenger.ChatService/SaveSavedMessage"
 	ChatService_GetDevices_FullMethodName             = "/messenger.ChatService/GetDevices"
 	ChatService_DeleteDevice_FullMethodName           = "/messenger.ChatService/DeleteDevice"
 	ChatService_DeleteOtherDevices_FullMethodName     = "/messenger.ChatService/DeleteOtherDevices"
@@ -207,10 +207,10 @@ type ChatServiceClient interface {
 	GetMutedChats(ctx context.Context, in *GetMutedChatsRequest, opts ...grpc.CallOption) (*GetMutedChatsResponse, error)
 	SetMutedChat(ctx context.Context, in *SetMutedChatRequest, opts ...grpc.CallOption) (*SetMutedChatResponse, error)
 	GetUserId(ctx context.Context, in *GetUserIdRequest, opts ...grpc.CallOption) (*GetUserIdResponse, error)
-	AddFavorite(ctx context.Context, in *AddFavoriteRequest, opts ...grpc.CallOption) (*AddFavoriteResponse, error)
-	RemoveFavorite(ctx context.Context, in *RemoveFavoriteRequest, opts ...grpc.CallOption) (*RemoveFavoriteResponse, error)
-	GetFavorites(ctx context.Context, in *GetFavoritesRequest, opts ...grpc.CallOption) (*GetFavoritesResponse, error)
-	SaveFavoriteMessage(ctx context.Context, in *Message, opts ...grpc.CallOption) (*AddFavoriteResponse, error)
+	AddSavedMessage(ctx context.Context, in *AddSavedMessageRequest, opts ...grpc.CallOption) (*AddSavedMessageResponse, error)
+	RemoveSavedMessage(ctx context.Context, in *RemoveSavedMessageRequest, opts ...grpc.CallOption) (*RemoveSavedMessageResponse, error)
+	GetSavedMessages(ctx context.Context, in *GetSavedMessagesRequest, opts ...grpc.CallOption) (*GetSavedMessagesResponse, error)
+	SaveSavedMessage(ctx context.Context, in *Message, opts ...grpc.CallOption) (*AddSavedMessageResponse, error)
 	GetDevices(ctx context.Context, in *GetDevicesRequest, opts ...grpc.CallOption) (*GetDevicesResponse, error)
 	DeleteDevice(ctx context.Context, in *DeleteDeviceRequest, opts ...grpc.CallOption) (*DeleteDeviceResponse, error)
 	DeleteOtherDevices(ctx context.Context, in *DeleteDeviceRequest, opts ...grpc.CallOption) (*DeleteDeviceResponse, error)
@@ -792,40 +792,40 @@ func (c *chatServiceClient) GetUserId(ctx context.Context, in *GetUserIdRequest,
 	return out, nil
 }
 
-func (c *chatServiceClient) AddFavorite(ctx context.Context, in *AddFavoriteRequest, opts ...grpc.CallOption) (*AddFavoriteResponse, error) {
+func (c *chatServiceClient) AddSavedMessage(ctx context.Context, in *AddSavedMessageRequest, opts ...grpc.CallOption) (*AddSavedMessageResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(AddFavoriteResponse)
-	err := c.cc.Invoke(ctx, ChatService_AddFavorite_FullMethodName, in, out, cOpts...)
+	out := new(AddSavedMessageResponse)
+	err := c.cc.Invoke(ctx, ChatService_AddSavedMessage_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *chatServiceClient) RemoveFavorite(ctx context.Context, in *RemoveFavoriteRequest, opts ...grpc.CallOption) (*RemoveFavoriteResponse, error) {
+func (c *chatServiceClient) RemoveSavedMessage(ctx context.Context, in *RemoveSavedMessageRequest, opts ...grpc.CallOption) (*RemoveSavedMessageResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(RemoveFavoriteResponse)
-	err := c.cc.Invoke(ctx, ChatService_RemoveFavorite_FullMethodName, in, out, cOpts...)
+	out := new(RemoveSavedMessageResponse)
+	err := c.cc.Invoke(ctx, ChatService_RemoveSavedMessage_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *chatServiceClient) GetFavorites(ctx context.Context, in *GetFavoritesRequest, opts ...grpc.CallOption) (*GetFavoritesResponse, error) {
+func (c *chatServiceClient) GetSavedMessages(ctx context.Context, in *GetSavedMessagesRequest, opts ...grpc.CallOption) (*GetSavedMessagesResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetFavoritesResponse)
-	err := c.cc.Invoke(ctx, ChatService_GetFavorites_FullMethodName, in, out, cOpts...)
+	out := new(GetSavedMessagesResponse)
+	err := c.cc.Invoke(ctx, ChatService_GetSavedMessages_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *chatServiceClient) SaveFavoriteMessage(ctx context.Context, in *Message, opts ...grpc.CallOption) (*AddFavoriteResponse, error) {
+func (c *chatServiceClient) SaveSavedMessage(ctx context.Context, in *Message, opts ...grpc.CallOption) (*AddSavedMessageResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(AddFavoriteResponse)
-	err := c.cc.Invoke(ctx, ChatService_SaveFavoriteMessage_FullMethodName, in, out, cOpts...)
+	out := new(AddSavedMessageResponse)
+	err := c.cc.Invoke(ctx, ChatService_SaveSavedMessage_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1772,10 +1772,10 @@ type ChatServiceServer interface {
 	GetMutedChats(context.Context, *GetMutedChatsRequest) (*GetMutedChatsResponse, error)
 	SetMutedChat(context.Context, *SetMutedChatRequest) (*SetMutedChatResponse, error)
 	GetUserId(context.Context, *GetUserIdRequest) (*GetUserIdResponse, error)
-	AddFavorite(context.Context, *AddFavoriteRequest) (*AddFavoriteResponse, error)
-	RemoveFavorite(context.Context, *RemoveFavoriteRequest) (*RemoveFavoriteResponse, error)
-	GetFavorites(context.Context, *GetFavoritesRequest) (*GetFavoritesResponse, error)
-	SaveFavoriteMessage(context.Context, *Message) (*AddFavoriteResponse, error)
+	AddSavedMessage(context.Context, *AddSavedMessageRequest) (*AddSavedMessageResponse, error)
+	RemoveSavedMessage(context.Context, *RemoveSavedMessageRequest) (*RemoveSavedMessageResponse, error)
+	GetSavedMessages(context.Context, *GetSavedMessagesRequest) (*GetSavedMessagesResponse, error)
+	SaveSavedMessage(context.Context, *Message) (*AddSavedMessageResponse, error)
 	GetDevices(context.Context, *GetDevicesRequest) (*GetDevicesResponse, error)
 	DeleteDevice(context.Context, *DeleteDeviceRequest) (*DeleteDeviceResponse, error)
 	DeleteOtherDevices(context.Context, *DeleteDeviceRequest) (*DeleteDeviceResponse, error)
@@ -2026,17 +2026,17 @@ func (UnimplementedChatServiceServer) SetMutedChat(context.Context, *SetMutedCha
 func (UnimplementedChatServiceServer) GetUserId(context.Context, *GetUserIdRequest) (*GetUserIdResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetUserId not implemented")
 }
-func (UnimplementedChatServiceServer) AddFavorite(context.Context, *AddFavoriteRequest) (*AddFavoriteResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method AddFavorite not implemented")
+func (UnimplementedChatServiceServer) AddSavedMessage(context.Context, *AddSavedMessageRequest) (*AddSavedMessageResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method AddSavedMessage not implemented")
 }
-func (UnimplementedChatServiceServer) RemoveFavorite(context.Context, *RemoveFavoriteRequest) (*RemoveFavoriteResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method RemoveFavorite not implemented")
+func (UnimplementedChatServiceServer) RemoveSavedMessage(context.Context, *RemoveSavedMessageRequest) (*RemoveSavedMessageResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RemoveSavedMessage not implemented")
 }
-func (UnimplementedChatServiceServer) GetFavorites(context.Context, *GetFavoritesRequest) (*GetFavoritesResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method GetFavorites not implemented")
+func (UnimplementedChatServiceServer) GetSavedMessages(context.Context, *GetSavedMessagesRequest) (*GetSavedMessagesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetSavedMessages not implemented")
 }
-func (UnimplementedChatServiceServer) SaveFavoriteMessage(context.Context, *Message) (*AddFavoriteResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method SaveFavoriteMessage not implemented")
+func (UnimplementedChatServiceServer) SaveSavedMessage(context.Context, *Message) (*AddSavedMessageResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SaveSavedMessage not implemented")
 }
 func (UnimplementedChatServiceServer) GetDevices(context.Context, *GetDevicesRequest) (*GetDevicesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetDevices not implemented")
@@ -3100,74 +3100,74 @@ func _ChatService_GetUserId_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ChatService_AddFavorite_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(AddFavoriteRequest)
+func _ChatService_AddSavedMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AddSavedMessageRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ChatServiceServer).AddFavorite(ctx, in)
+		return srv.(ChatServiceServer).AddSavedMessage(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ChatService_AddFavorite_FullMethodName,
+		FullMethod: ChatService_AddSavedMessage_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ChatServiceServer).AddFavorite(ctx, req.(*AddFavoriteRequest))
+		return srv.(ChatServiceServer).AddSavedMessage(ctx, req.(*AddSavedMessageRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ChatService_RemoveFavorite_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RemoveFavoriteRequest)
+func _ChatService_RemoveSavedMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveSavedMessageRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ChatServiceServer).RemoveFavorite(ctx, in)
+		return srv.(ChatServiceServer).RemoveSavedMessage(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ChatService_RemoveFavorite_FullMethodName,
+		FullMethod: ChatService_RemoveSavedMessage_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ChatServiceServer).RemoveFavorite(ctx, req.(*RemoveFavoriteRequest))
+		return srv.(ChatServiceServer).RemoveSavedMessage(ctx, req.(*RemoveSavedMessageRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ChatService_GetFavorites_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetFavoritesRequest)
+func _ChatService_GetSavedMessages_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetSavedMessagesRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ChatServiceServer).GetFavorites(ctx, in)
+		return srv.(ChatServiceServer).GetSavedMessages(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ChatService_GetFavorites_FullMethodName,
+		FullMethod: ChatService_GetSavedMessages_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ChatServiceServer).GetFavorites(ctx, req.(*GetFavoritesRequest))
+		return srv.(ChatServiceServer).GetSavedMessages(ctx, req.(*GetSavedMessagesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ChatService_SaveFavoriteMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _ChatService_SaveSavedMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(Message)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ChatServiceServer).SaveFavoriteMessage(ctx, in)
+		return srv.(ChatServiceServer).SaveSavedMessage(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ChatService_SaveFavoriteMessage_FullMethodName,
+		FullMethod: ChatService_SaveSavedMessage_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ChatServiceServer).SaveFavoriteMessage(ctx, req.(*Message))
+		return srv.(ChatServiceServer).SaveSavedMessage(ctx, req.(*Message))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4768,20 +4768,20 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _ChatService_GetUserId_Handler,
 		},
 		{
-			MethodName: "AddFavorite",
-			Handler:    _ChatService_AddFavorite_Handler,
+			MethodName: "AddSavedMessage",
+			Handler:    _ChatService_AddSavedMessage_Handler,
 		},
 		{
-			MethodName: "RemoveFavorite",
-			Handler:    _ChatService_RemoveFavorite_Handler,
+			MethodName: "RemoveSavedMessage",
+			Handler:    _ChatService_RemoveSavedMessage_Handler,
 		},
 		{
-			MethodName: "GetFavorites",
-			Handler:    _ChatService_GetFavorites_Handler,
+			MethodName: "GetSavedMessages",
+			Handler:    _ChatService_GetSavedMessages_Handler,
 		},
 		{
-			MethodName: "SaveFavoriteMessage",
-			Handler:    _ChatService_SaveFavoriteMessage_Handler,
+			MethodName: "SaveSavedMessage",
+			Handler:    _ChatService_SaveSavedMessage_Handler,
 		},
 		{
 			MethodName: "GetDevices",

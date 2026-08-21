@@ -262,7 +262,7 @@ func (s *server) ChatV2(stream gen.ChatService_ChatV2Server) error {
 				_ = target.Send(wrappedMsg)
 			}
 
-			if !strings.HasPrefix(currentRoom, "favorites_") {
+			if !strings.HasPrefix(currentRoom, "saved_messages_") {
 				senderNotifiesOthers := s.db.GetUserPushStatus(connectedUser)
 				if senderNotifiesOthers {
 					chat, err := s.db.GetChat(currentRoom)

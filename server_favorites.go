@@ -3,7 +3,6 @@ package main
 import (
 	"LavenderMessenger/gen"
 	"context"
-	"encoding/json"
 	"os"
 	"time"
 
@@ -19,136 +18,91 @@ func (s *server) GetUserId(_ context.Context, req *gen.GetUserIdRequest) (*gen.G
 	return &gen.GetUserIdResponse{UserId: userID, Found: true}, nil
 }
 
-func (s *server) AddFavorite(ctx context.Context, req *gen.AddFavoriteRequest) (*gen.AddFavoriteResponse, error) {
+func (s *server) AddSavedMessage(ctx context.Context, req *gen.AddSavedMessageRequest) (*gen.AddSavedMessageResponse, error) {
 	userID := GetUserID(ctx)
 	if userID == "" {
 		userID = req.UserId
 	}
 	if userID == "" || req.MessageId == "" {
-		logger.Infof("[Favorites] AddFavorite rejected: empty user_id=%s or message_id=%s", userID, req.MessageId)
-		return &gen.AddFavoriteResponse{Success: false, Message: "empty user id or message id"}, nil
+		logger.Infof("[SavedMessages] AddSavedMessage rejected: empty user_id=%s or message_id=%s", userID, req.MessageId)
+		return &gen.AddSavedMessageResponse{Success: false, Message: "empty user id or message id"}, nil
 	}
-	logger.Infof("[Favorites] AddFavorite: user_id=%s message_id=%s", userID, req.MessageId)
-	err := s.db.AddFavorite(userID, req.MessageId)
+	logger.Infof("[SavedMessages] AddSavedMessage: user_id=%s message_id=%s", userID, req.MessageId)
+	err := s.db.AddSavedMessage(userID, req.MessageId)
 	if err != nil {
-		logger.Infof("[Favorites] AddFavorite DB error: %v", err)
-		return &gen.AddFavoriteResponse{Success: false, Message: err.Error()}, nil
+		logger.Infof("[SavedMessages] AddSavedMessage DB error: %v", err)
+		return &gen.AddSavedMessageResponse{Success: false, Message: err.Error()}, nil
 	}
-	logger.Infof("[Favorites] AddFavorite success: user_id=%s message_id=%s", userID, req.MessageId)
-	return &gen.AddFavoriteResponse{Success: true}, nil
+	logger.Infof("[SavedMessages] AddSavedMessage success: user_id=%s message_id=%s", userID, req.MessageId)
+	return &gen.AddSavedMessageResponse{Success: true}, nil
 }
 
-func (s *server) RemoveFavorite(ctx context.Context, req *gen.RemoveFavoriteRequest) (*gen.RemoveFavoriteResponse, error) {
+func (s *server) RemoveSavedMessage(ctx context.Context, req *gen.RemoveSavedMessageRequest) (*gen.RemoveSavedMessageResponse, error) {
 	userID := GetUserID(ctx)
 	if userID == "" {
 		userID = req.UserId
 	}
 	if userID == "" || req.MessageId == "" {
-		return &gen.RemoveFavoriteResponse{Success: false}, nil
+		return &gen.RemoveSavedMessageResponse{Success: false}, nil
 	}
-	err := s.db.RemoveFavorite(userID, req.MessageId)
+	err := s.db.RemoveSavedMessage(userID, req.MessageId)
 	if err != nil {
-		logger.Infof("Failed to remove favorite: %v", err)
-		return &gen.RemoveFavoriteResponse{Success: false}, nil
+		logger.Infof("[SavedMessages] RemoveSavedMessage error: %v", err)
+		return &gen.RemoveSavedMessageResponse{Success: false}, nil
 	}
-	return &gen.RemoveFavoriteResponse{Success: true}, nil
+	return &gen.RemoveSavedMessageResponse{Success: true}, nil
 }
 
-func (s *server) GetFavorites(ctx context.Context, req *gen.GetFavoritesRequest) (*gen.GetFavoritesResponse, error) {
+func (s *server) GetSavedMessages(ctx context.Context, req *gen.GetSavedMessagesRequest) (*gen.GetSavedMessagesResponse, error) {
 	userID := GetUserID(ctx)
 	if userID == "" {
 		userID = req.UserId
 	}
 	if userID == "" {
-		return &gen.GetFavoritesResponse{Messages: nil}, nil
+		return &gen.GetSavedMessagesResponse{Messages: nil}, nil
 	}
-	favs, err := s.db.GetFavorites(userID)
+	rows, err := s.db.GetSavedMessages(userID)
 	if err != nil {
-		logger.Infof("Failed to get favorites: %v", err)
-		return &gen.GetFavoritesResponse{Messages: nil}, nil
+		logger.Infof("[SavedMessages] GetSavedMessages error: %v", err)
+		return &gen.GetSavedMessagesResponse{Messages: nil}, nil
 	}
 
-	var messages []*gen.Message
-	for _, m := range favs {
-		var decryptedText string
-		var e2eePayload string
-		isE2EE := m.IsE2EE
-		if isE2EE {
-			e2eePayload = string(m.Encrypted)
-		} else {
-			var err error
-			decryptedText, err = decrypt(m.Encrypted)
-			if err != nil {
-				decryptedText = "не удалось расшифровать"
-			}
+	var messages []*gen.MessageV2
+	for _, r := range rows {
+		m := rowToProtoV2(&r)
+		if m != nil {
+			messages = append(messages, m)
 		}
-
-		// Получаем реакции для сообщения
-		rawReactions, _ := s.db.GetReactionsForMessage(m.MessageID)
-		var reactions []*gen.Reaction
-		for _, r := range rawReactions {
-			reactions = append(reactions, &gen.Reaction{
-				User:  r.Username,
-				Emoji: r.Emoji,
-			})
-		}
-
-		// Parse image URLs from JSON
-		var imageURLs []string
-		if m.ImageURLs != "" && m.ImageURLs != "[]" {
-			json.Unmarshal([]byte(m.ImageURLs), &imageURLs)
-		}
-
-		messages = append(messages, &gen.Message{
-			Id:                 m.MessageID,
-			User:               m.Username,
-			Text:               decryptedText,
-			CreatedAt:          timestamppb.New(m.CreatedAt),
-			Reactions:          reactions,
-			RepliedToMessageId: m.RepliedToMessageID,
-			RepliedToUser:      m.RepliedToUser,
-			RepliedToText:      m.RepliedToText,
-			RoomId:             m.RoomID,
-			IsRead:             m.IsRead,
-			AvatarUrl:          m.AvatarURL,
-			ImageUrl:           m.ImageURL,
-			ImageUrls:          imageURLs,
-			Edited:             m.Edited,
-			VoiceUrl:           m.VoiceURL,
-			Duration:           m.Duration,
-			IsE2Ee:             isE2EE,
-			E2EePayload:        e2eePayload,
-		})
 	}
 
-	return &gen.GetFavoritesResponse{Messages: messages}, nil
+	return &gen.GetSavedMessagesResponse{Messages: messages}, nil
 }
 
-func (s *server) SaveFavoriteMessage(ctx context.Context, req *gen.Message) (*gen.AddFavoriteResponse, error) {
+func (s *server) SaveSavedMessage(ctx context.Context, req *gen.Message) (*gen.AddSavedMessageResponse, error) {
 	if req.User == "" {
-		logger.Infof("[Favorites] SaveFavoriteMessage rejected: empty username")
-		return &gen.AddFavoriteResponse{Success: false, Message: "username required"}, nil
+		logger.Infof("[SavedMessages] SaveSavedMessage rejected: empty username")
+		return &gen.AddSavedMessageResponse{Success: false, Message: "username required"}, nil
 	}
 
 	// Get User UUID
 	userID, err := s.db.GetUserIdByUsername(req.User)
 	if err != nil {
-		logger.Infof("[Favorites] SaveFavoriteMessage user not found: %s", req.User)
-		return &gen.AddFavoriteResponse{Success: false, Message: "user not found"}, nil
+		logger.Infof("[SavedMessages] SaveSavedMessage user not found: %s", req.User)
+		return &gen.AddSavedMessageResponse{Success: false, Message: "user not found"}, nil
 	}
 
-	logger.Infof("[Favorites] SaveFavoriteMessage: user=%s user_id=%s message_id=%s", req.User, userID, req.Id)
+	logger.Infof("[SavedMessages] SaveSavedMessage: user=%s user_id=%s message_id=%s", req.User, userID, req.Id)
 
-	// Add to favorites table only — no copy in messages_v2
+	// Add to saved_messages table only — no copy in messages_v2
 	// This preserves the original message ID so reactions work correctly
-	err = s.db.AddFavorite(userID, req.Id)
+	err = s.db.AddSavedMessage(userID, req.Id)
 	if err != nil {
-		logger.Infof("[Favorites] SaveFavoriteMessage DB error: %v", err)
-		return &gen.AddFavoriteResponse{Success: false, Message: "failed to link favorite"}, nil
+		logger.Infof("[SavedMessages] SaveSavedMessage DB error: %v", err)
+		return &gen.AddSavedMessageResponse{Success: false, Message: "failed to link saved message"}, nil
 	}
 
-	logger.Infof("[Favorites] SaveFavoriteMessage success: user=%s message_id=%s", req.User, req.Id)
-	return &gen.AddFavoriteResponse{Success: true}, nil
+	logger.Infof("[SavedMessages] SaveSavedMessage success: user=%s message_id=%s", req.User, req.Id)
+	return &gen.AddSavedMessageResponse{Success: true}, nil
 }
 
 func (s *server) GetDevices(ctx context.Context, req *gen.GetDevicesRequest) (*gen.GetDevicesResponse, error) {

@@ -1,5 +1,18 @@
 # Лава — Server Changelog
 
+## [1.4.0.6] - 2026-08-16
+
+### Breaking Changes
+- **Favorites → Saved Messages** — полное переименование:
+  - Таблица `favorites` → `saved_messages` (данные мигрируются автоматически)
+  - RPC: `AddFavorite` → `AddSavedMessage`, `RemoveFavorite` → `RemoveSavedMessage`, `GetFavorites` → `GetSavedMessages`, `SaveFavoriteMessage` → `SaveSavedMessage`
+  - Proto: `AddFavoriteRequest/Response` → `AddSavedMessageRequest/Response`, и т.д.
+  - `GetSavedMessages` теперь возвращает `MessageV2` (вместо `Message` v1)
+  - Убрана поддержка `favorites_` prefix в roomId — только `saved_messages_{userId}`
+  - DB: `AddFavorite` → `AddSavedMessage`, `RemoveFavorite` → `RemoveSavedMessage`, `GetFavorites` → `GetSavedMessages`
+
+---
+
 ## [1.4.0.5] - 2026-08-16
 
 ### Bug Fixes

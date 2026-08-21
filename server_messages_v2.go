@@ -71,8 +71,8 @@ func (s *server) SendMessageV2(ctx context.Context, req *gen.SendMessageV2Reques
 		return &gen.SendMessageV2Response{Success: false, Error: "room_id required"}, nil
 	}
 
-	// Handle saved_messages / favorites room — save message and auto-add to favorites
-	if strings.HasPrefix(req.RoomId, "saved_messages_") || strings.HasPrefix(req.RoomId, "favorites_") {
+	// Handle saved_messages room — save message and auto-add to saved messages
+	if strings.HasPrefix(req.RoomId, "saved_messages_") {
 		return s.handleSavedMessagesSend(ctx, req)
 	}
 
@@ -193,7 +193,7 @@ func (s *server) SendMessageV2(ctx context.Context, req *gen.SendMessageV2Reques
 	}
 
 	// Send push notifications to offline recipients
-	if !strings.HasPrefix(req.RoomId, "favorites_") {
+	if !strings.HasPrefix(req.RoomId, "saved_messages_") {
 		senderUsername := GetUsername(ctx)
 		if senderUsername != "" && s.db.GetUserPushStatus(senderUsername) {
 			chat, err := s.db.GetChat(req.RoomId)
@@ -548,14 +548,9 @@ func (s *server) handleSavedMessagesSend(ctx context.Context, req *gen.SendMessa
 	username := GetUsername(ctx)
 	logger.Infof("[SavedMessages] handleSavedMessagesSend: reqRoomId=%s userID=%s username=%s", req.RoomId, userID, username)
 
-	// Resolve roomId: "saved_messages_{username/userId}" or "favorites_{username}" → "saved_messages_{userId}"
+	// Resolve roomId: "saved_messages_{username/userId}" → "saved_messages_{userId}"
 	var savedRoomID string
-	suffix := ""
-	if strings.HasPrefix(req.RoomId, "saved_messages_") {
-		suffix = strings.TrimPrefix(req.RoomId, "saved_messages_")
-	} else if strings.HasPrefix(req.RoomId, "favorites_") {
-		suffix = strings.TrimPrefix(req.RoomId, "favorites_")
-	}
+	suffix := strings.TrimPrefix(req.RoomId, "saved_messages_")
 	if suffix == "" {
 		suffix = username
 	}
@@ -636,9 +631,9 @@ func (s *server) handleSavedMessagesSend(ctx context.Context, req *gen.SendMessa
 		return &gen.SendMessageV2Response{Success: false, Error: err.Error()}, nil
 	}
 
-	// Auto-add to favorites
-	if err := s.db.AddFavorite(userID, msgID); err != nil {
-		logger.Infof("SendMessageV2 (saved_messages): failed to add favorite: %v", err)
+	// Auto-add to saved messages
+	if err := s.db.AddSavedMessage(userID, msgID); err != nil {
+		logger.Infof("SendMessageV2 (saved_messages): failed to add saved message: %v", err)
 	}
 
 	logger.Infof("SendMessageV2 (saved_messages): user=%s room=%s msg=%s", username, savedRoomID, msgID)

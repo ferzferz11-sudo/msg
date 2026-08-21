@@ -201,13 +201,13 @@ func TestAdminCursor_InvalidJSON(t *testing.T) {
 	}
 }
 
-// ======= Favorites Reaction Preservation Tests =======
+// ======= Saved Messages Reaction Preservation Tests =======
 
-func TestFavoritesPreservesOriginalID(t *testing.T) {
-	// Simulate the favorites flow:
+func TestSavedMessagesPreservesOriginalID(t *testing.T) {
+	// Simulate the saved messages flow:
 	// 1. Original message has ID "orig-msg-123"
-	// 2. Favorite should preserve this ID
-	// 3. Reaction on "orig-msg-123" should be visible in favorites
+	// 2. Saved message should preserve this ID
+	// 3. Reaction on "orig-msg-123" should be visible in saved messages
 
 	originalID := "orig-msg-123"
 	reactionsJSON := `{"user-1":"👍"}`
@@ -224,16 +224,16 @@ func TestFavoritesPreservesOriginalID(t *testing.T) {
 		t.Error("expected reaction from user-1")
 	}
 
-	// Simulate: favorite uses same ID
-	favoriteID := originalID
-	if favoriteID != originalID {
-		t.Errorf("favorite ID %s should equal original ID %s", favoriteID, originalID)
+	// Simulate: saved message uses same ID
+	savedMsgID := originalID
+	if savedMsgID != originalID {
+		t.Errorf("saved message ID %s should equal original ID %s", savedMsgID, originalID)
 	}
 }
 
-func TestFavoritesNewUUIDBreaksReactions(t *testing.T) {
+func TestSavedMessagesNewUUIDBreaksReactions(t *testing.T) {
 	// This test demonstrates the bug that was fixed:
-	// If SaveFavoriteMessage generates a NEW UUID, reactions won't match
+	// If SaveSavedMessage generates a NEW UUID, reactions won't match
 
 	originalID := "orig-msg-123"
 
@@ -243,17 +243,17 @@ func TestFavoritesNewUUIDBreaksReactions(t *testing.T) {
 	var reactions map[string]string
 	json.Unmarshal([]byte(reactionsJSON), &reactions)
 
-	// The bug: reactions are stored under originalID, but favorite has new UUID
-	// Client looks up reactions by favorite ID -> finds nothing
+	// The bug: reactions are stored under originalID, but saved message has new UUID
+	// Client looks up reactions by saved message ID -> finds nothing
 	if _, ok := reactions[originalID]; ok {
 		// This would be wrong - reactions are stored by user, not message ID
 		t.Log("Reactions are stored by user ID in the JSON, not message ID")
 	}
 
-	// Verify that with the fix, favorite ID == original ID
-	fixedFavoriteID := originalID // After fix: we preserve the original ID
-	if fixedFavoriteID != originalID {
-		t.Errorf("fixed favorite ID %s should equal original ID %s", fixedFavoriteID, originalID)
+	// Verify that with the fix, saved message ID == original ID
+	fixedSavedMsgID := originalID // After fix: we preserve the original ID
+	if fixedSavedMsgID != originalID {
+		t.Errorf("fixed saved message ID %s should equal original ID %s", fixedSavedMsgID, originalID)
 	}
 }
 
